@@ -1,0 +1,1 @@
+Place media icons, audio thumbnails, and video preview images here.
