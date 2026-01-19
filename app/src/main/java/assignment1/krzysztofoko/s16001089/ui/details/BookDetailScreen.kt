@@ -35,6 +35,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import assignment1.krzysztofoko.s16001089.data.Book
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -45,7 +46,7 @@ import java.util.Locale
 fun BookDetailScreen(
     bookId: String,
     initialBook: Book? = null,
-    isLoggedIn: Boolean,
+    user: FirebaseUser?,
     onLoginRequired: () -> Unit,
     onBack: () -> Unit,
     isDarkTheme: Boolean,
@@ -53,9 +54,7 @@ fun BookDetailScreen(
     onPlayAudio: (Book) -> Unit,
     onReadBook: (String) -> Unit
 ) {
-    val auth = FirebaseAuth.getInstance()
     val db = FirebaseFirestore.getInstance()
-    val user = auth.currentUser
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -67,33 +66,58 @@ fun BookDetailScreen(
     
     var showOrderFlow by remember { mutableStateOf(false) }
 
+    // Use derived state for isLoggedIn to be more reactive
+    val isLoggedIn = user != null
+
     LaunchedEffect(bookId, user) {
         loading = true
-        db.collection("books").document(bookId).get()
-            .addOnSuccessListener { document ->
-                val fetchedBook = document.toObject(Book::class.java)?.copy(id = document.id)
-                book = fetchedBook
-                
-                if (fetchedBook != null) {
-                    if (fetchedBook.price == 0.0) {
-                        isOwned = true
-                        loading = false
-                    } else if (user != null) {
-                        db.collection("users").document(user.uid)
-                            .collection("purchases").document(bookId).get()
-                            .addOnSuccessListener { purchaseDoc ->
-                                isOwned = purchaseDoc.exists()
+        Log.d("BookDetail", "Effect triggered for bookId: $bookId, user: ${user?.uid}")
+        
+        try {
+            db.collection("books").document(bookId).get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val fetchedBook = document.toObject(Book::class.java)?.copy(id = document.id)
+                        book = fetchedBook
+                        Log.d("BookDetail", "Book fetched successfully: ${fetchedBook?.title}")
+                        
+                        if (fetchedBook != null) {
+                            if (fetchedBook.price == 0.0) {
+                                isOwned = true
+                                loading = false
+                            } else if (user != null) {
+                                db.collection("users").document(user.uid)
+                                    .collection("purchases").document(bookId).get()
+                                    .addOnSuccessListener { purchaseDoc ->
+                                        isOwned = purchaseDoc.exists()
+                                        loading = false
+                                        Log.d("BookDetail", "Ownership check complete: $isOwned")
+                                    }
+                                    .addOnFailureListener {
+                                        Log.e("BookDetail", "Failed to check purchase", it)
+                                        loading = false
+                                    }
+                            } else {
+                                isOwned = false
                                 loading = false
                             }
-                            .addOnFailureListener { loading = false }
+                        } else {
+                            Log.e("BookDetail", "Document exists but mapping failed")
+                            loading = false
+                        }
                     } else {
+                        Log.e("BookDetail", "Document does not exist in Firestore")
                         loading = false
                     }
-                } else {
+                }
+                .addOnFailureListener {
+                    Log.e("BookDetail", "Firestore fetch failed", it)
                     loading = false
                 }
-            }
-            .addOnFailureListener { loading = false }
+        } catch (e: Exception) {
+            Log.e("BookDetail", "Exception in LaunchedEffect", e)
+            loading = false
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -129,17 +153,23 @@ fun BookDetailScreen(
                 )
             }
         ) { padding ->
-            if (loading) {
+            if (loading && book == null) {
                 Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
-            } else if (book == null) {
+            } else if (book == null && !loading) {
                 Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
                         Spacer(Modifier.height(16.dp))
                         Text("Item details not available.", color = Color.Gray)
-                        TextButton(onClick = onBack) { Text("Go Back") }
+                        TextButton(onClick = { 
+                            // Try to reload
+                            loading = true
+                            db.collection("books").document(bookId).get().addOnCompleteListener { loading = false }
+                        }) { 
+                            Text("Retry Connection") 
+                        }
                     }
                 }
             } else {

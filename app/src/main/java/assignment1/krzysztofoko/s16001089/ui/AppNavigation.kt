@@ -46,6 +46,8 @@ fun AppNavigation(
     val navController = rememberNavController()
     val auth = FirebaseAuth.getInstance()
     val db = FirebaseFirestore.getInstance()
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     
     var currentUser by remember { mutableStateOf(auth.currentUser) }
 
@@ -95,6 +97,7 @@ fun AppNavigation(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (currentUser != null) {
                 Surface(
@@ -118,7 +121,13 @@ fun AppNavigation(
                             Spacer(Modifier.width(8.dp))
                             Text("Logged in as $firstName", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
-                        IconButton(onClick = { auth.signOut(); navController.navigate("home") { popUpTo(0) } }, modifier = Modifier.size(32.dp)) {
+                        IconButton(onClick = { 
+                            auth.signOut()
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Successfully logged out")
+                            }
+                            navController.navigate("home") { popUpTo(0) } 
+                        }, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.AutoMirrored.Filled.Logout, "Log Out", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                         }
                     }
@@ -171,12 +180,28 @@ fun AppNavigation(
                         onToggleTheme = onToggleTheme
                     )
                 }
-                composable("auth") { AuthScreen(onAuthSuccess = { navController.navigate("home") { popUpTo("home") { inclusive = true } } }, onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                composable("auth") { 
+                    AuthScreen(
+                        onAuthSuccess = { 
+                            val name = auth.currentUser?.displayName ?: "User"
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Successfully logged in as $name")
+                            }
+                            navController.navigate("home") { popUpTo("home") { inclusive = true } } 
+                        }, 
+                        onBack = { navController.popBackStack() }, 
+                        isDarkTheme = isDarkTheme, 
+                        onToggleTheme = onToggleTheme
+                    ) 
+                }
                 composable("bookDetails/{bookId}") { backStackEntry ->
                     val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
+                    // Optimization: Find the book in the pre-loaded list
+                    val selectedBook = allBooks.find { it.id == bookId }
                     BookDetailScreen(
                         bookId = bookId, 
-                        isLoggedIn = currentUser != null, 
+                        initialBook = selectedBook,
+                        user = currentUser, 
                         onLoginRequired = { navController.navigate("auth") }, 
                         onBack = { navController.popBackStack() }, 
                         isDarkTheme = isDarkTheme, 
