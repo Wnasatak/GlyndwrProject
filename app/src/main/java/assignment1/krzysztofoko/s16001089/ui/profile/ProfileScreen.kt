@@ -3,315 +3,499 @@ package assignment1.krzysztofoko.s16001089.ui.profile
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import androidx.compose.ui.window.Dialog
+import androidx.navigation.NavController
+import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
+import assignment1.krzysztofoko.s16001089.ui.components.SelectionOption
+import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.userProfileChangeRequest
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+    navController: NavController,
     onBack: () -> Unit,
+    onLogout: () -> Unit,
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit
 ) {
     val auth = FirebaseAuth.getInstance()
+    val db = FirebaseFirestore.getInstance()
+    val storage = FirebaseStorage.getInstance()
     val user = auth.currentUser
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     
     val names = user?.displayName?.split(" ") ?: listOf("", "")
     var firstName by remember { mutableStateOf(names.getOrNull(0) ?: "") }
-    var surname by remember { mutableStateOf(names.drop(1).joinToString(" ")) }
+    var surname by remember { mutableStateOf(names.getOrNull(1) ?: "") }
+    var emailDisplay by remember { mutableStateOf(user?.email ?: "") }
     
-    var email by remember { mutableStateOf(user?.email ?: "") }
-    var currentPassword by remember { mutableStateOf("") }
-    var newPassword by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var selectedPhotoUri by remember { mutableStateOf(user?.photoUrl) }
+    var selectedPhotoUri by remember { mutableStateOf<Any?>(user?.photoUrl) }
+    var isUploading by remember { mutableStateOf(false) }
+
+    var selectedPaymentMethod by remember { mutableStateOf("University Account") }
+    var selectedAddress by remember { mutableStateOf("No address added yet") }
     
-    var message by remember { mutableStateOf<String?>(null) }
-    var isError by remember { mutableStateOf(false) }
-    var loading by remember { mutableStateOf(false) }
+    var showSelectionPopup by remember { mutableStateOf(false) }
+    var currentPopupStep by remember { mutableIntStateOf(1) }
+    var cardNumber by remember { mutableStateOf("") }
+    var cardExpiry by remember { mutableStateOf("") }
+    var paypalEmail by remember { mutableStateOf("") }
+
+    var showPasswordPopup by remember { mutableStateOf(false) }
+    var showAddressPopup by remember { mutableStateOf(false) }
+    var showEmailPopup by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        user?.reload()?.addOnCompleteListener {
+            emailDisplay = auth.currentUser?.email ?: ""
+        }
+    }
+
+    LaunchedEffect(user) {
+        if (user != null) {
+            db.collection("users").document(user.uid).get()
+                .addOnSuccessListener { doc ->
+                    val method = doc.getString("selectedPaymentMethod")
+                    if (method != null) selectedPaymentMethod = method
+                    val address = doc.getString("address")
+                    if (!address.isNullOrEmpty()) selectedAddress = address
+                }
+        }
+    }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        if (uri != null) {
-            selectedPhotoUri = uri
+        if (uri != null && user != null) {
+            isUploading = true
+            val avatarRef = storage.reference.child("avatars/${user.uid}.jpg")
+            avatarRef.putFile(uri).addOnSuccessListener {
+                avatarRef.downloadUrl.addOnSuccessListener { downloadUrl: Uri ->
+                    selectedPhotoUri = downloadUrl
+                    val profileUpdates = userProfileChangeRequest { photoUri = downloadUrl }
+                    user.updateProfile(profileUpdates).addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            db.collection("users").document(user.uid).set(mapOf("photoUrl" to downloadUrl.toString()), SetOptions.merge())
+                            isUploading = false
+                            scope.launch { snackbarHostState.showSnackbar("Avatar saved to cloud!") }
+                        }
+                    }
+                }
+            }.addOnFailureListener {
+                isUploading = false
+                scope.launch { snackbarHostState.showSnackbar("Upload failed.") }
+            }
         }
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Edit Profile", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+                windowInsets = WindowInsets(0, 0, 0, 0),
+                title = { Text("Profile Settings", fontWeight = FontWeight.ExtraBold) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 actions = {
-                    IconButton(onClick = onToggleTheme) {
-                        Icon(
-                            imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = "Toggle Theme"
-                        )
-                    }
-                }
+                    IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
+                    IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Filled.Logout, "Log Out", tint = MaterialTheme.colorScheme.error) }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Profile Picture Section
-            Box(
-                contentAlignment = Alignment.BottomEnd,
-                modifier = Modifier.clickable { photoPickerLauncher.launch("image/*") }
-            ) {
-                if (selectedPhotoUri != null) {
-                    AsyncImage(
-                        model = selectedPhotoUri,
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Surface(
-                        modifier = Modifier.size(120.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Person, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
-                
-                SmallFloatingActionButton(
-                    onClick = { photoPickerLauncher.launch("image/*") },
-                    shape = CircleShape,
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Default.CameraAlt, null, modifier = Modifier.size(16.dp), tint = Color.White)
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // Name Fields
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                OutlinedTextField(
-                    value = firstName,
-                    onValueChange = { firstName = it },
-                    label = { Text("First Name") },
-                    modifier = Modifier.weight(1f),
-                    leadingIcon = { Icon(Icons.Default.Badge, null) }
-                )
-                OutlinedTextField(
-                    value = surname,
-                    onValueChange = { surname = it },
-                    label = { Text("Surname") },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Email Field
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email Address") },
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Email, null) }
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Security Verification", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            Text("Required only to change Email or Password", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Current Password (For Re-authentication)
-            OutlinedTextField(
-                value = currentPassword,
-                onValueChange = { currentPassword = it },
-                label = { Text("Current Password") },
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.VpnKey, null) },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = null)
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // New Password Fields
-            OutlinedTextField(
-                value = newPassword,
-                onValueChange = { newPassword = it },
-                label = { Text("New Password") },
-                placeholder = { Text("Leave blank to keep current") },
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Lock, null) },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                label = { Text("Confirm New Password") },
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.LockClock, null) },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
-            )
-            
-            AnimatedVisibility(visible = message != null) {
-                Text(
-                    text = message ?: "",
-                    color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 16.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            Button(
-                onClick = {
-                    if (newPassword.isNotEmpty() && newPassword != confirmPassword) {
-                        isError = true
-                        message = "Passwords do not match!"
-                        return@Button
-                    }
-
-                    loading = true
-                    isError = false
-                    message = "Verifying and updating..."
-
-                    // 1. Re-authenticate if changing sensitive data
-                    val needsReauth = (email != user?.email || newPassword.isNotEmpty())
-                    
-                    if (needsReauth && currentPassword.isEmpty()) {
-                        isError = true
-                        message = "Please enter current password to verify identity."
-                        loading = false
-                        return@Button
-                    }
-
-                    if (needsReauth) {
-                        val credential = EmailAuthProvider.getCredential(user?.email!!, currentPassword)
-                        user.reauthenticate(credential).addOnCompleteListener { reauthTask ->
-                            if (reauthTask.isSuccessful) {
-                                performFullUpdate(user, firstName, surname, selectedPhotoUri, email, newPassword) { success, msg ->
-                                    isError = !success
-                                    message = msg
-                                    loading = false
-                                }
-                            } else {
-                                isError = true
-                                message = "Verification failed: ${reauthTask.exception?.localizedMessage}"
-                                loading = false
+        Box(modifier = Modifier.fillMaxSize()) {
+            HorizontalWavyBackground(isDarkTheme = isDarkTheme)
+            Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.padding(vertical = 24.dp)) {
+                    UserAvatar(
+                        photoUrl = selectedPhotoUri?.toString(),
+                        modifier = Modifier.size(130.dp),
+                        isLarge = true,
+                        onClick = { if (!isUploading) photoPickerLauncher.launch("image/*") },
+                        overlay = {
+                            if (isUploading) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) { CircularProgressIndicator(color = Color.White) }
                             }
                         }
-                    } else {
-                        // Only updating basic profile (Name/Photo)
-                        performFullUpdate(user!!, firstName, surname, selectedPhotoUri, email, "") { success, msg ->
-                            isError = !success
-                            message = msg
-                            loading = false
+                    )
+                    SmallFloatingActionButton(onClick = { if (!isUploading) photoPickerLauncher.launch("image/*") }, shape = CircleShape, containerColor = MaterialTheme.colorScheme.primary, modifier = Modifier.offset(x = (-8).dp, y = (-8).dp)) { Icon(Icons.Default.Edit, null, modifier = Modifier.size(16.dp), tint = Color.White) }
+                }
+
+                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)), shape = RoundedCornerShape(24.dp)) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        Text("Personal Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(value = firstName, onValueChange = { firstName = it }, label = { Text("First Name") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+                            OutlinedTextField(value = surname, onValueChange = { surname = it }, label = { Text("Surname") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(onClick = { showEmailPopup = true }, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))) {
+                            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(16.dp)); Column(modifier = Modifier.weight(1f)) { Text("Email Address", style = MaterialTheme.typography.labelSmall, color = Color.Gray); Text(emailDisplay, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium) }
+                                Text("Edit", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(32.dp)); Text("Active Address", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(onClick = { showAddressPopup = true }, color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))) {
+                            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Home, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(16.dp)); Text(selectedAddress, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                                Text("Change", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary); Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(32.dp)); Text("Active Payment Method", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(onClick = { currentPopupStep = 1; showSelectionPopup = true }, color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))) {
+                            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(imageVector = when { selectedPaymentMethod.contains("Google") -> Icons.Default.AccountBalanceWallet; selectedPaymentMethod.contains("PayPal") -> Icons.Default.Payment; selectedPaymentMethod.contains("Uni") -> Icons.Default.School; else -> Icons.Default.CreditCard }, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(16.dp)); Text(selectedPaymentMethod, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                Spacer(Modifier.weight(1f)); Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(32.dp)); Text("Account Security", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(onClick = { showPasswordPopup = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                            Icon(Icons.Default.Lock, null); Spacer(Modifier.width(8.dp)); Text("Change Account Password")
+                        }
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Button(onClick = {
+                            isUploading = true
+                            performFullUpdate(user!!, firstName, surname, selectedPhotoUri as? Uri) { _, msg -> isUploading = false; scope.launch { snackbarHostState.showSnackbar(msg) } }
+                            db.collection("users").document(user.uid).set(mapOf("selectedPaymentMethod" to selectedPaymentMethod), SetOptions.merge())
+                        }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp), enabled = !isUploading) {
+                            if (isUploading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White) else Text("Save General Profile", fontWeight = FontWeight.Bold)
                         }
                     }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                enabled = !loading
-            ) {
-                if (loading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                else Text("Update Profile")
+                }
+                Spacer(modifier = Modifier.height(40.dp))
             }
-            
-            Spacer(modifier = Modifier.height(40.dp))
+        }
+
+        if (showSelectionPopup) {
+            Dialog(onDismissRequest = { showSelectionPopup = false }) {
+                Surface(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
+                    Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        AnimatedContent(targetState = currentPopupStep, label = "popupStepTransition") { step ->
+                            if (step == 1) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Choose Payment Method", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    SelectionOption("Credit or Debit Card", Icons.Default.AddCard, selectedPaymentMethod.contains("Card")) { selectedPaymentMethod = "Credit or Debit Card"; currentPopupStep = 2 }
+                                    SelectionOption("Google Pay", Icons.Default.AccountBalanceWallet, selectedPaymentMethod == "Google Pay") { selectedPaymentMethod = "Google Pay"; currentPopupStep = 2 }
+                                    SelectionOption("PayPal", Icons.Default.Payment, selectedPaymentMethod == "PayPal") { selectedPaymentMethod = "PayPal"; currentPopupStep = 2 }
+                                    SelectionOption("University Account", Icons.Default.School, selectedPaymentMethod == "University Account") { selectedPaymentMethod = "University Account"; currentPopupStep = 2 }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    TextButton(onClick = { showSelectionPopup = false }) { Text("Cancel") }
+                                }
+                            } else {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = "Details Confirmation", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    when {
+                                        selectedPaymentMethod.contains("Card") -> {
+                                            OutlinedTextField(value = cardNumber, onValueChange = { cardNumber = it }, label = { Text("Card Number") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                                OutlinedTextField(value = cardExpiry, onValueChange = { cardExpiry = it }, label = { Text("MM/YY") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+                                                OutlinedTextField(value = "", onValueChange = {}, label = { Text("CVV") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(12.dp))
+                                            }
+                                        }
+                                        selectedPaymentMethod.contains("PayPal") -> {
+                                            Icon(Icons.Default.Payment, null, modifier = Modifier.size(64.dp), tint = Color(0xFF003087))
+                                            Spacer(modifier = Modifier.height(16.dp))
+                                            OutlinedTextField(value = paypalEmail, onValueChange = { paypalEmail = it }, label = { Text("PayPal Email") }, modifier = Modifier.fillMaxWidth(), leadingIcon = { Icon(Icons.Default.Email, null) }, shape = RoundedCornerShape(12.dp))
+                                        }
+                                        else -> {
+                                            Icon(if (selectedPaymentMethod.contains("Google")) Icons.Default.AccountBalanceWallet else Icons.Default.School, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
+                                            Spacer(modifier = Modifier.height(16.dp)); Text("Authorize link to your account safely.", textAlign = TextAlign.Center)
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(32.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        OutlinedButton(onClick = { currentPopupStep = 1 }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Back") }
+                                        Button(onClick = { 
+                                            val userId = user?.uid ?: return@Button
+                                            if (selectedPaymentMethod.contains("Card")) selectedPaymentMethod = "Card Ending in ${cardNumber.takeLast(4).ifEmpty { "4242" }}"
+                                            db.collection("users").document(userId).set(mapOf("selectedPaymentMethod" to selectedPaymentMethod), SetOptions.merge())
+                                            showSelectionPopup = false 
+                                        }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Confirm") }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showPasswordPopup) { PasswordChangeDialog(userEmail = user?.email ?: "", onDismiss = { showPasswordPopup = false }, onSuccess = { showPasswordPopup = false; scope.launch { snackbarHostState.showSnackbar("Password updated!") } }) }
+        if (showAddressPopup) { AddressManagementDialog(onDismiss = { showAddressPopup = false }, onSave = { newAddr -> val userId = user?.uid ?: return@AddressManagementDialog; selectedAddress = newAddr; showAddressPopup = false; db.collection("users").document(userId).set(mapOf("address" to newAddr), SetOptions.merge()); scope.launch { snackbarHostState.showSnackbar("Address saved!") } }) }
+        if (showEmailPopup) { EmailChangeDialog(currentEmail = user?.email ?: "", onDismiss = { showEmailPopup = false }, onSuccess = { _ -> auth.signOut(); navController.navigate("auth") { popUpTo(0) } }) }
+    }
+}
+
+@Composable
+fun EmailChangeDialog(currentEmail: String, onDismiss: () -> Unit, onSuccess: (String) -> Unit) {
+    var step by remember { mutableIntStateOf(1) }
+    var password by remember { mutableStateOf("") }
+    var newEmail by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(false) }
+    var validationMsg by remember { mutableStateOf<String?>(null) }
+    val auth = FirebaseAuth.getInstance()
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
+            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Change Email", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Step $step of 3", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                AnimatedVisibility(visible = validationMsg != null) {
+                    Card(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f))) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error)
+                            Spacer(Modifier.width(8.dp)); Text(validationMsg ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                AnimatedContent(targetState = step, label = "emailStepAnim") { currentStep ->
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        when(currentStep) {
+                            1 -> {
+                                Text("Verify Identity", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.CenterHorizontally))
+                                Text("Enter current password to proceed.", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 8.dp))
+                                OutlinedTextField(value = password, onValueChange = { password = it; validationMsg = null }, label = { Text("Current Password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                            }
+                            2 -> {
+                                Text("New Email", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.CenterHorizontally))
+                                Text("Enter your new email address.", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 8.dp))
+                                OutlinedTextField(value = newEmail, onValueChange = { newEmail = it; validationMsg = null }, label = { Text("New Email") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                            }
+                            3 -> {
+                                Text("Confirmation", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.CenterHorizontally))
+                                Text("Updating to: $newEmail\n\nYou will be logged out to verify your new email.", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 8.dp))
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+                if (loading) { CircularProgressIndicator() } else {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(onClick = { if (step == 1) onDismiss() else { step--; validationMsg = null } }, modifier = Modifier.weight(1f)) { Text(if (step == 1) "Cancel" else "Back") }
+                        Button(onClick = {
+                            when(step) {
+                                1 -> {
+                                    if (password.isEmpty()) { validationMsg = "Please enter your password."; return@Button }
+                                    loading = true
+                                    val cred = EmailAuthProvider.getCredential(currentEmail, password)
+                                    auth.currentUser?.reauthenticate(cred)?.addOnCompleteListener {
+                                        loading = false
+                                        if (it.isSuccessful) step = 2 else validationMsg = "Incorrect password."
+                                    }
+                                }
+                                2 -> {
+                                    if (newEmail.isEmpty() || !newEmail.contains("@")) { validationMsg = "Please enter a valid email."; return@Button }
+                                    step = 3
+                                }
+                                3 -> {
+                                    loading = true
+                                    auth.currentUser?.verifyBeforeUpdateEmail(newEmail)?.addOnCompleteListener {
+                                        loading = false
+                                        if (it.isSuccessful) onSuccess(newEmail) else validationMsg = it.exception?.localizedMessage ?: "Failed."
+                                    }
+                                }
+                            }
+                        }, modifier = Modifier.weight(1f)) { Text(if (step == 3) "Verify & Logout" else "Next") }
+                    }
+                }
+            }
         }
     }
 }
 
-private fun performFullUpdate(
-    user: com.google.firebase.auth.FirebaseUser,
-    firstName: String,
-    surname: String,
-    photoUri: Uri?,
-    newEmail: String,
-    newPass: String,
-    onResult: (Boolean, String) -> Unit
-) {
+@Composable
+fun PasswordChangeDialog(userEmail: String, onDismiss: () -> Unit, onSuccess: () -> Unit) {
+    var step by remember { mutableIntStateOf(1) }
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var repeatPassword by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(false) }
+    var validationMsg by remember { mutableStateOf<String?>(null) }
+    val auth = FirebaseAuth.getInstance()
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
+            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "Change Password", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(text = "Step $step of 3", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+                AnimatedVisibility(visible = validationMsg != null) {
+                    Card(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)), shape = RoundedCornerShape(12.dp)) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp)); Text(text = validationMsg ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                AnimatedContent(targetState = step, label = "passStepAnim") { currentStep ->
+                    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        when(currentStep) {
+                            1 -> {
+                                Text("Verify it's you", style = MaterialTheme.typography.titleMedium)
+                                Text("Please enter your current password so we know it's you.", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 8.dp))
+                                OutlinedTextField(value = currentPassword, onValueChange = { currentPassword = it; validationMsg = null }, label = { Text("Current Password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                            }
+                            2 -> {
+                                Text("New Password", style = MaterialTheme.typography.titleMedium)
+                                Text("Pick a strong password (6-20 characters).", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 8.dp))
+                                OutlinedTextField(value = newPassword, onValueChange = { newPassword = it; validationMsg = null }, label = { Text("New Password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                            }
+                            3 -> {
+                                Text("Confirm Password", style = MaterialTheme.typography.titleMedium)
+                                Text("Please type the new password one more time.", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 8.dp))
+                                OutlinedTextField(value = repeatPassword, onValueChange = { repeatPassword = it; validationMsg = null }, label = { Text("Repeat Password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+                if (loading) { CircularProgressIndicator() } else {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(onClick = { if (step == 1) onDismiss() else { step--; validationMsg = null } }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text(if (step == 1) "Cancel" else "Back") }
+                        Button(onClick = {
+                            when(step) {
+                                1 -> {
+                                    if (currentPassword.isEmpty()) { validationMsg = "Please enter your current password first."; return@Button }
+                                    loading = true
+                                    val credential = EmailAuthProvider.getCredential(userEmail, currentPassword)
+                                    auth.currentUser?.reauthenticate(credential)?.addOnCompleteListener {
+                                        loading = false
+                                        if (it.isSuccessful) step = 2 else validationMsg = "The password you entered doesn't seem right. Please check it."
+                                    }
+                                }
+                                2 -> {
+                                    if (newPassword.isEmpty()) { validationMsg = "The new password box is empty. Please fill it in."; return@Button }
+                                    if (newPassword.length < 6) { validationMsg = "That's a bit too short! Try at least 6 characters."; return@Button }
+                                    if (newPassword.length > 20) { validationMsg = "That's a bit too long! Keep it under 20 characters."; return@Button }
+                                    step = 3
+                                }
+                                3 -> {
+                                    if (repeatPassword.isEmpty()) { validationMsg = "Please repeat your new password here."; return@Button }
+                                    if (newPassword != repeatPassword) { validationMsg = "The passwords don't match. Please type them again carefully."; return@Button }
+                                    loading = true
+                                    auth.currentUser?.updatePassword(newPassword)?.addOnCompleteListener {
+                                        loading = false
+                                        if (it.isSuccessful) onSuccess() else validationMsg = it.exception?.localizedMessage ?: "Something went wrong. Please try again."
+                                    }
+                                }
+                            }
+                        }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text(if (step == 3) "Save" else "Next") }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AddressManagementDialog(onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var step by remember { mutableIntStateOf(1) }
+    var street by remember { mutableStateOf("") }
+    var city by remember { mutableStateOf("") }
+    var postcode by remember { mutableStateOf("") }
+    var country by remember { mutableStateOf("") }
+    var validationMsg by remember { mutableStateOf<String?>(null) }
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
+            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "Manage Address", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(text = "Step $step of 2", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+                AnimatedVisibility(visible = validationMsg != null) {
+                    Card(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)), shape = RoundedCornerShape(12.dp)) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp)); Text(text = validationMsg ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                AnimatedContent(targetState = step, label = "addrStepAnim") { currentStep ->
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        if (currentStep == 1) {
+                            Text("Location Details", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.CenterHorizontally))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            OutlinedTextField(value = street, onValueChange = { street = it; validationMsg = null }, label = { Text("Street Address") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(value = city, onValueChange = { city = it; validationMsg = null }, label = { Text("City") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                        } else {
+                            Text("Final Details", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.CenterHorizontally))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            OutlinedTextField(value = postcode, onValueChange = { postcode = it; validationMsg = null }, label = { Text("Postcode") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(value = country, onValueChange = { country = it; validationMsg = null }, label = { Text("Country") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = { if (step == 1) onDismiss() else { step = 1; validationMsg = null } }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text(if (step == 1) "Cancel" else "Back") }
+                    Button(onClick = {
+                        if (step == 1) {
+                            if (street.isEmpty()) { validationMsg = "Please tell us your street address."; return@Button }
+                            if (city.isEmpty()) { validationMsg = "The city box is empty. Please fill it in."; return@Button }
+                            step = 2
+                        } else {
+                            if (postcode.isEmpty()) { validationMsg = "We need your postcode to continue."; return@Button }
+                            if (country.isEmpty()) { validationMsg = "Please enter your country."; return@Button }
+                            onSave("$street, $city, $postcode, $country")
+                        }
+                    }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text(if (step == 2) "Save" else "Next") }
+                }
+            }
+        }
+    }
+}
+
+private fun performFullUpdate(user: com.google.firebase.auth.FirebaseUser, firstName: String, surname: String, photoUri: Uri?, onResult: (Boolean, String) -> Unit) {
     val profileUpdates = userProfileChangeRequest {
         displayName = "$firstName $surname".trim()
-        this.photoUri = photoUri
+        if (photoUri != null) this.photoUri = photoUri
     }
-
     user.updateProfile(profileUpdates).addOnCompleteListener { profileTask ->
-        if (profileTask.isSuccessful) {
-            if (newEmail.isNotEmpty() && newEmail != user.email) {
-                user.updateEmail(newEmail).addOnCompleteListener { emailTask ->
-                    if (emailTask.isSuccessful) {
-                        if (newPass.isNotEmpty()) {
-                            user.updatePassword(newPass).addOnCompleteListener { passTask ->
-                                if (passTask.isSuccessful) onResult(true, "Profile, Email and Password updated!")
-                                else onResult(false, "Profile & Email updated, but Password failed: ${passTask.exception?.localizedMessage}")
-                            }
-                        } else onResult(true, "Profile and Email updated!")
-                    } else onResult(false, "Profile updated, but Email failed: ${emailTask.exception?.localizedMessage}")
-                }
-            } else if (newPass.isNotEmpty()) {
-                user.updatePassword(newPass).addOnCompleteListener { passTask ->
-                    if (passTask.isSuccessful) onResult(true, "Profile and Password updated!")
-                    else onResult(false, "Profile updated, but Password failed: ${passTask.exception?.localizedMessage}")
-                }
-            } else {
-                onResult(true, "Profile updated successfully!")
-            }
-        } else {
-            onResult(false, "Profile update failed: ${profileTask.exception?.localizedMessage}")
-        }
+        if (profileTask.isSuccessful) onResult(true, "Profile updated!") else onResult(false, "Profile update failed.")
     }
 }

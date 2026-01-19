@@ -1,6 +1,5 @@
 package assignment1.krzysztofoko.s16001089.ui.details
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,10 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.data.Book
+import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import com.google.firebase.firestore.FirebaseFirestore
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,7 +41,13 @@ fun PdfReaderScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        DetailWavyBackground(isDarkTheme = isDarkTheme)
+        HorizontalWavyBackground(
+            isDarkTheme = isDarkTheme,
+            wave1HeightFactor = 0.45f,
+            wave2HeightFactor = 0.65f,
+            wave1Amplitude = 80f,
+            wave2Amplitude = 100f
+        )
 
         Scaffold(
             containerColor = Color.Transparent,
@@ -111,7 +116,7 @@ fun PdfReaderScreen(
             }
         ) { padding ->
             if (loading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else {

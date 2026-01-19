@@ -1,8 +1,6 @@
 package assignment1.krzysztofoko.s16001089.ui.info
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,10 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -24,11 +20,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
+import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
+import assignment1.krzysztofoko.s16001089.ui.components.rememberGlowAnimation
 import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,27 +35,7 @@ fun DeveloperScreen(
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit
 ) {
-    // Flashing light effect animation - matched to AboutScreen
-    val infiniteTransition = rememberInfiniteTransition(label = "glow")
-    val glowScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.45f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowScale"
-    )
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 0.75f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
-
+    val (glowScale, glowAlpha) = rememberGlowAnimation()
     val vibrantVioletColor = Color(0xFF9D4EDD)
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -109,7 +86,7 @@ fun DeveloperScreen(
                             .background(
                                 brush = Brush.radialGradient(
                                     colors = listOf(
-                                        vibrantVioletColor.copy(alpha = 1.0f),
+                                        vibrantVioletColor,
                                         Color.Transparent
                                     )
                                 ),

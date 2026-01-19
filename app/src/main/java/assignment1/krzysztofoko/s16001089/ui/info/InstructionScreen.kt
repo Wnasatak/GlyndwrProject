@@ -17,9 +17,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
+import assignment1.krzysztofoko.s16001089.ui.components.InfoCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,34 +74,38 @@ fun InstructionScreen(
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                InstructionStep(
+                InfoCard(
                     icon = Icons.Default.MenuBook,
                     title = "Browse Items",
-                    description = "Use the home screen to browse through various books, audio books, and university gear. You can filter by category using the top bar."
+                    content = "Use the home screen to browse through various books, audio books, and university gear. You can filter by category using the top bar.",
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                InstructionStep(
+                InfoCard(
                     icon = Icons.Default.Person,
                     title = "Sign In",
-                    description = "Sign in to your account to access your personal dashboard and see your order history. Students get an automatic 10% discount!"
+                    content = "Sign in to your account to access your personal dashboard and see your order history. Students get an automatic 10% discount!",
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                InstructionStep(
+                InfoCard(
                     icon = Icons.Default.ShoppingCart,
                     title = "Buy & Details",
-                    description = "Click on any item to see more details. If you're signed in, you can purchase items and they will appear in your dashboard."
+                    content = "Click on any item to see more details. If you're signed in, you can purchase items and they will appear in your dashboard.",
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                InstructionStep(
+                InfoCard(
                     icon = Icons.Default.Settings,
                     title = "Customization",
-                    description = "Toggle between Light and Dark mode using the sun/moon icon in the top bar to suit your preference."
+                    content = "Toggle between Light and Dark mode using the sun/moon icon in the top bar to suit your preference.",
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
                 )
                 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -112,40 +117,6 @@ fun InstructionScreen(
                 ) {
                     Text("Got it!")
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun InstructionStep(icon: ImageVector, title: String, description: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
