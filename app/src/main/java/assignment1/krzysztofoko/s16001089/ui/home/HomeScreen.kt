@@ -2,6 +2,8 @@ package assignment1.krzysztofoko.s16001089.ui.home
 
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,11 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.data.seedDatabase
 import coil.compose.AsyncImage
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,19 +38,16 @@ import java.util.Locale
 fun HomeScreen(
     navController: NavController,
     isLoggedIn: Boolean,
+    allBooks: List<Book>,
+    isLoading: Boolean,
+    error: String?,
+    onRefresh: () -> Unit,
     onAboutClick: () -> Unit,
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit
 ) {
-    val db = FirebaseFirestore.getInstance()
-    var allBooks by remember { mutableStateOf(listOf<Book>()) }
     var selectedMainCategory by remember { mutableStateOf("All") }
     var selectedSubCategory by remember { mutableStateOf("All Genres") }
-    var loading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var refreshCount by remember { mutableIntStateOf(0) }
-    var autoSeedAttempted by remember { mutableStateOf(false) }
-    var showLongLoadingRefresh by remember { mutableStateOf(false) }
 
     val mainCategories = listOf("All", "University Courses", "University Gear", "Books", "Audio Books")
     
@@ -60,43 +56,6 @@ fun HomeScreen(
         "Audio Books" to listOf("All Genres", "Self-Help", "Technology", "Cooking", "Mystery"),
         "University Courses" to listOf("All Departments", "Science", "Business", "Technology")
     )
-
-    LaunchedEffect(refreshCount) {
-        loading = true
-        errorMessage = null
-        showLongLoadingRefresh = false
-        
-        val longLoadingJob = launch {
-            delay(5000)
-            if (loading) {
-                showLongLoadingRefresh = true
-            }
-        }
-
-        db.collection("books").get()
-            .addOnSuccessListener { result ->
-                longLoadingJob.cancel()
-                if (result.isEmpty && !autoSeedAttempted) {
-                    autoSeedAttempted = true
-                    seedDatabase()
-                    refreshCount++
-                } else {
-                    allBooks = result.documents.mapNotNull { doc ->
-                        try {
-                            doc.toObject(Book::class.java)?.copy(id = doc.id)
-                        } catch (e: Exception) {
-                            null
-                        }
-                    }
-                    loading = false
-                }
-            }
-            .addOnFailureListener { exception ->
-                longLoadingJob.cancel()
-                errorMessage = exception.message ?: "Unknown Error"
-                loading = false
-            }
-    }
 
     val filteredBooks = remember(selectedMainCategory, selectedSubCategory, allBooks) {
         allBooks.filter { book ->
@@ -109,138 +68,191 @@ fun HomeScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        AsyncImage(
-                            model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
-                            contentDescription = "Logo",
-                            modifier = Modifier.size(32.dp).clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Glyndwr Store",
-                            fontWeight = FontWeight.Black,
-                            fontSize = 16.sp,
-                            letterSpacing = (-0.5).sp
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onToggleTheme) {
-                        Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, contentDescription = "Theme")
-                    }
-                    IconButton(onClick = onAboutClick) {
-                        Icon(Icons.Default.Info, contentDescription = "About")
-                    }
-                    if (!isLoggedIn) {
-                        Button(
-                            onClick = { navController.navigate("auth") },
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            modifier = Modifier.padding(end = 8.dp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        WavyBackground(isDarkTheme = isDarkTheme)
+        
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                CenterAlignedTopAppBar(
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    title = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Start
                         ) {
-                            Text("Sign In", fontWeight = FontWeight.Bold)
+                            AsyncImage(
+                                model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
+                                contentDescription = "Logo",
+                                modifier = Modifier.size(32.dp).clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Glyndŵr Store",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 16.sp,
+                                letterSpacing = (-0.5).sp
+                            )
                         }
-                    } else {
-                        IconButton(
-                            onClick = { navController.navigate("dashboard") },
-                            modifier = Modifier.padding(end = 8.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                        ) {
-                            Icon(Icons.Default.Dashboard, "Dashboard")
+                    },
+                    actions = {
+                        IconButton(onClick = onToggleTheme) {
+                            Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, contentDescription = "Theme")
                         }
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-            item {
-                if (!isLoggedIn) PromotionBanner(onRegisterClick = { navController.navigate("auth") }) else MemberWelcomeBanner()
+                        IconButton(onClick = onAboutClick) {
+                            Icon(Icons.Default.Info, contentDescription = "About")
+                        }
+                        if (!isLoggedIn) {
+                            Button(
+                                onClick = { navController.navigate("auth") },
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                modifier = Modifier.padding(end = 8.dp)
+                            ) {
+                                Text("Sign In", fontWeight = FontWeight.Bold)
+                            }
+                        } else {
+                            IconButton(
+                                onClick = { navController.navigate("dashboard") },
+                                modifier = Modifier.padding(end = 8.dp).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f), CircleShape)
+                            ) {
+                                Icon(Icons.Default.Dashboard, "Dashboard")
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                    )
+                )
             }
-
-            item {
-                CategoryFilterBar(categories = mainCategories, selectedCategory = selectedMainCategory) {
-                    selectedMainCategory = it
-                    selectedSubCategory = if (it == "University Courses") "All Departments" else "All Genres"
-                }
-            }
-
-            item {
-                AnimatedVisibility(visible = subCategoriesMap.containsKey(selectedMainCategory)) {
-                    CategoryFilterBar(
-                        categories = subCategoriesMap[selectedMainCategory] ?: emptyList(),
-                        selectedCategory = selectedSubCategory
-                    ) { selectedSubCategory = it }
-                }
-            }
-
-            if (loading) {
+        ) { padding ->
+            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 item {
-                    Box(modifier = Modifier.fillMaxWidth().height(250.dp), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                            Spacer(Modifier.height(16.dp))
-                            Text("Connecting to store...", style = MaterialTheme.typography.labelSmall)
-                            if (showLongLoadingRefresh) {
+                    if (!isLoggedIn) PromotionBanner(onRegisterClick = { navController.navigate("auth") }) else MemberWelcomeBanner()
+                }
+
+                item {
+                    CategoryFilterBar(categories = mainCategories, selectedCategory = selectedMainCategory) {
+                        selectedMainCategory = it
+                        selectedSubCategory = if (it == "University Courses") "All Departments" else "All Genres"
+                    }
+                }
+
+                item {
+                    AnimatedVisibility(visible = subCategoriesMap.containsKey(selectedMainCategory)) {
+                        CategoryFilterBar(
+                            categories = subCategoriesMap[selectedMainCategory] ?: emptyList(),
+                            selectedCategory = selectedSubCategory
+                        ) { selectedSubCategory = it }
+                    }
+                }
+
+                if (isLoading) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().height(250.dp), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator()
                                 Spacer(Modifier.height(16.dp))
-                                OutlinedButton(onClick = { refreshCount++ }) {
+                                Text("Connecting to store...", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                } else if (error != null) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                                Spacer(Modifier.height(8.dp))
+                                Text("Connection Error", fontWeight = FontWeight.Bold)
+                                Text(error, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                Spacer(Modifier.height(16.dp))
+                                Button(onClick = onRefresh) {
                                     Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Refresh Connection")
+                                    Text("Retry Connection")
                                 }
                             }
                         }
                     }
-                }
-            } else if (errorMessage != null) {
-                item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
-                            Spacer(Modifier.height(8.dp))
-                            Text("Connection Error", fontWeight = FontWeight.Bold)
-                            Text(errorMessage!!, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                            Spacer(Modifier.height(16.dp))
-                            Button(onClick = { refreshCount++ }) {
-                                Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Retry Connection")
+                } else if (filteredBooks.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("No items found.", style = MaterialTheme.typography.bodyLarge)
+                                Text("Try changing your filters or refresh.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                Spacer(Modifier.height(16.dp))
+                                OutlinedButton(onClick = onRefresh) {
+                                    Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Refresh Store")
+                                }
                             }
                         }
                     }
-                }
-            } else if (filteredBooks.isEmpty()) {
-                item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("No items found.", style = MaterialTheme.typography.bodyLarge)
-                            Text("Try changing your filters or refresh.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                            Spacer(Modifier.height(16.dp))
-                            OutlinedButton(onClick = { refreshCount++ }) {
-                                Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Refresh Store")
-                            }
+                } else {
+                    items(filteredBooks) { book ->
+                        BookDisplayCard(book = book, isLoggedIn = isLoggedIn) {
+                            navController.navigate("bookDetails/${book.id}")
                         }
                     }
                 }
-            } else {
-                items(filteredBooks) { book ->
-                    BookDisplayCard(book = book, isLoggedIn = isLoggedIn) {
-                        navController.navigate("bookDetails/${book.id}")
-                    }
-                }
+                item { Spacer(modifier = Modifier.height(32.dp)) }
             }
-            item { Spacer(modifier = Modifier.height(32.dp)) }
         }
+    }
+}
+
+@Composable
+fun WavyBackground(isDarkTheme: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition(label = "wave")
+    val phase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2 * Math.PI.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(10000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "phase"
+    )
+
+    // Improved visibility for Light Mode
+    val bgColor = if (isDarkTheme) Color(0xFF0F172A) else Color(0xFFFFFFFF)
+    val waveColor1 = if (isDarkTheme) Color(0xFF1E293B) else Color(0xFFDBEAFE) 
+    val waveColor2 = if (isDarkTheme) Color(0xFF334155) else Color(0xFFBFDBFE) 
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        drawRect(color = bgColor)
+        
+        val width = size.width
+        val height = size.height
+        
+        // Vertical Wave 1 (flowing top to bottom on the RIGHT side)
+        val path1 = Path().apply {
+            moveTo(width, 0f)
+            for (y in 0..height.toInt() step 10) {
+                val relativeY = y.toFloat() / height
+                val x = width * 0.6f + Math.sin((relativeY * 1.5 * Math.PI + phase).toDouble()).toFloat() * 100f
+                lineTo(x, y.toFloat())
+            }
+            lineTo(width, height)
+            close()
+        }
+        drawPath(path1, color = waveColor1)
+        
+        // Vertical Wave 2 (opposite phase, slightly different curve, RIGHT side)
+        val path2 = Path().apply {
+            moveTo(width, 0f)
+            for (y in 0..height.toInt() step 10) {
+                val relativeY = y.toFloat() / height
+                val x = width * 0.75f + Math.sin((relativeY * 2.5 * Math.PI - phase * 0.8f).toDouble()).toFloat() * 60f
+                lineTo(x, y.toFloat())
+            }
+            lineTo(width, height)
+            close()
+        }
+        drawPath(path2, color = waveColor2.copy(alpha = 0.7f))
     }
 }
 
@@ -252,7 +264,11 @@ fun CategoryFilterBar(categories: List<String>, selectedCategory: String, onCate
                 selected = selectedCategory == category,
                 onClick = { onCategorySelected(category) },
                 label = { Text(category) },
-                shape = CircleShape
+                shape = CircleShape,
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+                )
             )
         }
     }
@@ -262,7 +278,9 @@ fun CategoryFilterBar(categories: List<String>, selectedCategory: String, onCate
 fun BookDisplayCard(book: Book, isLoggedIn: Boolean, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp), shadowElevation = 2.dp
+        shape = RoundedCornerShape(20.dp), 
+        shadowElevation = 2.dp,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -310,7 +328,7 @@ fun PromotionBanner(onRegisterClick: () -> Unit) {
 
 @Composable
 fun MemberWelcomeBanner() {
-    Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f), shape = RoundedCornerShape(16.dp)) {
+    Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f), shape = RoundedCornerShape(16.dp)) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Verified, null, tint = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.width(12.dp))
