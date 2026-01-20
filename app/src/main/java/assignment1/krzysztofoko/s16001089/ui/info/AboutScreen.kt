@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.InfoCard
@@ -85,7 +86,7 @@ fun AboutScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text("About App") },
+                    title = { Text("About App", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -109,14 +110,14 @@ fun AboutScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(150.dp)) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
                         Box(
                             modifier = Modifier
-                                .size(100.dp)
+                                .size(110.dp)
                                 .scale(glowScale)
                                 .alpha(glowAlpha)
                                 .background(
@@ -128,12 +129,12 @@ fun AboutScreen(
                         )
                         
                         Surface(
-                            modifier = Modifier.size(110.dp),
+                            modifier = Modifier.size(120.dp),
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
                             shadowElevation = 8.dp,
                             border = BorderStroke(
-                                width = 3.dp, 
+                                width = 4.dp, 
                                 color = vibrantVioletColor.copy(alpha = maxOf(initialFrameAlpha, glowAlpha))
                             )
                         ) {
@@ -141,7 +142,7 @@ fun AboutScreen(
                                 AsyncImage(
                                     model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
                                     contentDescription = "Glyndŵr Logo",
-                                    modifier = Modifier.size(100.dp).clip(CircleShape),
+                                    modifier = Modifier.size(110.dp).clip(CircleShape),
                                     contentScale = ContentScale.Crop
                                 )
                             }
@@ -150,56 +151,59 @@ fun AboutScreen(
                     
                     Text(
                         text = AppConstants.APP_NAME,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.headlineMedium, 
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                     
                     InfoCard(
                         icon = Icons.Default.School,
-                        title = "Institution",
+                        title = "INSTITUTION",
                         content = AppConstants.INSTITUTION,
-                        contentStyle = MaterialTheme.typography.titleMedium 
+                        contentStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold) // Smaller for About App
                     )
                     
                     InfoCard(
                         icon = Icons.Default.Assignment,
-                        title = "Project Info",
+                        title = "PROJECT INFO",
                         content = AppConstants.PROJECT_INFO,
-                        contentStyle = MaterialTheme.typography.titleSmall 
+                        contentStyle = MaterialTheme.typography.bodyMedium
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Button(
                         onClick = onInstructionClick,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer, 
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     ) {
-                        Icon(Icons.Default.HelpOutline, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("How to Use App", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.HelpOutline, contentDescription = null, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("How to Use App", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                     }
 
                     Button(
                         onClick = onDeveloperClick,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Developer Details", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Developer Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                     }
                 }
 
                 Text(
                     text = "Version ${AppConstants.VERSION_NAME}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = 24.dp)
                 )
             }
         }

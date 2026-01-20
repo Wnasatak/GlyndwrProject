@@ -168,21 +168,24 @@ fun SplashScreen(onTimeout: () -> Unit) {
                     )
                 }
                 
+                // --- Splash Screen Text Section ---
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Text(
                     text = AppConstants.INSTITUTION,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleLarge, // Size reduced to fit inline
                     color = Color.White,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1, // Ensures text stays on one line
+                    softWrap = false,
                     modifier = Modifier.alpha(entryAlpha.value)
                 )
                 
                 Text(
                     text = AppConstants.APP_NAME,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.headlineSmall, // Proportional header
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 2.sp,
                     modifier = Modifier.alpha(entryAlpha.value)
                 )
@@ -199,20 +202,20 @@ fun SplashScreen(onTimeout: () -> Unit) {
             ) {
                 CircularProgressIndicator(
                     color = Color.White,
-                    strokeWidth = 3.dp,
+                    strokeWidth = 4.dp,
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(40.dp)
                         .alpha(entryAlpha.value)
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 
                 Text(
                     text = "Version ${AppConstants.VERSION_NAME}",
-                    modifier = Modifier.alpha(entryAlpha.value * 0.7f),
+                    modifier = Modifier.alpha(entryAlpha.value * 0.9f),
                     color = Color.White,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Light
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }

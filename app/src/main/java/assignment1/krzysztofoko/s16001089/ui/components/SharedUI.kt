@@ -153,7 +153,7 @@ fun InfoCard(
     title: String, 
     content: String,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
     contentStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyMedium
 ) {
     Card(
@@ -213,7 +213,7 @@ fun BookItemCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         shadowElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -234,7 +234,7 @@ fun BookItemCard(
                     imageVector = if (book.isAudioBook) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook,
                     contentDescription = null,
                     modifier = Modifier.size(40.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -287,8 +287,8 @@ fun CategoryChip(
         label = { Text(category) },
         shape = CircleShape,
         colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 1.0f)
         )
     )
 }
@@ -304,7 +304,7 @@ fun SelectionOption(
         onClick = onClick, 
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), 
         shape = RoundedCornerShape(12.dp), 
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), 
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f), 
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {

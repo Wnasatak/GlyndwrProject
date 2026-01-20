@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "481753151220",
+    "firebase_url": "https://glyndwr-project-default-rtdb.firebaseio.com",
     "project_id": "glyndwr-project",
     "storage_bucket": "glyndwr-project.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "assignment1.krzysztofoko.s16001089"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "481753151220-ivil68q4ktecha0io9jp50mbi45cnp1f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "assignment1.krzysztofoko.s16001089",
+            "certificate_hash": "0f28d0b01f2c3af67db139c584d1ab79f5025a8a"
+          }
+        },
+        {
+          "client_id": "481753151220-bvispq410thsgk021q74tbd2kh0u1shd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCWbl1rnE7lNq9TMx77Eh0tdeTATOJUTYI"
@@ -20,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "481753151220-bvispq410thsgk021q74tbd2kh0u1shd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     },
@@ -31,7 +50,12 @@
           "package_name": "com.example.glyndwrproject"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "481753151220-bvispq410thsgk021q74tbd2kh0u1shd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCWbl1rnE7lNq9TMx77Eh0tdeTATOJUTYI"
@@ -39,7 +63,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "481753151220-bvispq410thsgk021q74tbd2kh0u1shd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

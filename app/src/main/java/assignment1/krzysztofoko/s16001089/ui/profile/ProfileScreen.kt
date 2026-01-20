@@ -60,8 +60,10 @@ fun ProfileScreen(
     var surname by remember { mutableStateOf(names.getOrNull(1) ?: "") }
     var emailDisplay by remember { mutableStateOf(user?.email ?: "") }
     
-    var selectedPhotoUri by remember { mutableStateOf<Any?>(user?.photoUrl) }
+    var localPreviewUri by remember { mutableStateOf<Uri?>(null) }
     var isUploading by remember { mutableStateOf(false) }
+    
+    val currentPhotoUrl = localPreviewUri?.toString() ?: user?.photoUrl?.toString()
 
     var selectedPaymentMethod by remember { mutableStateOf("University Account") }
     var selectedAddress by remember { mutableStateOf("No address added yet") }
@@ -99,23 +101,32 @@ fun ProfileScreen(
     ) { uri: Uri? ->
         if (uri != null && user != null) {
             isUploading = true
+            localPreviewUri = uri
+            
             val avatarRef = storage.reference.child("avatars/${user.uid}.jpg")
-            avatarRef.putFile(uri).addOnSuccessListener {
-                avatarRef.downloadUrl.addOnSuccessListener { downloadUrl: Uri ->
-                    selectedPhotoUri = downloadUrl
-                    val profileUpdates = userProfileChangeRequest { photoUri = downloadUrl }
-                    user.updateProfile(profileUpdates).addOnCompleteListener { task ->
-                        if (task.isSuccessful) {
-                            db.collection("users").document(user.uid).set(mapOf("photoUrl" to downloadUrl.toString()), SetOptions.merge())
-                            isUploading = false
-                            scope.launch { snackbarHostState.showSnackbar("Avatar saved to cloud!") }
+            
+            avatarRef.putFile(uri)
+                .addOnSuccessListener {
+                    avatarRef.downloadUrl.addOnSuccessListener { downloadUrl: Uri ->
+                        val profileUpdates = userProfileChangeRequest { photoUri = downloadUrl }
+                        user.updateProfile(profileUpdates).addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                db.collection("users").document(user.uid).set(
+                                    mapOf("photoUrl" to downloadUrl.toString()), 
+                                    SetOptions.merge()
+                                )
+                                localPreviewUri = null
+                                isUploading = false
+                                scope.launch { snackbarHostState.showSnackbar("Your new profile picture looks great! It's saved now.") }
+                            }
                         }
                     }
                 }
-            }.addOnFailureListener {
-                isUploading = false
-                scope.launch { snackbarHostState.showSnackbar("Upload failed.") }
-            }
+                .addOnFailureListener {
+                    isUploading = false
+                    localPreviewUri = null
+                    scope.launch { snackbarHostState.showSnackbar("Oops! We couldn't upload your photo right now. Please try again.") }
+                }
         }
     }
 
@@ -140,7 +151,7 @@ fun ProfileScreen(
             Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.padding(vertical = 24.dp)) {
                     UserAvatar(
-                        photoUrl = selectedPhotoUri?.toString(),
+                        photoUrl = currentPhotoUrl,
                         modifier = Modifier.size(130.dp),
                         isLarge = true,
                         onClick = { if (!isUploading) photoPickerLauncher.launch("image/*") },
@@ -197,7 +208,9 @@ fun ProfileScreen(
                         Spacer(modifier = Modifier.height(32.dp))
                         Button(onClick = {
                             isUploading = true
-                            performFullUpdate(user!!, firstName, surname, selectedPhotoUri as? Uri) { _, msg -> isUploading = false; scope.launch { snackbarHostState.showSnackbar(msg) } }
+                            performFullUpdate(user!!, firstName, surname, null) { _, msg -> 
+                                isUploading = false; scope.launch { snackbarHostState.showSnackbar(msg) } 
+                            }
                             db.collection("users").document(user.uid).set(mapOf("selectedPaymentMethod" to selectedPaymentMethod), SetOptions.merge())
                         }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp), enabled = !isUploading) {
                             if (isUploading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White) else Text("Save General Profile", fontWeight = FontWeight.Bold)
@@ -265,8 +278,8 @@ fun ProfileScreen(
             }
         }
 
-        if (showPasswordPopup) { PasswordChangeDialog(userEmail = user?.email ?: "", onDismiss = { showPasswordPopup = false }, onSuccess = { showPasswordPopup = false; scope.launch { snackbarHostState.showSnackbar("Password updated!") } }) }
-        if (showAddressPopup) { AddressManagementDialog(onDismiss = { showAddressPopup = false }, onSave = { newAddr -> val userId = user?.uid ?: return@AddressManagementDialog; selectedAddress = newAddr; showAddressPopup = false; db.collection("users").document(userId).set(mapOf("address" to newAddr), SetOptions.merge()); scope.launch { snackbarHostState.showSnackbar("Address saved!") } }) }
+        if (showPasswordPopup) { PasswordChangeDialog(userEmail = user?.email ?: "", onDismiss = { showPasswordPopup = false }, onSuccess = { showPasswordPopup = false; scope.launch { snackbarHostState.showSnackbar("Got it! Your password has been updated safely.") } }) }
+        if (showAddressPopup) { AddressManagementDialog(onDismiss = { showAddressPopup = false }, onSave = { newAddr -> val userId = user?.uid ?: return@AddressManagementDialog; selectedAddress = newAddr; showAddressPopup = false; db.collection("users").document(userId).set(mapOf("address" to newAddr), SetOptions.merge()); scope.launch { snackbarHostState.showSnackbar("Your address has been updated successfully.") } }) }
         if (showEmailPopup) { EmailChangeDialog(currentEmail = user?.email ?: "", onDismiss = { showEmailPopup = false }, onSuccess = { _ -> auth.signOut(); navController.navigate("auth") { popUpTo(0) } }) }
     }
 }
@@ -496,6 +509,6 @@ private fun performFullUpdate(user: com.google.firebase.auth.FirebaseUser, first
         if (photoUri != null) this.photoUri = photoUri
     }
     user.updateProfile(profileUpdates).addOnCompleteListener { profileTask ->
-        if (profileTask.isSuccessful) onResult(true, "Profile updated!") else onResult(false, "Profile update failed.")
+        if (profileTask.isSuccessful) onResult(true, "Awesome! Your profile settings have been updated.") else onResult(false, "Oops! We couldn't update your profile. Please try again.")
     }
 }

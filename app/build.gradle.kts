@@ -59,6 +59,10 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.storage)
+    implementation(libs.firebase.functions) // Added Functions
+    
+    // Google Auth
+    implementation(libs.play.services.auth)
     
     // Navigation
     implementation(libs.androidx.navigation.compose)

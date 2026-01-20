@@ -33,6 +33,7 @@ import assignment1.krzysztofoko.s16001089.ui.info.InstructionScreen
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -228,6 +229,16 @@ fun AppNavigation(
                 composable("bookDetails/{bookId}") { backStackEntry ->
                     val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
                     val selectedBook = allBooks.find { it.id == bookId }
+                    
+                    // Track History centrally when entering details
+                    LaunchedEffect(currentUser, bookId) {
+                        if (currentUser != null && bookId.isNotEmpty()) {
+                            db.collection("users").document(currentUser!!.uid)
+                                .collection("history").document(bookId)
+                                .set(mapOf("viewedAt" to System.currentTimeMillis()), SetOptions.merge())
+                        }
+                    }
+
                     BookDetailScreen(
                         bookId = bookId,
                         initialBook = selectedBook,
@@ -254,6 +265,7 @@ fun AppNavigation(
                 composable("dashboard") {
                     DashboardScreen(
                         navController = navController,
+                        allBooks = allBooks, // Passed allBooks here
                         onBack = { navController.popBackStack() },
                         onLogout = { showLogoutConfirm = true },
                         isDarkTheme = isDarkTheme,

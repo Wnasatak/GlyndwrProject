@@ -12,6 +12,7 @@ googleServices = "4.4.2"
 firebaseBom = "33.9.0"
 navigationCompose = "2.8.7"
 coil = "2.6.0"
+googleAuth = "21.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -33,8 +34,10 @@ firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.r
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
 firebase-storage = { group = "com.google.firebase", name = "firebase-storage" }
+firebase-functions = { group = "com.google.firebase", name = "firebase-functions" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "googleAuth" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

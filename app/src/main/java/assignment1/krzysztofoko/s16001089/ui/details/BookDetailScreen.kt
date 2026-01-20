@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,19 +35,28 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 data class Review(
+    val reviewId: String = "",
     val userId: String = "",
     val userName: String = "",
     val userPhotoUrl: String? = null,
     val comment: String = "",
     val rating: Int = 5,
-    val timestamp: Long = 0L
+    val timestamp: Long = 0L,
+    val likes: Int = 0,
+    val dislikes: Int = 0,
+    val likedBy: List<String> = emptyList(),
+    val dislikedBy: List<String> = emptyList()
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,6 +93,10 @@ fun BookDetailScreen(
     LaunchedEffect(bookId, user) {
         loading = true
         if (user != null) {
+            // Track "Last Viewed"
+            db.collection("users").document(user.uid).collection("history").document(bookId)
+                .set(mapOf("viewedAt" to System.currentTimeMillis()), SetOptions.merge())
+
             db.collection("users").document(user.uid).get()
                 .addOnSuccessListener { doc ->
                     val method = doc.getString("selectedPaymentMethod")
@@ -116,36 +128,23 @@ fun BookDetailScreen(
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error == null && snapshot != null) {
-                    reviews = snapshot.documents.mapNotNull { it.toObject(Review::class.java) }
-                } else {
-                    db.collection("books").document(bookId).collection("reviews").get()
-                        .addOnSuccessListener { fallback ->
-                            reviews = fallback.documents.mapNotNull { it.toObject(Review::class.java) }
-                        }
+                    reviews = snapshot.documents.mapNotNull { it.toObject(Review::class.java)?.copy(reviewId = it.id) }
                 }
             }
         onDispose { listener.remove() }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        HorizontalWavyBackground(
-            isDarkTheme = isDarkTheme,
-            wave1HeightFactor = 0.45f,
-            wave2HeightFactor = 0.65f,
-            wave1Amplitude = 80f,
-            wave2Amplitude = 100f
-        )
+        HorizontalWavyBackground(isDarkTheme = isDarkTheme, wave1HeightFactor = 0.45f, wave2HeightFactor = 0.65f, wave1Amplitude = 80f, wave2Amplitude = 100f)
         
         Scaffold(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
-                CenterAlignedTopAppBar(
+                TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { Text(text = book?.title ?: "Item Details", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
-                    },
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                     actions = {
                         if (user != null) {
                             IconButton(onClick = {
@@ -156,16 +155,12 @@ fun BookDetailScreen(
                                     wishlistRef.set(mapOf("addedAt" to System.currentTimeMillis())).addOnSuccessListener { inWishlist = true; scope.launch { snackbarHostState.showSnackbar("Added to your wishlist!") } }
                                 }
                             }) {
-                                Icon(
-                                    imageVector = if (inWishlist) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                                    contentDescription = "Wishlist",
-                                    tint = if (inWishlist) Color.Red else MaterialTheme.colorScheme.onSurface
-                                )
+                                Icon(imageVector = if (inWishlist) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = "Wishlist", tint = if (inWishlist) Color.Red else MaterialTheme.colorScheme.onSurface)
                             }
                         }
                         IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                 )
             }
         ) { padding ->
@@ -184,16 +179,26 @@ fun BookDetailScreen(
                 book?.let { currentBook ->
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp)) {
                         item {
-                            Surface(modifier = Modifier.fillMaxWidth().height(280.dp), shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), shadowElevation = 8.dp) {
-                                Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f), MaterialTheme.colorScheme.surface))), contentAlignment = Alignment.Center) {
-                                    Icon(imageVector = if (currentBook.isAudioBook) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(120.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().height(280.dp), 
+                                shape = RoundedCornerShape(24.dp), 
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f), 
+                                shadowElevation = 8.dp,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), MaterialTheme.colorScheme.surface))), contentAlignment = Alignment.Center) {
+                                    Icon(imageVector = if (currentBook.isAudioBook) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(120.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
                                 }
                             }
                             Spacer(modifier = Modifier.height(24.dp))
                         }
 
                         item {
-                            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)), shape = RoundedCornerShape(24.dp)) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)), 
+                                shape = RoundedCornerShape(24.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                            ) {
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text(text = currentBook.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
                                     Text(text = "by ${currentBook.author}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
@@ -249,7 +254,12 @@ fun BookDetailScreen(
 
                         if (user != null) {
                             item {
-                                Card(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp), 
+                                    shape = RoundedCornerShape(20.dp), 
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                                ) {
                                     Column(modifier = Modifier.padding(16.dp)) {
                                         Text("Share your experience", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 12.dp)) {
@@ -259,7 +269,17 @@ fun BookDetailScreen(
                                                 }
                                             }
                                         }
-                                        OutlinedTextField(value = newComment, onValueChange = { newComment = it }, placeholder = { Text("What did you think about this?") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary))
+                                        OutlinedTextField(
+                                            value = newComment, 
+                                            onValueChange = { newComment = it }, 
+                                            placeholder = { Text("What did you think about this?") }, 
+                                            modifier = Modifier.fillMaxWidth(), 
+                                            shape = RoundedCornerShape(12.dp), 
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                            )
+                                        )
                                         Button(onClick = {
                                             if (newComment.trim().isEmpty()) { scope.launch { snackbarHostState.showSnackbar("Please share a few words about your experience first.") }; return@Button }
                                             val review = Review(
@@ -270,20 +290,16 @@ fun BookDetailScreen(
                                                 rating = userRating,
                                                 timestamp = System.currentTimeMillis()
                                             )
+                                            // 1. Post review to Book sub-collection
                                             db.collection("books").document(bookId).collection("reviews").add(review)
-                                                .addOnSuccessListener { newComment = ""; userRating = 5; scope.launch { snackbarHostState.showSnackbar("Thanks for your review!") } }
+                                                .addOnSuccessListener { 
+                                                    // 2. ALSO save to User's private comment history for Dashboard (NO Index needed)
+                                                    db.collection("users").document(user.uid).collection("comments").document(bookId)
+                                                        .set(mapOf("commentedAt" to System.currentTimeMillis()), SetOptions.merge())
+                                                    
+                                                    newComment = ""; userRating = 5; scope.launch { snackbarHostState.showSnackbar("Thanks for your review!") } 
+                                                }
                                         }, modifier = Modifier.align(Alignment.End).padding(top = 16.dp), shape = RoundedCornerShape(12.dp)) { Text("Post Review") }
-                                    }
-                                }
-                            }
-                        } else {
-                            item {
-                                Card(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))) {
-                                    Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("Want to share your thoughts?", fontWeight = FontWeight.Bold)
-                                        Text("Sign in to leave your own review and rating.", style = MaterialTheme.typography.bodySmall, color = Color.Gray, textAlign = TextAlign.Center)
-                                        Spacer(Modifier.height(12.dp))
-                                        TextButton(onClick = onLoginRequired) { Text("Sign In to Review") }
                                     }
                                 }
                             }
@@ -292,7 +308,7 @@ fun BookDetailScreen(
                         if (reviews.isEmpty()) {
                             item { Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("No reviews yet. Be the first!", color = Color.Gray, style = MaterialTheme.typography.bodySmall) } }
                         } else {
-                            items(reviews) { review -> ReviewItem(review, db) }
+                            items(reviews) { review -> ReviewItem(review, db, bookId, user?.uid) }
                         }
                         item { Spacer(modifier = Modifier.height(48.dp)) }
                     }
@@ -307,9 +323,16 @@ fun BookDetailScreen(
 }
 
 @Composable
-fun ReviewItem(review: Review, db: FirebaseFirestore) {
+fun ReviewItem(review: Review, db: FirebaseFirestore, bookId: String, currentUserId: String?) {
     var currentPhotoUrl by remember { mutableStateOf(review.userPhotoUrl) }
+    var isEditing by remember { mutableStateOf(false) }
+    var editComment by remember { mutableStateOf(review.comment) }
+    var editRating by remember { mutableIntStateOf(review.rating) }
+    var showMenu by remember { mutableStateOf(false) }
     
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showEditConfirm by remember { mutableStateOf(false) }
+
     LaunchedEffect(review.userId) {
         if (review.userId.isNotEmpty()) {
             db.collection("users").document(review.userId).get()
@@ -320,28 +343,177 @@ fun ReviewItem(review: Review, db: FirebaseFirestore) {
         }
     }
 
-    Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-            val defaultAvatarPath = "file:///android_asset/images/users/avatars/Avatar_defult.png"
-            Surface(modifier = Modifier.size(40.dp), shape = CircleShape, color = Color.Transparent) {
-                SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(if (!currentPhotoUrl.isNullOrEmpty()) currentPhotoUrl else defaultAvatarPath)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "User Avatar",
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    contentScale = ContentScale.Crop,
-                    error = { Icon(Icons.Default.AccountCircle, null, tint = Color.Gray, modifier = Modifier.size(40.dp)) }
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(review.userName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                    Row { repeat(5) { index -> Icon(imageVector = if (index < review.rating) Icons.Default.Star else Icons.Default.StarBorder, contentDescription = null, modifier = Modifier.size(14.dp), tint = if (index < review.rating) Color(0xFFFFB300) else Color.Gray) } }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Remove Review") },
+            text = { Text("Are you sure you want to permanently delete your review?") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    db.collection("books").document(bookId).collection("reviews").document(review.reviewId).delete()
+                    db.collection("users").document(currentUserId!!).collection("comments").document(bookId).delete()
+                    showDeleteConfirm = false 
+                }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Remove") }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } }
+        )
+    }
+
+    if (showEditConfirm) {
+        AlertDialog(
+            onDismissRequest = { showEditConfirm = false },
+            title = { Text("Update Review") },
+            text = { Text("Do you want to save the changes to your review?") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    db.collection("books").document(bookId).collection("reviews").document(review.reviewId)
+                        .update(mapOf("comment" to editComment, "rating" to editRating))
+                        .addOnSuccessListener { isEditing = false; showEditConfirm = false }
+                }) { Text("Update") }
+            },
+            dismissButton = { TextButton(onClick = { showEditConfirm = false }) { Text("Cancel") } }
+        )
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp), 
+        shape = RoundedCornerShape(16.dp), 
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                val defaultAvatarPath = "file:///android_asset/images/users/avatars/Avatar_defult.png"
+                Surface(modifier = Modifier.size(40.dp), shape = CircleShape, color = Color.Transparent) {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(if (!currentPhotoUrl.isNullOrEmpty()) currentPhotoUrl else defaultAvatarPath)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "User Avatar",
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                        error = { Icon(Icons.Default.AccountCircle, null, tint = Color.Gray, modifier = Modifier.size(40.dp)) }
+                    )
                 }
-                Text(review.comment, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(review.userName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+                            if (!isEditing) {
+                                Row { repeat(5) { index -> Icon(imageVector = if (index < review.rating) Icons.Default.Star else Icons.Default.StarBorder, contentDescription = null, modifier = Modifier.size(14.dp), tint = if (index < review.rating) Color(0xFFFFB300) else Color.Gray) } }
+                            }
+                        }
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val isLiked = currentUserId != null && review.likedBy.contains(currentUserId)
+                            val isDisliked = currentUserId != null && review.dislikedBy.contains(currentUserId)
+                            val isOwnComment = currentUserId == review.userId
+
+                            // Hide reactions entirely for own comments and unlogged users
+                            if (!isOwnComment && currentUserId != null) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(
+                                        onClick = {
+                                            val ref = db.collection("books").document(bookId).collection("reviews").document(review.reviewId)
+                                            if (isLiked) {
+                                                ref.update("likes", FieldValue.increment(-1), "likedBy", FieldValue.arrayRemove(currentUserId))
+                                            } else {
+                                                ref.update("likes", FieldValue.increment(1), "likedBy", FieldValue.arrayUnion(currentUserId))
+                                                if (isDisliked) {
+                                                    ref.update("dislikes", FieldValue.increment(-1), "dislikedBy", FieldValue.arrayRemove(currentUserId))
+                                                }
+                                            }
+                                        }, 
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isLiked) Icons.Default.ThumbUp else Icons.Default.ThumbUpOffAlt,
+                                            contentDescription = "Like",
+                                            tint = if (isLiked) MaterialTheme.colorScheme.primary else Color.Gray,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Text(review.likes.toString(), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                    
+                                    Spacer(Modifier.width(4.dp))
+                                    
+                                    IconButton(
+                                        onClick = {
+                                            val ref = db.collection("books").document(bookId).collection("reviews").document(review.reviewId)
+                                            if (isDisliked) {
+                                                ref.update("dislikes", FieldValue.increment(-1), "dislikedBy", FieldValue.arrayRemove(currentUserId))
+                                            } else {
+                                                ref.update("dislikes", FieldValue.increment(1), "dislikedBy", FieldValue.arrayUnion(currentUserId))
+                                                if (isLiked) {
+                                                    ref.update("likes", FieldValue.increment(-1), "likedBy", FieldValue.arrayRemove(currentUserId))
+                                                }
+                                            }
+                                        }, 
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isDisliked) Icons.Default.ThumbDown else Icons.Default.ThumbDownOffAlt,
+                                            contentDescription = "Dislike",
+                                            tint = if (isDisliked) MaterialTheme.colorScheme.error else Color.Gray,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Text(review.dislikes.toString(), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                }
+                            }
+
+                            if (currentUserId == review.userId && !isEditing) {
+                                Box {
+                                    IconButton(onClick = { showMenu = true }, modifier = Modifier.size(24.dp)) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = Color.Gray)
+                                    }
+                                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                        DropdownMenuItem(
+                                            text = { Text("Edit Review") },
+                                            onClick = { isEditing = true; showMenu = false },
+                                            leadingIcon = { Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp)) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Remove Review", color = MaterialTheme.colorScheme.error) },
+                                            onClick = { showDeleteConfirm = true; showMenu = false },
+                                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (isEditing) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+                            repeat(5) { index ->
+                                IconButton(onClick = { editRating = index + 1 }, modifier = Modifier.size(32.dp)) {
+                                    Icon(imageVector = if (index < editRating) Icons.Default.Star else Icons.Default.StarBorder, contentDescription = null, tint = if (index < editRating) Color(0xFFFFB300) else Color.Gray)
+                                }
+                            }
+                        }
+                        OutlinedTextField(value = editComment, onValueChange = { editComment = it }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+                        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = { isEditing = false; editComment = review.comment; editRating = review.rating }) { Text("Cancel") }
+                            Button(onClick = { showEditConfirm = true }) { Text("Save") }
+                        }
+                    } else {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                            Text(review.comment, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).padding(top = 4.dp))
+                            if (review.timestamp > 0) {
+                                val sdf = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
+                                Text(
+                                    text = sdf.format(Date(review.timestamp)),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -349,7 +521,7 @@ fun ReviewItem(review: Review, db: FirebaseFirestore) {
 
 @Composable
 fun OrderFlowDialog(book: Book, userId: String, defaultPaymentMethod: String, onDismiss: () -> Unit, onComplete: () -> Unit) {
-    var step by remember { mutableIntStateOf(1) }
+    var step by remember { mutableStateOf(1) }
     val db = FirebaseFirestore.getInstance()
     var fullName by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser?.displayName ?: "") }
     var selectedMethod by remember { mutableStateOf(defaultPaymentMethod) }
