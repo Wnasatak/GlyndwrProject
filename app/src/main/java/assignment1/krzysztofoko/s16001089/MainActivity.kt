@@ -20,8 +20,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            val systemDark = isSystemInDarkTheme()
-            var isDarkTheme by remember { mutableStateOf(systemDark) }
+            // Force start in dark mode
+            var isDarkTheme by remember { mutableStateOf(true) }
 
             // Apply edge-to-edge and dynamic status bar icon colors
             LaunchedEffect(isDarkTheme) {

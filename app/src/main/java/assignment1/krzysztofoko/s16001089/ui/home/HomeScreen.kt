@@ -1,6 +1,7 @@
 package assignment1.krzysztofoko.s16001089.ui.home
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -156,7 +158,7 @@ fun HomeScreen(
                                         Icon(
                                             imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                             contentDescription = "Like",
-                                            tint = if (isLiked) Color.Red else Color.Gray,
+                                            tint = if (isLiked) MaterialTheme.colorScheme.onSurface else Color.Gray,
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
@@ -165,11 +167,31 @@ fun HomeScreen(
                             bottomContent = {
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    val priceText = if (book.price == 0.0) "FREE" else "£${String.format(Locale.US, "%.2f", book.price)}"
-                                    Text(text = priceText, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = if (book.price == 0.0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface)
-                                    if (isLoggedIn && book.price > 0.0) {
+                                    if (book.price == 0.0) {
+                                        Text(text = "FREE", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = Color(0xFF4CAF50))
+                                    } else if (isLoggedIn) {
                                         val discountPrice = String.format(Locale.US, "%.2f", book.price * 0.9)
-                                        Text(text = " £$discountPrice", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, modifier = Modifier.background(Color(0xFFE8F5E9), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp))
+                                        Text(
+                                            text = "£${String.format(Locale.US, "%.2f", book.price)}",
+                                            style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.LineThrough),
+                                            color = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Surface(
+                                            color = Color(0xFFE8F5E9),
+                                            shape = RoundedCornerShape(8.dp),
+                                            border = BorderStroke(1.dp, Color(0xFF2E7D32).copy(alpha = 0.2f))
+                                        ) {
+                                            Text(
+                                                text = "£$discountPrice", 
+                                                style = MaterialTheme.typography.titleMedium, 
+                                                color = Color(0xFF2E7D32), 
+                                                fontWeight = FontWeight.Black, 
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Text(text = "£${String.format(Locale.US, "%.2f", book.price)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
                                     }
                                 }
                             }

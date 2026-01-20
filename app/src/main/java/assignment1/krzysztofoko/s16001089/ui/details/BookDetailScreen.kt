@@ -152,7 +152,11 @@ fun BookDetailScreen(
                                     wishlistRef.set(mapOf("addedAt" to System.currentTimeMillis())).addOnSuccessListener { inWishlist = true; scope.launch { snackbarHostState.showSnackbar("Added to your wishlist!") } }
                                 }
                             }) {
-                                Icon(imageVector = if (inWishlist) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = "Wishlist", tint = if (inWishlist) Color.Red else MaterialTheme.colorScheme.onSurface)
+                                Icon(
+                                    imageVector = if (inWishlist) Icons.Default.Favorite else Icons.Default.FavoriteBorder, 
+                                    contentDescription = "Wishlist", 
+                                    tint = if (inWishlist) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface
+                                )
                             }
                         }
                         IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
@@ -211,30 +215,10 @@ fun BookDetailScreen(
                                     Spacer(modifier = Modifier.height(32.dp))
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         if (isOwned) {
-                                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                                ActionSectionOwned(book = currentBook, isDownloading = isDownloading, progress = downloadProgress, onPlay = onPlayAudio, onRead = { onReadBook(currentBook.id) }, onDownload = {
-                                                    isDownloading = true
-                                                    scope.launch { while (downloadProgress < 1f) { delay(300); downloadProgress += 0.1f }; isDownloading = false; snackbarHostState.showSnackbar("Available offline!") }
-                                                })
-                                                OutlinedButton(
-                                                    onClick = {
-                                                        if (user != null) {
-                                                            db.collection("users").document(user.uid).collection("purchases").document(currentBook.id).delete()
-                                                                .addOnSuccessListener {
-                                                                    isOwned = false
-                                                                    scope.launch { snackbarHostState.showSnackbar("Removed from your library.") }
-                                                                }
-                                                        }
-                                                    },
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-                                                ) {
-                                                    Icon(Icons.Default.DeleteSweep, null)
-                                                    Spacer(Modifier.width(8.dp))
-                                                    Text("Remove from Library")
-                                                }
-                                            }
+                                            ActionSectionOwned(book = currentBook, isDownloading = isDownloading, progress = downloadProgress, onPlay = onPlayAudio, onRead = { onReadBook(currentBook.id) }, onDownload = {
+                                                isDownloading = true
+                                                scope.launch { while (downloadProgress < 1f) { delay(300); downloadProgress += 0.1f }; isDownloading = false; snackbarHostState.showSnackbar("Available offline!") }
+                                            })
                                         } else if (user == null) { 
                                             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
                                                 Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
