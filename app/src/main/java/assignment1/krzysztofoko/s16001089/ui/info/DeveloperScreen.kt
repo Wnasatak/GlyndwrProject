@@ -10,7 +10,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Upcoming
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,6 +34,8 @@ import coil.compose.AsyncImage
 @Composable
 fun DeveloperScreen(
     onBack: () -> Unit,
+    onVersionClick: () -> Unit,
+    onFutureFeaturesClick: () -> Unit,
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit
 ) {
@@ -46,7 +50,7 @@ fun DeveloperScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text("Developer Details") },
+                    title = { Text("Developer Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -61,7 +65,7 @@ fun DeveloperScreen(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
                 )
             }
@@ -73,11 +77,10 @@ fun DeveloperScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Avatar with flashing vibrant violet light effect behind it
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(220.dp)) {
-                    // Flashing Violet Light Glow
                     Box(
                         modifier = Modifier
                             .size(140.dp)
@@ -97,7 +100,7 @@ fun DeveloperScreen(
                     Surface(
                         modifier = Modifier.size(160.dp),
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                         shadowElevation = 10.dp,
                         border = BorderStroke(
                             width = 4.dp, 
@@ -117,11 +120,10 @@ fun DeveloperScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(32.dp))
-                
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
-                    shape = RoundedCornerShape(16.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
@@ -141,15 +143,11 @@ fun DeveloperScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 32.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -167,6 +165,34 @@ fun DeveloperScreen(
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
+                }
+
+                Button(
+                    onClick = onVersionClick,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("This version includes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                }
+
+                Button(
+                    onClick = onFutureFeaturesClick,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Icon(Icons.Default.Upcoming, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Future roadmap", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                 }
             }
         }

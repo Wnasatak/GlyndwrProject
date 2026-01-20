@@ -104,20 +104,17 @@ fun BookDetailScreen(
                 }
             db.collection("users").document(user.uid).collection("wishlist").document(bookId).get()
                 .addOnSuccessListener { inWishlist = it.exists() }
+            
+            // Check if item is already in user's library (purchases)
+            db.collection("users").document(user.uid).collection("purchases").document(bookId).get()
+                .addOnSuccessListener { isOwned = it.exists() }
         }
 
         db.collection("books").document(bookId).get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
                     book = document.toObject(Book::class.java)?.copy(id = document.id)
-                    book?.let { b ->
-                        if (b.price == 0.0) isOwned = true
-                        else if (user != null) {
-                            db.collection("users").document(user.uid).collection("purchases").document(bookId).get()
-                                .addOnSuccessListener { isOwned = it.exists(); loading = false }
-                                .addOnFailureListener { loading = false }
-                        } else { isOwned = false; loading = false }
-                    }
+                    loading = false
                 } else { loading = false }
             }
             .addOnFailureListener { loading = false }
@@ -214,10 +211,30 @@ fun BookDetailScreen(
                                     Spacer(modifier = Modifier.height(32.dp))
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         if (isOwned) {
-                                            ActionSectionOwned(book = currentBook, isDownloading = isDownloading, progress = downloadProgress, onPlay = onPlayAudio, onRead = { onReadBook(currentBook.id) }, onDownload = {
-                                                isDownloading = true
-                                                scope.launch { while (downloadProgress < 1f) { delay(300); downloadProgress += 0.1f }; isDownloading = false; snackbarHostState.showSnackbar("Available offline!") }
-                                            })
+                                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                                ActionSectionOwned(book = currentBook, isDownloading = isDownloading, progress = downloadProgress, onPlay = onPlayAudio, onRead = { onReadBook(currentBook.id) }, onDownload = {
+                                                    isDownloading = true
+                                                    scope.launch { while (downloadProgress < 1f) { delay(300); downloadProgress += 0.1f }; isDownloading = false; snackbarHostState.showSnackbar("Available offline!") }
+                                                })
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        if (user != null) {
+                                                            db.collection("users").document(user.uid).collection("purchases").document(currentBook.id).delete()
+                                                                .addOnSuccessListener {
+                                                                    isOwned = false
+                                                                    scope.launch { snackbarHostState.showSnackbar("Removed from your library.") }
+                                                                }
+                                                        }
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                                                ) {
+                                                    Icon(Icons.Default.DeleteSweep, null)
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Text("Remove from Library")
+                                                }
+                                            }
                                         } else if (user == null) { 
                                             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
                                                 Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -228,6 +245,35 @@ fun BookDetailScreen(
                                                     Spacer(Modifier.height(20.dp))
                                                     Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth()) { Text("Sign In to Purchase") }
                                                 }
+                                            }
+                                        } else if (currentBook.price == 0.0) {
+                                            // Free Item - Add to Library button
+                                            Button(
+                                                onClick = {
+                                                    val purchase = mapOf(
+                                                        "bookId" to currentBook.id,
+                                                        "timestamp" to System.currentTimeMillis(),
+                                                        "customerName" to (user.displayName ?: "Student"),
+                                                        "paymentMethod" to "Free Access",
+                                                        "pricePaid" to 0.0,
+                                                        "title" to currentBook.title,
+                                                        "author" to currentBook.author,
+                                                        "category" to currentBook.category,
+                                                        "audioBook" to currentBook.isAudioBook,
+                                                        "imageUrl" to currentBook.imageUrl
+                                                    )
+                                                    db.collection("users").document(user.uid).collection("purchases").document(currentBook.id).set(purchase)
+                                                        .addOnSuccessListener {
+                                                            isOwned = true
+                                                            scope.launch { snackbarHostState.showSnackbar("Added to your Library!") }
+                                                        }
+                                                },
+                                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                                shape = RoundedCornerShape(16.dp)
+                                            ) {
+                                                Icon(Icons.Default.LibraryAdd, null)
+                                                Spacer(Modifier.width(12.dp))
+                                                Text("Add to Library", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                             }
                                         } else { 
                                             val discountedPrice = currentBook.price * 0.9
@@ -581,7 +627,18 @@ fun OrderFlowDialog(book: Book, userId: String, defaultPaymentMethod: String, on
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (step > 1) { OutlinedButton(onClick = { step-- }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Back") } } else { TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text("Cancel") } }
                     Button(onClick = { if (step < 3) { step++ } else {
-                        val purchase = mapOf("bookId" to book.id, "timestamp" to System.currentTimeMillis(), "customerName" to fullName, "paymentMethod" to selectedMethod, "pricePaid" to (book.price * 0.9), "title" to book.title, "author" to book.author, "category" to book.category, "audioBook" to book.isAudioBook, "imageUrl" to book.imageUrl)
+                        val purchase = mapOf(
+                            "bookId" to book.id, 
+                            "timestamp" to System.currentTimeMillis(), 
+                            "customerName" to fullName, 
+                            "paymentMethod" to selectedMethod, 
+                            "pricePaid" to (book.price * 0.9), 
+                            "title" to book.title, 
+                            "author" to book.author, 
+                            "category" to book.category, 
+                            "audioBook" to book.isAudioBook, 
+                            "imageUrl" to book.imageUrl
+                        )
                         db.collection("users").document(userId).collection("purchases").document(book.id).set(purchase).addOnSuccessListener { onComplete() }
                     } }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text(if (step == 3) "Pay Now" else "Continue") }
                 }

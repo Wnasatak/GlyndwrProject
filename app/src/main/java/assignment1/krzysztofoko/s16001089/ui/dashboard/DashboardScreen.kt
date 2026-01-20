@@ -39,6 +39,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,7 +50,8 @@ fun DashboardScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
     isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    onToggleTheme: () -> Unit,
+    onViewInvoice: (Book) -> Unit
 ) {
     val auth = FirebaseAuth.getInstance()
     val db = FirebaseFirestore.getInstance()
@@ -111,7 +113,7 @@ fun DashboardScreen(
                 val docs = snapshot?.documents ?: emptyList()
                 ownedBooks = docs.mapNotNull { doc ->
                     allBooks.find { it.id == doc.id } ?: if (doc.contains("title")) {
-                        Book(id = doc.id, title = doc.getString("title") ?: "Unknown", author = doc.getString("author") ?: "Unknown", category = doc.getString("category") ?: "General", isAudioBook = doc.getBoolean("audioBook") ?: false)
+                        Book(id = doc.id, title = doc.getString("title") ?: "Unknown", author = doc.getString("author") ?: "Unknown", category = doc.getString("category") ?: "General", isAudioBook = doc.getBoolean("audioBook") ?: false, price = doc.getDouble("pricePaid") ?: 0.0)
                     } else null
                 }.distinctBy { it.id }
                 loadingLibrary = false
@@ -224,11 +226,31 @@ fun DashboardScreen(
                     item { EmptyLibraryPlaceholder(onBrowse = onBack) }
                 } else {
                     items(ownedBooks) { book ->
+                        var showMenu by remember { mutableStateOf(false) }
                         BookItemCard(
                             book = book,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             onClick = { navController.navigate("bookDetails/${book.id}") },
-                            trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary) }
+                            trailingContent = {
+                                Box {
+                                    IconButton(onClick = { showMenu = true }) {
+                                        Icon(Icons.Default.MoreVert, "Options")
+                                    }
+                                    DropdownMenu(
+                                        expanded = showMenu,
+                                        onDismissRequest = { showMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("View Invoice") },
+                                            onClick = {
+                                                showMenu = false
+                                                onViewInvoice(book)
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.ReceiptLong, null) }
+                                        )
+                                    }
+                                }
+                            }
                         )
                     }
                 }

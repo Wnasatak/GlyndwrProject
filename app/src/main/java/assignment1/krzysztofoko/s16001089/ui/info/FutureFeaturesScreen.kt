@@ -7,12 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,7 +20,7 @@ import assignment1.krzysztofoko.s16001089.ui.components.InfoCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InstructionScreen(
+fun FutureFeaturesScreen(
     onBack: () -> Unit,
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit
@@ -38,7 +33,7 @@ fun InstructionScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text("How to Use App", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    title = { Text("Future Roadmap", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -67,45 +62,54 @@ fun InstructionScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Welcome to Glyndŵr Store!",
+                    text = "Upcoming Improvements",
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 InfoCard(
-                    icon = Icons.Default.MenuBook,
-                    title = "Browse Items",
-                    content = "Use the home screen to browse through various books, audio books, and university gear. You can filter by category using the top bar.",
+                    icon = Icons.Default.SmartToy,
+                    title = "AI-POWERED RECOMMENDATIONS",
+                    content = "Personalized item suggestions based on your viewing and purchase history using advanced machine learning models.",
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     modifier = Modifier.padding(vertical = 4.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                 )
-                
+
                 InfoCard(
-                    icon = Icons.Default.Person,
-                    title = "Sign In",
-                    content = "Sign in to your account to access your personal dashboard and see your order history. Students get an automatic 10% discount!",
+                    icon = Icons.Default.LocalShipping,
+                    title = "REAL-TIME TRACKING",
+                    content = "Live tracking for physical university gear orders with push notifications for every step of the delivery process.",
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     modifier = Modifier.padding(vertical = 4.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                 )
-                
+
                 InfoCard(
-                    icon = Icons.Default.ShoppingCart,
-                    title = "Buy & Details",
-                    content = "Click on any item to see more details. If you're signed in, you can purchase items and they will appear in your dashboard.",
+                    icon = Icons.Default.Forum,
+                    title = "COMMUNITY HUB",
+                    content = "Discussion forums for university courses where students can share notes, ask questions, and collaborate on projects.",
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     modifier = Modifier.padding(vertical = 4.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                 )
-                
+
                 InfoCard(
-                    icon = Icons.Default.Settings,
-                    title = "Customization",
-                    content = "Toggle between Light and Dark mode using the sun/moon icon in the top bar to suit your preference.",
+                    icon = Icons.Default.OfflineBolt,
+                    title = "FULL OFFLINE MODE",
+                    content = "Enhanced offline capabilities allowing students to access all purchased courses and reading materials without any internet connection.",
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                )
+
+                InfoCard(
+                    icon = Icons.Default.Wallet,
+                    title = "EXTERNAL PAYMENTS",
+                    content = "Integration with major regional banks and crypto-wallets to provide more flexibility in payment options beyond the University Account.",
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     modifier = Modifier.padding(vertical = 4.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
@@ -118,7 +122,7 @@ fun InstructionScreen(
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("Got it!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Exciting stuff!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }

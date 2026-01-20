@@ -1,8 +1,17 @@
 package assignment1.krzysztofoko.s16001089.ui.components
 
+import android.content.ContentValues
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.pdf.PdfDocument
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,9 +37,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
+import java.io.OutputStream
+import java.util.*
 
 @Composable
 fun HorizontalWavyBackground(
@@ -56,7 +68,7 @@ fun HorizontalWavyBackground(
     val waveColor1 = if (isDarkTheme) Color(0xFF1E293B) else Color(0xFFDBEAFE) 
     val waveColor2 = if (isDarkTheme) Color(0xFF334155) else Color(0xFFBFDBFE) 
 
-    Canvas(modifier = Modifier.fillMaxSize()) {
+    ComposeCanvas(modifier = Modifier.fillMaxSize()) {
         drawRect(color = bgColor)
         
         val width = size.width
@@ -114,7 +126,7 @@ fun VerticalWavyBackground(
     val waveColor1 = if (isDarkTheme) Color(0xFF1E293B) else Color(0xFFDBEAFE) 
     val waveColor2 = if (isDarkTheme) Color(0xFF334155) else Color(0xFFBFDBFE) 
 
-    Canvas(modifier = Modifier.fillMaxSize()) {
+    ComposeCanvas(modifier = Modifier.fillMaxSize()) {
         drawRect(color = bgColor)
         val width = size.width
         val height = size.height
@@ -154,12 +166,14 @@ fun InfoCard(
     content: String,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
-    contentStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyMedium
+    contentStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyMedium,
+    border: BorderStroke? = null
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        border = border
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -365,5 +379,101 @@ fun UserAvatar(
             )
             overlay?.invoke(this)
         }
+    }
+}
+
+fun generateAndSaveInvoicePdf(context: Context, book: Book, userName: String, invoiceId: String, date: String) {
+    val pdfDocument = PdfDocument()
+    val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
+    val page = pdfDocument.startPage(pageInfo)
+    val canvas: Canvas = page.canvas
+    val paint = Paint()
+
+    // Title
+    paint.textSize = 24f
+    paint.isFakeBoldText = true
+    canvas.drawText("TAX INVOICE", 40f, 50f, paint)
+
+    // Store Info
+    paint.textSize = 12f
+    paint.isFakeBoldText = false
+    canvas.drawText(AppConstants.APP_NAME, 40f, 80f, paint)
+    canvas.drawText("Official University Store", 40f, 95f, paint)
+
+    // Invoice Meta
+    paint.textAlign = Paint.Align.RIGHT
+    canvas.drawText("Invoice ID: $invoiceId", 555f, 80f, paint)
+    canvas.drawText("Date: $date", 555f, 95f, paint)
+
+    // Customer Info
+    paint.textAlign = Paint.Align.LEFT
+    paint.isFakeBoldText = true
+    canvas.drawText("ISSUED TO:", 40f, 140f, paint)
+    paint.isFakeBoldText = false
+    canvas.drawText(userName, 40f, 155f, paint)
+    canvas.drawText("Student ID: ${AppConstants.STUDENT_ID}", 40f, 170f, paint)
+
+    // Line
+    canvas.drawLine(40f, 200f, 555f, 200f, paint)
+
+    // Table Header
+    paint.isFakeBoldText = true
+    canvas.drawText("Description", 40f, 230f, paint)
+    paint.textAlign = Paint.Align.RIGHT
+    canvas.drawText("Amount", 555f, 230f, paint)
+
+    // Item
+    paint.isFakeBoldText = false
+    paint.textAlign = Paint.Align.LEFT
+    canvas.drawText(book.title, 40f, 260f, paint)
+    paint.textAlign = Paint.Align.RIGHT
+    canvas.drawText("£${String.format(Locale.US, "%.2f", book.price)}", 555f, 260f, paint)
+
+    // Calculations
+    val studentDiscount = book.price * 0.1
+    val total = book.price - studentDiscount
+
+    canvas.drawLine(40f, 300f, 555f, 300f, paint)
+    canvas.drawText("Subtotal: £${String.format(Locale.US, "%.2f", book.price)}", 555f, 330f, paint)
+    canvas.drawText("Student Discount (10%): -£${String.format(Locale.US, "%.2f", studentDiscount)}", 555f, 350f, paint)
+    
+    paint.textSize = 16f
+    paint.isFakeBoldText = true
+    canvas.drawText("Total Paid: £${String.format(Locale.US, "%.2f", total)}", 555f, 380f, paint)
+
+    // Footer
+    paint.textSize = 10f
+    paint.isFakeBoldText = false
+    paint.textAlign = Paint.Align.CENTER
+    canvas.drawText("Thank you for your academic purchase!", 297f, 750f, paint)
+    canvas.drawText("Glyndŵr Store Support - Wrexham University", 297f, 765f, paint)
+
+    pdfDocument.finishPage(page)
+
+    val fileName = "Invoice_${invoiceId}.pdf"
+    
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            uri?.let {
+                val outputStream: OutputStream? = context.contentResolver.openOutputStream(it)
+                outputStream?.use { os -> pdfDocument.writeTo(os) }
+                Toast.makeText(context, "Invoice saved to Downloads", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            val directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val file = java.io.File(directory, fileName)
+            pdfDocument.writeTo(java.io.FileOutputStream(file))
+            Toast.makeText(context, "Invoice saved to Downloads", Toast.LENGTH_LONG).show()
+        }
+    } catch (e: Exception) {
+        Toast.makeText(context, "Error saving PDF: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+    } finally {
+        pdfDocument.close()
     }
 }

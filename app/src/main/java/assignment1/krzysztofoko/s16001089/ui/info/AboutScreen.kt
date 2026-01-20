@@ -101,7 +101,7 @@ fun AboutScreen(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
                 )
             }
@@ -131,7 +131,7 @@ fun AboutScreen(
                         Surface(
                             modifier = Modifier.size(120.dp),
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                             shadowElevation = 8.dp,
                             border = BorderStroke(
                                 width = 4.dp, 
@@ -160,14 +160,18 @@ fun AboutScreen(
                         icon = Icons.Default.School,
                         title = "INSTITUTION",
                         content = AppConstants.INSTITUTION,
-                        contentStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold) // Smaller for About App
+                        contentStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                     )
                     
                     InfoCard(
                         icon = Icons.Default.Assignment,
                         title = "PROJECT INFO",
                         content = AppConstants.PROJECT_INFO,
-                        contentStyle = MaterialTheme.typography.bodyMedium
+                        contentStyle = MaterialTheme.typography.bodyMedium,
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))

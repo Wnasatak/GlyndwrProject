@@ -27,10 +27,9 @@ import assignment1.krzysztofoko.s16001089.ui.details.PdfReaderScreen
 import assignment1.krzysztofoko.s16001089.ui.dashboard.DashboardScreen
 import assignment1.krzysztofoko.s16001089.ui.profile.ProfileScreen
 import assignment1.krzysztofoko.s16001089.ui.splash.SplashScreen
-import assignment1.krzysztofoko.s16001089.ui.info.AboutScreen
-import assignment1.krzysztofoko.s16001089.ui.info.DeveloperScreen
-import assignment1.krzysztofoko.s16001089.ui.info.InstructionScreen
+import assignment1.krzysztofoko.s16001089.ui.info.*
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
+import assignment1.krzysztofoko.s16001089.ui.components.InvoiceCreatingScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -104,7 +103,7 @@ fun AppNavigation(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            if (currentUser != null && currentRoute != "dashboard" && currentRoute != "profile" && currentRoute != "pdfReader/{bookId}") {
+            if (currentUser != null && currentRoute != "dashboard" && currentRoute != "profile" && currentRoute != "pdfReader/{bookId}" && currentRoute != "invoice/{bookId}" && currentRoute != "invoiceCreating/{bookId}") {
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier.fillMaxWidth()
@@ -219,7 +218,7 @@ fun AppNavigation(
                             scope.launch {
                                 snackbarHostState.showSnackbar("Successfully logged in as $name")
                             }
-                            navController.navigate("home") { popUpTo("home") { inclusive = true } }
+                            navController.navigate("home") { popUpTo(navController.graph.startDestinationId) { inclusive = true } }
                         },
                         onBack = { navController.popBackStack() },
                         isDarkTheme = isDarkTheme,
@@ -265,11 +264,12 @@ fun AppNavigation(
                 composable("dashboard") {
                     DashboardScreen(
                         navController = navController,
-                        allBooks = allBooks, // Passed allBooks here
+                        allBooks = allBooks,
                         onBack = { navController.popBackStack() },
                         onLogout = { showLogoutConfirm = true },
                         isDarkTheme = isDarkTheme,
-                        onToggleTheme = onToggleTheme
+                        onToggleTheme = onToggleTheme,
+                        onViewInvoice = { navController.navigate("invoiceCreating/${it.id}") }
                     )
                 }
                 composable("profile") {
@@ -290,8 +290,44 @@ fun AppNavigation(
                         onToggleTheme = onToggleTheme
                     ) 
                 }
-                composable("developer") { DeveloperScreen(onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                composable("developer") { 
+                    DeveloperScreen(
+                        onBack = { navController.popBackStack() }, 
+                        onVersionClick = { navController.navigate("version_info") },
+                        onFutureFeaturesClick = { navController.navigate("future_features") },
+                        isDarkTheme = isDarkTheme, 
+                        onToggleTheme = onToggleTheme
+                    ) 
+                }
                 composable("instructions") { InstructionScreen(onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                composable("version_info") { VersionInfoScreen(onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                composable("future_features") { FutureFeaturesScreen(onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                composable("invoiceCreating/{bookId}") { backStackEntry ->
+                    val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
+                    val selectedBook = allBooks.find { it.id == bookId }
+                    if (selectedBook != null) {
+                        InvoiceCreatingScreen(
+                            book = selectedBook,
+                            onCreationComplete = { navController.navigate("invoice/$bookId") { popUpTo("invoiceCreating/$bookId") { inclusive = true } } },
+                            onBack = { navController.popBackStack() },
+                            isDarkTheme = isDarkTheme,
+                            onToggleTheme = onToggleTheme
+                        )
+                    }
+                }
+                composable("invoice/{bookId}") { backStackEntry ->
+                    val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
+                    val selectedBook = allBooks.find { it.id == bookId }
+                    if (selectedBook != null) {
+                        InvoiceScreen(
+                            book = selectedBook,
+                            userName = currentUser?.displayName ?: "Student",
+                            onBack = { navController.popBackStack() },
+                            isDarkTheme = isDarkTheme,
+                            onToggleTheme = onToggleTheme
+                        )
+                    }
+                }
             }
         }
     }
