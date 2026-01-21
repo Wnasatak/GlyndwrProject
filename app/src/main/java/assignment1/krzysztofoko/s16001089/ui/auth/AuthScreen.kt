@@ -25,13 +25,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.R
+import assignment1.krzysztofoko.s16001089.data.AppDatabase
+import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,14 +57,14 @@ fun AuthScreen(
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     
-    val auth = FirebaseAuth.getInstance()
-    val db = FirebaseFirestore.getInstance()
     val context = LocalContext.current
+    val auth = FirebaseAuth.getInstance()
+    val db = AppDatabase.getDatabase(context)
+    val scope = rememberCoroutineScope()
 
     val trigger2FA = {
         val code = (100000..999999).random().toString()
         generated2FACode = code
-        // Simulation: Show code in a Toast for demo
         Toast.makeText(context, "Verification code: $code", Toast.LENGTH_LONG).show()
         isTwoFactorStep = true
         isLoading = false
@@ -79,16 +81,15 @@ fun AuthScreen(
             isLoading = true
             auth.signInWithCredential(credential).addOnSuccessListener { res ->
                 val user = res.user!!
-                val userMap = mapOf(
-                    "firstName" to (user.displayName?.split(" ")?.firstOrNull() ?: "User"),
-                    "email" to user.email,
-                    "balance" to 0.0,
-                    "selectedPaymentMethod" to "University Account",
-                    "photoUrl" to (user.photoUrl?.toString() ?: "file:///android_asset/images/users/avatars/Avatar_defult.png"),
-                    "role" to "student"
-                )
-                db.collection("users").document(user.uid).set(userMap, com.google.firebase.firestore.SetOptions.merge())
-                trigger2FA()
+                scope.launch {
+                    db.userDao().upsertUser(UserLocal(
+                        id = user.uid,
+                        name = user.displayName ?: "Student",
+                        email = user.email ?: "",
+                        photoUrl = user.photoUrl?.toString()
+                    ))
+                    trigger2FA()
+                }
             }.addOnFailureListener {
                 isLoading = false
                 error = "Sign-in failed."
@@ -208,11 +209,13 @@ fun AuthScreen(
                                     }.addOnFailureListener { isLoading = false; error = "Login failed. Check your password." }
                                 } else {
                                     auth.createUserWithEmailAndPassword(trimmedEmail, password).addOnSuccessListener { res ->
-                                        val userId = res.user?.uid ?: return@addOnSuccessListener
-                                        db.collection("users").document(userId).set(mapOf("firstName" to firstName, "email" to trimmedEmail, "balance" to 0.0, "role" to "student"))
-                                        res.user?.sendEmailVerification()
-                                        isVerifyingEmail = true
-                                        isLoading = false
+                                        val user = res.user!!
+                                        scope.launch {
+                                            db.userDao().upsertUser(UserLocal(id = user.uid, name = firstName, email = trimmedEmail))
+                                            user.sendEmailVerification()
+                                            isVerifyingEmail = true
+                                            isLoading = false
+                                        }
                                     }.addOnFailureListener { isLoading = false; error = it.localizedMessage }
                                 }
                             }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(12.dp)) {

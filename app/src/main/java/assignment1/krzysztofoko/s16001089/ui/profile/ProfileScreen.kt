@@ -21,23 +21,26 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import assignment1.krzysztofoko.s16001089.data.AppDatabase
+import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.SelectionOption
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.userProfileChangeRequest
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,26 +51,27 @@ fun ProfileScreen(
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit
 ) {
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
     val auth = FirebaseAuth.getInstance()
-    val db = FirebaseFirestore.getInstance()
-    val storage = FirebaseStorage.getInstance()
     val user = auth.currentUser
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    val names = user?.displayName?.split(" ") ?: listOf("", "")
-    var firstName by remember { mutableStateOf(names.getOrNull(0) ?: "") }
-    var surname by remember { mutableStateOf(names.getOrNull(1) ?: "") }
+    var firstName by remember { mutableStateOf("") }
+    var surname by remember { mutableStateOf("") }
     var emailDisplay by remember { mutableStateOf(user?.email ?: "") }
     
     var localPreviewUri by remember { mutableStateOf<Uri?>(null) }
     var isUploading by remember { mutableStateOf(false) }
     
-    val currentPhotoUrl = localPreviewUri?.toString() ?: user?.photoUrl?.toString()
-
     var selectedPaymentMethod by remember { mutableStateOf("University Account") }
     var selectedAddress by remember { mutableStateOf("No address added yet") }
-    
+    var currentBalance by remember { mutableDoubleStateOf(0.0) }
+    var currentRole by remember { mutableStateOf("student") }
+    var savedPhotoUrl by remember { mutableStateOf<String?>(null) }
+
+    // Restore missing state variables
     var showSelectionPopup by remember { mutableStateOf(false) }
     var currentPopupStep by remember { mutableIntStateOf(1) }
     var cardNumber by remember { mutableStateOf("") }
@@ -78,55 +82,64 @@ fun ProfileScreen(
     var showAddressPopup by remember { mutableStateOf(false) }
     var showEmailPopup by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        user?.reload()?.addOnCompleteListener {
-            emailDisplay = auth.currentUser?.email ?: ""
+    LaunchedEffect(user) {
+        if (user != null) {
+            val localUser = db.userDao().getUserById(user.uid)
+            if (localUser != null) {
+                val names = localUser.name.split(" ")
+                firstName = names.getOrNull(0) ?: ""
+                surname = names.getOrNull(1) ?: ""
+                selectedPaymentMethod = localUser.selectedPaymentMethod ?: "University Account"
+                selectedAddress = localUser.address ?: "No address added yet"
+                currentBalance = localUser.balance
+                currentRole = localUser.role
+                savedPhotoUrl = localUser.photoUrl
+            }
         }
     }
 
-    LaunchedEffect(user) {
-        if (user != null) {
-            db.collection("users").document(user.uid).get()
-                .addOnSuccessListener { doc ->
-                    val method = doc.getString("selectedPaymentMethod")
-                    if (method != null) selectedPaymentMethod = method
-                    val address = doc.getString("address")
-                    if (!address.isNullOrEmpty()) selectedAddress = address
-                }
-        }
-    }
+    val currentPhotoUrl = localPreviewUri?.toString() ?: savedPhotoUrl ?: user?.photoUrl?.toString()
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null && user != null) {
             isUploading = true
-            localPreviewUri = uri
-            
-            val avatarRef = storage.reference.child("avatars/${user.uid}.jpg")
-            
-            avatarRef.putFile(uri)
-                .addOnSuccessListener {
-                    avatarRef.downloadUrl.addOnSuccessListener { downloadUrl: Uri ->
-                        val profileUpdates = userProfileChangeRequest { photoUri = downloadUrl }
-                        user.updateProfile(profileUpdates).addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                db.collection("users").document(user.uid).set(
-                                    mapOf("photoUrl" to downloadUrl.toString()), 
-                                    SetOptions.merge()
-                                )
-                                localPreviewUri = null
-                                isUploading = false
-                                scope.launch { snackbarHostState.showSnackbar("Your new profile picture looks great! It's saved now.") }
-                            }
-                        }
-                    }
-                }
-                .addOnFailureListener {
+            scope.launch {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val avatarFile = File(context.filesDir, "avatar_${user.uid}.jpg")
+                    val outputStream = FileOutputStream(avatarFile)
+                    inputStream?.copyTo(outputStream)
+                    inputStream?.close()
+                    outputStream.close()
+
+                    val localFileUri = Uri.fromFile(avatarFile).toString()
+                    savedPhotoUrl = localFileUri
+
+                    // Update user local profile
+                    db.userDao().upsertUser(UserLocal(
+                        id = user.uid,
+                        name = "$firstName $surname",
+                        email = user.email ?: "",
+                        photoUrl = localFileUri,
+                        address = selectedAddress,
+                        selectedPaymentMethod = selectedPaymentMethod,
+                        balance = currentBalance,
+                        role = currentRole
+                    ))
+                    
+                    // NEW: Update all existing reviews to use the new avatar
+                    db.userDao().updateReviewAvatars(user.uid, localFileUri)
+                    
+                    user.updateProfile(userProfileChangeRequest { photoUri = Uri.parse(localFileUri) })
                     isUploading = false
-                    localPreviewUri = null
-                    scope.launch { snackbarHostState.showSnackbar("Oops! We couldn't upload your photo right now. Please try again.") }
+                    snackbarHostState.showSnackbar("Avatar updated everywhere!")
+                } catch (e: Exception) {
+                    isUploading = false
+                    snackbarHostState.showSnackbar("Error saving image.")
                 }
+            }
         }
     }
 
@@ -208,10 +221,25 @@ fun ProfileScreen(
                         Spacer(modifier = Modifier.height(32.dp))
                         Button(onClick = {
                             isUploading = true
-                            performFullUpdate(user!!, firstName, surname, null) { _, msg -> 
-                                isUploading = false; scope.launch { snackbarHostState.showSnackbar(msg) } 
+                            val profileUpdates = userProfileChangeRequest { displayName = "$firstName $surname".trim() }
+                            user?.updateProfile(profileUpdates)?.addOnCompleteListener { task ->
+                                if (task.isSuccessful) {
+                                    scope.launch {
+                                        db.userDao().upsertUser(UserLocal(
+                                            id = user.uid,
+                                            name = "$firstName $surname",
+                                            email = user.email ?: "",
+                                            photoUrl = savedPhotoUrl,
+                                            address = selectedAddress,
+                                            selectedPaymentMethod = selectedPaymentMethod,
+                                            balance = currentBalance,
+                                            role = currentRole
+                                        ))
+                                        isUploading = false
+                                        snackbarHostState.showSnackbar("Profile saved locally!")
+                                    }
+                                }
                             }
-                            db.collection("users").document(user.uid).set(mapOf("selectedPaymentMethod" to selectedPaymentMethod), SetOptions.merge())
                         }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp), enabled = !isUploading) {
                             if (isUploading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White) else Text("Save General Profile", fontWeight = FontWeight.Bold)
                         }
@@ -264,10 +292,22 @@ fun ProfileScreen(
                                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                         OutlinedButton(onClick = { currentPopupStep = 1 }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Back") }
                                         Button(onClick = { 
-                                            val userId = user?.uid ?: return@Button
-                                            if (selectedPaymentMethod.contains("Card")) selectedPaymentMethod = "Card Ending in ${cardNumber.takeLast(4).ifEmpty { "4242" }}"
-                                            db.collection("users").document(userId).set(mapOf("selectedPaymentMethod" to selectedPaymentMethod), SetOptions.merge())
-                                            showSelectionPopup = false 
+                                            if (selectedPaymentMethod.contains("Card")) {
+                                                selectedPaymentMethod = "Card Ending in ${cardNumber.takeLast(4).ifEmpty { "4242" }}"
+                                            }
+                                            scope.launch {
+                                                db.userDao().upsertUser(UserLocal(
+                                                    id = user!!.uid,
+                                                    name = "$firstName $surname",
+                                                    email = user.email ?: "",
+                                                    photoUrl = savedPhotoUrl,
+                                                    address = selectedAddress,
+                                                    selectedPaymentMethod = selectedPaymentMethod,
+                                                    balance = currentBalance,
+                                                    role = currentRole
+                                                ))
+                                                showSelectionPopup = false 
+                                            }
                                         }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Confirm") }
                                     }
                                 }
@@ -279,7 +319,24 @@ fun ProfileScreen(
         }
 
         if (showPasswordPopup) { PasswordChangeDialog(userEmail = user?.email ?: "", onDismiss = { showPasswordPopup = false }, onSuccess = { showPasswordPopup = false; scope.launch { snackbarHostState.showSnackbar("Got it! Your password has been updated safely.") } }) }
-        if (showAddressPopup) { AddressManagementDialog(onDismiss = { showAddressPopup = false }, onSave = { newAddr -> val userId = user?.uid ?: return@AddressManagementDialog; selectedAddress = newAddr; showAddressPopup = false; db.collection("users").document(userId).set(mapOf("address" to newAddr), SetOptions.merge()); scope.launch { snackbarHostState.showSnackbar("Your address has been updated successfully.") } }) }
+        if (showAddressPopup) { AddressManagementDialog(onDismiss = { showAddressPopup = false }, onSave = { newAddr -> 
+            val userId = user?.uid ?: return@AddressManagementDialog
+            selectedAddress = newAddr
+            showAddressPopup = false
+            scope.launch {
+                db.userDao().upsertUser(UserLocal(
+                    id = userId,
+                    name = "$firstName $surname",
+                    email = user.email ?: "",
+                    photoUrl = savedPhotoUrl,
+                    address = newAddr,
+                    selectedPaymentMethod = selectedPaymentMethod,
+                    balance = currentBalance,
+                    role = currentRole
+                ))
+                snackbarHostState.showSnackbar("Your address has been updated successfully.")
+            }
+        }) }
         if (showEmailPopup) { EmailChangeDialog(currentEmail = user?.email ?: "", onDismiss = { showEmailPopup = false }, onSuccess = { _ -> auth.signOut(); navController.navigate("auth") { popUpTo(0) } }) }
     }
 }
@@ -500,15 +557,5 @@ fun AddressManagementDialog(onDismiss: () -> Unit, onSave: (String) -> Unit) {
                 }
             }
         }
-    }
-}
-
-private fun performFullUpdate(user: com.google.firebase.auth.FirebaseUser, firstName: String, surname: String, photoUri: Uri?, onResult: (Boolean, String) -> Unit) {
-    val profileUpdates = userProfileChangeRequest {
-        displayName = "$firstName $surname".trim()
-        if (photoUri != null) this.photoUri = photoUri
-    }
-    user.updateProfile(profileUpdates).addOnCompleteListener { profileTask ->
-        if (profileTask.isSuccessful) onResult(true, "Awesome! Your profile settings have been updated.") else onResult(false, "Oops! We couldn't update your profile. Please try again.")
     }
 }

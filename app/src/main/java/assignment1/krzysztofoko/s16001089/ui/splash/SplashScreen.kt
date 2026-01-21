@@ -1,5 +1,6 @@
 package assignment1.krzysztofoko.s16001089.ui.splash
 
+import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,9 +14,12 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
@@ -61,6 +65,18 @@ fun SplashScreen(onTimeout: () -> Unit) {
         ),
         label = "pulseScale"
     )
+
+    // Rainbow Hue animation for the flashing logo effect
+    val rainbowHue by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rainbowHue"
+    )
+    val rainbowColor = Color.hsv(rainbowHue, 0.6f, 1f)
 
     LaunchedEffect(Unit) {
         // Logo animate in
@@ -131,11 +147,11 @@ fun SplashScreen(onTimeout: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(32.dp),
+                    .padding(horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Animated Logo with Fading Violet Shade
+                // Animated Logo with Rainbow Flashing Glow
                 Box(contentAlignment = Alignment.Center) {
                     Box(
                         modifier = Modifier
@@ -146,8 +162,8 @@ fun SplashScreen(onTimeout: () -> Unit) {
                                 drawCircle(
                                     Brush.radialGradient(
                                         colors = listOf(
-                                            Color(0xFFBB86FC).copy(alpha = 0.8f),
-                                            Color(0xFFBB86FC).copy(alpha = 0.2f),
+                                            rainbowColor.copy(alpha = 0.8f),
+                                            rainbowColor.copy(alpha = 0.2f),
                                             Color.Transparent
                                         ),
                                         center = center,
@@ -164,7 +180,9 @@ fun SplashScreen(onTimeout: () -> Unit) {
                             .fillMaxWidth(0.9f)
                             .scale(entryScale.value * pulseScale)
                             .alpha(entryAlpha.value),
-                        contentScale = ContentScale.Fit
+                        contentScale = ContentScale.Fit,
+                        // Added color filter to make the logo text itself flash with rainbow colors
+                        colorFilter = ColorFilter.tint(rainbowColor, BlendMode.Modulate)
                     )
                 }
                 
@@ -173,21 +191,25 @@ fun SplashScreen(onTimeout: () -> Unit) {
 
                 Text(
                     text = AppConstants.INSTITUTION,
-                    style = MaterialTheme.typography.titleLarge, // Size reduced to fit inline
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1, // Ensures text stays on one line
-                    softWrap = false,
-                    modifier = Modifier.alpha(entryAlpha.value)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .alpha(entryAlpha.value)
                 )
                 
                 Text(
                     text = AppConstants.APP_NAME,
-                    style = MaterialTheme.typography.headlineSmall, // Proportional header
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center,
                     color = Color.White.copy(alpha = 0.9f),
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 2.sp,
-                    modifier = Modifier.alpha(entryAlpha.value)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .alpha(entryAlpha.value)
                 )
                 
                 Spacer(modifier = Modifier.height(100.dp))

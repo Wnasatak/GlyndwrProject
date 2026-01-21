@@ -12,12 +12,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
-import com.google.firebase.firestore.FirebaseFirestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,17 +28,14 @@ fun PdfReaderScreen(
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit
 ) {
-    val db = FirebaseFirestore.getInstance()
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
     var book by remember { mutableStateOf<Book?>(null) }
     var loading by remember { mutableStateOf(true) }
 
     LaunchedEffect(bookId) {
-        db.collection("books").document(bookId).get()
-            .addOnSuccessListener { doc ->
-                book = doc.toObject(Book::class.java)?.copy(id = doc.id)
-                loading = false
-            }
-            .addOnFailureListener { loading = false }
+        book = db.bookDao().getBookById(bookId)
+        loading = false
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

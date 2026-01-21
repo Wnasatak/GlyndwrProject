@@ -1,14 +1,5 @@
 package assignment1.krzysztofoko.s16001089.ui.components
 
-import android.content.ContentValues
-import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.pdf.PdfDocument
-import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
-import android.widget.Toast
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas as ComposeCanvas
@@ -28,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -37,12 +29,35 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
+import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
-import java.io.OutputStream
-import java.util.*
+import kotlin.math.PI
+import kotlin.math.sin
+
+@Composable
+fun SpinningLogo(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "logoSpin")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    AsyncImage(
+        model = "file:///android_asset/images/media/Glyndwr_University_Logo.png",
+        contentDescription = "Loading...",
+        modifier = modifier
+            .clip(CircleShape)
+            .rotate(rotation),
+        contentScale = ContentScale.Fit
+    )
+}
 
 @Composable
 fun HorizontalWavyBackground(
@@ -56,7 +71,7 @@ fun HorizontalWavyBackground(
     val infiniteTransition = rememberInfiniteTransition(label = "wave")
     val phase by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = (2 * Math.PI).toFloat(),
+        targetValue = (2 * PI).toFloat(),
         animationSpec = infiniteRepeatable(
             animation = tween(animationDuration, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
@@ -79,7 +94,7 @@ fun HorizontalWavyBackground(
             moveTo(0f, height)
             for (x in 0..width.toInt() step 10) {
                 val relativeX = x.toFloat() / width
-                val y = height * wave1HeightFactor + Math.sin((relativeX * 2 * Math.PI + phase).toDouble()).toFloat() * wave1Amplitude
+                val y = height * wave1HeightFactor + sin(relativeX * 2 * PI + phase).toFloat() * wave1Amplitude
                 lineTo(x.toFloat(), y)
             }
             lineTo(width, height)
@@ -92,7 +107,7 @@ fun HorizontalWavyBackground(
             moveTo(0f, height)
             for (x in 0..width.toInt() step 10) {
                 val relativeX = x.toFloat() / width
-                val y = height * wave2HeightFactor + Math.sin((relativeX * 3 * Math.PI - phase * 0.7f).toDouble()).toFloat() * wave2Amplitude
+                val y = height * wave2HeightFactor + sin(relativeX * 3 * PI - phase * 0.7f).toFloat() * wave2Amplitude
                 lineTo(x.toFloat(), y)
             }
             lineTo(width, height)
@@ -114,7 +129,7 @@ fun VerticalWavyBackground(
     val infiniteTransition = rememberInfiniteTransition(label = "wave")
     val phase by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = (2 * Math.PI).toFloat(),
+        targetValue = (2 * PI).toFloat(),
         animationSpec = infiniteRepeatable(
             animation = tween(animationDuration, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
@@ -136,7 +151,7 @@ fun VerticalWavyBackground(
             moveTo(width, 0f)
             for (y in 0..height.toInt() step 10) { 
                 val relativeY = y.toFloat() / height
-                val x = width * wave1WidthFactor + Math.sin((relativeY * 1.5 * Math.PI + phase).toDouble()).toFloat() * wave1Amplitude
+                val x = width * wave1WidthFactor + sin(relativeY * 1.5 * PI + phase).toFloat() * wave1Amplitude
                 lineTo(x, y.toFloat()) 
             }
             lineTo(width, height)
@@ -149,7 +164,7 @@ fun VerticalWavyBackground(
             moveTo(width, 0f)
             for (y in 0..height.toInt() step 10) { 
                 val relativeY = y.toFloat() / height
-                val x = width * wave2WidthFactor + Math.sin((relativeY * 2.5 * Math.PI - phase * 0.8f).toDouble()).toFloat() * wave2Amplitude
+                val x = width * wave2WidthFactor + sin(relativeY * 2.5 * PI - phase * 0.8f).toFloat() * wave2Amplitude
                 lineTo(x, y.toFloat()) 
             }
             lineTo(width, height)
@@ -218,8 +233,11 @@ fun BookItemCard(
     book: Book,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
+    imageOverlay: @Composable (BoxScope.() -> Unit)? = null,
+    cornerContent: @Composable (BoxScope.() -> Unit)? = null,
     trailingContent: @Composable (RowScope.() -> Unit)? = null,
-    bottomContent: @Composable (ColumnScope.() -> Unit)? = null
+    bottomContent: @Composable (ColumnScope.() -> Unit)? = null,
+    statusBadge: @Composable (RowScope.() -> Unit)? = null
 ) {
     Surface(
         modifier = modifier
@@ -229,60 +247,70 @@ fun BookItemCard(
         shadowElevation = 2.dp,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
     ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(width = 90.dp, height = 120.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surfaceVariant,
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 90.dp, height = 120.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                )
                             )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (book.isAudioBook) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = book.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                    Icon(
+                        imageVector = if (book.isAudioBook) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                     )
-                    trailingContent?.invoke(this)
+                    imageOverlay?.invoke(this)
                 }
-                Text(
-                    text = "by ${book.author}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                bottomContent?.invoke(this)
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                Badge(containerColor = MaterialTheme.colorScheme.secondaryContainer) {
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text(
+                            text = book.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        trailingContent?.invoke(this)
+                    }
                     Text(
-                        text = if (book.isAudioBook) "Audio" else book.category,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        text = "by ${book.author}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    
+                    bottomContent?.invoke(this)
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Badge(containerColor = MaterialTheme.colorScheme.secondaryContainer) {
+                            Text(
+                                text = if (book.isAudioBook) "Audio" else book.category,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        statusBadge?.invoke(this)
+                    }
                 }
+            }
+            
+            Box(modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)) {
+                cornerContent?.invoke(this)
             }
         }
     }
@@ -348,6 +376,17 @@ fun UserAvatar(
         .clip(CircleShape)
         .let { if (onClick != null) it.clickable(onClick = onClick) else it }
 
+    val infiniteTransition = rememberInfiniteTransition(label = "avatarLoad")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
     Surface(
         modifier = modifier,
         shape = CircleShape,
@@ -362,7 +401,16 @@ fun UserAvatar(
                 contentDescription = "Avatar",
                 modifier = avatarModifier,
                 contentScale = if (isUsingDefault) ContentScale.Fit else contentScale,
-                loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(modifier = Modifier.size(iconSize.dp / 2)) } },
+                loading = { 
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
+                        AsyncImage(
+                            model = "file:///android_asset/images/media/Glyndwr_University_Logo.png",
+                            contentDescription = "Loading...",
+                            modifier = Modifier.fillMaxSize().clip(CircleShape).rotate(rotation),
+                            contentScale = ContentScale.Fit
+                        )
+                    } 
+                },
                 error = {
                     Box(
                         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
@@ -379,101 +427,5 @@ fun UserAvatar(
             )
             overlay?.invoke(this)
         }
-    }
-}
-
-fun generateAndSaveInvoicePdf(context: Context, book: Book, userName: String, invoiceId: String, date: String) {
-    val pdfDocument = PdfDocument()
-    val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
-    val page = pdfDocument.startPage(pageInfo)
-    val canvas: Canvas = page.canvas
-    val paint = Paint()
-
-    // Title
-    paint.textSize = 24f
-    paint.isFakeBoldText = true
-    canvas.drawText("TAX INVOICE", 40f, 50f, paint)
-
-    // Store Info
-    paint.textSize = 12f
-    paint.isFakeBoldText = false
-    canvas.drawText(AppConstants.APP_NAME, 40f, 80f, paint)
-    canvas.drawText("Official University Store", 40f, 95f, paint)
-
-    // Invoice Meta
-    paint.textAlign = Paint.Align.RIGHT
-    canvas.drawText("Invoice ID: $invoiceId", 555f, 80f, paint)
-    canvas.drawText("Date: $date", 555f, 95f, paint)
-
-    // Customer Info
-    paint.textAlign = Paint.Align.LEFT
-    paint.isFakeBoldText = true
-    canvas.drawText("ISSUED TO:", 40f, 140f, paint)
-    paint.isFakeBoldText = false
-    canvas.drawText(userName, 40f, 155f, paint)
-    canvas.drawText("Student ID: ${AppConstants.STUDENT_ID}", 40f, 170f, paint)
-
-    // Line
-    canvas.drawLine(40f, 200f, 555f, 200f, paint)
-
-    // Table Header
-    paint.isFakeBoldText = true
-    canvas.drawText("Description", 40f, 230f, paint)
-    paint.textAlign = Paint.Align.RIGHT
-    canvas.drawText("Amount", 555f, 230f, paint)
-
-    // Item
-    paint.isFakeBoldText = false
-    paint.textAlign = Paint.Align.LEFT
-    canvas.drawText(book.title, 40f, 260f, paint)
-    paint.textAlign = Paint.Align.RIGHT
-    canvas.drawText("£${String.format(Locale.US, "%.2f", book.price)}", 555f, 260f, paint)
-
-    // Calculations
-    val studentDiscount = book.price * 0.1
-    val total = book.price - studentDiscount
-
-    canvas.drawLine(40f, 300f, 555f, 300f, paint)
-    canvas.drawText("Subtotal: £${String.format(Locale.US, "%.2f", book.price)}", 555f, 330f, paint)
-    canvas.drawText("Student Discount (10%): -£${String.format(Locale.US, "%.2f", studentDiscount)}", 555f, 350f, paint)
-    
-    paint.textSize = 16f
-    paint.isFakeBoldText = true
-    canvas.drawText("Total Paid: £${String.format(Locale.US, "%.2f", total)}", 555f, 380f, paint)
-
-    // Footer
-    paint.textSize = 10f
-    paint.isFakeBoldText = false
-    paint.textAlign = Paint.Align.CENTER
-    canvas.drawText("Thank you for your academic purchase!", 297f, 750f, paint)
-    canvas.drawText("Glyndŵr Store Support - Wrexham University", 297f, 765f, paint)
-
-    pdfDocument.finishPage(page)
-
-    val fileName = "Invoice_${invoiceId}.pdf"
-    
-    try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-            }
-            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-            uri?.let {
-                val outputStream: OutputStream? = context.contentResolver.openOutputStream(it)
-                outputStream?.use { os -> pdfDocument.writeTo(os) }
-                Toast.makeText(context, "Invoice saved to Downloads", Toast.LENGTH_LONG).show()
-            }
-        } else {
-            val directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val file = java.io.File(directory, fileName)
-            pdfDocument.writeTo(java.io.FileOutputStream(file))
-            Toast.makeText(context, "Invoice saved to Downloads", Toast.LENGTH_LONG).show()
-        }
-    } catch (e: Exception) {
-        Toast.makeText(context, "Error saving PDF: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-    } finally {
-        pdfDocument.close()
     }
 }

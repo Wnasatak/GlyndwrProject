@@ -3,20 +3,14 @@ package assignment1.krzysztofoko.s16001089.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "books")
-data class Book(
+@Entity(tableName = "gear")
+data class Gear(
     @PrimaryKey
     val id: String = "",
     val title: String = "",
-    val author: String = "",
     val price: Double = 0.0,
-    var isAudioBook: Boolean = false,
-    val audioUrl: String = "",
-    val pdfUrl: String = "",
     val description: String = "",
     val imageUrl: String = "",
     val category: String = "General",
-    val mainCategory: String = "Books",
-    var isInstallmentAvailable: Boolean = false,
-    var modulePrice: Double = 0.0
+    val mainCategory: String = "University Gear"
 )

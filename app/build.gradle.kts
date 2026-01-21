@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -54,12 +55,14 @@ dependencies {
     // Image Loading
     implementation(libs.coil.compose)
     
-    // Firebase
+    // Firebase (Keeping only Auth for sign-in/profile)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.storage)
-    implementation(libs.firebase.functions) // Added Functions
+    
+    // Room (Local Database)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
     
     // Google Auth
     implementation(libs.play.services.auth)

@@ -16,11 +16,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.data.Book
+import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,11 +103,13 @@ fun InvoiceCreatingScreen(
                                     color = MaterialTheme.colorScheme.primary,
                                     trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                                 )
-                                Icon(
-                                    Icons.Default.Receipt,
+                                AsyncImage(
+                                    model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
                                     contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.primary
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
                                 )
                             } else {
                                 this@Column.AnimatedVisibility(
@@ -128,6 +132,8 @@ fun InvoiceCreatingScreen(
                             text = if (isComplete) "Invoice Generated!" else "Generating Invoice...",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.ExtraBold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
                             color = if (isComplete) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary
                         )
 
@@ -139,6 +145,7 @@ fun InvoiceCreatingScreen(
                                 else "Please wait while we prepare your academic purchase records and apply student discounts.",
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
                             color = Color.Gray,
                             lineHeight = 22.sp
                         )
@@ -170,14 +177,16 @@ fun InvoiceCreatingScreen(
                 // Professional hint
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.alpha(0.6f)
+                    modifier = Modifier.fillMaxWidth().alpha(0.6f),
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(Icons.Default.Description, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         "Certified by Glyndŵr University Academic Records",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
                     )
                 }
             }

@@ -31,14 +31,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.components.BookItemCard
 import assignment1.krzysztofoko.s16001089.ui.components.VerticalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FieldPath
-import com.google.firebase.firestore.Query
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -53,104 +52,74 @@ fun DashboardScreen(
     onToggleTheme: () -> Unit,
     onViewInvoice: (Book) -> Unit
 ) {
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
     val auth = FirebaseAuth.getInstance()
-    val db = FirebaseFirestore.getInstance()
     val user = auth.currentUser
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     
-    var userRole by remember { mutableStateOf("student") }
-    var ownedBooks by remember { mutableStateOf<List<Book>>(listOf()) }
-    var wishlistBooks by remember { mutableStateOf<List<Book>>(listOf()) }
-    var commentedBooks by remember { mutableStateOf<List<Book>>(listOf()) }
-    var lastViewedBooks by remember { mutableStateOf<List<Book>>(listOf()) }
-    
-    var loadingLibrary by remember { mutableStateOf(true) }
-    var userBalance by remember { mutableDoubleStateOf(0.0) }
-    var selectedPaymentMethod by remember { mutableStateOf("University Account") }
-    var showPaymentPopup by remember { mutableStateOf(false) }
+    // Local DB State
+    val localUser by remember(user) {
+        user?.let { db.userDao().getUserFlow(it.uid) } ?: flowOf(null)
+    }.collectAsState(initial = null)
 
-    DisposableEffect(user, allBooks) {
-        if (user == null) return@DisposableEffect onDispose {}
-        
-        val userRef = db.collection("users").document(user.uid)
-        
-        val userListener = userRef.addSnapshotListener { snapshot, _ ->
-            if (snapshot != null && snapshot.exists()) {
-                userBalance = snapshot.getDouble("balance") ?: 0.0
-                selectedPaymentMethod = snapshot.getString("selectedPaymentMethod") ?: "University Account"
-                userRole = snapshot.getString("role") ?: "student"
-            }
-        }
+    val wishlistIds by remember(user) {
+        user?.let { db.userDao().getWishlistIds(it.uid) } ?: flowOf(emptyList())
+    }.collectAsState(initial = emptyList())
 
-        val historyListener = userRef.collection("history")
-            .addSnapshotListener { snapshot, _ ->
-                val docs = snapshot?.documents ?: emptyList()
-                val sortedIds = docs.sortedByDescending { it.getLong("viewedAt") ?: 0L }.take(5).map { it.id }
-                if (allBooks.isNotEmpty()) {
-                    lastViewedBooks = sortedIds.mapNotNull { id -> allBooks.find { it.id == id } }
-                }
-            }
+    val historyIds by remember(user) {
+        user?.let { db.userDao().getHistoryIds(it.uid) } ?: flowOf(emptyList())
+    }.collectAsState(initial = emptyList())
 
-        val wishlistListener = userRef.collection("wishlist")
-            .addSnapshotListener { snapshot, _ ->
-                val docs = snapshot?.documents ?: emptyList()
-                val sortedIds = docs.sortedByDescending { it.getLong("addedAt") ?: 0L }.take(5).map { it.id }
-                if (allBooks.isNotEmpty()) {
-                    wishlistBooks = sortedIds.mapNotNull { id -> allBooks.find { it.id == id } }
-                }
-            }
+    val commentedIds by remember(user) {
+        user?.let { db.userDao().getCommentedProductIds(it.uid) } ?: flowOf(emptyList())
+    }.collectAsState(initial = emptyList())
 
-        val commentListener = userRef.collection("comments")
-            .addSnapshotListener { snapshot, _ ->
-                val docs = snapshot?.documents ?: emptyList()
-                val sortedIds = docs.sortedByDescending { it.getLong("commentedAt") ?: 0L }.take(5).map { it.id }
-                if (allBooks.isNotEmpty()) {
-                    commentedBooks = sortedIds.mapNotNull { id -> allBooks.find { it.id == id } }
-                }
-            }
+    val purchaseIds by remember(user) {
+        user?.let { db.userDao().getPurchaseIds(it.uid) } ?: flowOf(emptyList())
+    }.collectAsState(initial = emptyList())
 
-        val purchasesListener = userRef.collection("purchases")
-            .addSnapshotListener { snapshot, _ ->
-                val docs = snapshot?.documents ?: emptyList()
-                ownedBooks = docs.mapNotNull { doc ->
-                    allBooks.find { it.id == doc.id } ?: if (doc.contains("title")) {
-                        Book(id = doc.id, title = doc.getString("title") ?: "Unknown", author = doc.getString("author") ?: "Unknown", category = doc.getString("category") ?: "General", isAudioBook = doc.getBoolean("audioBook") ?: false, price = doc.getDouble("pricePaid") ?: 0.0)
-                    } else null
-                }.distinctBy { it.id }
-                loadingLibrary = false
-            }
-
-        onDispose {
-            userListener.remove()
-            historyListener.remove()
-            wishlistListener.remove()
-            commentListener.remove()
-            purchasesListener.remove()
-        }
+    val lastViewedBooks = remember(historyIds, allBooks) {
+        historyIds.mapNotNull { id -> allBooks.find { it.id == id } }
     }
+    
+    val wishlistBooks = remember(wishlistIds, allBooks) {
+        wishlistIds.mapNotNull { id -> allBooks.find { it.id == id } }
+    }
+
+    val commentedBooks = remember(commentedIds, allBooks) {
+        commentedIds.mapNotNull { id -> allBooks.find { it.id == id } }
+    }
+
+    val ownedBooks = remember(purchaseIds, allBooks) {
+        purchaseIds.mapNotNull { id -> allBooks.find { it.id == id } }
+    }
+
+    var showPaymentPopup by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
         Scaffold(
             containerColor = Color.Transparent,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { 
                         Text(
-                            text = when(userRole) {
+                            text = when(localUser?.role) {
                                 "admin" -> "Admin Dashboard"
                                 "teacher" -> "Faculty Portal"
                                 else -> "Student Hub"
                             }, 
-                            fontWeight = FontWeight.ExtraBold,
-                            textAlign = TextAlign.Left,
-                            modifier = Modifier.fillMaxWidth()
+                            fontWeight = FontWeight.ExtraBold
                         ) 
                     },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                     actions = {
                         IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
-                        if (userRole == "admin") {
+                        if (localUser?.role == "admin") {
                             IconButton(onClick = { navController.navigate("admin_panel") }) { Icon(Icons.Default.AdminPanelSettings, "Admin") }
                         }
                         IconButton(onClick = { navController.navigate("profile") }) { Icon(Icons.Default.Settings, "Settings") }
@@ -162,14 +131,14 @@ fun DashboardScreen(
         ) { padding ->
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 item {
-                    DashboardHeader(user = user, role = userRole, balance = userBalance) { showPaymentPopup = true }
+                    DashboardHeader(user = user, role = localUser?.role ?: "student", balance = localUser?.balance ?: 0.0) { showPaymentPopup = true }
                 }
 
-                if (userRole == "admin") {
+                if (localUser?.role == "admin") {
                     item { AdminQuickActions { navController.navigate("admin_panel") } }
                 }
 
-                // --- Section 1: CONTINUE READING ---
+                // Section 1: CONTINUE READING
                 item { SectionHeader("Continue Reading") }
                 if (lastViewedBooks.isNotEmpty()) {
                     item {
@@ -182,10 +151,10 @@ fun DashboardScreen(
                         }
                     }
                 } else {
-                    item { EmptySectionPlaceholder("No recently viewed items yet. Open any item to track your history!") }
+                    item { EmptySectionPlaceholder("No recently viewed items yet.") }
                 }
 
-                // --- Section 2: RECENT ACTIVITY (COMMENTED) ---
+                // Section 2: RECENT ACTIVITY
                 item { SectionHeader("Your Recent Activity") }
                 if (commentedBooks.isNotEmpty()) {
                     item {
@@ -198,10 +167,10 @@ fun DashboardScreen(
                         }
                     }
                 } else {
-                    item { EmptySectionPlaceholder("No recent comments. Share your thoughts on any item to see them here.") }
+                    item { EmptySectionPlaceholder("No recent reviews.") }
                 }
 
-                // --- Section 3: RECENTLY LIKED ---
+                // Section 3: RECENTLY LIKED
                 item { SectionHeader("Recently Liked") }
                 if (wishlistBooks.isNotEmpty()) {
                     item {
@@ -214,15 +183,13 @@ fun DashboardScreen(
                         }
                     }
                 } else {
-                    item { EmptySectionPlaceholder("Your favorites list is empty. Tap the heart icon on any item!") }
+                    item { EmptySectionPlaceholder("Your favorites list is empty.") }
                 }
 
-                // --- Section 4: PURCHASED ITEMS (LIBRARY) ---
+                // Section 4: PURCHASED ITEMS (LIBRARY)
                 item { SectionHeader("Your Purchased Items") }
 
-                if (loadingLibrary) {
-                    item { Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
-                } else if (ownedBooks.isEmpty()) {
+                if (ownedBooks.isEmpty()) {
                     item { EmptyLibraryPlaceholder(onBrowse = onBack) }
                 } else {
                     items(ownedBooks) { book ->
@@ -240,14 +207,30 @@ fun DashboardScreen(
                                         expanded = showMenu,
                                         onDismissRequest = { showMenu = false }
                                     ) {
-                                        DropdownMenuItem(
-                                            text = { Text("View Invoice") },
-                                            onClick = {
-                                                showMenu = false
-                                                onViewInvoice(book)
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.ReceiptLong, null) }
-                                        )
+                                        if (book.price > 0) {
+                                            DropdownMenuItem(
+                                                text = { Text("View Invoice") },
+                                                onClick = {
+                                                    showMenu = false
+                                                    onViewInvoice(book)
+                                                },
+                                                leadingIcon = { Icon(Icons.Default.ReceiptLong, null) }
+                                            )
+                                        } else {
+                                            DropdownMenuItem(
+                                                text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) },
+                                                onClick = {
+                                                    showMenu = false
+                                                    if (user != null) {
+                                                        scope.launch {
+                                                            db.userDao().deletePurchase(user.uid, book.id)
+                                                            snackbarHostState.showSnackbar("Removed from library")
+                                                        }
+                                                    }
+                                                },
+                                                leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -273,7 +256,7 @@ fun DashboardScreen(
                             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.primary)
                                 Spacer(Modifier.width(16.dp))
-                                Text(selectedPaymentMethod, fontWeight = FontWeight.Medium)
+                                Text(localUser?.selectedPaymentMethod ?: "University Account", fontWeight = FontWeight.Bold)
                             }
                         }
                         Spacer(modifier = Modifier.height(24.dp))
@@ -286,93 +269,84 @@ fun DashboardScreen(
 }
 
 @Composable
+fun DashboardHeader(user: com.google.firebase.auth.FirebaseUser?, role: String, balance: Double, onTopUp: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(32.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                UserAvatar(photoUrl = user?.photoUrl?.toString(), modifier = Modifier.size(64.dp), isLarge = true)
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    Text(text = "Welcome, ${user?.displayName ?: "Student"}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                    Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(8.dp)) {
+                        Text(text = role.uppercase(), modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+            Row(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), RoundedCornerShape(20.dp)).padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text("Account Balance", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                    Text("£${String.format(Locale.US, "%.2f", balance)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+                Button(onClick = onTopUp, shape = RoundedCornerShape(12.dp)) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Top Up")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminQuickActions(onClick: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable { onClick() }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)), shape = RoundedCornerShape(16.dp)) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.AdminPanelSettings, null, tint = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.width(12.dp))
+            Text("Admin Controls: Manage Catalog & Users", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.weight(1f))
+            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+@Composable
 fun SectionHeader(title: String) {
-    Text(
-        text = title, 
-        style = MaterialTheme.typography.titleMedium, 
-        fontWeight = FontWeight.Bold, 
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp)
-    )
+    Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp), color = MaterialTheme.colorScheme.primary)
+}
+
+@Composable
+fun WishlistMiniCard(book: Book, icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.Favorite, color: Color, onClick: () -> Unit) {
+    Card(modifier = Modifier.width(160.dp).clickable { onClick() }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = color), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))) {
+        Column {
+            Box(modifier = Modifier.fillMaxWidth().height(100.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)), contentAlignment = Alignment.Center) {
+                Icon(imageVector = if (book.isAudioBook) Icons.Default.Headphones else if (book.mainCategory == "University Courses") Icons.Default.School else Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                Icon(icon, null, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(16.dp), tint = MaterialTheme.colorScheme.primary)
+            }
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(book.title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(book.author, style = MaterialTheme.typography.labelSmall, color = Color.Gray, maxLines = 1)
+            }
+        }
+    }
 }
 
 @Composable
 fun EmptySectionPlaceholder(text: String) {
-    Text(
-        text = text, 
-        modifier = Modifier.padding(horizontal = 24.dp), 
-        style = MaterialTheme.typography.bodySmall, 
-        color = Color.Gray,
-        lineHeight = 18.sp
-    )
-}
-
-@Composable
-fun DashboardHeader(user: com.google.firebase.auth.FirebaseUser?, role: String, balance: Double, onBalanceClick: () -> Unit) {
-    Box(modifier = Modifier.fillMaxWidth().background(Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.98f), Color.Transparent))).padding(24.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            UserAvatar(photoUrl = user?.photoUrl?.toString(), modifier = Modifier.size(70.dp), isLarge = true)
-            Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Welcome, ${user?.displayName?.split(" ")?.firstOrNull() ?: "Member"}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), shape = RoundedCornerShape(8.dp)) {
-                    Text(text = role.uppercase(), modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                }
-            }
-            Surface(onClick = onBalanceClick, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))) {
-                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), horizontalAlignment = Alignment.End) {
-                    Text("Credits", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                    Text("£${String.format(Locale.US, "%.2f", balance)}", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AdminQuickActions(onAdminClick: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().padding(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)), shape = RoundedCornerShape(16.dp)) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Security, null, tint = MaterialTheme.colorScheme.error)
-            Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Privileged Access", fontWeight = FontWeight.Bold)
-                Text("You have permissions to manage the store catalog.", style = MaterialTheme.typography.bodySmall)
-            }
-            Button(onClick = onAdminClick, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Manage") }
-        }
-    }
-}
-
-@Composable
-fun WishlistMiniCard(
-    book: Book, 
-    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.Favorite,
-    color: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier.width(150.dp).clickable(onClick = onClick), 
-        shape = RoundedCornerShape(16.dp), 
-        colors = CardDefaults.cardColors(containerColor = color),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Box(modifier = Modifier.fillMaxWidth().height(90.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)), contentAlignment = Alignment.Center) {
-                Icon(imageVector = if (book.isAudioBook) Icons.Default.Headphones else icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(book.title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(book.author, style = MaterialTheme.typography.labelSmall, color = Color.Gray, maxLines = 1)
-        }
+    Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), color = Color.Transparent, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.1f))) {
+        Text(text = text, modifier = Modifier.padding(24.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
     }
 }
 
 @Composable
 fun EmptyLibraryPlaceholder(onBrowse: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(Icons.AutoMirrored.Filled.LibraryBooks, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-        Text("Your library is empty", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.outline)
-        TextButton(onClick = onBrowse) { Text("Browse the Store") }
+        Icon(Icons.AutoMirrored.Filled.LibraryBooks, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
+        Spacer(Modifier.height(16.dp))
+        Text("Your library is empty", fontWeight = FontWeight.Bold)
+        Text("Get books, courses or gear to see them here.", style = MaterialTheme.typography.bodySmall, color = Color.Gray, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = onBrowse, shape = RoundedCornerShape(12.dp)) { Text("Explore Store") }
     }
 }

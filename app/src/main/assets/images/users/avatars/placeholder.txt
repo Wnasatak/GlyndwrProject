@@ -1,1 +1,0 @@
-Place default avatar options here (e.g., avatar_male.jpg, avatar_female.jpg).

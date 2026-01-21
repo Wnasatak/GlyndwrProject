@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -14,7 +15,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -24,6 +27,7 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.generateAndSaveInvoicePdf
+import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -49,7 +53,7 @@ fun InvoiceScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text("Tax Invoice", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    title = { Text("Official Invoice", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -85,25 +89,32 @@ fun InvoiceScreen(
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(text = AppConstants.APP_NAME, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                                Text(text = "Official Store", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text(text = "Official University Store", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                             }
-                            Icon(Icons.Default.Receipt, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                            AsyncImage(
+                                model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
+                                contentDescription = "University Logo",
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
                         }
                         
                         Spacer(modifier = Modifier.height(32.dp))
                         
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column {
+                            Column(modifier = Modifier.weight(1.1f)) {
                                 Text("ISSUED TO", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                                Text(userName, fontWeight = FontWeight.Bold)
+                                Text(userName, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text("Student ID: ${AppConstants.STUDENT_ID}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                             }
-                            Column(horizontalAlignment = Alignment.End) {
+                            Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(0.9f)) {
                                 Text("INVOICE NO", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                 Text(invoiceId, fontWeight = FontWeight.Bold)
-                                Text(currentDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                Text(currentDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray, textAlign = TextAlign.End)
                             }
                         }
                         
@@ -148,7 +159,7 @@ fun InvoiceScreen(
                         Spacer(modifier = Modifier.height(40.dp))
                         
                         Text(
-                            text = "Thank you for your purchase!\nThis is a computer-generated document.",
+                            text = "Thank you for supporting our university store!\nThis is an official computer-generated document.",
                             style = MaterialTheme.typography.labelSmall,
                             textAlign = TextAlign.Center,
                             color = Color.Gray,
