@@ -1,9 +1,7 @@
 package assignment1.krzysztofoko.s16001089.ui
 
 import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,10 +12,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -34,7 +32,6 @@ import assignment1.krzysztofoko.s16001089.ui.info.*
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import assignment1.krzysztofoko.s16001089.ui.components.InvoiceCreatingScreen
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -55,8 +52,11 @@ fun AppNavigation(
     var currentUser by remember { mutableStateOf(auth.currentUser) }
     var showLogoutConfirm by remember { mutableStateOf(false) }
 
-    // FETCH DATA LOCALLY USING FIXED ID
-    val localUser by db.userDao().getUserFlow(LOCAL_USER_ID).collectAsState(initial = null)
+    // DYNAMICALLY FETCH DATA BASED ON FIREBASE UID
+    val localUser by remember(currentUser) {
+        if (currentUser != null) db.userDao().getUserFlow(currentUser!!.uid)
+        else flowOf(null)
+    }.collectAsState(initial = null)
 
     var allBooks by remember { mutableStateOf(listOf<Book>()) }
     var isDataLoading by remember { mutableStateOf(true) }
@@ -71,7 +71,6 @@ fun AppNavigation(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // FETCH FROM LOCAL DB WITH AUTO-SEEDING
     LaunchedEffect(refreshTrigger) {
         isDataLoading = true
         loadError = null
@@ -82,32 +81,23 @@ fun AppNavigation(
             val audioBooksFlow = db.audioBookDao().getAllAudioBooks()
 
             combine(booksFlow, gearFlow, coursesFlow, audioBooksFlow) { books, gear, courses, audioBooks ->
-                if (books.isEmpty() && gear.isEmpty() && courses.isEmpty() && audioBooks.isEmpty()) {
-                    null // Database is empty
-                } else {
-                    val gearAsBooks = gear.map { g ->
-                        Book(id = g.id, title = g.title, price = g.price, description = g.description, imageUrl = g.imageUrl, category = g.category, mainCategory = "University Gear", author = "Wrexham University")
-                    }
-                    val coursesAsBooks = courses.map { c ->
-                        Book(id = c.id, title = c.title, price = c.price, description = c.description, imageUrl = c.imageUrl, category = c.category, mainCategory = "University Courses", author = c.department, isInstallmentAvailable = c.isInstallmentAvailable, modulePrice = c.modulePrice)
-                    }
-                    val audioBooksAsBooks = audioBooks.map { ab ->
-                        Book(id = ab.id, title = ab.title, price = ab.price, description = ab.description, imageUrl = ab.imageUrl, category = ab.category, mainCategory = "Audio Books", author = ab.author, isAudioBook = true, audioUrl = ab.audioUrl)
-                    }
+                if (books.isEmpty() && gear.isEmpty() && courses.isEmpty() && audioBooks.isEmpty()) null 
+                else {
+                    val gearAsBooks = gear.map { g -> Book(id = g.id, title = g.title, price = g.price, description = g.description, imageUrl = g.imageUrl, category = g.category, mainCategory = "University Gear", author = "Wrexham University") }
+                    val coursesAsBooks = courses.map { c -> Book(id = c.id, title = c.title, price = c.price, description = c.description, imageUrl = c.imageUrl, category = c.category, mainCategory = "University Courses", author = c.department, isInstallmentAvailable = c.isInstallmentAvailable, modulePrice = c.modulePrice) }
+                    val audioBooksAsBooks = audioBooks.map { ab -> Book(id = ab.id, title = ab.title, price = ab.price, description = ab.description, imageUrl = ab.imageUrl, category = ab.category, mainCategory = "Audio Books", author = ab.author, isAudioBook = true, audioUrl = ab.audioUrl) }
                     books + gearAsBooks + coursesAsBooks + audioBooksAsBooks
                 }
             }.collect { combined ->
                 if (combined == null) {
-                    Log.d("AppNavigation", "Database empty, starting seeder...")
                     seedDatabase(db)
-                    refreshTrigger++ // Trigger a reload after seeding
+                    refreshTrigger++ 
                 } else {
                     allBooks = combined
                     isDataLoading = false
                 }
             }
         } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e("AppNavigation", "DATABASE ERROR", e)
             loadError = "Offline Database Error"
             isDataLoading = false
@@ -122,22 +112,21 @@ fun AppNavigation(
 
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
-            // Link Firebase user to our local data entry
-            val existing = db.userDao().getUserById(LOCAL_USER_ID)
+            val existing = db.userDao().getUserById(user.uid)
             if (existing == null) {
                 db.userDao().upsertUser(UserLocal(
-                    id = LOCAL_USER_ID,
+                    id = user.uid,
                     name = user.displayName ?: "Student",
                     email = user.email ?: "",
                     photoUrl = user.photoUrl?.toString(),
-                    balance = 1000.0 // Starting balance for new installs
+                    balance = 1000.0 
                 ))
             } else {
-                // Keep local data (balance/address) but update name/photo from Firebase
+                val newPhoto = user.photoUrl?.toString() ?: existing.photoUrl
                 db.userDao().upsertUser(existing.copy(
                     name = user.displayName ?: existing.name,
                     email = user.email ?: existing.email,
-                    photoUrl = user.photoUrl?.toString() ?: existing.photoUrl
+                    photoUrl = newPhoto
                 ))
             }
         }
@@ -146,48 +135,54 @@ fun AppNavigation(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            if (currentUser != null && currentRoute != "dashboard" && currentRoute != "profile" && currentRoute != "pdfReader/{bookId}" && currentRoute != "invoice/{bookId}" && currentRoute != "invoiceCreating/{bookId}") {
+            // Exclude "auth" route from showing the global header
+            if (currentUser != null && 
+                currentRoute != "auth" &&
+                currentRoute != "dashboard" && 
+                currentRoute != "profile" && 
+                currentRoute != "pdfReader/{bookId}" && 
+                currentRoute != "invoice/{bookId}" && 
+                currentRoute != "invoiceCreating/{bookId}") {
+                
                 Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        val firstName = currentUser?.displayName?.split(" ")?.firstOrNull() ?: "User"
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            UserAvatar(photoUrl = currentUser?.photoUrl?.toString(), modifier = Modifier.size(36.dp), onClick = { navController.navigate("dashboard") })
-                            Spacer(Modifier.width(12.dp)); Text("Hi, $firstName", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        val firstName = localUser?.name?.split(" ")?.firstOrNull() ?: currentUser?.displayName?.split(" ")?.firstOrNull() ?: "User"
+                        
+                        // Combined clickable area for Avatar and Greeting
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { navController.navigate("dashboard") }
+                                .padding(4.dp)
+                        ) {
+                            UserAvatar(
+                                photoUrl = localUser?.photoUrl ?: currentUser?.photoUrl?.toString(), 
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = "Hi, $firstName", 
+                                style = MaterialTheme.typography.labelLarge, 
+                                fontWeight = FontWeight.Bold, 
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         }
                         
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Balance Indicator
                             Surface(
                                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier.clickable { navController.navigate("dashboard") }
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
+                                Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.AccountBalanceWallet, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                                     Spacer(Modifier.width(6.dp))
-                                    Text(
-                                        text = "£${String.format(Locale.US, "%.2f", localUser?.balance ?: 0.0)}",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
+                                    Text(text = "£${String.format(Locale.US, "%.2f", localUser?.balance ?: 0.0)}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
                             }
-                            
                             Spacer(Modifier.width(8.dp))
-                            
-                            // Sign Out Icon Only
-                            IconButton(onClick = { showLogoutConfirm = true }) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Logout,
-                                    contentDescription = "Sign Out",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
+                            IconButton(onClick = { showLogoutConfirm = true }) { Icon(imageVector = Icons.AutoMirrored.Filled.Logout, contentDescription = "Sign Out", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(22.dp)) }
                         }
                     }
                 }

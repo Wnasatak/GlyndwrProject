@@ -265,7 +265,7 @@ fun IntegratedTopUpDialog(
                             enabled = !isProcessing && (currentStep != 1 || (customAmount.toDoubleOrNull() ?: selectedAmount) > 0),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text(if (currentStep == 1) "Continue" else "Pay")
+                            Text(if (currentStep == 1) "Continue" else "Top up")
                         }
                     }
                 }

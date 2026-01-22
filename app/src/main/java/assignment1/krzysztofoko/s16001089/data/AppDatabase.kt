@@ -15,9 +15,10 @@ import androidx.room.RoomDatabase
         WishlistItem::class, 
         PurchaseItem::class,
         ReviewLocal::class,
-        HistoryItem::class
+        HistoryItem::class,
+        ReviewInteraction::class
     ], 
-    version = 5, 
+    version = 8, 
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,10 +34,6 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                // We use createFromAsset so that if the emulator is wiped, 
-                // the app will restore itself using the database file located in:
-                // assets/database/glyndwr_database.db
-                
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,

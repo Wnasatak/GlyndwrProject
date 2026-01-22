@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.R
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
-import assignment1.krzysztofoko.s16001089.data.LOCAL_USER_ID
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import coil.compose.AsyncImage
@@ -91,17 +90,25 @@ fun AuthScreen(
             auth.signInWithCredential(credential).addOnSuccessListener { res ->
                 val user = res.user!!
                 scope.launch {
-                    val existing = db.userDao().getUserById(LOCAL_USER_ID)
-                    db.userDao().upsertUser(UserLocal(
-                        id = LOCAL_USER_ID,
-                        name = user.displayName ?: "Student",
-                        email = user.email ?: "",
-                        photoUrl = user.photoUrl?.toString(),
-                        balance = existing?.balance ?: 1000.0,
-                        address = existing?.address,
-                        selectedPaymentMethod = existing?.selectedPaymentMethod,
-                        role = existing?.role ?: "student"
-                    ))
+                    // Try to unify by email
+                    val existing = db.userDao().getUserByEmail(user.email ?: "")
+                    if (existing == null) {
+                        db.userDao().upsertUser(UserLocal(
+                            id = user.uid,
+                            name = user.displayName ?: "Student",
+                            email = user.email ?: "",
+                            photoUrl = user.photoUrl?.toString(),
+                            balance = 1000.0,
+                            role = "student"
+                        ))
+                    } else {
+                        // User exists by email but maybe different ID (e.g. seeded).
+                        // Update existing local record with Firebase UID or just update info.
+                        db.userDao().upsertUser(existing.copy(
+                            name = user.displayName ?: existing.name,
+                            photoUrl = user.photoUrl?.toString() ?: existing.photoUrl
+                        ))
+                    }
                     trigger2FA()
                 }
             }.addOnFailureListener { e ->
@@ -176,7 +183,7 @@ fun AuthScreen(
                         if (isTwoFactorStep) {
                             Icon(Icons.Default.VpnKey, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.height(24.dp))
-                            Text("Security Verification", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                            Text("Security Verification", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                             Text("A code has been sent to your academic email. (Demo: Code is in the notification below)", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
                             
                             Spacer(modifier = Modifier.height(32.dp))
@@ -270,7 +277,13 @@ fun AuthScreen(
                                     auth.createUserWithEmailAndPassword(trimmedEmail, password).addOnSuccessListener { res ->
                                         val user = res.user!!
                                         scope.launch {
-                                            db.userDao().upsertUser(UserLocal(id = LOCAL_USER_ID, name = firstName, email = trimmedEmail))
+                                            // New email registration - use UID
+                                            db.userDao().upsertUser(UserLocal(
+                                                id = user.uid, 
+                                                name = firstName, 
+                                                email = trimmedEmail,
+                                                balance = 1000.0
+                                            ))
                                             user.sendEmailVerification()
                                             isVerifyingEmail = true
                                             isLoading = false

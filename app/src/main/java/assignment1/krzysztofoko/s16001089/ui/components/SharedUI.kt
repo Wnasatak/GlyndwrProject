@@ -6,7 +6,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,6 +26,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -349,6 +354,59 @@ fun CategoryChip(
 }
 
 @Composable
+fun CategorySquareButton(
+    label: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    scale: Float = 1f,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(80.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+    ) {
+        Surface(
+            modifier = Modifier
+                .size(60.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick
+                ),
+            shape = RoundedCornerShape(16.dp),
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+            tonalElevation = if (isSelected) 8.dp else 2.dp,
+            border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = if (isSelected) Color.White else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            lineHeight = 12.sp
+        )
+    }
+}
+
+@Composable
 fun SelectionOption(
     title: String, 
     icon: ImageVector, 
@@ -375,7 +433,7 @@ fun SelectionOption(
 fun UserAvatar(
     photoUrl: String?,
     modifier: Modifier = Modifier,
-    iconSize: Int = 24,
+    iconSize: Int? = null,
     isLarge: Boolean = false,
     contentScale: ContentScale = ContentScale.Crop,
     onClick: (() -> Unit)? = null,
@@ -386,7 +444,6 @@ fun UserAvatar(
     
     val avatarModifier = Modifier
         .fillMaxSize()
-        .clip(CircleShape)
         .let { if (onClick != null) it.clickable(onClick = onClick) else it }
 
     val infiniteTransition = rememberInfiniteTransition(label = "avatarLoad")
@@ -405,7 +462,14 @@ fun UserAvatar(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.2f)
     ) {
-        Box(contentAlignment = Alignment.Center) {
+        BoxWithConstraints(contentAlignment = Alignment.Center) {
+            val autoIconSize = when {
+                isLarge && maxWidth > 100.dp -> 110.dp
+                isLarge -> 40.dp
+                else -> maxWidth * 0.8f
+            }
+            val finalIconSize = iconSize?.dp ?: autoIconSize
+
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(if (!photoUrl.isNullOrEmpty()) photoUrl else defaultAvatarPath)
@@ -416,11 +480,11 @@ fun UserAvatar(
                 contentScale = if (isUsingDefault) ContentScale.Fit else contentScale,
                 loading = { 
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
-                        AsyncImage(
-                            model = "file:///android_asset/images/media/Glyndwr_University_Logo.png",
-                            contentDescription = "Loading...",
-                            modifier = Modifier.fillMaxSize().clip(CircleShape).rotate(rotation),
-                            contentScale = ContentScale.Fit
+                        Icon(
+                            if (isLarge) Icons.Default.Person else Icons.Default.AccountCircle, 
+                            contentDescription = null, 
+                            modifier = Modifier.size(finalIconSize).rotate(rotation), 
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                         )
                     } 
                 },
@@ -432,7 +496,7 @@ fun UserAvatar(
                         Icon(
                             if (isLarge) Icons.Default.Person else Icons.Default.AccountCircle, 
                             contentDescription = null, 
-                            modifier = Modifier.size(iconSize.dp), 
+                            modifier = Modifier.size(finalIconSize), 
                             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                         )
                     }
@@ -492,7 +556,7 @@ fun TopUpDialog(onDismiss: () -> Unit, onComplete: (Double) -> Unit) {
                             val amtStr = String.format(Locale.US, "%.2f", finalAmt)
                             Icon(Icons.Default.Security, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.height(16.dp))
-                            Text("Confirm Payment", style = MaterialTheme.typography.titleMedium)
+                            Text("Confirm Transaction", style = MaterialTheme.typography.titleMedium)
                             Text(
                                 text = "You are about to add £$amtStr to your University Wallet.",
                                 textAlign = TextAlign.Center,
@@ -528,7 +592,7 @@ fun TopUpDialog(onDismiss: () -> Unit, onComplete: (Double) -> Unit) {
                         modifier = Modifier.weight(1f),
                         enabled = !isProcessing
                     ) {
-                        Text(if (step == 1) "Next" else "Confirm & Pay")
+                        Text(if (step == 1) "Next" else "Top Up Now")
                     }
                 }
             }
@@ -669,22 +733,20 @@ fun PasswordChangeDialog(userEmail: String, onDismiss: () -> Unit, onSuccess: ()
                                     val credential = EmailAuthProvider.getCredential(userEmail, currentPassword)
                                     auth.currentUser?.reauthenticate(credential)?.addOnCompleteListener {
                                         loading = false
-                                        if (it.isSuccessful) step = 2 else validationMsg = "The password you entered doesn't seem right. Please check it."
+                                        if (it.isSuccessful) step = 2 else validationMsg = "Incorrect password."
                                     }
                                 }
                                 2 -> {
-                                    if (newPassword.isEmpty()) { validationMsg = "The new password box is empty. Please fill it in."; return@Button }
-                                    if (newPassword.length < 6) { validationMsg = "That's a bit too short! Try at least 6 characters."; return@Button }
-                                    if (newPassword.length > 20) { validationMsg = "That's a bit too long! Keep it under 20 characters."; return@Button }
+                                    if (newPassword.isEmpty()) { validationMsg = "Empty password."; return@Button }
+                                    if (newPassword.length < 6) { validationMsg = "Too short."; return@Button }
                                     step = 3
                                 }
                                 3 -> {
-                                    if (repeatPassword.isEmpty()) { validationMsg = "Please repeat your new password here."; return@Button }
-                                    if (newPassword != repeatPassword) { validationMsg = "The passwords don't match. Please type them again carefully."; return@Button }
+                                    if (newPassword != repeatPassword) { validationMsg = "Mismatch."; return@Button }
                                     loading = true
                                     auth.currentUser?.updatePassword(newPassword)?.addOnCompleteListener {
                                         loading = false
-                                        if (it.isSuccessful) onSuccess() else validationMsg = it.exception?.localizedMessage ?: "Something went wrong. Please try again."
+                                        if (it.isSuccessful) onSuccess() else validationMsg = it.exception?.localizedMessage ?: "Failed."
                                     }
                                 }
                             }
@@ -740,12 +802,10 @@ fun AddressManagementDialog(onDismiss: () -> Unit, onSave: (String) -> Unit) {
                     OutlinedButton(onClick = { if (step == 1) onDismiss() else { step = 1; validationMsg = null } }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text(if (step == 1) "Cancel" else "Back") }
                     Button(onClick = {
                         if (step == 1) {
-                            if (street.isEmpty()) { validationMsg = "Please tell us your street address."; return@Button }
-                            if (city.isEmpty()) { validationMsg = "The city box is empty. Please fill it in."; return@Button }
+                            if (street.isEmpty() || city.isEmpty()) { validationMsg = "Fill all."; return@Button }
                             step = 2
                         } else {
-                            if (postcode.isEmpty()) { validationMsg = "We need your postcode to continue."; return@Button }
-                            if (country.isEmpty()) { validationMsg = "Please enter your country."; return@Button }
+                            if (postcode.isEmpty() || country.isEmpty()) { validationMsg = "Fill all."; return@Button }
                             onSave("$street, $city, $postcode, $country")
                         }
                     }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text(if (step == 2) "Save" else "Next") }

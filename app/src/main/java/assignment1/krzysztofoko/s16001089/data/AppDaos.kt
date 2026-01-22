@@ -94,7 +94,17 @@ data class ReviewLocal(
     val comment: String,
     val rating: Int,
     val timestamp: Long = System.currentTimeMillis(),
-    val parentReviewId: Int? = null // For threaded responses
+    val parentReviewId: Int? = null, // For threaded responses
+    val likes: Int = 0,
+    val dislikes: Int = 0
+)
+
+@Entity(tableName = "review_interactions", primaryKeys = ["reviewId", "userId"])
+data class ReviewInteraction(
+    val reviewId: Int,
+    val userId: String,
+    val userName: String,
+    val interactionType: String // "LIKE" or "DISLIKE"
 )
 
 @Dao
@@ -105,8 +115,26 @@ interface UserDao {
     @Query("SELECT * FROM users_local WHERE id = :id")
     suspend fun getUserById(id: String): UserLocal?
 
+    @Query("SELECT * FROM users_local WHERE email = :email LIMIT 1")
+    suspend fun getUserByEmail(email: String): UserLocal?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertUser(user: UserLocal)
+
+    @Query("DELETE FROM users_local WHERE id = :id")
+    suspend fun deleteUser(id: String)
+
+    @Query("UPDATE reviews SET userId = :newId WHERE userId = :oldId")
+    suspend fun migrateReviewOwner(oldId: String, newId: String)
+
+    @Query("UPDATE purchases SET userId = :newId WHERE userId = :oldId")
+    suspend fun migratePurchases(oldId: String, newId: String)
+
+    @Query("UPDATE wishlist SET userId = :newId WHERE userId = :oldId")
+    suspend fun migrateWishlist(oldId: String, newId: String)
+
+    @Query("UPDATE history SET userId = :newId WHERE userId = :oldId")
+    suspend fun migrateHistory(oldId: String, newId: String)
 
     @Query("UPDATE reviews SET userPhotoUrl = :newPhotoUrl WHERE userId = :userId")
     suspend fun updateReviewAvatars(userId: String, newPhotoUrl: String?)
@@ -149,4 +177,48 @@ interface UserDao {
 
     @Query("DELETE FROM reviews WHERE reviewId = :reviewId OR parentReviewId = :reviewId")
     suspend fun deleteReview(reviewId: Int)
+
+    @Query("UPDATE reviews SET likes = likes + 1 WHERE reviewId = :reviewId")
+    suspend fun incrementLikes(reviewId: Int)
+
+    @Query("UPDATE reviews SET dislikes = dislikes + 1 WHERE reviewId = :reviewId")
+    suspend fun incrementDislikes(reviewId: Int)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertInteraction(interaction: ReviewInteraction)
+
+    @Query("DELETE FROM review_interactions WHERE reviewId = :reviewId AND userId = :userId")
+    suspend fun deleteInteraction(reviewId: Int, userId: String)
+
+    @Query("SELECT * FROM review_interactions WHERE reviewId = :reviewId AND userId = :userId")
+    suspend fun getInteraction(reviewId: Int, userId: String): ReviewInteraction?
+
+    @Query("SELECT * FROM review_interactions WHERE reviewId = :reviewId")
+    fun getInteractionsForReview(reviewId: Int): Flow<List<ReviewInteraction>>
+
+    @Transaction
+    suspend fun toggleInteraction(reviewId: Int, userId: String, userName: String, type: String) {
+        val existing = getInteraction(reviewId, userId)
+        if (existing != null) {
+            if (existing.interactionType == "LIKE") {
+                decrementLikes(reviewId)
+            } else {
+                decrementDislikes(reviewId)
+            }
+            deleteInteraction(reviewId, userId)
+            if (existing.interactionType == type) return
+        }
+        if (type == "LIKE") {
+            incrementLikes(reviewId)
+        } else {
+            incrementDislikes(reviewId)
+        }
+        insertInteraction(ReviewInteraction(reviewId, userId, userName, type))
+    }
+
+    @Query("UPDATE reviews SET likes = CASE WHEN likes > 0 THEN likes - 1 ELSE 0 END WHERE reviewId = :reviewId")
+    suspend fun decrementLikes(reviewId: Int)
+
+    @Query("UPDATE reviews SET dislikes = CASE WHEN dislikes > 0 THEN dislikes - 1 ELSE 0 END WHERE reviewId = :reviewId")
+    suspend fun decrementDislikes(reviewId: Int)
 }

@@ -62,6 +62,8 @@ dependencies {
     // Room (Local Database)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
+    implementation(libs.androidx.compose.ui.text)
+    implementation(libs.androidx.compose.foundation)
     ksp(libs.room.compiler)
     
     // Google Auth

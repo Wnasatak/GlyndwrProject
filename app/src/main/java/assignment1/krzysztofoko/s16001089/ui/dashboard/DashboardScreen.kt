@@ -33,7 +33,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.data.LOCAL_USER_ID
+import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.ui.components.BookItemCard
 import assignment1.krzysztofoko.s16001089.ui.components.VerticalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
@@ -61,23 +61,32 @@ fun DashboardScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // FETCH DATA LOCALLY USING FIXED ID (Matching AppNavigation)
-    val localUser by db.userDao().getUserFlow(LOCAL_USER_ID).collectAsState(initial = null)
+    val userId = user?.uid ?: ""
 
-    val wishlistIds by remember(user) {
-        user?.let { db.userDao().getWishlistIds(it.uid) } ?: flowOf(emptyList())
+    // FETCH ALL DATA USING DYNAMIC UID
+    val localUser by remember(userId) {
+        if (userId.isNotEmpty()) db.userDao().getUserFlow(userId)
+        else flowOf(null)
+    }.collectAsState(initial = null)
+
+    val wishlistIds by remember(userId) {
+        if (userId.isNotEmpty()) db.userDao().getWishlistIds(userId)
+        else flowOf(emptyList())
     }.collectAsState(initial = emptyList())
 
-    val historyIds by remember(user) {
-        user?.let { db.userDao().getHistoryIds(it.uid) } ?: flowOf(emptyList())
+    val historyIds by remember(userId) {
+        if (userId.isNotEmpty()) db.userDao().getHistoryIds(userId)
+        else flowOf(emptyList())
     }.collectAsState(initial = emptyList())
 
-    val commentedIds by remember(user) {
-        user?.let { db.userDao().getCommentedProductIds(it.uid) } ?: flowOf(emptyList())
+    val commentedIds by remember(userId) {
+        if (userId.isNotEmpty()) db.userDao().getCommentedProductIds(userId)
+        else flowOf(emptyList())
     }.collectAsState(initial = emptyList())
 
-    val purchaseIds by remember(user) {
-        user?.let { db.userDao().getPurchaseIds(it.uid) } ?: flowOf(emptyList())
+    val purchaseIds by remember(userId) {
+        if (userId.isNotEmpty()) db.userDao().getPurchaseIds(userId)
+        else flowOf(emptyList())
     }.collectAsState(initial = emptyList())
 
     val lastViewedBooks = remember(historyIds, allBooks) {
@@ -131,7 +140,12 @@ fun DashboardScreen(
         ) { padding ->
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 item {
-                    DashboardHeader(user = user, role = localUser?.role ?: "student", balance = localUser?.balance ?: 0.0) { showPaymentPopup = true }
+                    DashboardHeader(
+                        name = localUser?.name ?: user?.displayName ?: "Student",
+                        photoUrl = localUser?.photoUrl ?: user?.photoUrl?.toString(),
+                        role = localUser?.role ?: "student", 
+                        balance = localUser?.balance ?: 0.0
+                    ) { showPaymentPopup = true }
                 }
 
                 if (localUser?.role == "admin") {
@@ -221,11 +235,9 @@ fun DashboardScreen(
                                                 text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) },
                                                 onClick = {
                                                     showMenu = false
-                                                    if (user != null) {
-                                                        scope.launch {
-                                                            db.userDao().deletePurchase(user.uid, book.id)
-                                                            snackbarHostState.showSnackbar("Removed from library")
-                                                        }
+                                                    scope.launch {
+                                                        db.userDao().deletePurchase(userId, book.id)
+                                                        snackbarHostState.showSnackbar("Removed from library")
                                                     }
                                                 },
                                                 leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }
@@ -266,14 +278,14 @@ fun DashboardScreen(
 }
 
 @Composable
-fun DashboardHeader(user: com.google.firebase.auth.FirebaseUser?, role: String, balance: Double, onTopUp: () -> Unit) {
+fun DashboardHeader(name: String, photoUrl: String?, role: String, balance: Double, onTopUp: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(32.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                UserAvatar(photoUrl = user?.photoUrl?.toString(), modifier = Modifier.size(64.dp), isLarge = true)
+                UserAvatar(photoUrl = photoUrl, modifier = Modifier.size(64.dp), isLarge = true)
                 Spacer(Modifier.width(16.dp))
                 Column {
-                    Text(text = "Welcome, ${user?.displayName ?: "Student"}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                    Text(text = "Welcome, $name", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                     Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(8.dp)) {
                         Text(text = role.uppercase(), modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }

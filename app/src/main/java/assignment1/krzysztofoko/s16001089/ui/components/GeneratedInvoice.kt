@@ -102,6 +102,12 @@ fun generateAndSaveInvoicePdf(
     canvas.drawText("Amount", 540f, 280f, paint)
 
     // Item Row
+    // Calculate actual values based on record if available (handles installments)
+    val actualTotal = purchaseRecord?.let { it.amountFromWallet + it.amountPaidExternal } ?: (book.price * 0.9)
+    val actualBase = actualTotal / 0.9
+    val calculatedDiscount = actualBase * 0.1
+    val actualBaseStr = String.format(Locale.US, "%.2f", actualBase)
+
     paint.textAlign = Paint.Align.LEFT
     paint.isFakeBoldText = true
     paint.textSize = 13f
@@ -117,8 +123,7 @@ fun generateAndSaveInvoicePdf(
     paint.textAlign = Paint.Align.RIGHT
     paint.textSize = 13f
     paint.color = android.graphics.Color.BLACK
-    val priceStr = String.format(Locale.US, "%.2f", book.price)
-    canvas.drawText("£$priceStr", 540f, 320f, paint)
+    canvas.drawText("£$actualBaseStr", 540f, 320f, paint)
 
     // Divider Line
     paint.strokeWidth = 1f
@@ -126,9 +131,6 @@ fun generateAndSaveInvoicePdf(
     canvas.drawLine(40f, 360f, 555f, 360f, paint)
 
     // Totals Section
-    val studentDiscount = book.price * 0.1
-    val totalAfterDiscount = book.price - studentDiscount
-    
     var currentY = 390f
     paint.textAlign = Paint.Align.RIGHT
     paint.textSize = 11f
@@ -137,19 +139,19 @@ fun generateAndSaveInvoicePdf(
     paint.color = android.graphics.Color.GRAY
     canvas.drawText("Subtotal:", 460f, currentY, paint)
     paint.color = android.graphics.Color.BLACK
-    canvas.drawText("£$priceStr", 540f, currentY, paint)
+    canvas.drawText("£$actualBaseStr", 540f, currentY, paint)
     currentY += 20f
     
     // Discount
     paint.color = android.graphics.Color.GRAY
     canvas.drawText("Student Discount (10%):", 460f, currentY, paint)
     paint.color = android.graphics.Color.parseColor("#2E7D32")
-    canvas.drawText("-£${String.format(Locale.US, "%.2f", studentDiscount)}", 540f, currentY, paint)
+    canvas.drawText("-£${String.format(Locale.US, "%.2f", calculatedDiscount)}", 540f, currentY, paint)
     currentY += 20f
 
-    // Wallet Usage
+    // Wallet Usage - only show as deduction if it was a split payment
     purchaseRecord?.let { record ->
-        if (record.amountFromWallet > 0) {
+        if (record.amountFromWallet > 0 && record.amountPaidExternal > 0) {
             paint.color = android.graphics.Color.GRAY
             canvas.drawText("Wallet Balance Applied:", 460f, currentY, paint)
             paint.color = android.graphics.Color.parseColor("#6C5CE7") // Primary-ish color
@@ -163,18 +165,30 @@ fun generateAndSaveInvoicePdf(
     paint.color = android.graphics.Color.parseColor("#F8F9FA")
     canvas.drawRect(350f, boxStartY, 555f, boxStartY + 40f, paint)
     
-    paint.textSize = 14f
+    paint.textSize = 13f
     paint.isFakeBoldText = true
     paint.color = android.graphics.Color.parseColor("#1A1A1A")
     
-    val finalLabel = if (purchaseRecord != null && purchaseRecord.amountPaidExternal > 0) {
-        "Paid via ${purchaseRecord.paymentMethod}:"
+    val finalLabel: String
+    val finalAmount: Double
+    
+    if (purchaseRecord != null) {
+        if (purchaseRecord.amountFromWallet > 0 && purchaseRecord.amountPaidExternal > 0) {
+            finalLabel = "Paid via ${purchaseRecord.paymentMethod}:"
+            finalAmount = purchaseRecord.amountPaidExternal
+        } else if (purchaseRecord.paymentMethod == "University Account") {
+            finalLabel = "Paid via Account:"
+            finalAmount = purchaseRecord.amountFromWallet
+        } else {
+            finalLabel = "Paid via ${purchaseRecord.paymentMethod}:"
+            finalAmount = purchaseRecord.amountPaidExternal
+        }
     } else {
-        "Total Paid:"
+        finalLabel = "Total Paid:"
+        finalAmount = actualTotal
     }
     
     canvas.drawText(finalLabel, 460f, boxStartY + 26f, paint)
-    val finalAmount = purchaseRecord?.amountPaidExternal ?: totalAfterDiscount
     canvas.drawText("£${String.format(Locale.US, "%.2f", finalAmount)}", 540f, boxStartY + 26f, paint)
 
     // Footer

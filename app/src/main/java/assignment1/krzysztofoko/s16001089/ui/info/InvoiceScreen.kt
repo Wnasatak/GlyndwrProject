@@ -30,11 +30,11 @@ import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
+import assignment1.krzysztofoko.s16001089.data.LOCAL_USER_ID
 import assignment1.krzysztofoko.s16001089.data.PurchaseItem
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.generateAndSaveInvoicePdf
 import coil.compose.AsyncImage
-import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -49,8 +49,6 @@ fun InvoiceScreen(
 ) {
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
-    val auth = FirebaseAuth.getInstance()
-    val userId = auth.currentUser?.uid ?: ""
     
     val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
     val currentDate = sdf.format(Date())
@@ -59,12 +57,11 @@ fun InvoiceScreen(
     var purchaseRecord by remember { mutableStateOf<PurchaseItem?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
-    LaunchedEffect(userId, book.id) {
-        purchaseRecord = db.userDao().getPurchaseRecord(userId, book.id)
+    LaunchedEffect(book.id) {
+        purchaseRecord = db.userDao().getPurchaseRecord(LOCAL_USER_ID, book.id)
         isLoading = false
     }
 
-    // Animation for the logo to spin once on entry
     val rotation = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         rotation.animateTo(
@@ -157,6 +154,11 @@ fun InvoiceScreen(
                             Text("PURCHASED ITEM", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                             Spacer(modifier = Modifier.height(12.dp))
                             
+                            // Use actual prices from record if available
+                            val actualTotal = purchaseRecord?.let { it.amountFromWallet + it.amountPaidExternal } ?: (book.price * 0.9)
+                            val actualBase = actualTotal / 0.9
+                            val calculatedDiscount = actualBase * 0.1
+
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
@@ -175,33 +177,43 @@ fun InvoiceScreen(
                                     Text(book.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text("${book.category} • ${if (book.isAudioBook) "Digital" else "Hardcopy"}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                 }
-                                Text("£${String.format(Locale.US, "%.2f", book.price)}", fontWeight = FontWeight.Medium)
+                                Text("£${String.format(Locale.US, "%.2f", actualBase)}", fontWeight = FontWeight.Medium)
                             }
                             
                             Spacer(modifier = Modifier.height(32.dp))
                             
                             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp)).padding(16.dp)) {
-                                val studentDiscount = book.price * 0.1
-                                val total = book.price - studentDiscount
-                                
-                                InvoiceSummaryRow("Subtotal", "£${String.format(Locale.US, "%.2f", book.price)}")
-                                InvoiceSummaryRow("Student Discount (10%)", "-£${String.format(Locale.US, "%.2f", studentDiscount)}", color = Color(0xFF2E7D32))
+                                InvoiceSummaryRow("Subtotal", "£${String.format(Locale.US, "%.2f", actualBase)}")
+                                InvoiceSummaryRow("Student Discount (10%)", "-£${String.format(Locale.US, "%.2f", calculatedDiscount)}", color = Color(0xFF2E7D32))
                                 
                                 purchaseRecord?.let { record ->
-                                    if (record.amountFromWallet > 0) {
+                                    // Only show as deduction if it was a split payment
+                                    if (record.amountFromWallet > 0 && record.amountPaidExternal > 0) {
                                         InvoiceSummaryRow("Account Balance Applied", "-£${String.format(Locale.US, "%.2f", record.amountFromWallet)}", color = MaterialTheme.colorScheme.primary)
                                     }
                                 }
                                 
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                                 
-                                val finalChargeLabel = if (purchaseRecord != null && purchaseRecord!!.amountPaidExternal > 0) {
-                                    "Total Paid via ${purchaseRecord!!.paymentMethod}"
+                                val finalChargeLabel: String
+                                val finalAmount: Double
+
+                                if (purchaseRecord != null) {
+                                    if (purchaseRecord!!.amountFromWallet > 0 && purchaseRecord!!.amountPaidExternal > 0) {
+                                        finalChargeLabel = "Paid via ${purchaseRecord!!.paymentMethod}"
+                                        finalAmount = purchaseRecord!!.amountPaidExternal
+                                    } else if (purchaseRecord!!.paymentMethod == "University Account") {
+                                        finalChargeLabel = "Paid via University Account"
+                                        finalAmount = purchaseRecord!!.amountFromWallet
+                                    } else {
+                                        finalChargeLabel = "Paid via ${purchaseRecord!!.paymentMethod}"
+                                        finalAmount = purchaseRecord!!.amountPaidExternal
+                                    }
                                 } else {
-                                    "Total Paid"
+                                    finalChargeLabel = "Total Paid"
+                                    finalAmount = actualTotal
                                 }
                                 
-                                val finalAmount = purchaseRecord?.amountPaidExternal ?: total
                                 InvoiceSummaryRow(finalChargeLabel, "£${String.format(Locale.US, "%.2f", finalAmount)}", isTotal = true)
                             }
                             
