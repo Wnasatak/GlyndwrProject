@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -36,6 +37,15 @@ fun InvoiceCreatingScreen(
 ) {
     var progress by remember { mutableFloatStateOf(0f) }
     var isComplete by remember { mutableStateOf(false) }
+
+    // Animation for the logo to spin once on entry
+    val rotation = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        rotation.animateTo(
+            targetValue = 360f,
+            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
+        )
+    }
 
     LaunchedEffect(Unit) {
         // Simulate invoice generation progress
@@ -108,6 +118,7 @@ fun InvoiceCreatingScreen(
                                     contentDescription = null,
                                     modifier = Modifier
                                         .size(64.dp)
+                                        .graphicsLayer { rotationZ = rotation.value }
                                         .clip(CircleShape),
                                     contentScale = ContentScale.Crop
                                 )

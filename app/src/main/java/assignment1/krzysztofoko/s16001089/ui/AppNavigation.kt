@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,7 +36,9 @@ import assignment1.krzysztofoko.s16001089.ui.components.InvoiceCreatingScreen
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
 fun AppNavigation(
@@ -51,6 +54,9 @@ fun AppNavigation(
     
     var currentUser by remember { mutableStateOf(auth.currentUser) }
     var showLogoutConfirm by remember { mutableStateOf(false) }
+
+    // FETCH DATA LOCALLY USING FIXED ID
+    val localUser by db.userDao().getUserFlow(LOCAL_USER_ID).collectAsState(initial = null)
 
     var allBooks by remember { mutableStateOf(listOf<Book>()) }
     var isDataLoading by remember { mutableStateOf(true) }
@@ -68,6 +74,7 @@ fun AppNavigation(
     // FETCH FROM LOCAL DB WITH AUTO-SEEDING
     LaunchedEffect(refreshTrigger) {
         isDataLoading = true
+        loadError = null
         try {
             val booksFlow = db.bookDao().getAllBooks()
             val gearFlow = db.gearDao().getAllGear()
@@ -91,16 +98,16 @@ fun AppNavigation(
                 }
             }.collect { combined ->
                 if (combined == null) {
-                    // Seed the database if nothing was found
+                    Log.d("AppNavigation", "Database empty, starting seeder...")
                     seedDatabase(db)
-                    delay(1000)
-                    refreshTrigger++ // Refresh to fetch newly seeded data
+                    refreshTrigger++ // Trigger a reload after seeding
                 } else {
                     allBooks = combined
                     isDataLoading = false
                 }
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e("AppNavigation", "DATABASE ERROR", e)
             loadError = "Offline Database Error"
             isDataLoading = false
@@ -115,12 +122,24 @@ fun AppNavigation(
 
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
-            db.userDao().upsertUser(UserLocal(
-                id = user.uid,
-                name = user.displayName ?: "Student",
-                email = user.email ?: "",
-                photoUrl = user.photoUrl?.toString()
-            ))
+            // Link Firebase user to our local data entry
+            val existing = db.userDao().getUserById(LOCAL_USER_ID)
+            if (existing == null) {
+                db.userDao().upsertUser(UserLocal(
+                    id = LOCAL_USER_ID,
+                    name = user.displayName ?: "Student",
+                    email = user.email ?: "",
+                    photoUrl = user.photoUrl?.toString(),
+                    balance = 1000.0 // Starting balance for new installs
+                ))
+            } else {
+                // Keep local data (balance/address) but update name/photo from Firebase
+                db.userDao().upsertUser(existing.copy(
+                    name = user.displayName ?: existing.name,
+                    email = user.email ?: existing.email,
+                    photoUrl = user.photoUrl?.toString() ?: existing.photoUrl
+                ))
+            }
         }
     }
 
@@ -135,8 +154,40 @@ fun AppNavigation(
                             UserAvatar(photoUrl = currentUser?.photoUrl?.toString(), modifier = Modifier.size(36.dp), onClick = { navController.navigate("dashboard") })
                             Spacer(Modifier.width(12.dp)); Text("Hi, $firstName", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
-                        Button(onClick = { showLogoutConfirm = true }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.error), shape = RoundedCornerShape(8.dp), modifier = Modifier.height(36.dp)) {
-                            Icon(Icons.AutoMirrored.Filled.Logout, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Sign Out", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Balance Indicator
+                            Surface(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.clickable { navController.navigate("dashboard") }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.AccountBalanceWallet, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = "£${String.format(Locale.US, "%.2f", localUser?.balance ?: 0.0)}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                            
+                            Spacer(Modifier.width(8.dp))
+                            
+                            // Sign Out Icon Only
+                            IconButton(onClick = { showLogoutConfirm = true }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                                    contentDescription = "Sign Out",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
                         }
                     }
                 }

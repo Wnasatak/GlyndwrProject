@@ -3,6 +3,8 @@ package assignment1.krzysztofoko.s16001089.data
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
+const val LOCAL_USER_ID = "local_student_001"
+
 @Dao
 interface BookDao {
     @Query("SELECT * FROM books")
@@ -70,7 +72,14 @@ data class UserLocal(
 data class WishlistItem(val userId: String, val productId: String, val addedAt: Long = System.currentTimeMillis())
 
 @Entity(tableName = "purchases", primaryKeys = ["userId", "productId"])
-data class PurchaseItem(val userId: String, val productId: String, val purchasedAt: Long = System.currentTimeMillis())
+data class PurchaseItem(
+    val userId: String,
+    val productId: String,
+    val purchasedAt: Long = System.currentTimeMillis(),
+    val paymentMethod: String = "Unknown",
+    val amountFromWallet: Double = 0.0,
+    val amountPaidExternal: Double = 0.0
+)
 
 @Entity(tableName = "history", primaryKeys = ["userId", "productId"])
 data class HistoryItem(val userId: String, val productId: String, val viewedAt: Long = System.currentTimeMillis())
@@ -84,7 +93,8 @@ data class ReviewLocal(
     val userPhotoUrl: String? = null,
     val comment: String,
     val rating: Int,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val parentReviewId: Int? = null // For threaded responses
 )
 
 @Dao
@@ -113,6 +123,9 @@ interface UserDao {
     @Query("SELECT productId FROM purchases WHERE userId = :userId ORDER BY purchasedAt DESC")
     fun getPurchaseIds(userId: String): Flow<List<String>>
 
+    @Query("SELECT * FROM purchases WHERE userId = :userId AND productId = :productId")
+    suspend fun getPurchaseRecord(userId: String, productId: String): PurchaseItem?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addPurchase(item: PurchaseItem)
 
@@ -128,12 +141,12 @@ interface UserDao {
     @Query("SELECT DISTINCT productId FROM reviews WHERE userId = :userId ORDER BY timestamp DESC")
     fun getCommentedProductIds(userId: String): Flow<List<String>>
 
-    @Query("SELECT * FROM reviews WHERE productId = :productId ORDER BY timestamp DESC")
+    @Query("SELECT * FROM reviews WHERE productId = :productId ORDER BY timestamp ASC")
     fun getReviewsForProduct(productId: String): Flow<List<ReviewLocal>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addReview(review: ReviewLocal)
 
-    @Query("DELETE FROM reviews WHERE reviewId = :reviewId")
+    @Query("DELETE FROM reviews WHERE reviewId = :reviewId OR parentReviewId = :reviewId")
     suspend fun deleteReview(reviewId: Int)
 }

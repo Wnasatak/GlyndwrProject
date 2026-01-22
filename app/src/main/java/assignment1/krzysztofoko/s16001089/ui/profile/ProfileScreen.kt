@@ -57,14 +57,14 @@ fun ProfileScreen(
     val user = auth.currentUser
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    
+
     var firstName by remember { mutableStateOf("") }
     var surname by remember { mutableStateOf("") }
     var emailDisplay by remember { mutableStateOf(user?.email ?: "") }
-    
+
     var localPreviewUri by remember { mutableStateOf<Uri?>(null) }
     var isUploading by remember { mutableStateOf(false) }
-    
+
     var selectedPaymentMethod by remember { mutableStateOf("University Account") }
     var selectedAddress by remember { mutableStateOf("No address added yet") }
     var currentBalance by remember { mutableDoubleStateOf(0.0) }
@@ -128,10 +128,10 @@ fun ProfileScreen(
                         balance = currentBalance,
                         role = currentRole
                     ))
-                    
+
                     // NEW: Update all existing reviews to use the new avatar
                     db.userDao().updateReviewAvatars(user.uid, localFileUri)
-                    
+
                     user.updateProfile(userProfileChangeRequest { photoUri = Uri.parse(localFileUri) })
                     isUploading = false
                     snackbarHostState.showSnackbar("Avatar updated everywhere!")
@@ -291,7 +291,7 @@ fun ProfileScreen(
                                     Spacer(modifier = Modifier.height(32.dp))
                                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                         OutlinedButton(onClick = { currentPopupStep = 1 }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Back") }
-                                        Button(onClick = { 
+                                        Button(onClick = {
                                             if (selectedPaymentMethod.contains("Card")) {
                                                 selectedPaymentMethod = "Card Ending in ${cardNumber.takeLast(4).ifEmpty { "4242" }}"
                                             }
@@ -306,7 +306,7 @@ fun ProfileScreen(
                                                     balance = currentBalance,
                                                     role = currentRole
                                                 ))
-                                                showSelectionPopup = false 
+                                                showSelectionPopup = false
                                             }
                                         }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Confirm") }
                                     }
@@ -319,7 +319,7 @@ fun ProfileScreen(
         }
 
         if (showPasswordPopup) { PasswordChangeDialog(userEmail = user?.email ?: "", onDismiss = { showPasswordPopup = false }, onSuccess = { showPasswordPopup = false; scope.launch { snackbarHostState.showSnackbar("Got it! Your password has been updated safely.") } }) }
-        if (showAddressPopup) { AddressManagementDialog(onDismiss = { showAddressPopup = false }, onSave = { newAddr -> 
+        if (showAddressPopup) { AddressManagementDialog(onDismiss = { showAddressPopup = false }, onSave = { newAddr ->
             val userId = user?.uid ?: return@AddressManagementDialog
             selectedAddress = newAddr
             showAddressPopup = false

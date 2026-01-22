@@ -20,25 +20,29 @@ private val DarkColorScheme = darkColorScheme(
     onPrimary = Color.Black,
     onSecondary = Color.Black,
     onBackground = DarkOnSurface,
-    onSurface = DarkOnSurface
+    onSurface = DarkOnSurface,
+    outline = DarkBorder,
+    outlineVariant = DarkBorder.copy(alpha = 0.5f)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = BluePrimary,
+    primary = VibrantViolet,
     secondary = BlueSecondary,
     tertiary = BlueTertiary,
     background = LightBg,
     surface = Color.White,
+    surfaceVariant = Color(0xFFF2F0F7),
     onPrimary = Color.White,
     onSecondary = Color.White,
     onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F)
+    onSurface = Color(0xFF1C1B1F),
+    outline = Color(0xFF79747E),
+    outlineVariant = Color(0xFFCAC4D0)
 )
 
 @Composable
 fun GlyndwrProjectTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Set to false to prioritize our custom theme
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {

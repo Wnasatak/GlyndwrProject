@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,6 +51,15 @@ fun AboutScreen(
         label = "initialFrameAlpha"
     )
 
+    // Logo spin animation on entry
+    val logoRotation = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        logoRotation.animateTo(
+            targetValue = 360f,
+            animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing)
+        )
+    }
+
     // Flashing light effect animation
     val infiniteTransition = rememberInfiniteTransition(label = "glow")
     val glowScale by infiniteTransition.animateFloat(
@@ -71,7 +81,7 @@ fun AboutScreen(
         label = "glowAlpha"
     )
 
-    val vibrantVioletColor = Color(0xFF9D4EDD) 
+    val accentColor = MaterialTheme.colorScheme.primary
 
     LaunchedEffect(Unit) {
         delay(1000) 
@@ -122,7 +132,7 @@ fun AboutScreen(
                                 .alpha(glowAlpha)
                                 .background(
                                     brush = Brush.radialGradient(
-                                        colors = listOf(vibrantVioletColor, Color.Transparent)
+                                        colors = listOf(accentColor, Color.Transparent)
                                     ),
                                     shape = CircleShape
                                 )
@@ -135,14 +145,17 @@ fun AboutScreen(
                             shadowElevation = 8.dp,
                             border = BorderStroke(
                                 width = 4.dp, 
-                                color = vibrantVioletColor.copy(alpha = maxOf(initialFrameAlpha, glowAlpha))
+                                color = accentColor.copy(alpha = maxOf(initialFrameAlpha, glowAlpha))
                             )
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 AsyncImage(
                                     model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
                                     contentDescription = "Glyndŵr Logo",
-                                    modifier = Modifier.size(110.dp).clip(CircleShape),
+                                    modifier = Modifier
+                                        .size(110.dp)
+                                        .graphicsLayer { rotationZ = logoRotation.value }
+                                        .clip(CircleShape),
                                     contentScale = ContentScale.Crop
                                 )
                             }

@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
         ReviewLocal::class,
         HistoryItem::class
     ], 
-    version = 4, 
+    version = 5, 
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,16 +33,16 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                // By removing createFromAsset, we ensure that user data (likes, history, reviews)
-                // is preserved in the local database file. 
-                // The catalog (books, gear, etc.) will still be seeded by our DatabaseSeeder
-                // if the tables are ever found to be empty.
+                // We use createFromAsset so that if the emulator is wiped, 
+                // the app will restore itself using the database file located in:
+                // assets/database/glyndwr_database.db
                 
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "glyndwr_database.db"
                 )
+                .createFromAsset("database/glyndwr_database.db")
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

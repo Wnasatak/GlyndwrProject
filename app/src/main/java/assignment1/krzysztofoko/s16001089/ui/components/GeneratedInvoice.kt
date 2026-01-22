@@ -13,11 +13,19 @@ import android.provider.MediaStore
 import android.widget.Toast
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
+import assignment1.krzysztofoko.s16001089.data.PurchaseItem
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.*
 
-fun generateAndSaveInvoicePdf(context: Context, book: Book, userName: String, invoiceId: String, date: String) {
+fun generateAndSaveInvoicePdf(
+    context: Context, 
+    book: Book, 
+    userName: String, 
+    invoiceId: String, 
+    date: String,
+    purchaseRecord: PurchaseItem? = null
+) {
     val pdfDocument = PdfDocument()
     val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
     val page = pdfDocument.startPage(pageInfo)
@@ -37,7 +45,7 @@ fun generateAndSaveInvoicePdf(context: Context, book: Book, userName: String, in
     headerPaint.color = android.graphics.Color.parseColor("#F8F9FA")
     canvas.drawRect(0f, 0f, 595f, 150f, headerPaint)
 
-    // Title: Changed from "OFFICIAL INVOICE" to "INVOICE"
+    // Title
     paint.textSize = 32f
     paint.isFakeBoldText = true
     paint.color = android.graphics.Color.parseColor("#1A1A1A")
@@ -119,31 +127,55 @@ fun generateAndSaveInvoicePdf(context: Context, book: Book, userName: String, in
 
     // Totals Section
     val studentDiscount = book.price * 0.1
-    val total = book.price - studentDiscount
+    val totalAfterDiscount = book.price - studentDiscount
     
+    var currentY = 390f
     paint.textAlign = Paint.Align.RIGHT
     paint.textSize = 11f
-    paint.color = android.graphics.Color.GRAY
-    canvas.drawText("Subtotal:", 460f, 390f, paint)
-    paint.color = android.graphics.Color.BLACK
-    canvas.drawText("£$priceStr", 540f, 390f, paint)
     
+    // Subtotal
     paint.color = android.graphics.Color.GRAY
-    canvas.drawText("Student Discount (10%):", 460f, 410f, paint)
+    canvas.drawText("Subtotal:", 460f, currentY, paint)
+    paint.color = android.graphics.Color.BLACK
+    canvas.drawText("£$priceStr", 540f, currentY, paint)
+    currentY += 20f
+    
+    // Discount
+    paint.color = android.graphics.Color.GRAY
+    canvas.drawText("Student Discount (10%):", 460f, currentY, paint)
     paint.color = android.graphics.Color.parseColor("#2E7D32")
-    val discountStr = String.format(Locale.US, "%.2f", studentDiscount)
-    canvas.drawText("-£$discountStr", 540f, 410f, paint)
+    canvas.drawText("-£${String.format(Locale.US, "%.2f", studentDiscount)}", 540f, currentY, paint)
+    currentY += 20f
+
+    // Wallet Usage
+    purchaseRecord?.let { record ->
+        if (record.amountFromWallet > 0) {
+            paint.color = android.graphics.Color.GRAY
+            canvas.drawText("Wallet Balance Applied:", 460f, currentY, paint)
+            paint.color = android.graphics.Color.parseColor("#6C5CE7") // Primary-ish color
+            canvas.drawText("-£${String.format(Locale.US, "%.2f", record.amountFromWallet)}", 540f, currentY, paint)
+            currentY += 20f
+        }
+    }
     
     // Total Box
+    val boxStartY = currentY + 10f
     paint.color = android.graphics.Color.parseColor("#F8F9FA")
-    canvas.drawRect(380f, 430f, 555f, 470f, paint)
+    canvas.drawRect(350f, boxStartY, 555f, boxStartY + 40f, paint)
     
-    paint.textSize = 16f
+    paint.textSize = 14f
     paint.isFakeBoldText = true
     paint.color = android.graphics.Color.parseColor("#1A1A1A")
-    canvas.drawText("Total Paid:", 460f, 456f, paint)
-    val totalStr = String.format(Locale.US, "%.2f", total)
-    canvas.drawText("£$totalStr", 540f, 456f, paint)
+    
+    val finalLabel = if (purchaseRecord != null && purchaseRecord.amountPaidExternal > 0) {
+        "Paid via ${purchaseRecord.paymentMethod}:"
+    } else {
+        "Total Paid:"
+    }
+    
+    canvas.drawText(finalLabel, 460f, boxStartY + 26f, paint)
+    val finalAmount = purchaseRecord?.amountPaidExternal ?: totalAfterDiscount
+    canvas.drawText("£${String.format(Locale.US, "%.2f", finalAmount)}", 540f, boxStartY + 26f, paint)
 
     // Footer
     paint.textSize = 11f

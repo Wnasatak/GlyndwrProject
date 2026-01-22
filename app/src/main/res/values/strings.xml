@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">Glyndŵr Store</string>
-    <!-- Replace this with your actual Web Client ID from Firebase Console -> Authentication -> Sign-in method -> Google -->
-    <string name="default_web_client_id">1041414141414-fakeclientid.apps.googleusercontent.com</string>
+    <!-- Web Client ID from google-services.json (client_type 3) -->
+    <string name="default_web_client_id">481753151220-bvispq410thsgk021q74tbd2kh0u1shd.apps.googleusercontent.com</string>
 </resources>

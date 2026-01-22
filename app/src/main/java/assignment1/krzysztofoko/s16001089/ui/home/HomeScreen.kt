@@ -1,6 +1,7 @@
 package assignment1.krzysztofoko.s16001089.ui.home
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +57,15 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
+    // Animation for the logo to spin once on entry
+    val rotation = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        rotation.animateTo(
+            targetValue = 360f,
+            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing)
+        )
+    }
+
     var selectedMainCategory by remember { mutableStateOf("All") }
     var selectedSubCategory by remember { mutableStateOf("All Genres") }
 
@@ -103,7 +114,10 @@ fun HomeScreen(
                             AsyncImage(
                                 model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
                                 contentDescription = "Logo",
-                                modifier = Modifier.size(32.dp).clip(CircleShape),
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .graphicsLayer { rotationZ = rotation.value }
+                                    .clip(CircleShape),
                                 contentScale = ContentScale.Fit
                             )
                             Spacer(Modifier.width(8.dp))
@@ -291,7 +305,7 @@ fun MemberWelcomeBanner() {
 fun CategoryFilterBar(categories: List<String>, selectedCategory: String, onCategorySelected: (String) -> Unit) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(categories) { category ->
-            CategoryChip(category = category, isSelected = selectedCategory == category, onSelected = { onCategorySelected(category) })
+            CategoryChip(category = category, isSelected = selectedCategory == category, onCategorySelected = onCategorySelected)
         }
     }
 }

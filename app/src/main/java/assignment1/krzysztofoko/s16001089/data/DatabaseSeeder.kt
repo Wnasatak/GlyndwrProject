@@ -3,7 +3,7 @@ package assignment1.krzysztofoko.s16001089.data
 import android.util.Log
 
 suspend fun seedDatabase(db: AppDatabase) {
-    Log.d("DatabaseSeeder", "Starting to seed local database with expanded catalog...")
+    Log.d("DatabaseSeeder", "Starting to seed local database with expanded catalog and user data...")
     
     // 1. Books
     val sampleBooks = listOf(
@@ -44,6 +44,45 @@ suspend fun seedDatabase(db: AppDatabase) {
         Gear(title = "University Sports Jersey", price = 40.00, category = "Apparel", description = "High-performance athletic wear designed for Wrexham University teams. Breathable, moisture-wicking fabric that ensures you stay cool and comfortable while representing your uni.", imageUrl = "file:///android_asset/images/media/Glyndwr_University_Logo.png")
     ).map { it.copy(id = it.title.lowercase().replace(" ", "_")) }
     db.gearDao().insertAll(sampleGear)
+    
+    // 5. User Seeding
+    val demoUser = UserLocal(
+        id = LOCAL_USER_ID,
+        name = "Krzysztof Oko",
+        email = "k.oko@student.wrexham.ac.uk",
+        balance = 1000.0,
+        address = "Wrexham University Campus, Mold Road, LL11 2AW",
+        role = "student"
+    )
+    db.userDao().upsertUser(demoUser)
+    
+    // 6. Wishlist Seeding
+    db.userDao().addToWishlist(WishlistItem(LOCAL_USER_ID, "clean_architecture"))
+    db.userDao().addToWishlist(WishlistItem(LOCAL_USER_ID, "official_hoodie"))
+    
+    // 7. Purchase Seeding
+    db.userDao().addPurchase(PurchaseItem(LOCAL_USER_ID, "student_handbook", purchasedAt = System.currentTimeMillis(), paymentMethod = "Free"))
+    db.userDao().addPurchase(PurchaseItem(LOCAL_USER_ID, "atomic_habits", purchasedAt = System.currentTimeMillis() - 86400000, paymentMethod = "Wallet", amountFromWallet = 12.0))
+    
+    // 8. History Seeding
+    db.userDao().addToHistory(HistoryItem(LOCAL_USER_ID, "kotlin_in_action"))
+    db.userDao().addToHistory(HistoryItem(LOCAL_USER_ID, "bsc_computer_science"))
+    
+    // 9. Review Seeding
+    db.userDao().addReview(ReviewLocal(
+        productId = "clean_architecture",
+        userId = LOCAL_USER_ID,
+        userName = "Krzysztof Oko",
+        comment = "An absolute masterpiece. Every developer should read this.",
+        rating = 5
+    ))
+    db.userDao().addReview(ReviewLocal(
+        productId = "official_hoodie",
+        userId = "other_user",
+        userName = "Anonymous Student",
+        comment = "Great quality but runs a bit large.",
+        rating = 4
+    ))
     
     Log.d("DatabaseSeeder", "Database Seeding Finished!")
 }

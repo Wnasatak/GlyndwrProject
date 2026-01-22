@@ -33,9 +33,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
+import assignment1.krzysztofoko.s16001089.data.LOCAL_USER_ID
 import assignment1.krzysztofoko.s16001089.ui.components.BookItemCard
 import assignment1.krzysztofoko.s16001089.ui.components.VerticalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
+import assignment1.krzysztofoko.s16001089.ui.components.IntegratedTopUpDialog
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -59,10 +61,8 @@ fun DashboardScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // Local DB State
-    val localUser by remember(user) {
-        user?.let { db.userDao().getUserFlow(it.uid) } ?: flowOf(null)
-    }.collectAsState(initial = null)
+    // FETCH DATA LOCALLY USING FIXED ID (Matching AppNavigation)
+    val localUser by db.userDao().getUserFlow(LOCAL_USER_ID).collectAsState(initial = null)
 
     val wishlistIds by remember(user) {
         user?.let { db.userDao().getWishlistIds(it.uid) } ?: flowOf(emptyList())
@@ -243,27 +243,24 @@ fun DashboardScreen(
         }
 
         if (showPaymentPopup) {
-            Dialog(onDismissRequest = { showPaymentPopup = false }) {
-                Surface(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
-                    Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Payment Settings", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Button(onClick = { showPaymentPopup = false; navController.navigate("profile") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Icon(Icons.Default.Edit, null); Spacer(Modifier.width(8.dp)); Text("Manage in Profile") }
-                        Spacer(modifier = Modifier.height(32.dp))
-                        Text("Active Method", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
-                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.primary)
-                                Spacer(Modifier.width(16.dp))
-                                Text(localUser?.selectedPaymentMethod ?: "University Account", fontWeight = FontWeight.Bold)
-                            }
+            IntegratedTopUpDialog(
+                user = localUser,
+                onDismiss = { showPaymentPopup = false },
+                onManageProfile = { 
+                    showPaymentPopup = false
+                    navController.navigate("profile")
+                },
+                onTopUpComplete = { amount ->
+                    scope.launch {
+                        localUser?.let { currentUser ->
+                            val updatedUser = currentUser.copy(balance = currentUser.balance + amount)
+                            db.userDao().upsertUser(updatedUser)
+                            snackbarHostState.showSnackbar("£${String.format(Locale.US, "%.2f", amount)} added to your wallet!")
+                            showPaymentPopup = false
                         }
-                        Spacer(modifier = Modifier.height(24.dp))
-                        TextButton(onClick = { showPaymentPopup = false }) { Text("Close") }
                     }
                 }
-            }
+            )
         }
     }
 }
