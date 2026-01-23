@@ -8,9 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -94,7 +91,6 @@ fun HorizontalWavyBackground(
 
     val bgColor = if (isDarkTheme) WaveSlateDarkBg else Color.White
     val waveColor1 = if (isDarkTheme) WaveSlateDark1 else WaveBlueLight1
-    val waveColor2 = if (isDarkTheme) WaveSlateDark2 else WaveBlueLight2
 
     ComposeCanvas(modifier = Modifier.fillMaxSize()) {
         drawRect(color = bgColor)
@@ -126,7 +122,7 @@ fun HorizontalWavyBackground(
             lineTo(width, height)
             close()
         }
-        drawPath(path2, color = waveColor1.copy(alpha = 0.5f)) // Use consistent base color
+        drawPath(path2, color = waveColor1.copy(alpha = 0.5f))
     }
 }
 
@@ -248,6 +244,7 @@ fun BookItemCard(
     onClick: () -> Unit,
     imageOverlay: @Composable (BoxScope.() -> Unit)? = null,
     cornerContent: @Composable (BoxScope.() -> Unit)? = null,
+    topEndContent: @Composable (BoxScope.() -> Unit)? = null,
     trailingContent: @Composable (RowScope.() -> Unit)? = null,
     bottomContent: @Composable (ColumnScope.() -> Unit)? = null,
     statusBadge: @Composable (RowScope.() -> Unit)? = null
@@ -276,12 +273,38 @@ fun BookItemCard(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = if (book.isAudioBook) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook,
-                        contentDescription = null,
-                        modifier = Modifier.size(40.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                    )
+                    if (book.imageUrl.isNotEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AsyncImage(
+                                model = book.imageUrl,
+                                contentDescription = book.title,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            // Enhanced bottom shade overlay
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.Transparent,
+                                                Color.Black.copy(alpha = 0.1f),
+                                                Color.Black.copy(alpha = 0.65f)
+                                            ),
+                                            startY = 0f 
+                                        )
+                                    )
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = if (book.isAudioBook) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                    }
                     imageOverlay?.invoke(this)
                 }
                 Spacer(modifier = Modifier.width(16.dp))
@@ -320,6 +343,10 @@ fun BookItemCard(
                         statusBadge?.invoke(this)
                     }
                 }
+            }
+            
+            Box(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
+                topEndContent?.invoke(this)
             }
             
             Box(modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)) {
@@ -576,7 +603,7 @@ fun TopUpDialog(onDismiss: () -> Unit, onComplete: (Double) -> Unit) {
                 Spacer(modifier = Modifier.height(32.dp))
                 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = { if (step == 1) onDismiss() else step = 1 }, modifier = Modifier.weight(1f), enabled = !isProcessing) { 
+                    OutlinedButton(onClick = { if (step == 1) onDismiss() else { step = 1 } }, modifier = Modifier.weight(1f), enabled = !isProcessing) { 
                         Text(if (step == 1) "Cancel" else "Back") 
                     }
                     Button(

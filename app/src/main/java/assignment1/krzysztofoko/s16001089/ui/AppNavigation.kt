@@ -24,6 +24,7 @@ import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.auth.AuthScreen
 import assignment1.krzysztofoko.s16001089.ui.home.HomeScreen
 import assignment1.krzysztofoko.s16001089.ui.details.BookDetailScreen
+import assignment1.krzysztofoko.s16001089.ui.details.AudioBookDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.details.PdfReaderScreen
 import assignment1.krzysztofoko.s16001089.ui.dashboard.DashboardScreen
 import assignment1.krzysztofoko.s16001089.ui.profile.ProfileScreen
@@ -31,6 +32,7 @@ import assignment1.krzysztofoko.s16001089.ui.splash.SplashScreen
 import assignment1.krzysztofoko.s16001089.ui.info.*
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import assignment1.krzysztofoko.s16001089.ui.components.InvoiceCreatingScreen
+import assignment1.krzysztofoko.s16001089.ui.components.AudioPlayerComponent
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -62,23 +64,32 @@ fun AppNavigation(
     var loadError by remember { mutableStateOf<String?>(null) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
+    // PLAYER STATE
     var currentPlayingBook by remember { mutableStateOf<Book?>(null) }
+    var isAudioPlaying by remember { mutableStateOf(false) }
     var showPlayer by remember { mutableStateOf(false) }
+    var isPlayerMinimized by remember { mutableStateOf(false) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // Auto-minimize player when navigating away from details
+    LaunchedEffect(currentRoute) {
+        if (currentRoute != "bookDetails/{bookId}" && showPlayer) {
+            isPlayerMinimized = true
+        }
+    }
 
     LaunchedEffect(refreshTrigger) {
         isDataLoading = true
         loadError = null
         try {
+            seedDatabase(db)
             repository.getAllCombinedData().collect { combined ->
                 allBooks = combined ?: emptyList()
                 isDataLoading = false
-                Log.d("AppNavigation", "Database sync finished. Items: ${allBooks.size}")
             }
         } catch (e: Exception) {
-            Log.e("AppNavigation", "DATABASE ERROR", e)
             loadError = "Offline Database Error"
             isDataLoading = false
         }
@@ -101,13 +112,6 @@ fun AppNavigation(
                     photoUrl = user.photoUrl?.toString(),
                     balance = 1000.0 
                 ))
-            } else {
-                val newPhoto = user.photoUrl?.toString() ?: existing.photoUrl
-                db.userDao().upsertUser(existing.copy(
-                    name = user.displayName ?: existing.name,
-                    email = user.email ?: existing.email,
-                    photoUrl = newPhoto
-                ))
             }
         }
     }
@@ -115,9 +119,8 @@ fun AppNavigation(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            // Only show the custom Navbar if logged in AND NOT on splash or other excluded screens
             if (currentUser != null && 
-                currentRoute != null && // Wait for route to be stable
+                currentRoute != null && 
                 currentRoute != "splash" && 
                 currentRoute != "auth" &&
                 currentRoute != "dashboard" && 
@@ -132,30 +135,15 @@ fun AppNavigation(
                         
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { navController.navigate("dashboard") }
-                                .padding(4.dp)
+                            modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { navController.navigate("dashboard") }.padding(4.dp)
                         ) {
-                            UserAvatar(
-                                photoUrl = localUser?.photoUrl ?: currentUser?.photoUrl?.toString(), 
-                                modifier = Modifier.size(36.dp)
-                            )
+                            UserAvatar(photoUrl = localUser?.photoUrl ?: currentUser?.photoUrl?.toString(), modifier = Modifier.size(36.dp))
                             Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = "Hi, $firstName", 
-                                style = MaterialTheme.typography.labelLarge, 
-                                fontWeight = FontWeight.Bold, 
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                            Text(text = "Hi, $firstName", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                         
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.clickable { navController.navigate("dashboard") }
-                            ) {
+                            Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f), shape = RoundedCornerShape(12.dp), modifier = Modifier.clickable { navController.navigate("dashboard") }) {
                                 Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.AccountBalanceWallet, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                                     Spacer(Modifier.width(6.dp))
@@ -179,34 +167,99 @@ fun AppNavigation(
                     showLogoutConfirm = false
                     auth.signOut()
                     navController.navigate("home") { popUpTo(0) }
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Successfully logged off")
-                    }
                 }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Log Off", fontWeight = FontWeight.Bold) } },
                 dismissButton = { TextButton(onClick = { showLogoutConfirm = false }) { Text("Cancel") } }
             )
         }
 
-        // We wrap the NavHost in a Box to control padding. 
-        // When currentRoute is "splash", we ignore the Scaffold padding so it's truly full-screen.
-        Box(modifier = Modifier.fillMaxSize().let { 
-            if (currentRoute == "splash") it else it.padding(paddingValues) 
-        }) {
+        Box(modifier = Modifier.fillMaxSize().let { if (currentRoute == "splash") it else it.padding(paddingValues) }) {
             NavHost(navController = navController, startDestination = "splash") {
-                composable("splash") { 
-                    SplashScreen(
-                        isLoadingData = isDataLoading,
-                        onTimeout = { navController.navigate("home") { popUpTo("splash") { inclusive = true } } }
+                composable("splash") { SplashScreen(isLoadingData = isDataLoading, onTimeout = { navController.navigate("home") { popUpTo("splash") { inclusive = true } } }) }
+                composable("home") { 
+                    HomeScreen(
+                        navController = navController, 
+                        isLoggedIn = currentUser != null, 
+                        allBooks = allBooks, 
+                        isLoading = isDataLoading, 
+                        error = loadError, 
+                        onRefresh = { refreshTrigger++ }, 
+                        onAboutClick = { navController.navigate("about") }, 
+                        isDarkTheme = isDarkTheme, 
+                        onToggleTheme = onToggleTheme,
+                        onPlayAudio = { book ->
+                            if (currentPlayingBook?.id == book.id) {
+                                isAudioPlaying = !isAudioPlaying
+                            } else {
+                                currentPlayingBook = book
+                                isAudioPlaying = true
+                            }
+                            showPlayer = true
+                        },
+                        currentPlayingBookId = currentPlayingBook?.id,
+                        isAudioPlaying = isAudioPlaying
                     ) 
                 }
-                composable("home") { HomeScreen(navController = navController, isLoggedIn = currentUser != null, allBooks = allBooks, isLoading = isDataLoading, error = loadError, onRefresh = { refreshTrigger++ }, onAboutClick = { navController.navigate("about") }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
                 composable("auth") { AuthScreen(onAuthSuccess = { navController.navigate("home") { popUpTo(navController.graph.startDestinationId) { inclusive = true } } }, onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme, snackbarHostState = snackbarHostState) }
                 composable("bookDetails/{bookId}") { backStackEntry ->
                     val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
-                    BookDetailScreen(bookId = bookId, initialBook = allBooks.find { it.id == bookId }, user = currentUser, onLoginRequired = { navController.navigate("auth") }, onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme, onPlayAudio = { currentPlayingBook = it; showPlayer = true }, onReadBook = { navController.navigate("pdfReader/$it") }, onNavigateToProfile = { navController.navigate("profile") }, onViewInvoice = { navController.navigate("invoiceCreating/$it") } )
+                    val selectedBook = allBooks.find { it.id == bookId }
+                    
+                    if (selectedBook?.isAudioBook == true) {
+                        AudioBookDetailScreen(
+                            bookId = bookId,
+                            initialBook = selectedBook,
+                            user = currentUser,
+                            onLoginRequired = { navController.navigate("auth") },
+                            onBack = { navController.popBackStack() },
+                            isDarkTheme = isDarkTheme,
+                            onToggleTheme = onToggleTheme,
+                            onPlayAudio = { 
+                                currentPlayingBook = it
+                                showPlayer = true
+                                isPlayerMinimized = false 
+                                isAudioPlaying = true
+                            },
+                            onNavigateToProfile = { navController.navigate("profile") },
+                            onViewInvoice = { navController.navigate("invoiceCreating/$it") }
+                        )
+                    } else {
+                        BookDetailScreen(
+                            bookId = bookId, 
+                            initialBook = selectedBook, 
+                            user = currentUser, 
+                            onLoginRequired = { navController.navigate("auth") }, 
+                            onBack = { navController.popBackStack() }, 
+                            isDarkTheme = isDarkTheme, 
+                            onToggleTheme = onToggleTheme, 
+                            onReadBook = { navController.navigate("pdfReader/$it") }, 
+                            onNavigateToProfile = { navController.navigate("profile") }, 
+                            onViewInvoice = { navController.navigate("invoiceCreating/$it") } 
+                        )
+                    }
                 }
                 composable("pdfReader/{bookId}") { backStackEntry -> PdfReaderScreen(bookId = backStackEntry.arguments?.getString("bookId") ?: "", onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
-                composable("dashboard") { DashboardScreen(navController = navController, allBooks = allBooks, onBack = { navController.popBackStack() }, onLogout = { showLogoutConfirm = true }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme, onViewInvoice = { navController.navigate("invoiceCreating/${it.id}") }) }
+                composable("dashboard") { 
+                    DashboardScreen(
+                        navController = navController, 
+                        allBooks = allBooks, 
+                        onBack = { navController.popBackStack() }, 
+                        onLogout = { showLogoutConfirm = true }, 
+                        isDarkTheme = isDarkTheme, 
+                        onToggleTheme = onToggleTheme, 
+                        onViewInvoice = { navController.navigate("invoiceCreating/${it.id}") },
+                        onPlayAudio = { book ->
+                            if (currentPlayingBook?.id == book.id) {
+                                isAudioPlaying = !isAudioPlaying
+                            } else {
+                                currentPlayingBook = book
+                                isAudioPlaying = true
+                            }
+                            showPlayer = true
+                        },
+                        currentPlayingBookId = currentPlayingBook?.id,
+                        isAudioPlaying = isAudioPlaying
+                    ) 
+                }
                 composable("profile") { ProfileScreen(navController = navController, onBack = { navController.popBackStack() }, onLogout = { showLogoutConfirm = true }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
                 composable("about") { AboutScreen(onBack = { navController.popBackStack() }, onDeveloperClick = { navController.navigate("developer") }, onInstructionClick = { navController.navigate("instructions") }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
                 composable("developer") { DeveloperScreen(onBack = { navController.popBackStack() }, onVersionClick = { navController.navigate("version_info") }, onFutureFeaturesClick = { navController.navigate("future_features") }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
@@ -222,6 +275,30 @@ fun AppNavigation(
                     val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
                     val selectedBook = allBooks.find { it.id == bookId }
                     if (selectedBook != null) { InvoiceScreen(book = selectedBook, userName = currentUser?.displayName ?: "Student", onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                }
+            }
+
+            // Audio Player Overlay with Minimize logic
+            AnimatedVisibility(
+                visible = showPlayer && currentPlayingBook != null,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
+                currentPlayingBook?.let { book ->
+                    AudioPlayerComponent(
+                        book = book,
+                        isMinimized = isPlayerMinimized,
+                        onToggleMinimize = { isPlayerMinimized = !isPlayerMinimized },
+                        onClose = { 
+                            showPlayer = false 
+                            isAudioPlaying = false
+                            currentPlayingBook = null
+                        },
+                        isDarkTheme = isDarkTheme,
+                        isPlaying = isAudioPlaying,
+                        onPlayingStateChange = { isAudioPlaying = it }
+                    )
                 }
             }
         }

@@ -228,7 +228,7 @@ fun SplashScreen(
                 // FIXED: Keep the text visible as long as the spinner is there, 
                 // but change the message once synchronization is actually done.
                 Text(
-                    text = if (isLoadingData) "Synchronising with database..." else "Database ready!",
+                    text = if (isLoadingData) "Synchronising with database..." else "Database synchronized! ✓",
                     color = Color.White.copy(alpha = 0.8f),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,

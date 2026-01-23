@@ -3,6 +3,7 @@ package assignment1.krzysztofoko.s16001089.ui.home
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -48,7 +49,10 @@ fun HomeScreen(
     onRefresh: () -> Unit,
     onAboutClick: () -> Unit,
     isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    onToggleTheme: () -> Unit,
+    onPlayAudio: (Book) -> Unit,
+    currentPlayingBookId: String?,
+    isAudioPlaying: Boolean
 ) {
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
@@ -271,6 +275,20 @@ fun HomeScreen(
                                     onClick = { 
                                         isSearchVisible = false
                                         navController.navigate("bookDetails/${book.id}") 
+                                    },
+                                    imageOverlay = {
+                                        if (isLoggedIn && book.isAudioBook && isPurchased) {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                SpinningAudioButton(
+                                                    isPlaying = isAudioPlaying && currentPlayingBookId == book.id,
+                                                    onToggle = { onPlayAudio(book) },
+                                                    size = 40
+                                                )
+                                            }
+                                        }
                                     },
                                     trailingContent = {
                                         if (isLoggedIn) {

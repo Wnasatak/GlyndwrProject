@@ -39,11 +39,11 @@ fun SearchBarComponent( // Component for the actual search input bar
             .fillMaxWidth() // Makes bar take full width
             .height(56.dp) // Sets a fixed height
             .padding(horizontal = 8.dp, vertical = 4.dp), // Adds spacing around the bar
-        color = MaterialTheme.colorScheme.surface, // Sets the background color
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f), // Matches theme card alpha
         shape = RoundedCornerShape(28.dp), // Rounds the corners to a pill shape
-        tonalElevation = 8.dp, // Adds depth via color tint
+        tonalElevation = 2.dp, // Reduced to match app-wide theme consistency
         shadowElevation = 4.dp, // Adds a drop shadow
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)) // Adds a subtle border
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)) // Uses theme outline color
     ) {
         Row( // Horizontal layout for icons and text field
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), // 
@@ -172,8 +172,8 @@ fun <T> SearchSuggestionsList( // Reusable generic list for suggestions
             .padding(horizontal = 12.dp) // 
             .animateContentSize(), // Animates size changes automatically
         shape = RoundedCornerShape(16.dp), // Rounds the list corners
-        color = MaterialTheme.colorScheme.surface, // 
-        tonalElevation = 12.dp, // 
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f), // Matches theme card alpha
+        tonalElevation = 4.dp, // Reduced to match app-wide theme consistency
         shadowElevation = 8.dp, // 
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) // 
     ) {

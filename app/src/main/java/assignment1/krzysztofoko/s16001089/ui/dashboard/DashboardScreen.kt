@@ -1,42 +1,38 @@
 package assignment1.krzysztofoko.s16001089.ui.dashboard
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.ui.components.BookItemCard
-import assignment1.krzysztofoko.s16001089.ui.components.VerticalWavyBackground
-import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
-import assignment1.krzysztofoko.s16001089.ui.components.IntegratedTopUpDialog
+import assignment1.krzysztofoko.s16001089.ui.components.*
+import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -51,7 +47,10 @@ fun DashboardScreen(
     onLogout: () -> Unit,
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit,
-    onViewInvoice: (Book) -> Unit
+    onViewInvoice: (Book) -> Unit,
+    onPlayAudio: (Book) -> Unit,
+    currentPlayingBookId: String?,
+    isAudioPlaying: Boolean
 ) {
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
@@ -61,6 +60,10 @@ fun DashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     
     val userId = user?.uid ?: ""
+
+    // Search state
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearchVisible by remember { mutableStateOf(false) }
 
     val localUser by remember(userId) {
         if (userId.isNotEmpty()) db.userDao().getUserFlow(userId)
@@ -103,9 +106,29 @@ fun DashboardScreen(
         purchaseIds.mapNotNull { id -> allBooks.find { it.id == id } }
     }
 
+    // Suggestions based on search query
+    val suggestions = remember(searchQuery, allBooks) {
+        if (searchQuery.length < 2) emptyList()
+        else allBooks.filter { 
+            it.title.contains(searchQuery, ignoreCase = true) || 
+            it.author.contains(searchQuery, ignoreCase = true)
+        }.take(5)
+    }
+
     var showPaymentPopup by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null
+        ) { 
+            if (isSearchVisible) {
+                isSearchVisible = false
+                searchQuery = ""
+            }
+        }
+    ) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
         Scaffold(
             containerColor = Color.Transparent,
@@ -125,7 +148,13 @@ fun DashboardScreen(
                     },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                     actions = {
-                        IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
+                        TopBarSearchAction(isSearchVisible = isSearchVisible) {
+                            isSearchVisible = true
+                        }
+                        IconButton(onClick = {
+                            isSearchVisible = false
+                            onToggleTheme()
+                        }) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
                         if (localUser?.role == "admin") {
                             IconButton(onClick = { navController.navigate("admin_panel") }) { Icon(Icons.Default.AdminPanelSettings, "Admin") }
                         }
@@ -136,107 +165,206 @@ fun DashboardScreen(
                 )
             }
         ) { padding ->
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                item {
-                    DashboardHeader(
-                        name = localUser?.name ?: user?.displayName ?: "Student",
-                        photoUrl = localUser?.photoUrl ?: user?.photoUrl?.toString(),
-                        role = localUser?.role ?: "student", 
-                        balance = localUser?.balance ?: 0.0
-                    ) { showPaymentPopup = true }
-                }
-
-                if (localUser?.role == "admin") {
-                    item { AdminQuickActions { navController.navigate("admin_panel") } }
-                }
-
-                // Section 1: CONTINUE READING
-                item { SectionHeader("Continue Reading") }
-                if (lastViewedBooks.isNotEmpty()) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                     item {
-                        GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book ->
-                            navController.navigate("bookDetails/${book.id}")
-                        }
-                    }
-                } else {
-                    item { EmptySectionPlaceholder("No recently viewed items yet.") }
-                }
-
-                // Section 2: RECENT ACTIVITY
-                item { SectionHeader("Your Recent Activity") }
-                if (commentedBooks.isNotEmpty()) {
-                    item {
-                        GrowingLazyRow(commentedBooks, icon = Icons.Default.Comment) { book ->
-                            navController.navigate("bookDetails/${book.id}")
-                        }
-                    }
-                } else {
-                    item { EmptySectionPlaceholder("No recent reviews.") }
-                }
-
-                // Section 3: RECENTLY LIKED
-                item { SectionHeader("Recently Liked") }
-                if (wishlistBooks.isNotEmpty()) {
-                    item {
-                        GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book ->
-                            navController.navigate("bookDetails/${book.id}")
-                        }
-                    }
-                } else {
-                    item { EmptySectionPlaceholder("Your favorites list is empty.") }
-                }
-
-                // Section 4: PURCHASED ITEMS (LIBRARY)
-                item { SectionHeader("Your Purchased Items") }
-
-                if (ownedBooks.isEmpty()) {
-                    item { EmptyLibraryPlaceholder(onBrowse = onBack) }
-                } else {
-                    items(ownedBooks) { book ->
-                        var showMenu by remember { mutableStateOf(false) }
-                        BookItemCard(
-                            book = book,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            onClick = { navController.navigate("bookDetails/${book.id}") },
-                            trailingContent = {
-                                Box {
-                                    IconButton(onClick = { showMenu = true }) {
-                                        Icon(Icons.Default.MoreVert, "Options")
-                                    }
-                                    DropdownMenu(
-                                        expanded = showMenu,
-                                        onDismissRequest = { showMenu = false }
-                                    ) {
-                                        if (book.price > 0) {
-                                            DropdownMenuItem(
-                                                text = { Text("View Invoice") },
-                                                onClick = {
-                                                    showMenu = false
-                                                    onViewInvoice(book)
-                                                },
-                                                leadingIcon = { Icon(Icons.Default.ReceiptLong, null) }
-                                            )
-                                        } else {
-                                            DropdownMenuItem(
-                                                text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) },
-                                                onClick = {
-                                                    showMenu = false
-                                                    scope.launch {
-                                                        db.userDao().deletePurchase(userId, book.id)
-                                                        snackbarHostState.showSnackbar("Removed from library")
-                                                    }
-                                                },
-                                                leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }
-                                            )
-                                        }
-                                    }
-                                }
+                        DashboardHeader(
+                            name = localUser?.name ?: user?.displayName ?: "Student",
+                            photoUrl = localUser?.photoUrl ?: user?.photoUrl?.toString(),
+                            role = localUser?.role ?: "student", 
+                            balance = localUser?.balance ?: 0.0,
+                            onTopUp = { 
+                                isSearchVisible = false
+                                showPaymentPopup = true 
                             }
                         )
                     }
+
+                    if (localUser?.role == "admin") {
+                        item { 
+                            AdminQuickActions { 
+                                isSearchVisible = false
+                                navController.navigate("admin_panel") 
+                            } 
+                        }
+                    }
+
+                    // Section 1: CONTINUE READING
+                    item { SectionHeader("Continue Reading") }
+                    if (lastViewedBooks.isNotEmpty()) {
+                        item {
+                            GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book ->
+                                isSearchVisible = false
+                                navController.navigate("bookDetails/${book.id}")
+                            }
+                        }
+                    } else {
+                        item { EmptySectionPlaceholder("No recently viewed items yet.") }
+                    }
+
+                    // Section 2: RECENT ACTIVITY
+                    item { SectionHeader("Your Recent Activity") }
+                    if (commentedBooks.isNotEmpty()) {
+                        item {
+                            GrowingLazyRow(commentedBooks, icon = Icons.AutoMirrored.Filled.Comment) { book ->
+                                isSearchVisible = false
+                                navController.navigate("bookDetails/${book.id}")
+                            }
+                        }
+                    } else {
+                        item { EmptySectionPlaceholder("No recent reviews.") }
+                    }
+
+                    // Section 3: RECENTLY LIKED
+                    item { SectionHeader("Recently Liked") }
+                    if (wishlistBooks.isNotEmpty()) {
+                        item {
+                            GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book ->
+                                isSearchVisible = false
+                                navController.navigate("bookDetails/${book.id}")
+                            }
+                        }
+                    } else {
+                        item { EmptySectionPlaceholder("Your favorites list is empty.") }
+                    }
+
+                    // Section 4: PURCHASED ITEMS (LIBRARY)
+                    item { SectionHeader("Your Purchased Items") }
+
+                    if (ownedBooks.isEmpty()) {
+                        item { EmptyLibraryPlaceholder(onBrowse = onBack) }
+                    } else {
+                        items(ownedBooks) { book ->
+                            var showMenu by remember { mutableStateOf(false) }
+                            BookItemCard(
+                                book = book,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                onClick = { 
+                                    isSearchVisible = false
+                                    navController.navigate("bookDetails/${book.id}") 
+                                },
+                                imageOverlay = {
+                                    if (book.isAudioBook) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            SpinningAudioButton(
+                                                isPlaying = isAudioPlaying && currentPlayingBookId == book.id,
+                                                onToggle = { onPlayAudio(book) },
+                                                size = 40
+                                            )
+                                        }
+                                    }
+                                },
+                                topEndContent = {
+                                    Box {
+                                        IconButton(
+                                            onClick = { 
+                                                isSearchVisible = false
+                                                showMenu = true 
+                                            },
+                                            modifier = Modifier.size(40.dp).padding(4.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.MoreVert, 
+                                                contentDescription = "Options", 
+                                                modifier = Modifier.size(24.dp), 
+                                                tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = showMenu,
+                                            onDismissRequest = { showMenu = false }
+                                        ) {
+                                            if (book.price > 0) {
+                                                DropdownMenuItem(
+                                                    text = { Text("View Invoice") },
+                                                    onClick = {
+                                                        showMenu = false
+                                                        onViewInvoice(book)
+                                                    },
+                                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }
+                                                )
+                                            } else {
+                                                DropdownMenuItem(
+                                                    text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) },
+                                                    onClick = {
+                                                        showMenu = false
+                                                        scope.launch {
+                                                            db.userDao().deletePurchase(userId, book.id)
+                                                            snackbarHostState.showSnackbar("Removed from library")
+                                                        }
+                                                    },
+                                                    leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                                bottomContent = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically, 
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        if (book.price > 0) {
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                                shape = RoundedCornerShape(8.dp),
+                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                                            ) {
+                                                Text(
+                                                    text = "Purchased", 
+                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), 
+                                                    style = MaterialTheme.typography.labelLarge, 
+                                                    color = MaterialTheme.colorScheme.primary, 
+                                                    fontWeight = FontWeight.ExtraBold
+                                                )
+                                            }
+                                        } else {
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                                shape = RoundedCornerShape(8.dp),
+                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                                            ) {
+                                                Text(
+                                                    text = "In Library", 
+                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), 
+                                                    style = MaterialTheme.typography.labelLarge, 
+                                                    color = MaterialTheme.colorScheme.primary, 
+                                                    fontWeight = FontWeight.ExtraBold
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+
+                    item { Spacer(Modifier.height(140.dp)) }
                 }
 
-                item { Spacer(Modifier.height(48.dp)) }
+                // Floating Search Overlay
+                HomeSearchSection(
+                    isSearchVisible = isSearchVisible,
+                    searchQuery = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    onCloseClick = {
+                        isSearchVisible = false
+                        searchQuery = ""
+                    },
+                    suggestions = suggestions,
+                    onSuggestionClick = { book ->
+                        searchQuery = book.title
+                        isSearchVisible = false
+                        navController.navigate("bookDetails/${book.id}")
+                    },
+                    modifier = Modifier
+                        .padding(top = padding.calculateTopPadding())
+                        .zIndex(10f)
+                )
             }
         }
 
@@ -260,196 +388,5 @@ fun DashboardScreen(
                 }
             )
         }
-    }
-}
-
-@Composable
-fun GrowingLazyRow(
-    books: List<Book>,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onBookClick: (Book) -> Unit
-) {
-    val listState = rememberLazyListState()
-    LazyRow(
-        state = listState,
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp), // Increased padding for shadows
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        itemsIndexed(books) { index, book ->
-            Box(
-                modifier = Modifier.graphicsLayer {
-                    val layoutInfo = listState.layoutInfo
-                    val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
-                    
-                    if (itemInfo != null) {
-                        val viewportWidth = layoutInfo.viewportEndOffset.toFloat()
-                        val itemOffset = itemInfo.offset.toFloat()
-                        val itemSize = itemInfo.size.toFloat()
-                        
-                        val posFactor = (itemOffset / (viewportWidth - itemSize)).coerceIn(0f, 1f)
-                        
-                        val baseScale = 0.85f
-                        val maxScale = 1.05f
-                        var currentScale = baseScale + (maxScale - baseScale) * posFactor
-                        
-                        val rightEdgeVisibleWidth = (viewportWidth - itemOffset).coerceIn(0f, itemSize)
-                        if (rightEdgeVisibleWidth < itemSize) {
-                            val visibilityFactor = rightEdgeVisibleWidth / itemSize
-                            currentScale *= (0.8f + 0.2f * visibilityFactor)
-                        }
-
-                        scaleX = currentScale
-                        scaleY = currentScale
-                        
-                        // Add depth with shadow that follows scaling
-                        shadowElevation = (12f * currentScale).coerceAtLeast(2f)
-                        shape = RoundedCornerShape(20.dp)
-                        clip = false // Allow shadow to bleed out
-                    } else {
-                        scaleX = 0.8f
-                        scaleY = 0.8f
-                    }
-                }
-            ) {
-                WishlistMiniCard(
-                    book = book, 
-                    icon = icon, 
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
-                ) { 
-                    onBookClick(book) 
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun DashboardHeader(name: String, photoUrl: String?, role: String, balance: Double, onTopUp: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(32.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                UserAvatar(photoUrl = photoUrl, modifier = Modifier.size(64.dp), isLarge = true)
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text(text = "Welcome, $name", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-                    Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(8.dp)) {
-                        Text(text = role.uppercase(), modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            Spacer(Modifier.height(24.dp))
-            Row(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), RoundedCornerShape(20.dp)).padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text("Account Balance", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                    Text("£${String.format(Locale.US, "%.2f", balance)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                }
-                Button(onClick = onTopUp, shape = RoundedCornerShape(12.dp)) {
-                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Top Up")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AdminQuickActions(onClick: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable { onClick() }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)), shape = RoundedCornerShape(16.dp)) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.AdminPanelSettings, null, tint = MaterialTheme.colorScheme.error)
-            Spacer(Modifier.width(12.dp))
-            Text("Admin Controls: Manage Catalog & Users", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
-            Spacer(Modifier.weight(1f))
-            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.error)
-        }
-    }
-}
-
-@Composable
-fun SectionHeader(title: String) {
-    Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp), color = MaterialTheme.colorScheme.primary)
-}
-
-@Composable
-fun WishlistMiniCard(
-    book: Book, 
-    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.Favorite, 
-    color: Color, 
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .width(165.dp)
-            .clickable { onClick() }, 
-        shape = RoundedCornerShape(20.dp), 
-        colors = CardDefaults.cardColors(containerColor = color), 
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Shadow is handled by parent graphicsLayer
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-    ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(115.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                MaterialTheme.colorScheme.surface
-                            )
-                        )
-                    ), 
-                contentAlignment = Alignment.Center
-            ) {
-                // Subtle book spine effect
-                Box(modifier = Modifier.fillMaxHeight().width(4.dp).align(Alignment.CenterStart).background(Color.Black.copy(alpha = 0.05f)))
-                
-                Icon(
-                    imageVector = if (book.isAudioBook) Icons.Default.Headphones else if (book.mainCategory == "University Courses") Icons.Default.School else Icons.AutoMirrored.Filled.MenuBook, 
-                    contentDescription = null, 
-                    modifier = Modifier.size(52.dp), 
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                )
-                Icon(icon, null, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(18.dp), tint = MaterialTheme.colorScheme.primary)
-            }
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                    text = book.title, 
-                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp), 
-                    fontWeight = FontWeight.ExtraBold, 
-                    maxLines = 2, 
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = book.author, 
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp), 
-                    color = Color.Gray, 
-                    maxLines = 1
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun EmptySectionPlaceholder(text: String) {
-    Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), color = Color.Transparent, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.1f))) {
-        Text(text = text, modifier = Modifier.padding(24.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-    }
-}
-
-@Composable
-fun EmptyLibraryPlaceholder(onBrowse: () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(Icons.AutoMirrored.Filled.LibraryBooks, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
-        Spacer(Modifier.height(16.dp))
-        Text("Your library is empty", fontWeight = FontWeight.Bold)
-        Text("Get books, courses or gear to see them here.", style = MaterialTheme.typography.bodySmall, color = Color.Gray, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(24.dp))
-        Button(onClick = onBrowse, shape = RoundedCornerShape(12.dp)) { Text("Explore Store") }
     }
 }
