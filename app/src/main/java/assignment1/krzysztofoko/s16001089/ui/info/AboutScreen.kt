@@ -4,8 +4,10 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Assignment
@@ -20,12 +22,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
@@ -43,7 +47,6 @@ fun AboutScreen(
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit
 ) {
-    // Animation state for the initial violet frame fade-out
     var startAnimation by remember { mutableStateOf(false) }
     val initialFrameAlpha by animateFloatAsState(
         targetValue = if (startAnimation) 0f else 1f,
@@ -51,7 +54,6 @@ fun AboutScreen(
         label = "initialFrameAlpha"
     )
 
-    // Logo spin animation on entry
     val logoRotation = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         logoRotation.animateTo(
@@ -60,22 +62,23 @@ fun AboutScreen(
         )
     }
 
-    // Flashing light effect animation
     val infiniteTransition = rememberInfiniteTransition(label = "glow")
+    
+    // Pulsing circle animation
     val glowScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = 1.4f,
+        targetValue = 1.4f, 
         animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = FastOutSlowInEasing),
+            animation = tween(3500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glowScale"
     )
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.2f,
-        targetValue = 0.6f,
+        targetValue = 0.6f, 
         animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = FastOutSlowInEasing),
+            animation = tween(3500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glowAlpha"
@@ -116,111 +119,120 @@ fun AboutScreen(
                 )
             }
         ) { padding ->
-            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .size(110.dp)
-                                .scale(glowScale)
-                                .alpha(glowAlpha)
-                                .background(
-                                    brush = Brush.radialGradient(
-                                        colors = listOf(accentColor, Color.Transparent)
-                                    ),
-                                    shape = CircleShape
-                                )
-                        )
-                        
-                        Surface(
-                            modifier = Modifier.size(120.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                            shadowElevation = 8.dp,
-                            border = BorderStroke(
-                                width = 4.dp, 
-                                color = accentColor.copy(alpha = maxOf(initialFrameAlpha, glowAlpha))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(180.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(130.dp)
+                            .scale(glowScale)
+                            .alpha(glowAlpha)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(accentColor.copy(alpha = 0.8f), Color.Transparent)
+                                ),
+                                shape = CircleShape
                             )
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                AsyncImage(
-                                    model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
-                                    contentDescription = "Glyndŵr Logo",
-                                    modifier = Modifier
-                                        .size(110.dp)
-                                        .graphicsLayer { rotationZ = logoRotation.value }
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
+                    )
+                    
+                    Surface(
+                        modifier = Modifier.size(110.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        shadowElevation = 8.dp,
+                        border = BorderStroke(
+                            width = 4.dp, 
+                            color = accentColor.copy(alpha = maxOf(initialFrameAlpha, glowAlpha))
+                        )
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            AsyncImage(
+                                model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
+                                contentDescription = "Glyndŵr Logo",
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .graphicsLayer { rotationZ = logoRotation.value }
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
                         }
                     }
-                    
-                    Text(
-                        text = AppConstants.APP_NAME,
-                        style = MaterialTheme.typography.headlineMedium, 
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    
-                    InfoCard(
-                        icon = Icons.Default.School,
-                        title = "INSTITUTION",
-                        content = AppConstants.INSTITUTION,
-                        contentStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                    )
-                    
-                    InfoCard(
-                        icon = Icons.Default.Assignment,
-                        title = "PROJECT INFO",
-                        content = AppConstants.PROJECT_INFO,
-                        contentStyle = MaterialTheme.typography.bodyMedium,
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = onInstructionClick,
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer, 
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    ) {
-                        Icon(Icons.Default.HelpOutline, contentDescription = null, modifier = Modifier.size(24.dp))
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("How to Use App", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
-                    }
-
-                    Button(
-                        onClick = onDeveloperClick,
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(24.dp))
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("Developer Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
-                    }
                 }
+                
+                // Increased spacers to center the name in the gap between logo and boxes
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = AppConstants.APP_NAME,
+                    style = MaterialTheme.typography.headlineSmall, 
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+
+                InfoCard(
+                    icon = Icons.Default.School,
+                    title = "INSTITUTION",
+                    content = AppConstants.INSTITUTION,
+                    contentStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+
+                InfoCard(
+                    icon = Icons.Default.Assignment,
+                    title = "PROJECT INFO",
+                    content = AppConstants.PROJECT_INFO,
+                    contentStyle = MaterialTheme.typography.bodyMedium,
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = onInstructionClick,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer, 
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Icon(Icons.Default.HelpOutline, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("How to Use App", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = onDeveloperClick,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Developer Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                }
+
+                Spacer(modifier = Modifier.height(48.dp))
 
                 Text(
                     text = "Version ${AppConstants.VERSION_NAME}",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 24.dp)
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                 )
             }
         }

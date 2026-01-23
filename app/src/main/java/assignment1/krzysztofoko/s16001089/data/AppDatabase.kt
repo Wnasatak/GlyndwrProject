@@ -18,7 +18,7 @@ import androidx.room.RoomDatabase
         HistoryItem::class,
         ReviewInteraction::class
     ], 
-    version = 8, 
+    version = 1, 
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -40,7 +40,8 @@ abstract class AppDatabase : RoomDatabase() {
                     "glyndwr_database.db"
                 )
                 .createFromAsset("database/glyndwr_database.db")
-                .fallbackToDestructiveMigration()
+                // If the schema in the file doesn't match the code, Room will recreate the tables
+                .fallbackToDestructiveMigration() 
                 .build()
                 INSTANCE = instance
                 instance

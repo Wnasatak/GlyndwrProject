@@ -37,6 +37,7 @@ fun ReviewSection(
     db: AppDatabase,
     isDarkTheme: Boolean,
     onReviewPosted: () -> Unit = {},
+    onReviewDeleted: () -> Unit = {},
     onLoginClick: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
@@ -58,7 +59,6 @@ fun ReviewSection(
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
         )
 
-        // Only show review input for logged in users
         if (isLoggedIn && localUser != null) {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
@@ -133,6 +133,8 @@ fun ReviewSection(
             }
         } else {
             threadedReviews.forEach { (parent, replies) ->
+                val userHasReplied = localUser != null && replies.any { it.userId == localUser.id }
+                
                 Column {
                     ReviewItem(
                         review = parent,
@@ -140,7 +142,7 @@ fun ReviewSection(
                         productId = productId,
                         currentLocalUser = localUser,
                         isLoggedIn = isLoggedIn,
-                        canReply = true,
+                        canReply = !userHasReplied,
                         isDarkTheme = isDarkTheme
                     )
                     replies.forEach { reply ->
@@ -293,9 +295,7 @@ fun ReviewItem(
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // MODERN INTERACTION SECTION
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                // LIKE SECTION
                                 if (!isOwner && (isLoggedIn || review.likes > 0)) {
                                     Surface(
                                         color = if (userInteraction?.interactionType == "LIKE") MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent,
@@ -325,7 +325,6 @@ fun ReviewItem(
                                     }
                                 }
 
-                                // DISLIKE SECTION
                                 if (!isOwner && (isLoggedIn || review.dislikes > 0)) {
                                     Spacer(Modifier.width(8.dp))
                                     Surface(
@@ -356,7 +355,6 @@ fun ReviewItem(
                                     }
                                 }
 
-                                // AVATAR ROW FOR INTERACTIONS
                                 if (interactions.isNotEmpty()) {
                                     Spacer(Modifier.width(16.dp))
                                     Row(
@@ -366,12 +364,26 @@ fun ReviewItem(
                                         interactions.take(3).forEachIndexed { index, inter ->
                                             val interUserFlow = remember(inter.userId) { db.userDao().getUserFlow(inter.userId) }
                                             val interUser by interUserFlow.collectAsState(initial = null)
-                                            Box(modifier = Modifier.offset(x = (index * -12).dp)) {
+                                            Box(modifier = Modifier.offset(x = (index * -12).dp), contentAlignment = Alignment.BottomEnd) {
                                                 UserAvatar(
                                                     photoUrl = interUser?.photoUrl,
                                                     modifier = Modifier.size(30.dp).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
                                                     iconSize = 18
                                                 )
+                                                // Added Indicator Badge
+                                                Surface(
+                                                    color = MaterialTheme.colorScheme.surface,
+                                                    shape = CircleShape,
+                                                    modifier = Modifier.size(14.dp).offset(x = 4.dp, y = 4.dp),
+                                                    border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
+                                                ) {
+                                                    Icon(
+                                                        imageVector = if (inter.interactionType == "LIKE") Icons.Default.ThumbUp else Icons.Default.ThumbDown,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.padding(2.dp),
+                                                        tint = if (inter.interactionType == "LIKE") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                                    )
+                                                }
                                             }
                                         }
                                         if (interactions.size > 3) {

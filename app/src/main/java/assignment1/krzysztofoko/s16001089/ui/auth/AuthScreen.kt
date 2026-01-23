@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,9 +21,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -49,7 +54,8 @@ fun AuthScreen(
     onAuthSuccess: () -> Unit,
     onBack: () -> Unit,
     isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    onToggleTheme: () -> Unit,
+    snackbarHostState: SnackbarHostState
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -69,6 +75,27 @@ fun AuthScreen(
     val auth = FirebaseAuth.getInstance()
     val db = AppDatabase.getDatabase(context)
     val scope = rememberCoroutineScope()
+
+    // Light pulsing animation setup
+    val infiniteTransition = rememberInfiniteTransition(label = "glow")
+    val glowScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowScale"
+    )
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowAlpha"
+    )
 
     val trigger2FA = {
         val code = (100000..999999).random().toString()
@@ -90,7 +117,6 @@ fun AuthScreen(
             auth.signInWithCredential(credential).addOnSuccessListener { res ->
                 val user = res.user!!
                 scope.launch {
-                    // Try to unify by email
                     val existing = db.userDao().getUserByEmail(user.email ?: "")
                     if (existing == null) {
                         db.userDao().upsertUser(UserLocal(
@@ -102,8 +128,6 @@ fun AuthScreen(
                             role = "student"
                         ))
                     } else {
-                        // User exists by email but maybe different ID (e.g. seeded).
-                        // Update existing local record with Firebase UID or just update info.
                         db.userDao().upsertUser(existing.copy(
                             name = user.displayName ?: existing.name,
                             photoUrl = user.photoUrl?.toString() ?: existing.photoUrl
@@ -197,7 +221,14 @@ fun AuthScreen(
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                             Button(onClick = {
-                                if (entered2FACode == generated2FACode) { onAuthSuccess() } else { error = "Invalid code. Please try again." }
+                                if (entered2FACode == generated2FACode) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Successfully logged in")
+                                    }
+                                    onAuthSuccess()
+                                } else {
+                                    error = "Invalid code. Please try again."
+                                }
                             }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) {
                                 if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White) else Text("Verify Identity")
                             }
@@ -240,16 +271,32 @@ fun AuthScreen(
                                 )
                             }
 
-                            AsyncImage(
-                                model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
-                                contentDescription = "University Logo",
-                                modifier = Modifier
-                                    .size(100.dp)
-                                    .rotate(rotation.value)
-                                    .clip(CircleShape)
-                                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
+                            // Pulsing light behind the logo
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(140.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .scale(glowScale)
+                                        .alpha(glowAlpha)
+                                        .background(
+                                            brush = Brush.radialGradient(
+                                                colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), Color.Transparent)
+                                            ),
+                                            shape = CircleShape
+                                        )
+                                )
+                                
+                                AsyncImage(
+                                    model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
+                                    contentDescription = "University Logo",
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .rotate(rotation.value)
+                                        .clip(CircleShape)
+                                        .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
 
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -277,7 +324,6 @@ fun AuthScreen(
                                     auth.createUserWithEmailAndPassword(trimmedEmail, password).addOnSuccessListener { res ->
                                         val user = res.user!!
                                         scope.launch {
-                                            // New email registration - use UID
                                             db.userDao().upsertUser(UserLocal(
                                                 id = user.uid, 
                                                 name = firstName, 

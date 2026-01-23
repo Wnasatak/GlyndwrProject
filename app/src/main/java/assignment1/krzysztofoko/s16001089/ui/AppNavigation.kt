@@ -32,7 +32,6 @@ import assignment1.krzysztofoko.s16001089.ui.info.*
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import assignment1.krzysztofoko.s16001089.ui.components.InvoiceCreatingScreen
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -46,13 +45,13 @@ fun AppNavigation(
     val navController = rememberNavController()
     val auth = FirebaseAuth.getInstance()
     val db = AppDatabase.getDatabase(context)
+    val repository = remember { BookRepository(db) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
     var currentUser by remember { mutableStateOf(auth.currentUser) }
     var showLogoutConfirm by remember { mutableStateOf(false) }
 
-    // DYNAMICALLY FETCH DATA BASED ON FIREBASE UID
     val localUser by remember(currentUser) {
         if (currentUser != null) db.userDao().getUserFlow(currentUser!!.uid)
         else flowOf(null)
@@ -63,10 +62,8 @@ fun AppNavigation(
     var loadError by remember { mutableStateOf<String?>(null) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
-    var showPlayer by remember { mutableStateOf(false) }
-    var isPlaying by remember { mutableStateOf(false) }
-    var playerProgress by remember { mutableFloatStateOf(0f) }
     var currentPlayingBook by remember { mutableStateOf<Book?>(null) }
+    var showPlayer by remember { mutableStateOf(false) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -75,27 +72,10 @@ fun AppNavigation(
         isDataLoading = true
         loadError = null
         try {
-            val booksFlow = db.bookDao().getAllBooks()
-            val gearFlow = db.gearDao().getAllGear()
-            val coursesFlow = db.courseDao().getAllCourses()
-            val audioBooksFlow = db.audioBookDao().getAllAudioBooks()
-
-            combine(booksFlow, gearFlow, coursesFlow, audioBooksFlow) { books, gear, courses, audioBooks ->
-                if (books.isEmpty() && gear.isEmpty() && courses.isEmpty() && audioBooks.isEmpty()) null 
-                else {
-                    val gearAsBooks = gear.map { g -> Book(id = g.id, title = g.title, price = g.price, description = g.description, imageUrl = g.imageUrl, category = g.category, mainCategory = "University Gear", author = "Wrexham University") }
-                    val coursesAsBooks = courses.map { c -> Book(id = c.id, title = c.title, price = c.price, description = c.description, imageUrl = c.imageUrl, category = c.category, mainCategory = "University Courses", author = c.department, isInstallmentAvailable = c.isInstallmentAvailable, modulePrice = c.modulePrice) }
-                    val audioBooksAsBooks = audioBooks.map { ab -> Book(id = ab.id, title = ab.title, price = ab.price, description = ab.description, imageUrl = ab.imageUrl, category = ab.category, mainCategory = "Audio Books", author = ab.author, isAudioBook = true, audioUrl = ab.audioUrl) }
-                    books + gearAsBooks + coursesAsBooks + audioBooksAsBooks
-                }
-            }.collect { combined ->
-                if (combined == null) {
-                    seedDatabase(db)
-                    refreshTrigger++ 
-                } else {
-                    allBooks = combined
-                    isDataLoading = false
-                }
+            repository.getAllCombinedData().collect { combined ->
+                allBooks = combined ?: emptyList()
+                isDataLoading = false
+                Log.d("AppNavigation", "Database sync finished. Items: ${allBooks.size}")
             }
         } catch (e: Exception) {
             Log.e("AppNavigation", "DATABASE ERROR", e)
@@ -135,8 +115,10 @@ fun AppNavigation(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            // Exclude "auth" route from showing the global header
+            // Only show the custom Navbar if logged in AND NOT on splash or other excluded screens
             if (currentUser != null && 
+                currentRoute != null && // Wait for route to be stable
+                currentRoute != "splash" && 
                 currentRoute != "auth" &&
                 currentRoute != "dashboard" && 
                 currentRoute != "profile" && 
@@ -148,7 +130,6 @@ fun AppNavigation(
                     Row(modifier = Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         val firstName = localUser?.name?.split(" ")?.firstOrNull() ?: currentUser?.displayName?.split(" ")?.firstOrNull() ?: "User"
                         
-                        // Combined clickable area for Avatar and Greeting
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -194,19 +175,35 @@ fun AppNavigation(
                 onDismissRequest = { showLogoutConfirm = false },
                 title = { Text("Log Off") },
                 text = { Text("Are you sure you want to log off?") },
-                confirmButton = { Button(onClick = { showLogoutConfirm = false; auth.signOut(); navController.navigate("home") { popUpTo(0) } }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Log Off", fontWeight = FontWeight.Bold) } },
+                confirmButton = { Button(onClick = { 
+                    showLogoutConfirm = false
+                    auth.signOut()
+                    navController.navigate("home") { popUpTo(0) }
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Successfully logged off")
+                    }
+                }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Log Off", fontWeight = FontWeight.Bold) } },
                 dismissButton = { TextButton(onClick = { showLogoutConfirm = false }) { Text("Cancel") } }
             )
         }
 
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+        // We wrap the NavHost in a Box to control padding. 
+        // When currentRoute is "splash", we ignore the Scaffold padding so it's truly full-screen.
+        Box(modifier = Modifier.fillMaxSize().let { 
+            if (currentRoute == "splash") it else it.padding(paddingValues) 
+        }) {
             NavHost(navController = navController, startDestination = "splash") {
-                composable("splash") { SplashScreen(onTimeout = { navController.navigate("home") { popUpTo("splash") { inclusive = true } } }) }
+                composable("splash") { 
+                    SplashScreen(
+                        isLoadingData = isDataLoading,
+                        onTimeout = { navController.navigate("home") { popUpTo("splash") { inclusive = true } } }
+                    ) 
+                }
                 composable("home") { HomeScreen(navController = navController, isLoggedIn = currentUser != null, allBooks = allBooks, isLoading = isDataLoading, error = loadError, onRefresh = { refreshTrigger++ }, onAboutClick = { navController.navigate("about") }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
-                composable("auth") { AuthScreen(onAuthSuccess = { navController.navigate("home") { popUpTo(navController.graph.startDestinationId) { inclusive = true } } }, onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                composable("auth") { AuthScreen(onAuthSuccess = { navController.navigate("home") { popUpTo(navController.graph.startDestinationId) { inclusive = true } } }, onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme, snackbarHostState = snackbarHostState) }
                 composable("bookDetails/{bookId}") { backStackEntry ->
                     val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
-                    BookDetailScreen(bookId = bookId, initialBook = allBooks.find { it.id == bookId }, user = currentUser, onLoginRequired = { navController.navigate("auth") }, onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme, onPlayAudio = { currentPlayingBook = it; showPlayer = true; isPlaying = true }, onReadBook = { navController.navigate("pdfReader/$it") }, onNavigateToProfile = { navController.navigate("profile") }, onViewInvoice = { navController.navigate("invoiceCreating/$it") } )
+                    BookDetailScreen(bookId = bookId, initialBook = allBooks.find { it.id == bookId }, user = currentUser, onLoginRequired = { navController.navigate("auth") }, onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme, onPlayAudio = { currentPlayingBook = it; showPlayer = true }, onReadBook = { navController.navigate("pdfReader/$it") }, onNavigateToProfile = { navController.navigate("profile") }, onViewInvoice = { navController.navigate("invoiceCreating/$it") } )
                 }
                 composable("pdfReader/{bookId}") { backStackEntry -> PdfReaderScreen(bookId = backStackEntry.arguments?.getString("bookId") ?: "", onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
                 composable("dashboard") { DashboardScreen(navController = navController, allBooks = allBooks, onBack = { navController.popBackStack() }, onLogout = { showLogoutConfirm = true }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme, onViewInvoice = { navController.navigate("invoiceCreating/${it.id}") }) }

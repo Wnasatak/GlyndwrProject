@@ -28,7 +28,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun SplashScreen(onTimeout: () -> Unit) {
+fun SplashScreen(
+    isLoadingData: Boolean, 
+    onTimeout: () -> Unit
+) {
     // Animation states for the logo entry
     val entryScale = remember { Animatable(0.8f) }
     val entryAlpha = remember { Animatable(0f) }
@@ -78,8 +81,10 @@ fun SplashScreen(onTimeout: () -> Unit) {
     )
     val rainbowColor = Color.hsv(rainbowHue, 0.6f, 1f)
 
+    // WAIT FOR BOTH TIMEOUT AND DATA LOADING
+    var isTimerFinished by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
-        // Logo animate in
         launch {
             entryScale.animateTo(
                 targetValue = 1f,
@@ -96,22 +101,25 @@ fun SplashScreen(onTimeout: () -> Unit) {
             )
         }
         
-        // Start fading the violet shade after 2 seconds
         delay(2000)
         startShadeFade = true
         
         delay(4000) 
-        onTimeout()
+        isTimerFinished = true
     }
 
-    // Semi-transparent blue tones for water effect
+    LaunchedEffect(isTimerFinished, isLoadingData) {
+        if (isTimerFinished && !isLoadingData) {
+            onTimeout()
+        }
+    }
+
     val waterOverlay1 = Color(0xFF1E88E5).copy(alpha = 0.6f)
     val waterOverlay2 = Color(0xFF1565C0).copy(alpha = 0.7f)
     val waterOverlay3 = Color(0xFF0D47A1).copy(alpha = 0.8f)
 
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // 1. Campus Background Image
             AsyncImage(
                 model = "file:///android_asset/images/media/GlyndwrUniversityCampus.jpg",
                 contentDescription = null,
@@ -120,7 +128,6 @@ fun SplashScreen(onTimeout: () -> Unit) {
                 alignment = Alignment.CenterEnd
             )
 
-            // 2. "Swimming" Water Overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -143,7 +150,6 @@ fun SplashScreen(onTimeout: () -> Unit) {
                     }
             )
 
-            // 3. Foreground Content (Logo, Text)
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -151,7 +157,6 @@ fun SplashScreen(onTimeout: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Animated Logo with Rainbow Flashing Glow
                 Box(contentAlignment = Alignment.Center) {
                     Box(
                         modifier = Modifier
@@ -181,12 +186,10 @@ fun SplashScreen(onTimeout: () -> Unit) {
                             .scale(entryScale.value * pulseScale)
                             .alpha(entryAlpha.value),
                         contentScale = ContentScale.Fit,
-                        // Added color filter to make the logo text itself flash with rainbow colors
                         colorFilter = ColorFilter.tint(rainbowColor, BlendMode.Modulate)
                     )
                 }
                 
-                // --- Splash Screen Text Section ---
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Text(
@@ -222,6 +225,18 @@ fun SplashScreen(onTimeout: () -> Unit) {
                     .padding(bottom = 60.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // FIXED: Keep the text visible as long as the spinner is there, 
+                // but change the message once synchronization is actually done.
+                Text(
+                    text = if (isLoadingData) "Synchronising with database..." else "Database ready!",
+                    color = Color.White.copy(alpha = 0.8f),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .padding(bottom = 12.dp)
+                        .alpha(entryAlpha.value) // Use same alpha as spinner
+                )
+
                 CircularProgressIndicator(
                     color = Color.White,
                     strokeWidth = 4.dp,

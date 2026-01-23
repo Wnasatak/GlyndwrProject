@@ -5,9 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -19,21 +21,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.ui.components.BookItemCard
 import assignment1.krzysztofoko.s16001089.ui.components.VerticalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
@@ -63,7 +62,6 @@ fun DashboardScreen(
     
     val userId = user?.uid ?: ""
 
-    // FETCH ALL DATA USING DYNAMIC UID
     val localUser by remember(userId) {
         if (userId.isNotEmpty()) db.userDao().getUserFlow(userId)
         else flowOf(null)
@@ -156,12 +154,8 @@ fun DashboardScreen(
                 item { SectionHeader("Continue Reading") }
                 if (lastViewedBooks.isNotEmpty()) {
                     item {
-                        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(lastViewedBooks) { book ->
-                                WishlistMiniCard(book, icon = Icons.Default.History, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)) { 
-                                    navController.navigate("bookDetails/${book.id}") 
-                                }
-                            }
+                        GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book ->
+                            navController.navigate("bookDetails/${book.id}")
                         }
                     }
                 } else {
@@ -172,12 +166,8 @@ fun DashboardScreen(
                 item { SectionHeader("Your Recent Activity") }
                 if (commentedBooks.isNotEmpty()) {
                     item {
-                        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(commentedBooks) { book ->
-                                WishlistMiniCard(book, icon = Icons.Default.Comment, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)) { 
-                                    navController.navigate("bookDetails/${book.id}") 
-                                }
-                            }
+                        GrowingLazyRow(commentedBooks, icon = Icons.Default.Comment) { book ->
+                            navController.navigate("bookDetails/${book.id}")
                         }
                     }
                 } else {
@@ -188,12 +178,8 @@ fun DashboardScreen(
                 item { SectionHeader("Recently Liked") }
                 if (wishlistBooks.isNotEmpty()) {
                     item {
-                        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(wishlistBooks) { book ->
-                                WishlistMiniCard(book, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)) { 
-                                    navController.navigate("bookDetails/${book.id}") 
-                                }
-                            }
+                        GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book ->
+                            navController.navigate("bookDetails/${book.id}")
                         }
                     }
                 } else {
@@ -278,6 +264,67 @@ fun DashboardScreen(
 }
 
 @Composable
+fun GrowingLazyRow(
+    books: List<Book>,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onBookClick: (Book) -> Unit
+) {
+    val listState = rememberLazyListState()
+    LazyRow(
+        state = listState,
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp), // Increased padding for shadows
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        itemsIndexed(books) { index, book ->
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    val layoutInfo = listState.layoutInfo
+                    val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
+                    
+                    if (itemInfo != null) {
+                        val viewportWidth = layoutInfo.viewportEndOffset.toFloat()
+                        val itemOffset = itemInfo.offset.toFloat()
+                        val itemSize = itemInfo.size.toFloat()
+                        
+                        val posFactor = (itemOffset / (viewportWidth - itemSize)).coerceIn(0f, 1f)
+                        
+                        val baseScale = 0.85f
+                        val maxScale = 1.05f
+                        var currentScale = baseScale + (maxScale - baseScale) * posFactor
+                        
+                        val rightEdgeVisibleWidth = (viewportWidth - itemOffset).coerceIn(0f, itemSize)
+                        if (rightEdgeVisibleWidth < itemSize) {
+                            val visibilityFactor = rightEdgeVisibleWidth / itemSize
+                            currentScale *= (0.8f + 0.2f * visibilityFactor)
+                        }
+
+                        scaleX = currentScale
+                        scaleY = currentScale
+                        
+                        // Add depth with shadow that follows scaling
+                        shadowElevation = (12f * currentScale).coerceAtLeast(2f)
+                        shape = RoundedCornerShape(20.dp)
+                        clip = false // Allow shadow to bleed out
+                    } else {
+                        scaleX = 0.8f
+                        scaleY = 0.8f
+                    }
+                }
+            ) {
+                WishlistMiniCard(
+                    book = book, 
+                    icon = icon, 
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
+                ) { 
+                    onBookClick(book) 
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun DashboardHeader(name: String, photoUrl: String?, role: String, balance: Double, onTopUp: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(32.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))) {
         Column(modifier = Modifier.padding(24.dp)) {
@@ -326,16 +373,63 @@ fun SectionHeader(title: String) {
 }
 
 @Composable
-fun WishlistMiniCard(book: Book, icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.Favorite, color: Color, onClick: () -> Unit) {
-    Card(modifier = Modifier.width(160.dp).clickable { onClick() }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = color), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))) {
+fun WishlistMiniCard(
+    book: Book, 
+    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.Favorite, 
+    color: Color, 
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .width(165.dp)
+            .clickable { onClick() }, 
+        shape = RoundedCornerShape(20.dp), 
+        colors = CardDefaults.cardColors(containerColor = color), 
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Shadow is handled by parent graphicsLayer
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+    ) {
         Column {
-            Box(modifier = Modifier.fillMaxWidth().height(100.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)), contentAlignment = Alignment.Center) {
-                Icon(imageVector = if (book.isAudioBook) Icons.Default.Headphones else if (book.mainCategory == "University Courses") Icons.Default.School else Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                Icon(icon, null, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(16.dp), tint = MaterialTheme.colorScheme.primary)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(115.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                MaterialTheme.colorScheme.surface
+                            )
+                        )
+                    ), 
+                contentAlignment = Alignment.Center
+            ) {
+                // Subtle book spine effect
+                Box(modifier = Modifier.fillMaxHeight().width(4.dp).align(Alignment.CenterStart).background(Color.Black.copy(alpha = 0.05f)))
+                
+                Icon(
+                    imageVector = if (book.isAudioBook) Icons.Default.Headphones else if (book.mainCategory == "University Courses") Icons.Default.School else Icons.AutoMirrored.Filled.MenuBook, 
+                    contentDescription = null, 
+                    modifier = Modifier.size(52.dp), 
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                )
+                Icon(icon, null, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(18.dp), tint = MaterialTheme.colorScheme.primary)
             }
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(book.title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(book.author, style = MaterialTheme.typography.labelSmall, color = Color.Gray, maxLines = 1)
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(
+                    text = book.title, 
+                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp), 
+                    fontWeight = FontWeight.ExtraBold, 
+                    maxLines = 2, 
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 18.sp
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = book.author, 
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp), 
+                    color = Color.Gray, 
+                    maxLines = 1
+                )
             }
         }
     }
