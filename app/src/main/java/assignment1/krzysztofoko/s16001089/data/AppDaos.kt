@@ -52,6 +52,12 @@ interface GearDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(gear: List<Gear>)
 
+    @Query("SELECT * FROM gear WHERE id = :id")
+    suspend fun getGearById(id: String): Gear?
+
+    @Query("UPDATE gear SET stockCount = CASE WHEN stockCount >= :quantity THEN stockCount - :quantity ELSE 0 END WHERE id = :id")
+    suspend fun reduceStock(id: String, quantity: Int)
+
     @Query("DELETE FROM gear")
     suspend fun deleteAll()
 }

@@ -2,7 +2,9 @@ package assignment1.krzysztofoko.s16001089.ui
 
 import android.util.Log
 import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -13,9 +15,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -25,6 +31,7 @@ import assignment1.krzysztofoko.s16001089.ui.auth.AuthScreen
 import assignment1.krzysztofoko.s16001089.ui.home.HomeScreen
 import assignment1.krzysztofoko.s16001089.ui.details.BookDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.details.AudioBookDetailScreen
+import assignment1.krzysztofoko.s16001089.ui.details.GearDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.details.PdfReaderScreen
 import assignment1.krzysztofoko.s16001089.ui.dashboard.DashboardScreen
 import assignment1.krzysztofoko.s16001089.ui.profile.ProfileScreen
@@ -41,7 +48,8 @@ import java.util.Locale
 @Composable
 fun AppNavigation(
     isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    onToggleTheme: () -> Unit,
+    externalPlayer: Player? = null
 ) {
     val context = LocalContext.current
     val navController = rememberNavController()
@@ -73,6 +81,15 @@ fun AppNavigation(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Synchronize local state with externalPlayer
+    LaunchedEffect(externalPlayer) {
+        externalPlayer?.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                isAudioPlaying = isPlaying
+            }
+        })
+    }
+
     // Auto-minimize player when navigating away from details
     LaunchedEffect(currentRoute) {
         if (currentRoute != "bookDetails/{bookId}" && showPlayer) {
@@ -84,7 +101,7 @@ fun AppNavigation(
         isDataLoading = true
         loadError = null
         try {
-            seedDatabase(db)
+            seedGearOnly(db)
             repository.getAllCombinedData().collect { combined ->
                 allBooks = combined ?: emptyList()
                 isDataLoading = false
@@ -99,21 +116,6 @@ fun AppNavigation(
         val listener = FirebaseAuth.AuthStateListener { currentUser = it.currentUser }
         auth.addAuthStateListener(listener)
         onDispose { auth.removeAuthStateListener(listener) }
-    }
-
-    LaunchedEffect(currentUser) {
-        currentUser?.let { user ->
-            val existing = db.userDao().getUserById(user.uid)
-            if (existing == null) {
-                db.userDao().upsertUser(UserLocal(
-                    id = user.uid,
-                    name = user.displayName ?: "Student",
-                    email = user.email ?: "",
-                    photoUrl = user.photoUrl?.toString(),
-                    balance = 1000.0 
-                ))
-            }
-        }
     }
 
     Scaffold(
@@ -172,133 +174,208 @@ fun AppNavigation(
             )
         }
 
-        Box(modifier = Modifier.fillMaxSize().let { if (currentRoute == "splash") it else it.padding(paddingValues) }) {
-            NavHost(navController = navController, startDestination = "splash") {
-                composable("splash") { SplashScreen(isLoadingData = isDataLoading, onTimeout = { navController.navigate("home") { popUpTo("splash") { inclusive = true } } }) }
-                composable("home") { 
-                    HomeScreen(
-                        navController = navController, 
-                        isLoggedIn = currentUser != null, 
-                        allBooks = allBooks, 
-                        isLoading = isDataLoading, 
-                        error = loadError, 
-                        onRefresh = { refreshTrigger++ }, 
-                        onAboutClick = { navController.navigate("about") }, 
-                        isDarkTheme = isDarkTheme, 
-                        onToggleTheme = onToggleTheme,
-                        onPlayAudio = { book ->
-                            if (currentPlayingBook?.id == book.id) {
-                                isAudioPlaying = !isAudioPlaying
-                            } else {
-                                currentPlayingBook = book
-                                isAudioPlaying = true
-                            }
-                            showPlayer = true
-                        },
-                        currentPlayingBookId = currentPlayingBook?.id,
-                        isAudioPlaying = isAudioPlaying
-                    ) 
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavHost(navController = navController, startDestination = "splash", modifier = Modifier.fillMaxSize()) {
+                composable("splash") { 
+                    SplashScreen(isLoadingData = isDataLoading, onTimeout = { navController.navigate("home") { popUpTo("splash") { inclusive = true } } }) 
                 }
-                composable("auth") { AuthScreen(onAuthSuccess = { navController.navigate("home") { popUpTo(navController.graph.startDestinationId) { inclusive = true } } }, onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme, snackbarHostState = snackbarHostState) }
+                composable("home") { 
+                    Box(Modifier.padding(paddingValues)) {
+                        HomeScreen(
+                            navController = navController, 
+                            isLoggedIn = currentUser != null, 
+                            allBooks = allBooks, 
+                            isLoading = isDataLoading, 
+                            error = loadError, 
+                            onRefresh = { refreshTrigger++ }, 
+                            onAboutClick = { navController.navigate("about") }, 
+                            isDarkTheme = isDarkTheme, 
+                            onToggleTheme = onToggleTheme,
+                            onPlayAudio = { book ->
+                                if (currentPlayingBook?.id == book.id) {
+                                    if (externalPlayer?.isPlaying == true) externalPlayer.pause() else externalPlayer?.play()
+                                } else {
+                                    currentPlayingBook = book
+                                    showPlayer = true
+                                    externalPlayer?.let { player ->
+                                        val mediaItem = MediaItem.Builder()
+                                            .setUri("asset:///${book.audioUrl}")
+                                            .setMediaMetadata(
+                                                MediaMetadata.Builder()
+                                                    .setTitle(book.title)
+                                                    .setArtist(book.author)
+                                                    .build()
+                                            )
+                                            .build()
+                                        player.setMediaItem(mediaItem)
+                                        player.prepare()
+                                        player.play()
+                                    }
+                                }
+                            },
+                            currentPlayingBookId = currentPlayingBook?.id,
+                            isAudioPlaying = isAudioPlaying
+                        )
+                    }
+                }
+                composable("auth") { Box(Modifier.padding(paddingValues)) { AuthScreen(onAuthSuccess = { navController.navigate("home") { popUpTo(navController.graph.startDestinationId) { inclusive = true } } }, onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme, snackbarHostState = snackbarHostState) } }
                 composable("bookDetails/{bookId}") { backStackEntry ->
                     val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
                     val selectedBook = allBooks.find { it.id == bookId }
                     
-                    if (selectedBook?.isAudioBook == true) {
-                        AudioBookDetailScreen(
-                            bookId = bookId,
-                            initialBook = selectedBook,
-                            user = currentUser,
-                            onLoginRequired = { navController.navigate("auth") },
-                            onBack = { navController.popBackStack() },
-                            isDarkTheme = isDarkTheme,
-                            onToggleTheme = onToggleTheme,
-                            onPlayAudio = { 
-                                currentPlayingBook = it
-                                showPlayer = true
-                                isPlayerMinimized = false 
-                                isAudioPlaying = true
-                            },
-                            onNavigateToProfile = { navController.navigate("profile") },
-                            onViewInvoice = { navController.navigate("invoiceCreating/$it") }
-                        )
-                    } else {
-                        BookDetailScreen(
-                            bookId = bookId, 
-                            initialBook = selectedBook, 
-                            user = currentUser, 
-                            onLoginRequired = { navController.navigate("auth") }, 
+                    Box(Modifier.padding(paddingValues)) {
+                        if (selectedBook?.isAudioBook == true) {
+                            AudioBookDetailScreen(
+                                bookId = bookId,
+                                initialBook = selectedBook,
+                                user = currentUser,
+                                onLoginRequired = { navController.navigate("auth") },
+                                onBack = { navController.popBackStack() },
+                                isDarkTheme = isDarkTheme,
+                                onToggleTheme = onToggleTheme,
+                                onPlayAudio = { book ->
+                                    currentPlayingBook = book
+                                    showPlayer = true
+                                    isPlayerMinimized = false 
+                                    externalPlayer?.let { player ->
+                                        val mediaItem = MediaItem.Builder()
+                                            .setUri("asset:///${book.audioUrl}")
+                                            .setMediaMetadata(
+                                                MediaMetadata.Builder()
+                                                    .setTitle(book.title)
+                                                    .setArtist(book.author)
+                                                    .build()
+                                            )
+                                            .build()
+                                        player.setMediaItem(mediaItem)
+                                        player.prepare()
+                                        player.play()
+                                    }
+                                },
+                                onNavigateToProfile = { navController.navigate("profile") },
+                                onViewInvoice = { navController.navigate("invoiceCreating/$it") }
+                            )
+                        } else if (selectedBook?.mainCategory == "University Gear") {
+                            GearDetailScreen(
+                                gearId = bookId,
+                                user = currentUser,
+                                onLoginRequired = { navController.navigate("auth") },
+                                onBack = { navController.popBackStack() },
+                                isDarkTheme = isDarkTheme,
+                                onToggleTheme = onToggleTheme,
+                                onNavigateToProfile = { navController.navigate("profile") },
+                                onViewInvoice = { navController.navigate("invoiceCreating/$it") }
+                            )
+                        } else {
+                            BookDetailScreen(
+                                bookId = bookId, 
+                                initialBook = selectedBook, 
+                                user = currentUser, 
+                                onLoginRequired = { navController.navigate("auth") }, 
+                                onBack = { navController.popBackStack() }, 
+                                isDarkTheme = isDarkTheme, 
+                                onToggleTheme = onToggleTheme, 
+                                onReadBook = { navController.navigate("pdfReader/$it") }, 
+                                onNavigateToProfile = { navController.navigate("profile") }, 
+                                onViewInvoice = { navController.navigate("invoiceCreating/$it") } 
+                            )
+                        }
+                    }
+                }
+                composable("pdfReader/{bookId}") { backStackEntry -> Box(Modifier.padding(paddingValues)) { PdfReaderScreen(bookId = backStackEntry.arguments?.getString("bookId") ?: "", onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) } }
+                composable("dashboard") { 
+                    Box(Modifier.padding(paddingValues)) {
+                        DashboardScreen(
+                            navController = navController, 
+                            allBooks = allBooks, 
                             onBack = { navController.popBackStack() }, 
+                            onLogout = { showLogoutConfirm = true }, 
                             isDarkTheme = isDarkTheme, 
                             onToggleTheme = onToggleTheme, 
-                            onReadBook = { navController.navigate("pdfReader/$it") }, 
-                            onNavigateToProfile = { navController.navigate("profile") }, 
-                            onViewInvoice = { navController.navigate("invoiceCreating/$it") } 
+                            onViewInvoice = { navController.navigate("invoiceCreating/${it.id}") },
+                            onPlayAudio = { book ->
+                                if (currentPlayingBook?.id == book.id) {
+                                    if (externalPlayer?.isPlaying == true) externalPlayer.pause() else externalPlayer?.play()
+                                } else {
+                                    currentPlayingBook = book
+                                    showPlayer = true
+                                    externalPlayer?.let { player ->
+                                        val mediaItem = MediaItem.Builder()
+                                            .setUri("asset:///${book.audioUrl}")
+                                            .setMediaMetadata(
+                                                MediaMetadata.Builder()
+                                                    .setTitle(book.title)
+                                                    .setArtist(book.author)
+                                                    .build()
+                                            )
+                                            .build()
+                                        player.setMediaItem(mediaItem)
+                                        player.prepare()
+                                        player.play()
+                                    }
+                                }
+                            },
+                            currentPlayingBookId = currentPlayingBook?.id,
+                            isAudioPlaying = isAudioPlaying
                         )
                     }
                 }
-                composable("pdfReader/{bookId}") { backStackEntry -> PdfReaderScreen(bookId = backStackEntry.arguments?.getString("bookId") ?: "", onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
-                composable("dashboard") { 
-                    DashboardScreen(
-                        navController = navController, 
-                        allBooks = allBooks, 
-                        onBack = { navController.popBackStack() }, 
-                        onLogout = { showLogoutConfirm = true }, 
-                        isDarkTheme = isDarkTheme, 
-                        onToggleTheme = onToggleTheme, 
-                        onViewInvoice = { navController.navigate("invoiceCreating/${it.id}") },
-                        onPlayAudio = { book ->
-                            if (currentPlayingBook?.id == book.id) {
-                                isAudioPlaying = !isAudioPlaying
-                            } else {
-                                currentPlayingBook = book
-                                isAudioPlaying = true
-                            }
-                            showPlayer = true
-                        },
-                        currentPlayingBookId = currentPlayingBook?.id,
-                        isAudioPlaying = isAudioPlaying
-                    ) 
-                }
-                composable("profile") { ProfileScreen(navController = navController, onBack = { navController.popBackStack() }, onLogout = { showLogoutConfirm = true }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
-                composable("about") { AboutScreen(onBack = { navController.popBackStack() }, onDeveloperClick = { navController.navigate("developer") }, onInstructionClick = { navController.navigate("instructions") }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
-                composable("developer") { DeveloperScreen(onBack = { navController.popBackStack() }, onVersionClick = { navController.navigate("version_info") }, onFutureFeaturesClick = { navController.navigate("future_features") }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
-                composable("instructions") { InstructionScreen(onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
-                composable("version_info") { VersionInfoScreen(onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
-                composable("future_features") { FutureFeaturesScreen(onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                composable("profile") { Box(Modifier.padding(paddingValues)) { ProfileScreen(navController = navController, onBack = { navController.popBackStack() }, onLogout = { showLogoutConfirm = true }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) } }
+                composable("about") { Box(Modifier.padding(paddingValues)) { AboutScreen(onBack = { navController.popBackStack() }, onDeveloperClick = { navController.navigate("developer") }, onInstructionClick = { navController.navigate("instructions") }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) } }
+                composable("developer") { Box(Modifier.padding(paddingValues)) { DeveloperScreen(onBack = { navController.popBackStack() }, onVersionClick = { navController.navigate("version_info") }, onFutureFeaturesClick = { navController.navigate("future_features") }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) } }
+                composable("instructions") { Box(Modifier.padding(paddingValues)) { InstructionScreen(onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) } }
+                composable("version_info") { Box(Modifier.padding(paddingValues)) { VersionInfoScreen(onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) } }
+                composable("future_features") { Box(Modifier.padding(paddingValues)) { FutureFeaturesScreen(onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) } }
                 composable("invoiceCreating/{bookId}") { backStackEntry ->
                     val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
                     val selectedBook = allBooks.find { it.id == bookId }
-                    if (selectedBook != null) { InvoiceCreatingScreen(book = selectedBook, onCreationComplete = { navController.navigate("invoice/$bookId") { popUpTo("invoiceCreating/$bookId") { inclusive = true } } }, onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                    Box(Modifier.padding(paddingValues)) {
+                        if (selectedBook != null) { InvoiceCreatingScreen(book = selectedBook, onCreationComplete = { navController.navigate("invoice/$bookId") { popUpTo("invoiceCreating/$bookId") { inclusive = true } } }, onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                    }
                 }
                 composable("invoice/{bookId}") { backStackEntry ->
                     val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
                     val selectedBook = allBooks.find { it.id == bookId }
-                    if (selectedBook != null) { InvoiceScreen(book = selectedBook, userName = currentUser?.displayName ?: "Student", onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                    Box(Modifier.padding(paddingValues)) {
+                        if (selectedBook != null) { InvoiceScreen(book = selectedBook, userName = currentUser?.displayName ?: "Student", onBack = { navController.popBackStack() }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                    }
                 }
             }
 
             // Audio Player Overlay with Minimize logic
-            AnimatedVisibility(
-                visible = showPlayer && currentPlayingBook != null,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                modifier = Modifier.align(Alignment.BottomCenter)
-            ) {
-                currentPlayingBook?.let { book ->
-                    AudioPlayerComponent(
-                        book = book,
-                        isMinimized = isPlayerMinimized,
-                        onToggleMinimize = { isPlayerMinimized = !isPlayerMinimized },
-                        onClose = { 
-                            showPlayer = false 
-                            isAudioPlaying = false
-                            currentPlayingBook = null
-                        },
-                        isDarkTheme = isDarkTheme,
-                        isPlaying = isAudioPlaying,
-                        onPlayingStateChange = { isAudioPlaying = it }
+            if (showPlayer && currentPlayingBook != null) {
+                if (!isPlayerMinimized) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.3f))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { isPlayerMinimized = true }
                     )
+                }
+                
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    currentPlayingBook?.let { book ->
+                        AudioPlayerComponent(
+                            book = book,
+                            isMinimized = isPlayerMinimized,
+                            onToggleMinimize = { isPlayerMinimized = !isPlayerMinimized },
+                            onClose = { 
+                                showPlayer = false 
+                                externalPlayer?.stop()
+                                currentPlayingBook = null
+                            },
+                            isDarkTheme = isDarkTheme,
+                            player = externalPlayer
+                        )
+                    }
                 }
             }
         }

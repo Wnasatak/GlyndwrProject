@@ -18,7 +18,12 @@ val DarkSurface = Color(0xFF2D3033)
 val DarkOnSurface = Color(0xFFE2E2E6)  
 
 // --- Dark Mode Specific Colors ---
-val DarkBorder = Color(0xFF3F4759) // A darker, more subtle border color for dark mode
+val DarkBorder = Color(0xFF3F4759) 
+
+// --- Store Specific Colors ---
+val StoreFreeGreen = Color(0xFF4CAF50)
+val StoreStockGreen = Color(0xFF2E7D32)
+val StoreLowStockOrange = Color(0xFFE65100)
 
 // --- Wave Background Colors ---
 val WaveBlueLight1 = Color(0xFFDBEAFE) 

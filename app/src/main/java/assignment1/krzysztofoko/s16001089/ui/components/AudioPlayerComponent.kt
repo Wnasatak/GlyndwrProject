@@ -1,10 +1,8 @@
 package assignment1.krzysztofoko.s16001089.ui.components
 
-import android.content.Context
-import android.content.res.AssetFileDescriptor
-import android.media.AudioManager
-import android.media.MediaPlayer
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,17 +17,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.media3.common.Player
 import assignment1.krzysztofoko.s16001089.data.Book
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
+import kotlin.math.sin
 
 @Composable
 fun AudioPlayerComponent(
@@ -38,66 +38,37 @@ fun AudioPlayerComponent(
     onToggleMinimize: () -> Unit,
     onClose: () -> Unit,
     isDarkTheme: Boolean,
-    isPlaying: Boolean,
-    onPlayingStateChange: (Boolean) -> Unit
+    player: Player?
 ) {
-    val context = LocalContext.current
-    
-    var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
-    var currentPosition by remember { mutableIntStateOf(0) }
-    var duration by remember { mutableIntStateOf(0) }
-    var isReady by remember { mutableStateOf(false) }
+    var currentPosition by remember { mutableLongStateOf(0L) }
+    var duration by remember { mutableLongStateOf(0L) }
+    var isPlaying by remember { mutableStateOf(false) }
 
-    LaunchedEffect(book.id) {
-        isReady = false
-        mediaPlayer?.release()
-        if (book.audioUrl.isNotEmpty()) {
-            try {
-                val player = MediaPlayer()
-                val descriptor: AssetFileDescriptor = context.assets.openFd(book.audioUrl)
-                player.setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
-                descriptor.close()
-                player.prepare()
-                player.setVolume(1.0f, 1.0f) 
-                mediaPlayer = player
-                duration = player.duration
-                isReady = true
-                player.start()
-                onPlayingStateChange(true)
-            } catch (e: Exception) {
-                e.printStackTrace()
+    LaunchedEffect(player) {
+        player?.let {
+            isPlaying = it.isPlaying
+            duration = it.duration.coerceAtLeast(0L)
+            
+            val listener = object : Player.Listener {
+                override fun onIsPlayingChanged(playing: Boolean) {
+                    isPlaying = playing
+                    duration = it.duration.coerceAtLeast(0L)
+                }
+                override fun onPlaybackStateChanged(state: Int) {
+                    duration = it.duration.coerceAtLeast(0L)
+                }
             }
-        }
-    }
-
-    LaunchedEffect(isPlaying) {
-        while (isPlaying && mediaPlayer != null) {
-            currentPosition = mediaPlayer?.currentPosition ?: 0
-            delay(1000)
-        }
-    }
-
-    // React to external play/pause requests
-    LaunchedEffect(isPlaying) {
-        mediaPlayer?.let {
-            if (isPlaying && !it.isPlaying) {
-                it.start()
-            } else if (!isPlaying && it.isPlaying) {
-                it.pause()
+            it.addListener(listener)
+            
+            while (true) {
+                currentPosition = it.currentPosition
+                delay(500)
             }
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            mediaPlayer?.release()
-            mediaPlayer = null
         }
     }
 
     Box(modifier = Modifier.padding(16.dp)) {
         if (isMinimized) {
-            // MINI PLAYER
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -137,7 +108,7 @@ fun AudioPlayerComponent(
                         )
                     }
                     IconButton(onClick = {
-                        onPlayingStateChange(!isPlaying)
+                        if (isPlaying) player?.pause() else player?.play()
                     }) {
                         Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, null)
                     }
@@ -147,7 +118,6 @@ fun AudioPlayerComponent(
                 }
             }
         } else {
-            // FULL PLAYER
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -184,14 +154,58 @@ fun AudioPlayerComponent(
 
                     Spacer(Modifier.height(12.dp))
                     
-                    AsyncImage(
-                        model = book.imageUrl,
-                        contentDescription = null,
+                    // IMAGE WITH VERY SLOW DIAGONAL SHADE
+                    val imageSize = 180.dp
+                    val imageSizePx = with(LocalDensity.current) { imageSize.toPx() }
+                    
+                    Box(
                         modifier = Modifier
-                            .size(160.dp)
-                            .clip(RoundedCornerShape(16.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+                            .size(imageSize)
+                            .clip(RoundedCornerShape(16.dp))
+                    ) {
+                        AsyncImage(
+                            model = book.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        
+                        if (isPlaying) {
+                            val infiniteTransition = rememberInfiniteTransition(label = "diagonalShade")
+                            // Increased duration to 15 seconds for a much slower movement
+                            val animProgress by infiniteTransition.animateFloat(
+                                initialValue = 0f,
+                                targetValue = 1f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(15000, easing = LinearOutSlowInEasing), 
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "animProgress"
+                            )
+                            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.linearGradient(
+                                            0.0f to Color.Transparent,
+                                            0.45f to Color.Transparent,
+                                            0.5f to Color.White.copy(alpha = 0.3f),
+                                            0.55f to Color.Transparent,
+                                            1.0f to Color.Transparent,
+                                            start = androidx.compose.ui.geometry.Offset(
+                                                x = imageSizePx * (animProgress - 0.5f) * 2f,
+                                                y = imageSizePx * (animProgress - 0.5f) * 2f
+                                            ),
+                                            end = androidx.compose.ui.geometry.Offset(
+                                                x = imageSizePx * (animProgress + 0.5f) * 2f,
+                                                y = imageSizePx * (animProgress + 0.5f) * 2f
+                                            )
+                                        )
+                                    )
+                            )
+                        }
+                    }
 
                     Spacer(Modifier.height(16.dp))
 
@@ -208,44 +222,39 @@ fun AudioPlayerComponent(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    if (isReady) {
-                        Slider(
-                            value = currentPosition.toFloat(),
-                            onValueChange = { 
-                                currentPosition = it.toInt()
-                                mediaPlayer?.seekTo(it.toInt())
-                            },
-                            valueRange = 0f..duration.toFloat(),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(text = formatTime(currentPosition), style = MaterialTheme.typography.labelSmall)
-                            Text(text = formatTime(duration), style = MaterialTheme.typography.labelSmall)
-                        }
-                    } else {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    SquigglySlider(
+                        progress = if (duration > 0) currentPosition.toFloat() / duration else 0f,
+                        isPlaying = isPlaying,
+                        onValueChange = { 
+                            player?.seekTo((it * duration).toLong())
+                        },
+                        modifier = Modifier.fillMaxWidth().height(40.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = formatTime(currentPosition.toInt()), style = MaterialTheme.typography.labelSmall)
+                        Text(text = formatTime(duration.toInt()), style = MaterialTheme.typography.labelSmall)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Controls Row - Removed volume logic
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { mediaPlayer?.seekTo(currentPosition - 10000) }) {
+                        IconButton(onClick = { player?.seekTo(currentPosition - 10000) }) {
                             Icon(Icons.Default.Replay10, null, modifier = Modifier.size(24.dp))
                         }
                         Spacer(modifier = Modifier.width(24.dp))
                         FloatingActionButton(
                             onClick = {
-                                onPlayingStateChange(!isPlaying)
+                                if (isPlaying) player?.pause() else player?.play()
                             },
                             shape = CircleShape,
                             containerColor = MaterialTheme.colorScheme.primary,
@@ -259,13 +268,92 @@ fun AudioPlayerComponent(
                             )
                         }
                         Spacer(modifier = Modifier.width(24.dp))
-                        IconButton(onClick = { mediaPlayer?.seekTo(currentPosition + 30000) }) {
+                        IconButton(onClick = { player?.seekTo(currentPosition + 30000) }) {
                             Icon(Icons.Default.Forward30, null, modifier = Modifier.size(24.dp))
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun SquigglySlider(
+    progress: Float,
+    isPlaying: Boolean,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+    
+    val infiniteTransition = rememberInfiniteTransition(label = "wave")
+    val phase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "phase"
+    )
+
+    Box(modifier = modifier) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+            val centerY = height / 2
+            val progressX = width * progress
+            
+            drawLine(
+                color = trackColor,
+                start = androidx.compose.ui.geometry.Offset(progressX, centerY),
+                end = androidx.compose.ui.geometry.Offset(width, centerY),
+                strokeWidth = 4.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+            
+            val path = Path()
+            path.moveTo(0f, centerY)
+            
+            val waveAmplitude = if (isPlaying) 6.dp.toPx() else 0f
+            val waveFrequency = 0.05f
+            
+            for (x in 0..progressX.toInt()) {
+                val y = if (isPlaying) {
+                    centerY + waveAmplitude * sin(x * waveFrequency + phase)
+                } else {
+                    centerY
+                }
+                path.lineTo(x.toFloat(), y.toFloat())
+            }
+            
+            drawPath(
+                path = path,
+                color = primaryColor,
+                style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+            )
+            
+            drawCircle(
+                color = primaryColor,
+                radius = 6.dp.toPx(),
+                center = androidx.compose.ui.geometry.Offset(progressX, if (isPlaying) centerY + waveAmplitude * sin(progressX * waveFrequency + phase) else centerY)
+            )
+        }
+        
+        Slider(
+            value = progress,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxSize(),
+            colors = SliderDefaults.colors(
+                thumbColor = Color.Transparent,
+                activeTrackColor = Color.Transparent,
+                inactiveTrackColor = Color.Transparent,
+                activeTickColor = Color.Transparent,
+                inactiveTickColor = Color.Transparent
+            )
+        )
     }
 }
 

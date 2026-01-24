@@ -106,7 +106,6 @@ fun DashboardScreen(
         purchaseIds.mapNotNull { id -> allBooks.find { it.id == id } }
     }
 
-    // Suggestions based on search query
     val suggestions = remember(searchQuery, allBooks) {
         if (searchQuery.length < 2) emptyList()
         else allBooks.filter { 
@@ -137,14 +136,17 @@ fun DashboardScreen(
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { 
-                        Text(
-                            text = when(localUser?.role) {
-                                "admin" -> "Admin Dashboard"
-                                "teacher" -> "Faculty Portal"
-                                else -> "Student Hub"
-                            }, 
-                            fontWeight = FontWeight.ExtraBold
-                        ) 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = when(localUser?.role) {
+                                    "admin" -> "Admin Hub"
+                                    "teacher" -> "Faculty"
+                                    else -> "Student Hub"
+                                }, 
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Black
+                            ) 
+                        }
                     },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                     actions = {
@@ -189,7 +191,6 @@ fun DashboardScreen(
                         }
                     }
 
-                    // Section 1: CONTINUE READING
                     item { SectionHeader("Continue Reading") }
                     if (lastViewedBooks.isNotEmpty()) {
                         item {
@@ -202,7 +203,6 @@ fun DashboardScreen(
                         item { EmptySectionPlaceholder("No recently viewed items yet.") }
                     }
 
-                    // Section 2: RECENT ACTIVITY
                     item { SectionHeader("Your Recent Activity") }
                     if (commentedBooks.isNotEmpty()) {
                         item {
@@ -215,7 +215,6 @@ fun DashboardScreen(
                         item { EmptySectionPlaceholder("No recent reviews.") }
                     }
 
-                    // Section 3: RECENTLY LIKED
                     item { SectionHeader("Recently Liked") }
                     if (wishlistBooks.isNotEmpty()) {
                         item {
@@ -228,8 +227,7 @@ fun DashboardScreen(
                         item { EmptySectionPlaceholder("Your favorites list is empty.") }
                     }
 
-                    // Section 4: PURCHASED ITEMS (LIBRARY)
-                    item { SectionHeader("Your Purchased Items") }
+                    item { SectionHeader("Your Collection") }
 
                     if (ownedBooks.isEmpty()) {
                         item { EmptyLibraryPlaceholder(onBrowse = onBack) }
@@ -286,18 +284,22 @@ fun DashboardScreen(
                                                     },
                                                     leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }
                                                 )
-                                            } else {
-                                                DropdownMenuItem(
-                                                    text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) },
-                                                    onClick = {
-                                                        showMenu = false
-                                                        scope.launch {
-                                                            db.userDao().deletePurchase(userId, book.id)
-                                                            snackbarHostState.showSnackbar("Removed from library")
-                                                        }
-                                                    },
-                                                    leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }
-                                                )
+                                            }
+                                            
+                                            if (book.mainCategory != "University Gear") {
+                                                if (book.price <= 0) {
+                                                    DropdownMenuItem(
+                                                        text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) },
+                                                        onClick = {
+                                                            showMenu = false
+                                                            scope.launch {
+                                                                db.userDao().deletePurchase(userId, book.id)
+                                                                snackbarHostState.showSnackbar("Removed from library")
+                                                            }
+                                                        },
+                                                        leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -323,13 +325,14 @@ fun DashboardScreen(
                                                 )
                                             }
                                         } else {
+                                            val label = if (book.mainCategory == "University Gear") "Picked Up" else "In Library"
                                             Surface(
                                                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                                                 shape = RoundedCornerShape(8.dp),
                                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                                             ) {
                                                 Text(
-                                                    text = "In Library", 
+                                                    text = label, 
                                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), 
                                                     style = MaterialTheme.typography.labelLarge, 
                                                     color = MaterialTheme.colorScheme.primary, 
@@ -346,7 +349,6 @@ fun DashboardScreen(
                     item { Spacer(Modifier.height(140.dp)) }
                 }
 
-                // Floating Search Overlay
                 HomeSearchSection(
                     isSearchVisible = isSearchVisible,
                     searchQuery = searchQuery,

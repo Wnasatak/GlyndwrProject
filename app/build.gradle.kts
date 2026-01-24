@@ -72,6 +72,11 @@ dependencies {
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
+    // Media3 for Background Playback
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.session)
+    implementation(libs.androidx.media3.ui)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

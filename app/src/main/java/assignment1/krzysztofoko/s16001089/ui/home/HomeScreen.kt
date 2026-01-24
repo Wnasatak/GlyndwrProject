@@ -299,6 +299,7 @@ fun HomeScreen(
                                                         db.userDao().removeFromWishlist(userId, book.id)
                                                         snackbarHostState.showSnackbar("Removed from favorites")
                                                     } else {
+                                                        db.userDao().addToHistory(HistoryItem(userId, book.id))
                                                         db.userDao().addToWishlist(WishlistItem(userId, book.id))
                                                         snackbarHostState.showSnackbar("Added to favorites!")
                                                     }
@@ -341,6 +342,7 @@ fun HomeScreen(
                                                             Icon(Icons.AutoMirrored.Filled.ReceiptLong, "Invoice", tint = MaterialTheme.colorScheme.primary)
                                                         }
                                                     } else {
+                                                        val label = if (book.mainCategory == "University Gear") "Picked Up" else "In Library"
                                                         Surface(
                                                             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                                                             shape = RoundedCornerShape(8.dp),
@@ -349,23 +351,26 @@ fun HomeScreen(
                                                             Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                                                 Icon(Icons.Default.LibraryAddCheck, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                                                                 Spacer(Modifier.width(6.dp))
-                                                                Text(text = "In Library", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                                                                Text(text = label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                                                             }
                                                         }
-                                                        Spacer(Modifier.width(8.dp))
-                                                        IconButton(
-                                                            onClick = {
-                                                                if (isLoggedIn) {
-                                                                    isSearchVisible = false
-                                                                    scope.launch {
-                                                                        db.userDao().deletePurchase(userId, book.id)
-                                                                        snackbarHostState.showSnackbar("Removed from library")
+                                                        
+                                                        if (book.mainCategory != "University Gear") {
+                                                            Spacer(Modifier.width(8.dp))
+                                                            IconButton(
+                                                                onClick = {
+                                                                    if (isLoggedIn) {
+                                                                        isSearchVisible = false
+                                                                        scope.launch {
+                                                                            db.userDao().deletePurchase(userId, book.id)
+                                                                            snackbarHostState.showSnackbar("Removed from library")
+                                                                        }
                                                                     }
-                                                                }
-                                                            },
-                                                            modifier = Modifier.size(32.dp)
-                                                        ) {
-                                                            Icon(Icons.Default.DeleteOutline, "Remove", tint = MaterialTheme.colorScheme.error)
+                                                                },
+                                                                modifier = Modifier.size(32.dp)
+                                                            ) {
+                                                                Icon(Icons.Default.DeleteOutline, "Remove", tint = MaterialTheme.colorScheme.error)
+                                                            }
                                                         }
                                                     }
                                                 }

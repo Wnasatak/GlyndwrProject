@@ -17,18 +17,18 @@ class BookRepository(private val db: AppDatabase) {
             } else {
                 val gearAsBooks = gear.map { g -> 
                     Book(id = g.id, title = g.title, price = g.price, description = g.description, 
-                        imageUrl = g.imageUrl, category = g.category, mainCategory = "University Gear", 
+                        imageUrl = g.imageUrl, category = g.category, mainCategory = g.mainCategory, 
                         author = "Wrexham University") 
                 }
                 val coursesAsBooks = courses.map { c -> 
                     Book(id = c.id, title = c.title, price = c.price, description = c.description, 
-                        imageUrl = c.imageUrl, category = c.category, mainCategory = "University Courses", 
+                        imageUrl = c.imageUrl, category = c.category, mainCategory = c.mainCategory, 
                         author = c.department, isInstallmentAvailable = c.isInstallmentAvailable, 
                         modulePrice = c.modulePrice) 
                 }
                 val audioBooksAsBooks = audioBooks.map { ab -> 
                     Book(id = ab.id, title = ab.title, price = ab.price, description = ab.description, 
-                        imageUrl = ab.imageUrl, category = ab.category, mainCategory = "Audio Books", 
+                        imageUrl = ab.imageUrl, category = ab.category, mainCategory = ab.mainCategory, 
                         author = ab.author, isAudioBook = true, audioUrl = ab.audioUrl) 
                 }
                 books + gearAsBooks + coursesAsBooks + audioBooksAsBooks

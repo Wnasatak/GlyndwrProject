@@ -1,19 +1,13 @@
 package assignment1.krzysztofoko.s16001089.ui.details
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Login
-import androidx.compose.material.icons.automirrored.filled.ReceiptLong
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,7 +23,6 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,10 +44,12 @@ fun GearDetailScreen(
 
     var gear by remember { mutableStateOf(initialGear) }
     var loading by remember { mutableStateOf(true) }
-    var selectedSize by remember { mutableStateOf("M") }
     
-    val sizes = listOf("S", "M", "L", "XL")
-    val primaryColor = MaterialTheme.colorScheme.primary
+    var selectedSize by remember { mutableStateOf("") }
+    var selectedColor by remember { mutableStateOf("") }
+    var quantity by remember { mutableIntStateOf(1) }
+    var selectedImageIndex by remember { mutableIntStateOf(0) }
+    var showPickupPopup by remember { mutableStateOf(false) }
 
     val localUser by remember(user) {
         if (user != null) db.userDao().getUserFlow(user.uid)
@@ -71,25 +65,29 @@ fun GearDetailScreen(
     
     var showOrderFlow by remember { mutableStateOf(false) }
 
+    suspend fun refreshGear() {
+        val updated = db.gearDao().getGearById(gearId)
+        if (updated != null) gear = updated
+    }
+
     LaunchedEffect(gearId, user) {
         loading = true
         if (gear == null) {
-            val bookStub = db.bookDao().getBookById(gearId)
-            if (bookStub != null) {
-                gear = Gear(
-                    id = bookStub.id,
-                    title = bookStub.title,
-                    price = bookStub.price,
-                    description = bookStub.description,
-                    imageUrl = bookStub.imageUrl,
-                    category = bookStub.category,
-                    mainCategory = bookStub.mainCategory
-                )
+            val fetchedGear = db.gearDao().getGearById(gearId)
+            if (fetchedGear != null) {
+                gear = fetchedGear
+                selectedSize = fetchedGear.sizes.split(",").firstOrNull() ?: "M"
+                selectedColor = fetchedGear.colors.split(",").firstOrNull() ?: "Default"
             }
+        } else {
+            selectedSize = gear?.sizes?.split(",")?.firstOrNull() ?: "M"
+            selectedColor = gear?.colors?.split(",")?.firstOrNull() ?: "Default"
         }
         if (user != null) db.userDao().addToHistory(HistoryItem(user.uid, gearId))
         loading = false
     }
+
+    val images = remember(gear) { listOfNotNull(gear?.imageUrl, gear?.secondaryImageUrl) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme, wave1HeightFactor = 0.45f, wave2HeightFactor = 0.65f, wave1Amplitude = 80f, wave2Amplitude = 100f)
@@ -121,168 +119,124 @@ fun GearDetailScreen(
                 }
             } else {
                 gear?.let { currentGear ->
-                    LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp)) {
+                    val isFree = currentGear.price <= 0
+                    LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(bottom = 100.dp)) {
                         item {
-                            // Reusing the beautiful animated header but passing a custom "Book" object created from Gear
-                            ProductHeaderImage(
-                                book = Book(
-                                    id = currentGear.id,
-                                    title = currentGear.title,
-                                    imageUrl = currentGear.imageUrl,
-                                    mainCategory = currentGear.mainCategory,
-                                    price = currentGear.price
-                                ),
-                                isOwned = isOwned,
-                                isDarkTheme = isDarkTheme,
-                                primaryColor = primaryColor
+                            GearImageGallery(
+                                images = images,
+                                selectedImageIndex = selectedImageIndex,
+                                onImageClick = { selectedImageIndex = it },
+                                isFeatured = currentGear.isFeatured,
+                                title = currentGear.title
                             )
-                            Spacer(modifier = Modifier.height(24.dp))
                         }
 
                         item {
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)), 
-                                shape = RoundedCornerShape(24.dp), 
-                                border = BorderStroke(
-                                    1.dp, 
-                                    if (isDarkTheme) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f) 
-                                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
-                                )
+                                modifier = Modifier.fillMaxWidth().offset(y = (-24).dp),
+                                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                             ) {
-                                Column(modifier = Modifier.padding(20.dp)) {
-                                    Text(text = currentGear.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-                                    Text(text = "Official University Merchandise", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                                    
+                                Column(modifier = Modifier.padding(24.dp)) {
+                                    GearHeaderSection(gear = currentGear)
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    GearTagsSection(tags = currentGear.productTags)
                                     Spacer(modifier = Modifier.height(24.dp))
-                                    
-                                    // SIZE SELECTION - New functionality for Gear
-                                    Text(text = "Select Size", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                    Spacer(Modifier.height(12.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        sizes.forEach { size ->
-                                            Surface(
-                                                modifier = Modifier
-                                                    .size(48.dp)
-                                                    .clickable { selectedSize = size },
-                                                shape = CircleShape,
-                                                color = if (selectedSize == size) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                                                border = if (selectedSize == size) null else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f))
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) {
-                                                    Text(text = size, fontWeight = FontWeight.Bold, color = if (selectedSize == size) Color.White else MaterialTheme.colorScheme.onSurface)
-                                                }
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                    Spacer(modifier = Modifier.height(24.dp))
+
+                                    GearOptionSelectors(
+                                        sizes = currentGear.sizes,
+                                        selectedSize = selectedSize,
+                                        onSizeSelected = { selectedSize = it },
+                                        colors = currentGear.colors,
+                                        selectedColor = selectedColor,
+                                        onColorSelected = { selectedColor = it },
+                                        onColorClick = { color ->
+                                            if (images.size > 1) {
+                                                selectedImageIndex = if (color.contains("Pink", ignoreCase = true)) 1 else 0
                                             }
                                         }
-                                    }
+                                    )
+
+                                    GearStockIndicator(
+                                        stockCount = currentGear.stockCount,
+                                        quantity = quantity,
+                                        isOwned = isOwned,
+                                        isFree = isFree,
+                                        onQuantityChange = { quantity = it }
+                                    )
 
                                     Spacer(modifier = Modifier.height(32.dp))
-                                    Text(text = "About this item", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.height(8.dp)); Text(text = currentGear.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp)
-                                    Spacer(modifier = Modifier.height(32.dp))
+                                    Text(text = "Description", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(text = currentGear.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
                                     
-                                    Box(modifier = Modifier.fillMaxWidth()) {
-                                        if (isOwned) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                                if (currentGear.price > 0) {
-                                                    Button(onClick = { onViewInvoice(currentGear.id) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.primary)) {
-                                                        Icon(Icons.AutoMirrored.Filled.ReceiptLong, null); Spacer(Modifier.width(12.dp)); Text("View Order Details", fontWeight = FontWeight.Bold)
-                                                    }
-                                                }
-                                                OutlinedButton(
-                                                    onClick = {
-                                                        if (user != null) {
-                                                            scope.launch {
-                                                                db.userDao().deletePurchase(user.uid, currentGear.id)
-                                                                snackbarHostState.showSnackbar("Item removed from your collection")
-                                                            }
-                                                        }
-                                                    },
-                                                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                                                    shape = RoundedCornerShape(16.dp),
-                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-                                                ) {
-                                                    Icon(Icons.Default.DeleteOutline, null); Spacer(Modifier.width(12.dp)); Text("Remove Item")
-                                                }
-                                            }
-                                        } else if (user == null) {
-                                            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
-                                                Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Icon(Icons.Default.LockPerson, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-                                                    Spacer(Modifier.height(12.dp)); Text("Sign In Required", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                                    Text("Sign in to purchase this gear.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
-                                                    Spacer(Modifier.height(20.dp)); Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { 
-                                                        Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp))
-                                                        Spacer(Modifier.width(8.dp))
-                                                        Text("Sign in to Shop") 
-                                                    }
-                                                }
-                                            }
-                                        } else {
-                                            if (currentGear.price == 0.0) {
-                                                Button(
-                                                    onClick = {
-                                                        scope.launch {
-                                                            db.userDao().addPurchase(PurchaseItem(user.uid, currentGear.id))
-                                                            snackbarHostState.showSnackbar("Item reserved for collection!")
-                                                        }
-                                                    },
-                                                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                                                    shape = RoundedCornerShape(16.dp)
-                                                ) {
-                                                    Icon(Icons.Default.AddShoppingCart, null)
-                                                    Spacer(Modifier.width(12.dp))
-                                                    Text("Get for Free", fontWeight = FontWeight.Bold)
-                                                }
-                                            } else {
-                                                val discountedPrice = currentGear.price * 0.9
-                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                                        Text(text = "£${String.format(Locale.US, "%.2f", currentGear.price)}", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
-                                                        Spacer(Modifier.width(12.dp)); Text(text = "£${String.format(Locale.US, "%.2f", discountedPrice)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                                                    }
-                                                    Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { Text("STUDENT PRICE (-10%)", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 10.sp) }
-                                                    Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text("Order Now!", fontWeight = FontWeight.Bold) }
-                                                }
-                                            }
-                                        }
-                                    }
+                                    Spacer(modifier = Modifier.height(32.dp))
+                                    GearSpecsCard(material = currentGear.material, sku = currentGear.sku, category = currentGear.category)
+                                    Spacer(modifier = Modifier.height(32.dp))
+
+                                    ReviewSection(
+                                        productId = gearId,
+                                        reviews = allReviews,
+                                        localUser = localUser,
+                                        isLoggedIn = user != null,
+                                        db = db,
+                                        isDarkTheme = isDarkTheme,
+                                        onReviewPosted = { scope.launch { snackbarHostState.showSnackbar("Thanks for your review!") } },
+                                        onLoginClick = onLoginRequired
+                                    )
                                 }
                             }
                         }
-
-                        item {
-                            Spacer(modifier = Modifier.height(32.dp))
-                            ReviewSection(
-                                productId = gearId,
-                                reviews = allReviews,
-                                localUser = localUser,
-                                isLoggedIn = user != null,
-                                db = db,
-                                isDarkTheme = isDarkTheme,
-                                onReviewPosted = { scope.launch { snackbarHostState.showSnackbar("Thanks for your feedback!") } },
-                                onLoginClick = onLoginRequired
-                            )
-                        }
-                        
-                        item { Spacer(modifier = Modifier.height(48.dp)) }
                     }
                 }
             }
         }
 
+        if (gear != null && !loading) {
+            val currentGear = gear!!
+            Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                GearBottomActionBar(
+                    isOwned = isOwned,
+                    price = currentGear.price,
+                    stockCount = currentGear.stockCount,
+                    quantity = quantity,
+                    isLoggedIn = user != null,
+                    onViewInvoice = { onViewInvoice(currentGear.id) },
+                    onPickupInfo = { showPickupPopup = true },
+                    onLoginRequired = onLoginRequired,
+                    onCheckout = { showOrderFlow = true },
+                    onFreePickup = {
+                        scope.launch {
+                            db.userDao().addPurchase(PurchaseItem(user!!.uid, currentGear.id))
+                            db.gearDao().reduceStock(currentGear.id, 1)
+                            refreshGear()
+                            snackbarHostState.showSnackbar("Success! Please pick up your item at Student Hub.")
+                        }
+                    }
+                )
+            }
+        }
+
         if (showOrderFlow && gear != null) {
-            // Reusing OrderFlowDialog but adapting it for Gear properties
             OrderFlowDialog(
-                book = Book(id = gear!!.id, title = gear!!.title, price = gear!!.price),
+                book = Book(id = gear!!.id, title = gear!!.title, price = gear!!.price * quantity),
                 user = localUser,
                 onDismiss = { showOrderFlow = false },
                 onEditProfile = { showOrderFlow = false; onNavigateToProfile() },
                 onComplete = { 
                     showOrderFlow = false
-                    scope.launch { snackbarHostState.showSnackbar("Order successful! Collect your item at the Student Hub.") }
+                    scope.launch { 
+                        db.gearDao().reduceStock(gear!!.id, quantity)
+                        refreshGear()
+                        snackbarHostState.showSnackbar("Order successful!") 
+                    }
                 }
             )
         }
+
+        if (showPickupPopup) PickupInfoDialog(onDismiss = { showPickupPopup = false })
     }
 }
