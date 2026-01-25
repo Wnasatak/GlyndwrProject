@@ -124,10 +124,10 @@ fun HorizontalWavyBackground(
 
     ComposeCanvas(modifier = Modifier.fillMaxSize()) {
         drawRect(color = bgColor)
-        
+
         val width = size.width
         val height = size.height
-        
+
         // Horizontal Wave 1
         val path1 = Path().apply {
             moveTo(0f, height)
@@ -140,7 +140,7 @@ fun HorizontalWavyBackground(
             close()
         }
         drawPath(path1, color = waveColor1)
-        
+
         // Horizontal Wave 2
         val path2 = Path().apply {
             moveTo(0f, height)
@@ -184,30 +184,30 @@ fun VerticalWavyBackground(
         drawRect(color = bgColor)
         val width = size.width
         val height = size.height
-        
+
         // Vertical Wave 1
-        val path1 = Path().apply { 
+        val path1 = Path().apply {
             moveTo(width, 0f)
-            for (y in 0..height.toInt() step 10) { 
+            for (y in 0..height.toInt() step 10) {
                 val relativeY = y.toFloat() / height
                 val x = width * wave1WidthFactor + sin(relativeY * 1.5 * PI + phase).toFloat() * wave1Amplitude
-                lineTo(x, y.toFloat()) 
+                lineTo(x, y.toFloat())
             }
             lineTo(width, height)
-            close() 
+            close()
         }
         drawPath(path1, color = waveColor1)
-        
+
         // Vertical Wave 2
-        val path2 = Path().apply { 
+        val path2 = Path().apply {
             moveTo(width, 0f)
-            for (y in 0..height.toInt() step 10) { 
+            for (y in 0..height.toInt() step 10) {
                 val relativeY = y.toFloat() / height
                 val x = width * wave2WidthFactor + sin(relativeY * 2.5 * PI - phase * 0.8f).toFloat() * wave2Amplitude
-                lineTo(x, y.toFloat()) 
+                lineTo(x, y.toFloat())
             }
             lineTo(width, height)
-            close() 
+            close()
         }
         drawPath(path2, color = waveColor2.copy(alpha = 0.7f))
     }
@@ -215,8 +215,8 @@ fun VerticalWavyBackground(
 
 @Composable
 fun InfoCard(
-    icon: ImageVector, 
-    title: String, 
+    icon: ImageVector,
+    title: String,
     content: String,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
@@ -322,7 +322,7 @@ fun BookItemCard(
                                                 Color.Black.copy(alpha = 0.1f),
                                                 Color.Black.copy(alpha = 0.65f)
                                             ),
-                                            startY = 0f 
+                                            startY = 0f
                                         )
                                     )
                             )
@@ -359,9 +359,9 @@ fun BookItemCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    
+
                     bottomContent?.invoke(this)
-                    
+
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Badge(containerColor = MaterialTheme.colorScheme.secondaryContainer) {
@@ -374,11 +374,11 @@ fun BookItemCard(
                     }
                 }
             }
-            
+
             Box(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
                 topEndContent?.invoke(this)
             }
-            
+
             Box(modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)) {
                 cornerContent?.invoke(this)
             }
@@ -396,11 +396,11 @@ fun CategoryChip(
     FilterChip(
         selected = isSelected,
         onClick = { onCategorySelected(category) },
-        label = { 
+        label = {
             Text(
-                text = category, 
+                text = category,
                 color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
-            ) 
+            )
         },
         shape = CircleShape,
         colors = FilterChipDefaults.filterChipColors(
@@ -465,16 +465,16 @@ fun CategorySquareButton(
 
 @Composable
 fun SelectionOption(
-    title: String, 
-    icon: ImageVector, 
-    isSelected: Boolean, 
+    title: String,
+    icon: ImageVector,
+    isSelected: Boolean,
     onClick: () -> Unit
 ) {
     Surface(
-        onClick = onClick, 
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), 
-        shape = RoundedCornerShape(12.dp), 
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f), 
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -498,7 +498,7 @@ fun UserAvatar(
 ) {
     val defaultAvatarPath = "file:///android_asset/images/users/avatars/Avatar_defult.png"
     val isUsingDefault = photoUrl.isNullOrEmpty() || photoUrl.contains("Avatar_defult")
-    
+
     val avatarModifier = Modifier
         .fillMaxSize()
         .let { if (onClick != null) it.clickable(onClick = onClick) else it }
@@ -535,15 +535,15 @@ fun UserAvatar(
                 contentDescription = "Avatar",
                 modifier = avatarModifier,
                 contentScale = if (isUsingDefault) ContentScale.Fit else contentScale,
-                loading = { 
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
+                loading = {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Icon(
-                            if (isLarge) Icons.Default.Person else Icons.Default.AccountCircle, 
-                            contentDescription = null, 
-                            modifier = Modifier.size(finalIconSize).rotate(rotation), 
+                            if (isLarge) Icons.Default.Person else Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(finalIconSize).rotate(rotation),
                             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                         )
-                    } 
+                    }
                 },
                 error = {
                     Box(
@@ -551,9 +551,9 @@ fun UserAvatar(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            if (isLarge) Icons.Default.Person else Icons.Default.AccountCircle, 
-                            contentDescription = null, 
-                            modifier = Modifier.size(finalIconSize), 
+                            if (isLarge) Icons.Default.Person else Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(finalIconSize),
                             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                         )
                     }
@@ -578,9 +578,9 @@ fun TopUpDialog(onDismiss: () -> Unit, onComplete: (Double) -> Unit) {
             Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Top Up Account", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text("Step $step of 2", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 AnimatedContent(targetState = step, label = "topUpStep") { currentStep ->
                     if (currentStep == 1) {
                         Column {
@@ -629,12 +629,12 @@ fun TopUpDialog(onDismiss: () -> Unit, onComplete: (Double) -> Unit) {
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(32.dp))
-                
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = { if (step == 1) onDismiss() else { step = 1 } }, modifier = Modifier.weight(1f), enabled = !isProcessing) { 
-                        Text(if (step == 1) "Cancel" else "Back") 
+                    OutlinedButton(onClick = { if (step == 1) onDismiss() else { step = 1 } }, modifier = Modifier.weight(1f), enabled = !isProcessing) {
+                        Text(if (step == 1) "Cancel" else "Back")
                     }
                     Button(
                         onClick = {

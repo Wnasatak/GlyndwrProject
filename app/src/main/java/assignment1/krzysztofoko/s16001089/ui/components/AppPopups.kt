@@ -111,6 +111,15 @@ object AppPopups {
         }
     }
 
+    @Composable
+    fun EmailChangeDialog(
+        currentEmail: String,
+        onDismiss: () -> Unit,
+        onSuccess: (String) -> Unit
+    ) {
+        TODO("Not yet implemented")
+    }
+
     /**
      * Shows the Profile Password Change dialog
      */
