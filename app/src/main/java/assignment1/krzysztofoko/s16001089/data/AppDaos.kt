@@ -49,6 +49,9 @@ interface GearDao {
     @Query("SELECT * FROM gear")
     fun getAllGear(): Flow<List<Gear>>
 
+    @Query("SELECT * FROM gear")
+    suspend fun getAllGearOnce(): List<Gear>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(gear: List<Gear>)
 

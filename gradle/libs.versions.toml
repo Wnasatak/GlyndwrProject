@@ -18,6 +18,7 @@ ksp = "2.0.21-1.0.25"
 uiText = "1.10.1"
 foundation = "1.10.1"
 media3 = "1.5.1"
+androidMail = "1.6.8"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -51,6 +52,8 @@ androidx-compose-foundation = { group = "androidx.compose.foundation", name = "f
 androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
 androidx-media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
+android-mail = { group = "com.sun.mail", name = "android-mail", version.ref = "androidMail" }
+android-activation = { group = "com.sun.mail", name = "android-activation", version.ref = "androidMail" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

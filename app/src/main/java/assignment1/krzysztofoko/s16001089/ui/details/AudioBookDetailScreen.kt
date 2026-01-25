@@ -72,6 +72,7 @@ fun AudioBookDetailScreen(
     val allReviews by db.userDao().getReviewsForProduct(bookId).collectAsState(initial = emptyList())
     
     var showOrderFlow by remember { mutableStateOf(false) }
+    var showRemoveConfirmation by remember { mutableStateOf(false) }
 
     LaunchedEffect(bookId, user) {
         loading = true
@@ -171,14 +172,7 @@ fun AudioBookDetailScreen(
                                                     }
                                                 } else {
                                                     OutlinedButton(
-                                                        onClick = {
-                                                            if (user != null) {
-                                                                scope.launch {
-                                                                    db.userDao().deletePurchase(user.uid, currentBook.id)
-                                                                    snackbarHostState.showSnackbar("Removed from library")
-                                                                }
-                                                            }
-                                                        },
+                                                        onClick = { showRemoveConfirmation = true },
                                                         modifier = Modifier.height(56.dp),
                                                         shape = RoundedCornerShape(16.dp),
                                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -255,7 +249,8 @@ fun AudioBookDetailScreen(
         }
 
         if (showOrderFlow && book != null) {
-            OrderFlowDialog(
+            AppPopups.OrderPurchase(
+                show = showOrderFlow,
                 book = book!!,
                 user = localUser,
                 onDismiss = { showOrderFlow = false },
@@ -266,5 +261,19 @@ fun AudioBookDetailScreen(
                 }
             )
         }
+
+        // Use Centralized Confirmation Popup
+        AppPopups.RemoveFromLibraryConfirmation(
+            show = showRemoveConfirmation,
+            bookTitle = book?.title ?: "",
+            onDismiss = { showRemoveConfirmation = false },
+            onConfirm = {
+                scope.launch {
+                    user?.let { db.userDao().deletePurchase(it.uid, bookId) }
+                    showRemoveConfirmation = false
+                    snackbarHostState.showSnackbar("Removed from library")
+                }
+            }
+        )
     }
 }

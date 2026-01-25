@@ -13,13 +13,11 @@ data class Gear(
     val imageUrl: String = "",
     val category: String = "General",
     val mainCategory: String = "University Gear",
-    // Base selling fields
     val sizes: String = "M",
     val colors: String = "Default",
     val stockCount: Int = 10,
     val brand: String = "Wrexham University",
     val isAvailable: Boolean = true,
-    // Professional store additions
     val material: String = "Mixed Fibers",
     val sku: String = "WREX-GEAR-000",
     val originalPrice: Double = 0.0, // To show sales

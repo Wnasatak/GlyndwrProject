@@ -60,74 +60,26 @@ fun DashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     
     val userId = user?.uid ?: ""
-
-    // Search state
     var searchQuery by remember { mutableStateOf("") }
     var isSearchVisible by remember { mutableStateOf(false) }
 
-    val localUser by remember(userId) {
-        if (userId.isNotEmpty()) db.userDao().getUserFlow(userId)
-        else flowOf(null)
-    }.collectAsState(initial = null)
+    val localUser by remember(userId) { if (userId.isNotEmpty()) db.userDao().getUserFlow(userId) else flowOf(null) }.collectAsState(initial = null)
+    val wishlistIds by remember(userId) { if (userId.isNotEmpty()) db.userDao().getWishlistIds(userId) else flowOf(emptyList()) }.collectAsState(initial = emptyList())
+    val historyIds by remember(userId) { if (userId.isNotEmpty()) db.userDao().getHistoryIds(userId) else flowOf(emptyList()) }.collectAsState(initial = emptyList())
+    val commentedIds by remember(userId) { if (userId.isNotEmpty()) db.userDao().getCommentedProductIds(userId) else flowOf(emptyList()) }.collectAsState(initial = emptyList())
+    val purchaseIds by remember(userId) { if (userId.isNotEmpty()) db.userDao().getPurchaseIds(userId) else flowOf(emptyList()) }.collectAsState(initial = emptyList())
 
-    val wishlistIds by remember(userId) {
-        if (userId.isNotEmpty()) db.userDao().getWishlistIds(userId)
-        else flowOf(emptyList())
-    }.collectAsState(initial = emptyList())
+    val lastViewedBooks = remember(historyIds, allBooks) { historyIds.mapNotNull { id -> allBooks.find { it.id == id } } }
+    val wishlistBooks = remember(wishlistIds, allBooks) { wishlistIds.mapNotNull { id -> allBooks.find { it.id == id } } }
+    val commentedBooks = remember(commentedIds, allBooks) { commentedIds.mapNotNull { id -> allBooks.find { it.id == id } } }
+    val ownedBooks = remember(purchaseIds, allBooks) { purchaseIds.mapNotNull { id -> allBooks.find { it.id == id } } }
 
-    val historyIds by remember(userId) {
-        if (userId.isNotEmpty()) db.userDao().getHistoryIds(userId)
-        else flowOf(emptyList())
-    }.collectAsState(initial = emptyList())
-
-    val commentedIds by remember(userId) {
-        if (userId.isNotEmpty()) db.userDao().getCommentedProductIds(userId)
-        else flowOf(emptyList())
-    }.collectAsState(initial = emptyList())
-
-    val purchaseIds by remember(userId) {
-        if (userId.isNotEmpty()) db.userDao().getPurchaseIds(userId)
-        else flowOf(emptyList())
-    }.collectAsState(initial = emptyList())
-
-    val lastViewedBooks = remember(historyIds, allBooks) {
-        historyIds.mapNotNull { id -> allBooks.find { it.id == id } }
-    }
-    
-    val wishlistBooks = remember(wishlistIds, allBooks) {
-        wishlistIds.mapNotNull { id -> allBooks.find { it.id == id } }
-    }
-
-    val commentedBooks = remember(commentedIds, allBooks) {
-        commentedIds.mapNotNull { id -> allBooks.find { it.id == id } }
-    }
-
-    val ownedBooks = remember(purchaseIds, allBooks) {
-        purchaseIds.mapNotNull { id -> allBooks.find { it.id == id } }
-    }
-
-    val suggestions = remember(searchQuery, allBooks) {
-        if (searchQuery.length < 2) emptyList()
-        else allBooks.filter { 
-            it.title.contains(searchQuery, ignoreCase = true) || 
-            it.author.contains(searchQuery, ignoreCase = true)
-        }.take(5)
-    }
+    val suggestions = remember(searchQuery, allBooks) { if (searchQuery.length < 2) emptyList() else allBooks.filter { it.title.contains(searchQuery, ignoreCase = true) || it.author.contains(searchQuery, ignoreCase = true) }.take(5) }
 
     var showPaymentPopup by remember { mutableStateOf(false) }
+    var bookToRemove by remember { mutableStateOf<Book?>(null) }
 
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null
-        ) { 
-            if (isSearchVisible) {
-                isSearchVisible = false
-                searchQuery = ""
-            }
-        }
-    ) {
+    Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) { isSearchVisible = false; searchQuery = "" } }) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
         Scaffold(
             containerColor = Color.Transparent,
@@ -135,31 +87,12 @@ fun DashboardScreen(
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = when(localUser?.role) {
-                                    "admin" -> "Admin Hub"
-                                    "teacher" -> "Faculty"
-                                    else -> "Student Hub"
-                                }, 
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Black
-                            ) 
-                        }
-                    },
+                    title = { Text(text = when(localUser?.role) { "admin" -> "Admin Hub"; "teacher" -> "Faculty"; else -> "Student Hub" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                     actions = {
-                        TopBarSearchAction(isSearchVisible = isSearchVisible) {
-                            isSearchVisible = true
-                        }
-                        IconButton(onClick = {
-                            isSearchVisible = false
-                            onToggleTheme()
-                        }) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
-                        if (localUser?.role == "admin") {
-                            IconButton(onClick = { navController.navigate("admin_panel") }) { Icon(Icons.Default.AdminPanelSettings, "Admin") }
-                        }
+                        TopBarSearchAction(isSearchVisible = isSearchVisible) { isSearchVisible = true }
+                        IconButton(onClick = { isSearchVisible = false; onToggleTheme() }) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
+                        if (localUser?.role == "admin") { IconButton(onClick = { navController.navigate("admin_panel") }) { Icon(Icons.Default.AdminPanelSettings, "Admin") } }
                         IconButton(onClick = { navController.navigate("profile") }) { Icon(Icons.Default.Settings, "Settings") }
                         IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Filled.Logout, "Log Out", tint = MaterialTheme.colorScheme.error) }
                     },
@@ -169,226 +102,83 @@ fun DashboardScreen(
         ) { padding ->
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    item {
-                        DashboardHeader(
-                            name = localUser?.name ?: user?.displayName ?: "Student",
-                            photoUrl = localUser?.photoUrl ?: user?.photoUrl?.toString(),
-                            role = localUser?.role ?: "student", 
-                            balance = localUser?.balance ?: 0.0,
-                            onTopUp = { 
-                                isSearchVisible = false
-                                showPaymentPopup = true 
-                            }
-                        )
-                    }
-
-                    if (localUser?.role == "admin") {
-                        item { 
-                            AdminQuickActions { 
-                                isSearchVisible = false
-                                navController.navigate("admin_panel") 
-                            } 
-                        }
-                    }
-
+                    item { DashboardHeader(name = localUser?.name ?: user?.displayName ?: "Student", photoUrl = localUser?.photoUrl ?: user?.photoUrl?.toString(), role = localUser?.role ?: "student", balance = localUser?.balance ?: 0.0, onTopUp = { isSearchVisible = false; showPaymentPopup = true }) }
+                    if (localUser?.role == "admin") { item { AdminQuickActions { isSearchVisible = false; navController.navigate("admin_panel") } } }
                     item { SectionHeader("Continue Reading") }
-                    if (lastViewedBooks.isNotEmpty()) {
-                        item {
-                            GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book ->
-                                isSearchVisible = false
-                                navController.navigate("bookDetails/${book.id}")
-                            }
-                        }
-                    } else {
-                        item { EmptySectionPlaceholder("No recently viewed items yet.") }
-                    }
-
+                    if (lastViewedBooks.isNotEmpty()) { item { GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book -> isSearchVisible = false; navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("No recently viewed items yet.") } }
                     item { SectionHeader("Your Recent Activity") }
-                    if (commentedBooks.isNotEmpty()) {
-                        item {
-                            GrowingLazyRow(commentedBooks, icon = Icons.AutoMirrored.Filled.Comment) { book ->
-                                isSearchVisible = false
-                                navController.navigate("bookDetails/${book.id}")
-                            }
-                        }
-                    } else {
-                        item { EmptySectionPlaceholder("No recent reviews.") }
-                    }
-
+                    if (commentedBooks.isNotEmpty()) { item { GrowingLazyRow(commentedBooks, icon = Icons.AutoMirrored.Filled.Comment) { book -> isSearchVisible = false; navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("No recent reviews.") } }
                     item { SectionHeader("Recently Liked") }
-                    if (wishlistBooks.isNotEmpty()) {
-                        item {
-                            GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book ->
-                                isSearchVisible = false
-                                navController.navigate("bookDetails/${book.id}")
-                            }
-                        }
-                    } else {
-                        item { EmptySectionPlaceholder("Your favorites list is empty.") }
-                    }
-
+                    if (wishlistBooks.isNotEmpty()) { item { GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book -> isSearchVisible = false; navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("Your favorites list is empty.") } }
                     item { SectionHeader("Your Collection") }
 
-                    if (ownedBooks.isEmpty()) {
-                        item { EmptyLibraryPlaceholder(onBrowse = onBack) }
-                    } else {
+                    if (ownedBooks.isEmpty()) { item { EmptyLibraryPlaceholder(onBrowse = onBack) } } else {
                         items(ownedBooks) { book ->
                             var showMenu by remember { mutableStateOf(false) }
                             BookItemCard(
                                 book = book,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                onClick = { 
-                                    isSearchVisible = false
-                                    navController.navigate("bookDetails/${book.id}") 
-                                },
-                                imageOverlay = {
-                                    if (book.isAudioBook) {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            SpinningAudioButton(
-                                                isPlaying = isAudioPlaying && currentPlayingBookId == book.id,
-                                                onToggle = { onPlayAudio(book) },
-                                                size = 40
-                                            )
-                                        }
-                                    }
-                                },
+                                onClick = { isSearchVisible = false; navController.navigate("bookDetails/${book.id}") },
+                                imageOverlay = { if (book.isAudioBook) { Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) { SpinningAudioButton(isPlaying = isAudioPlaying && currentPlayingBookId == book.id, onToggle = { onPlayAudio(book) }, size = 40) } } },
                                 topEndContent = {
                                     Box {
-                                        IconButton(
-                                            onClick = { 
-                                                isSearchVisible = false
-                                                showMenu = true 
-                                            },
-                                            modifier = Modifier.size(40.dp).padding(4.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.MoreVert, 
-                                                contentDescription = "Options", 
-                                                modifier = Modifier.size(24.dp), 
-                                                tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline
-                                            )
-                                        }
-                                        DropdownMenu(
-                                            expanded = showMenu,
-                                            onDismissRequest = { showMenu = false }
-                                        ) {
-                                            if (book.price > 0) {
-                                                DropdownMenuItem(
-                                                    text = { Text("View Invoice") },
-                                                    onClick = {
-                                                        showMenu = false
-                                                        onViewInvoice(book)
-                                                    },
-                                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }
-                                                )
-                                            }
-                                            
-                                            if (book.mainCategory != "University Gear") {
-                                                if (book.price <= 0) {
-                                                    DropdownMenuItem(
-                                                        text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) },
-                                                        onClick = {
-                                                            showMenu = false
-                                                            scope.launch {
-                                                                db.userDao().deletePurchase(userId, book.id)
-                                                                snackbarHostState.showSnackbar("Removed from library")
-                                                            }
-                                                        },
-                                                        leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }
-                                                    )
-                                                }
+                                        IconButton(onClick = { isSearchVisible = false; showMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
+                                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                            if (book.price > 0) { DropdownMenuItem(text = { Text("View Invoice") }, onClick = { showMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
+                                            if (book.mainCategory != "University Gear" && book.price <= 0) {
+                                                DropdownMenuItem(text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; bookToRemove = book }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) })
                                             }
                                         }
                                     }
                                 },
                                 bottomContent = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically, 
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        if (book.price > 0) {
-                                            Surface(
-                                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                                                shape = RoundedCornerShape(8.dp),
-                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                                            ) {
-                                                Text(
-                                                    text = "Purchased", 
-                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), 
-                                                    style = MaterialTheme.typography.labelLarge, 
-                                                    color = MaterialTheme.colorScheme.primary, 
-                                                    fontWeight = FontWeight.ExtraBold
-                                                )
-                                            }
-                                        } else {
-                                            val label = if (book.mainCategory == "University Gear") "Picked Up" else "In Library"
-                                            Surface(
-                                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                                                shape = RoundedCornerShape(8.dp),
-                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                                            ) {
-                                                Text(
-                                                    text = label, 
-                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), 
-                                                    style = MaterialTheme.typography.labelLarge, 
-                                                    color = MaterialTheme.colorScheme.primary, 
-                                                    fontWeight = FontWeight.ExtraBold
-                                                )
-                                            }
+                                    Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                        val label = if (book.price > 0) "Purchased" else if (book.mainCategory == "University Gear") "Picked Up" else "In Library"
+                                        Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
+                                            Text(text = label, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                                         }
                                     }
                                 }
                             )
                         }
                     }
-
                     item { Spacer(Modifier.height(140.dp)) }
                 }
 
                 HomeSearchSection(
-                    isSearchVisible = isSearchVisible,
-                    searchQuery = searchQuery,
-                    onQueryChange = { searchQuery = it },
-                    onCloseClick = {
-                        isSearchVisible = false
-                        searchQuery = ""
-                    },
-                    suggestions = suggestions,
-                    onSuggestionClick = { book ->
-                        searchQuery = book.title
-                        isSearchVisible = false
-                        navController.navigate("bookDetails/${book.id}")
-                    },
-                    modifier = Modifier
-                        .padding(top = padding.calculateTopPadding())
-                        .zIndex(10f)
+                    isSearchVisible = isSearchVisible, searchQuery = searchQuery, onQueryChange = { searchQuery = it }, onCloseClick = { isSearchVisible = false; searchQuery = "" }, suggestions = suggestions,
+                    onSuggestionClick = { book -> searchQuery = book.title; isSearchVisible = false; navController.navigate("bookDetails/${book.id}") },
+                    modifier = Modifier.padding(top = padding.calculateTopPadding()).zIndex(10f)
                 )
             }
         }
 
-        if (showPaymentPopup) {
-            IntegratedTopUpDialog(
-                user = localUser,
-                onDismiss = { showPaymentPopup = false },
-                onManageProfile = { 
+        // --- Centralized Popups ---
+        AppPopups.WalletTopUp(
+            show = showPaymentPopup,
+            user = localUser,
+            onDismiss = { showPaymentPopup = false },
+            onManageProfile = { showPaymentPopup = false; navController.navigate("profile") },
+            onTopUpComplete = { amount ->
+                scope.launch {
+                    localUser?.let { db.userDao().upsertUser(it.copy(balance = it.balance + amount)) }
+                    snackbarHostState.showSnackbar("£${String.format(Locale.US, "%.2f", amount)} added to your wallet!")
                     showPaymentPopup = false
-                    navController.navigate("profile")
-                },
-                onTopUpComplete = { amount ->
-                    scope.launch {
-                        localUser?.let { currentUser ->
-                            val updatedUser = currentUser.copy(balance = currentUser.balance + amount)
-                            db.userDao().upsertUser(updatedUser)
-                            snackbarHostState.showSnackbar("£${String.format(Locale.US, "%.2f", amount)} added to your wallet!")
-                            showPaymentPopup = false
-                        }
-                    }
                 }
-            )
-        }
+            }
+        )
+
+        AppPopups.RemoveFromLibraryConfirmation(
+            show = bookToRemove != null,
+            bookTitle = bookToRemove?.title ?: "",
+            onDismiss = { bookToRemove = null },
+            onConfirm = {
+                scope.launch {
+                    bookToRemove?.let { db.userDao().deletePurchase(userId, it.id) }
+                    bookToRemove = null
+                    snackbarHostState.showSnackbar("Removed from library")
+                }
+            }
+        )
     }
 }

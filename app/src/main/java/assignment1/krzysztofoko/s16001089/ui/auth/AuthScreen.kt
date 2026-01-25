@@ -1,17 +1,13 @@
 package assignment1.krzysztofoko.s16001089.ui.auth
 
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -21,14 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -39,8 +28,10 @@ import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.R
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.UserLocal
+import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
-import coil.compose.AsyncImage
+import assignment1.krzysztofoko.s16001089.ui.components.rememberGlowAnimation
+import assignment1.krzysztofoko.s16001089.utils.EmailUtils
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -66,6 +57,10 @@ fun AuthScreen(
     var isTwoFactorStep by remember { mutableStateOf(false) }
     var entered2FACode by remember { mutableStateOf("") }
     var generated2FACode by remember { mutableStateOf("") }
+    var showDemoPopup by remember { mutableStateOf(false) }
+    
+    var loginAttempts by remember { mutableIntStateOf(0) }
+    var pendingAuthResult by remember { mutableStateOf<Pair<String, UserLocal?>?>(null) }
     
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -76,33 +71,35 @@ fun AuthScreen(
     val db = AppDatabase.getDatabase(context)
     val scope = rememberCoroutineScope()
 
-    // Light pulsing animation setup
-    val infiniteTransition = rememberInfiniteTransition(label = "glow")
-    val glowScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.4f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowScale"
-    )
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
+    val (glowScale, glowAlpha) = rememberGlowAnimation()
 
-    val trigger2FA = {
+    val trigger2FA = { userEmail: String ->
+        isLoading = true
         val code = (100000..999999).random().toString()
         generated2FACode = code
-        Toast.makeText(context, "Verification code: $code", Toast.LENGTH_LONG).show()
-        isTwoFactorStep = true
-        isLoading = false
+        
+        scope.launch {
+            val success = EmailUtils.send2FACode(context, userEmail, code)
+            isLoading = false
+            if (success) {
+                isTwoFactorStep = true
+                showDemoPopup = true 
+                snackbarHostState.showSnackbar("Verification code sent to $userEmail")
+            } else {
+                error = "Failed to send verification code via SMTP. Please check your credentials."
+            }
+        }
+    }
+
+    val finalizeAuth = {
+        isLoading = true
+        scope.launch {
+            pendingAuthResult?.let { (_, localUser) ->
+                localUser?.let { db.userDao().upsertUser(it) }
+                snackbarHostState.showSnackbar("Successfully logged in")
+                onAuthSuccess()
+            }
+        }
     }
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
@@ -114,40 +111,40 @@ fun AuthScreen(
             val idToken = account.idToken ?: throw IllegalStateException("ID Token missing.")
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             isLoading = true
+            
             auth.signInWithCredential(credential).addOnSuccessListener { res ->
                 val user = res.user!!
                 scope.launch {
                     val existing = db.userDao().getUserByEmail(user.email ?: "")
-                    if (existing == null) {
-                        db.userDao().upsertUser(UserLocal(
+                    val userData = if (existing == null) {
+                        UserLocal(
                             id = user.uid,
                             name = user.displayName ?: "Student",
                             email = user.email ?: "",
                             photoUrl = user.photoUrl?.toString(),
                             balance = 1000.0,
                             role = "student"
-                        ))
+                        )
                     } else {
-                        db.userDao().upsertUser(existing.copy(
+                        existing.copy(
                             name = user.displayName ?: existing.name,
                             photoUrl = user.photoUrl?.toString() ?: existing.photoUrl
-                        ))
+                        )
                     }
-                    trigger2FA()
+                    
+                    pendingAuthResult = idToken to userData
+                    trigger2FA(user.email ?: "")
                 }
             }.addOnFailureListener { e ->
                 isLoading = false
                 error = "Firebase Auth failed: ${e.localizedMessage}"
-                Log.e("AuthScreen", "Firebase error", e)
             }
         } catch (e: ApiException) {
             isLoading = false
-            error = "Google Sign-In failed: Status Code ${e.statusCode}\nMake sure SHA-1 is added to Firebase and Support Email is set."
-            Log.e("AuthScreen", "Google error: ${e.statusCode}", e)
+            error = "Google Sign-In failed: Status Code ${e.statusCode}"
         } catch (e: Exception) {
             isLoading = false
             error = "Unexpected error: ${e.localizedMessage}"
-            Log.e("AuthScreen", "Unknown error", e)
         }
     }
 
@@ -173,7 +170,12 @@ fun AuthScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = {
-                            if (isTwoFactorStep) { isTwoFactorStep = false; auth.signOut() } else onBack()
+                            if (isTwoFactorStep) { 
+                                isTwoFactorStep = false
+                                auth.signOut() 
+                            } else if (isResettingPassword) {
+                                isResettingPassword = false
+                            } else onBack()
                         }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                     },
                     actions = {
@@ -182,8 +184,8 @@ fun AuthScreen(
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 )
             }
-        ) { padding ->
-            Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        ) { paddingValues ->
+            Column(modifier = Modifier.fillMaxSize().padding(paddingValues).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Card(
@@ -205,34 +207,35 @@ fun AuthScreen(
                 ) {
                     Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         if (isTwoFactorStep) {
-                            Icon(Icons.Default.VpnKey, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Text("Security Verification", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                            Text("A code has been sent to your academic email. (Demo: Code is in the notification below)", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
-                            
-                            Spacer(modifier = Modifier.height(32.dp))
-                            OutlinedTextField(
-                                value = entered2FACode, 
-                                onValueChange = { if (it.length <= 6) entered2FACode = it; error = null }, 
-                                label = { Text("6-Digit Verification Code") }, 
-                                modifier = Modifier.fillMaxWidth(), 
-                                shape = RoundedCornerShape(12.dp),
-                                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, letterSpacing = 6.sp, fontWeight = FontWeight.Black)
-                            )
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Button(onClick = {
-                                if (entered2FACode == generated2FACode) {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Successfully logged in")
+                            if (isLoading) {
+                                TwoFactorLoading()
+                            } else {
+                                Icon(Icons.Default.VpnKey, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Text("Security Verification", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                                Text("A code has been sent to your email. Please enter it below to verify your identity.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+                                
+                                Spacer(modifier = Modifier.height(32.dp))
+                                OutlinedTextField(
+                                    value = entered2FACode, 
+                                    onValueChange = { if (it.length <= 6) entered2FACode = it; error = null }, 
+                                    label = { Text("6-Digit Verification Code") }, 
+                                    modifier = Modifier.fillMaxWidth(), 
+                                    shape = RoundedCornerShape(12.dp),
+                                    textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, letterSpacing = 6.sp, fontWeight = FontWeight.Black)
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Button(onClick = {
+                                    if (entered2FACode == generated2FACode) {
+                                        finalizeAuth()
+                                    } else {
+                                        error = "Invalid code. Please try again."
                                     }
-                                    onAuthSuccess()
-                                } else {
-                                    error = "Invalid code. Please try again."
+                                }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) {
+                                    Text("Verify Identity")
                                 }
-                            }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) {
-                                if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White) else Text("Verify Identity")
+                                TextButton(onClick = { trigger2FA(email) }) { Text("Resend Code") }
                             }
-                            TextButton(onClick = { trigger2FA() }) { Text("Resend Code") }
                         } else if (isVerifyingEmail) {
                             Icon(Icons.Default.MarkEmailRead, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.height(24.dp))
@@ -244,7 +247,7 @@ fun AuthScreen(
                                 isLoading = true
                                 auth.currentUser?.reload()?.addOnCompleteListener {
                                     isLoading = false
-                                    if (auth.currentUser?.isEmailVerified == true) trigger2FA() else error = "Email not yet verified."
+                                    if (auth.currentUser?.isEmailVerified == true) trigger2FA(auth.currentUser?.email ?: email) else error = "Email not yet verified."
                                 }
                             }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) { Text("Verification Done") }
                             TextButton(onClick = { auth.signOut(); isVerifyingEmail = false }) { Text("Back to Login") }
@@ -262,41 +265,7 @@ fun AuthScreen(
                             }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) { Text("Send Reset Link") }
                             TextButton(onClick = { isResettingPassword = false; error = null }) { Text("Return to Login") }
                         } else {
-                            val rotation = remember { Animatable(0f) }
-                            LaunchedEffect(isLogin) {
-                                rotation.snapTo(0f)
-                                rotation.animateTo(
-                                    targetValue = 360f,
-                                    animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing)
-                                )
-                            }
-
-                            // Pulsing light behind the logo
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(140.dp)) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(100.dp)
-                                        .scale(glowScale)
-                                        .alpha(glowAlpha)
-                                        .background(
-                                            brush = Brush.radialGradient(
-                                                colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), Color.Transparent)
-                                            ),
-                                            shape = CircleShape
-                                        )
-                                )
-                                
-                                AsyncImage(
-                                    model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
-                                    contentDescription = "University Logo",
-                                    modifier = Modifier
-                                        .size(100.dp)
-                                        .rotate(rotation.value)
-                                        .clip(CircleShape)
-                                        .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
+                            AuthLogo(isLogin = isLogin, glowScale = glowScale, glowAlpha = glowAlpha)
 
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -311,6 +280,12 @@ fun AuthScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             OutlinedTextField(value = password, onValueChange = { password = it; error = null }, label = { Text("Password") }, visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), trailingIcon = { IconButton(onClick = { passwordVisible = !passwordVisible }) { Icon(if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null) } }, shape = RoundedCornerShape(12.dp))
                             
+                            if (isLogin && loginAttempts >= 3) {
+                                TextButton(onClick = { isResettingPassword = true; error = null }) {
+                                    Text("Forgot Password?", color = MaterialTheme.colorScheme.error)
+                                }
+                            }
+
                             Spacer(modifier = Modifier.height(24.dp))
                             Button(onClick = {
                                 val trimmedEmail = email.trim()
@@ -318,18 +293,31 @@ fun AuthScreen(
                                 isLoading = true
                                 if (isLogin) {
                                     auth.signInWithEmailAndPassword(trimmedEmail, password).addOnSuccessListener { res ->
-                                        if (res.user?.isEmailVerified == true) trigger2FA() else { isVerifyingEmail = true; res.user?.sendEmailVerification(); isLoading = false }
-                                    }.addOnFailureListener { isLoading = false; error = "Login failed. Check your password." }
+                                        loginAttempts = 0 
+                                        if (res.user?.isEmailVerified == true) {
+                                            pendingAuthResult = "" to null 
+                                            trigger2FA(trimmedEmail)
+                                        } else {
+                                            isVerifyingEmail = true
+                                            res.user?.sendEmailVerification()
+                                            isLoading = false
+                                        }
+                                    }.addOnFailureListener { e ->
+                                        isLoading = false
+                                        loginAttempts++
+                                        error = "Login failed. Check your password."
+                                    }
                                 } else {
                                     auth.createUserWithEmailAndPassword(trimmedEmail, password).addOnSuccessListener { res ->
                                         val user = res.user!!
                                         scope.launch {
-                                            db.userDao().upsertUser(UserLocal(
+                                            val userData = UserLocal(
                                                 id = user.uid, 
                                                 name = firstName, 
                                                 email = trimmedEmail,
                                                 balance = 1000.0
-                                            ))
+                                            )
+                                            pendingAuthResult = "" to userData
                                             user.sendEmailVerification()
                                             isVerifyingEmail = true
                                             isLoading = false
@@ -351,7 +339,7 @@ fun AuthScreen(
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                             ) { Icon(Icons.Default.AccountCircle, null); Spacer(Modifier.width(12.dp)); Text(if (isLogin) "Google Login" else "Google Sign up") }
 
-                            TextButton(onClick = { isLogin = !isLogin; error = null }) { Text(if (isLogin) "New student? Register" else "Have an account? Sign In") }
+                            TextButton(onClick = { isLogin = !isLogin; error = null; loginAttempts = 0 }) { Text(if (isLogin) "New student? Register" else "Have an account? Sign In") }
                         }
 
                         AnimatedVisibility(visible = error != null) {
@@ -364,5 +352,12 @@ fun AuthScreen(
                 Spacer(modifier = Modifier.height(40.dp))
             }
         }
+
+        // Use Centralized Popup System
+        AppPopups.AuthDemoCode(
+            show = showDemoPopup,
+            code = generated2FACode,
+            onDismiss = { showDemoPopup = false }
+        )
     }
 }

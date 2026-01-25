@@ -51,6 +51,8 @@ fun GearDetailScreen(
     var selectedImageIndex by remember { mutableIntStateOf(0) }
     var showPickupPopup by remember { mutableStateOf(false) }
 
+    var quickViewGear by remember { mutableStateOf<Gear?>(null) }
+
     val localUser by remember(user) {
         if (user != null) db.userDao().getUserFlow(user.uid)
         else flowOf(null)
@@ -62,7 +64,8 @@ fun GearDetailScreen(
 
     val isOwned = remember(purchaseIds) { purchaseIds.contains(gearId) }
     val allReviews by db.userDao().getReviewsForProduct(gearId).collectAsState(initial = emptyList())
-    
+
+    var similarGear by remember { mutableStateOf(listOf<Gear>()) }
     var showOrderFlow by remember { mutableStateOf(false) }
 
     suspend fun refreshGear() {
@@ -83,6 +86,10 @@ fun GearDetailScreen(
             selectedSize = gear?.sizes?.split(",")?.firstOrNull() ?: "M"
             selectedColor = gear?.colors?.split(",")?.firstOrNull() ?: "Default"
         }
+
+        val allGear = db.gearDao().getAllGearOnce()
+        similarGear = allGear.filter { it.id != gearId && it.mainCategory == gear?.mainCategory }.shuffled()
+
         if (user != null) db.userDao().addToHistory(HistoryItem(user.uid, gearId))
         loading = false
     }
@@ -120,7 +127,7 @@ fun GearDetailScreen(
             } else {
                 gear?.let { currentGear ->
                     val isFree = currentGear.price <= 0
-                    LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(bottom = 100.dp)) {
+                    LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(bottom = 120.dp)) {
                         item {
                             GearImageGallery(
                                 images = images,
@@ -175,8 +182,21 @@ fun GearDetailScreen(
                                     
                                     Spacer(modifier = Modifier.height(32.dp))
                                     GearSpecsCard(material = currentGear.material, sku = currentGear.sku, category = currentGear.category)
-                                    Spacer(modifier = Modifier.height(32.dp))
+                                    
+                                    if (similarGear.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(40.dp))
+                                        Text(text = "Similar Products", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        
+                                        SimilarProductsSlider(
+                                            products = similarGear,
+                                            onProductClick = { selectedGear ->
+                                                quickViewGear = selectedGear
+                                            }
+                                        )
+                                    }
 
+                                    Spacer(modifier = Modifier.height(40.dp))
                                     ReviewSection(
                                         productId = gearId,
                                         reviews = allReviews,
@@ -238,5 +258,42 @@ fun GearDetailScreen(
         }
 
         if (showPickupPopup) PickupInfoDialog(onDismiss = { showPickupPopup = false })
+
+        // SIMILAR PRODUCT QUICK VIEW
+        quickViewGear?.let { sGear ->
+            QuickViewDialog(
+                book = Book(
+                    id = sGear.id,
+                    title = sGear.title,
+                    author = sGear.brand,
+                    price = sGear.price,
+                    description = sGear.description,
+                    imageUrl = sGear.imageUrl,
+                    category = sGear.category,
+                    mainCategory = sGear.mainCategory
+                ),
+                onDismiss = { quickViewGear = null },
+                onReadMore = { id ->
+                    quickViewGear = null
+                    loading = true
+                    gear = null
+                    scope.launch {
+                        val newGear = db.gearDao().getGearById(id)
+                        if (newGear != null) {
+                            gear = newGear
+                            selectedSize = newGear.sizes.split(",").firstOrNull() ?: "M"
+                            selectedColor = newGear.colors.split(",").firstOrNull() ?: "Default"
+                            selectedImageIndex = 0
+                            
+                            val allGear = db.gearDao().getAllGearOnce()
+                            similarGear = allGear.filter { it.id != id && it.mainCategory == newGear.mainCategory }.shuffled()
+                            
+                            db.userDao().addToHistory(HistoryItem(user?.uid ?: "", id))
+                        }
+                        loading = false
+                    }
+                }
+            )
+        }
     }
 }

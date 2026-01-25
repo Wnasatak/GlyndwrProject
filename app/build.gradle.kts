@@ -39,6 +39,13 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/NOTICE.md"
+            excludes += "/META-INF/LICENSE.md"
+        }
+    }
 }
 
 dependencies {
@@ -76,6 +83,10 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.ui)
+
+    // SMTP Email
+    implementation(libs.android.mail)
+    implementation(libs.android.activation)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

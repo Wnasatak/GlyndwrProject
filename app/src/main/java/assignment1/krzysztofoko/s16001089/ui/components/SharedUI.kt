@@ -46,6 +46,36 @@ import java.util.*
 import kotlin.math.PI
 import kotlin.math.sin
 
+/**
+ * Shared Price Formatter
+ */
+fun formatPrice(price: Double): String = String.format(Locale.US, "%.2f", price)
+
+@Composable
+fun StatusBadge(
+    text: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f),
+    contentColor: Color = MaterialTheme.colorScheme.primary
+) {
+    Surface(
+        color = containerColor,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, contentColor.copy(alpha = 0.4f)),
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = contentColor)
+            Spacer(Modifier.width(6.dp))
+            Text(text = text, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = contentColor)
+        }
+    }
+}
+
 @Composable
 fun SpinningLogo(modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "logoSpin")
@@ -580,7 +610,7 @@ fun TopUpDialog(onDismiss: () -> Unit, onComplete: (Double) -> Unit) {
                     } else {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             val finalAmt = customAmount.toDoubleOrNull() ?: selectedAmount
-                            val amtStr = String.format(Locale.US, "%.2f", finalAmt)
+                            val amtStr = formatPrice(finalAmt)
                             Icon(Icons.Default.Security, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.height(16.dp))
                             Text("Confirm Transaction", style = MaterialTheme.typography.titleMedium)
