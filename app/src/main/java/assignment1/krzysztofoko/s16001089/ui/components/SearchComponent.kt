@@ -1,156 +1,165 @@
-package assignment1.krzysztofoko.s16001089.ui.components // Package declaration for the components
+package assignment1.krzysztofoko.s16001089.ui.components
 
-import androidx.compose.animation.* // Importing animation APIs
-import androidx.compose.animation.core.tween // Importing tween animation curve
-import androidx.compose.foundation.BorderStroke // Importing border styling
-import androidx.compose.foundation.clickable // Importing click interaction
-import androidx.compose.foundation.layout.* // Importing layout modifiers
-import androidx.compose.foundation.shape.RoundedCornerShape // Importing shape definitions
-import androidx.compose.foundation.text.KeyboardActions // Importing keyboard action handling
-import androidx.compose.foundation.text.KeyboardOptions // Importing keyboard configuration
-import androidx.compose.material.icons.Icons // Importing material icon sets
-import androidx.compose.material.icons.automirrored.filled.ArrowBack // Importing mirrored back arrow icon
-import androidx.compose.material.icons.filled.Close // Importing close icon
-import androidx.compose.material.icons.filled.History // Importing history icon
-import androidx.compose.material.icons.filled.Search // Importing search icon
-import androidx.compose.material3.* // Importing Material 3 components
-import androidx.compose.runtime.* // Importing Compose runtime states
-import androidx.compose.ui.Alignment // Importing alignment constants
-import androidx.compose.ui.Modifier // Importing UI modifiers
-import androidx.compose.ui.graphics.Color // Importing color handling
-import androidx.compose.ui.platform.LocalFocusManager // Importing focus management
-import androidx.compose.ui.text.font.FontWeight // Importing font weight styles
-import androidx.compose.ui.text.input.ImeAction // Importing IME action types
-import androidx.compose.ui.text.style.TextOverflow // Importing text overflow handling
-import androidx.compose.ui.unit.dp // Importing density-independent pixels
-import assignment1.krzysztofoko.s16001089.data.Book // Importing Book data model
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import assignment1.krzysztofoko.s16001089.data.Book
 
-@Composable // Marks function as a UI component
-fun SearchBarComponent( // Component for the actual search input bar
-    query: String, // The current text being searched
-    onQueryChange: (String) -> Unit, // Callback when text changes
-    onCloseClick: () -> Unit, // Callback to close the search bar
-    modifier: Modifier = Modifier // Standard modifier parameter
+@Composable
+fun SearchBarComponent(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onCloseClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val focusManager = LocalFocusManager.current // Handles keyboard and focus state
+    val focusManager = LocalFocusManager.current
 
-    Surface( // Background container for the search bar
-        modifier = modifier // 
-            .fillMaxWidth() // Makes bar take full width
-            .height(56.dp) // Sets a fixed height
-            .padding(horizontal = 8.dp, vertical = 4.dp), // Adds spacing around the bar
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f), // Matches theme card alpha
-        shape = RoundedCornerShape(28.dp), // Rounds the corners to a pill shape
-        tonalElevation = 2.dp, // Reduced to match app-wide theme consistency
-        shadowElevation = 4.dp, // Adds a drop shadow
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)) // Uses theme outline color
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        shape = RoundedCornerShape(28.dp),
+        tonalElevation = 2.dp,
+        shadowElevation = 4.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
     ) {
-        Row( // Horizontal layout for icons and text field
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), // 
-            verticalAlignment = Alignment.CenterVertically // Aligns children in the middle vertically
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon( // Visual search indicator
-                imageVector = Icons.Default.Search, // 
-                contentDescription = null, // 
-                tint = MaterialTheme.colorScheme.primary // 
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
             )
-            Spacer(modifier = Modifier.width(12.dp)) // Adds horizontal spacing
-            TextField( // Input field for user typing
-                value = query, // 
-                onValueChange = onQueryChange, // 
-                modifier = Modifier.weight(1f), // Takes up remaining horizontal space
-                placeholder = { Text("Search books, courses...", style = MaterialTheme.typography.bodyMedium) }, // Hint text when empty
-                colors = TextFieldDefaults.colors( // Customizes text field appearance
-                    focusedContainerColor = Color.Transparent, // 
-                    unfocusedContainerColor = Color.Transparent, // 
-                    disabledContainerColor = Color.Transparent, // 
-                    focusedIndicatorColor = Color.Transparent, // Removes bottom line
-                    unfocusedIndicatorColor = Color.Transparent, // 
+            Spacer(modifier = Modifier.width(12.dp))
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Search books, courses...", style = MaterialTheme.typography.bodyMedium) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
                 ),
-                singleLine = true, // Prevents multiple lines
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), // Sets keyboard button to "Search"
-                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }), // Closes keyboard on search click
-                textStyle = MaterialTheme.typography.bodyLarge // Sets the font style for input
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                textStyle = MaterialTheme.typography.bodyLarge
             )
             
-            if (query.isNotEmpty()) { // Only shows clear button if there is text
-                TextButton( // Clickable text for clearing
-                    onClick = { onQueryChange("") }, // Resets search text
-                    contentPadding = PaddingValues(horizontal = 8.dp) // 
-                ) {
-                    Text("Clear", style = MaterialTheme.typography.labelLarge) // 
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear")
                 }
             }
             
-            IconButton(onClick = onCloseClick) { // Button to dismiss search bar
-                Icon( // Visual back arrow
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack, // 
-                    contentDescription = "Close search", // Accessibility label
-                    tint = MaterialTheme.colorScheme.primary // 
+            IconButton(onClick = onCloseClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Close search",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
     }
 }
 
-@Composable // 
-fun HomeSearchSection( // Higher-level component managing visibility and suggestions
-    isSearchVisible: Boolean, // Controls if the search is displayed
-    searchQuery: String, // 
-    onQueryChange: (String) -> Unit, // 
-    onCloseClick: () -> Unit, // 
-    suggestions: List<Book>, // List of matching items
-    onSuggestionClick: (Book) -> Unit, // Callback when a suggestion is selected
-    modifier: Modifier = Modifier // 
+@Composable
+fun HomeSearchSection(
+    isSearchVisible: Boolean,
+    searchQuery: String,
+    recentSearches: List<String>,
+    onQueryChange: (String) -> Unit,
+    onClearHistory: () -> Unit,
+    onCloseClick: () -> Unit,
+    suggestions: List<Book>,
+    onSuggestionClick: (Book) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier) { // Vertical layout for bar and results
-        AnimatedVisibility( // Animates search bar appearing/disappearing
-            visible = isSearchVisible, // 
-            enter = expandHorizontally( // Slide/expand animation from the start
-                expandFrom = Alignment.Start, // 
-                animationSpec = tween(durationMillis = 400) // 400ms duration
-            ) + fadeIn(animationSpec = tween(durationMillis = 300)), // Combined with fade
-            exit = shrinkHorizontally( // Shrink animation back to start
-                shrinkTowards = Alignment.Start, // 
-                animationSpec = tween(durationMillis = 400) // 
-            ) + fadeOut(animationSpec = tween(durationMillis = 300)) // 
+    Column(modifier = modifier) {
+        AnimatedVisibility(
+            visible = isSearchVisible,
+            enter = expandHorizontally(expandFrom = Alignment.Start, animationSpec = tween(durationMillis = 400)) + fadeIn(animationSpec = tween(durationMillis = 300)),
+            exit = shrinkHorizontally(shrinkTowards = Alignment.Start, animationSpec = tween(durationMillis = 400)) + fadeOut(animationSpec = tween(durationMillis = 300))
         ) {
-            SearchBarComponent( // The input bar itself
-                query = searchQuery, // 
-                onQueryChange = onQueryChange, // 
-                onCloseClick = onCloseClick // 
+            SearchBarComponent(
+                query = searchQuery,
+                onQueryChange = onQueryChange,
+                onCloseClick = onCloseClick
             )
         }
 
-        AnimatedVisibility( // Animates the suggestions list
-            visible = isSearchVisible && suggestions.isNotEmpty(), // Only show if visible and has results
-            enter = expandVertically() + fadeIn(), // Drops down vertically
-            exit = shrinkVertically() + fadeOut() // 
+        // Show Recent Searches if query is empty and history exists
+        AnimatedVisibility(
+            visible = isSearchVisible && searchQuery.isEmpty() && recentSearches.isNotEmpty(),
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
         ) {
-            SearchSuggestionsList( // Displays the list of matching results
-                items = suggestions, // 
-                onItemClick = onSuggestionClick // 
-            ) { book -> // Content for each suggestion row
-                Row(verticalAlignment = Alignment.CenterVertically) { // 
-                    Icon( // Suggestion/history icon
-                        imageVector = Icons.Default.History, // 
-                        contentDescription = null, // 
-                        tint = MaterialTheme.colorScheme.outline, // 
-                        modifier = Modifier.size(18.dp) // 
+            SearchHistoryList(
+                queries = recentSearches,
+                onQueryClick = { onQueryChange(it) },
+                onClearAll = onClearHistory
+            )
+        }
+
+        // Show Suggestions if query is not empty
+        AnimatedVisibility(
+            visible = isSearchVisible && searchQuery.isNotEmpty() && suggestions.isNotEmpty(),
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            SearchSuggestionsList(
+                items = suggestions,
+                onItemClick = onSuggestionClick
+            ) { book ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(18.dp)
                     )
-                    Spacer(Modifier.width(12.dp)) // 
-                    Column { // Vertical info for the book
-                        Text( // Book title
-                            text = book.title, // 
-                            style = MaterialTheme.typography.bodyMedium, // 
-                            fontWeight = FontWeight.Bold, // 
-                            maxLines = 1, // 
-                            overflow = TextOverflow.Ellipsis // Adds "..." if too long
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = book.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        Text( // Book author
-                            text = book.author, // 
-                            style = MaterialTheme.typography.bodySmall, // 
-                            color = MaterialTheme.colorScheme.onSurfaceVariant // 
+                        Text(
+                            text = book.author,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -159,37 +168,84 @@ fun HomeSearchSection( // Higher-level component managing visibility and suggest
     }
 }
 
-@Composable // 
-fun <T> SearchSuggestionsList( // Reusable generic list for suggestions
-    items: List<T>, // 
-    onItemClick: (T) -> Unit, // 
-    modifier: Modifier = Modifier, // 
-    itemContent: @Composable (T) -> Unit // lambda for rendering items
+@Composable
+fun SearchHistoryList(
+    queries: List<String>,
+    onQueryClick: (String) -> Unit,
+    onClearAll: () -> Unit
 ) {
-    Surface( // Background for the list
-        modifier = modifier // 
-            .fillMaxWidth() // 
-            .padding(horizontal = 12.dp) // 
-            .animateContentSize(), // Animates size changes automatically
-        shape = RoundedCornerShape(16.dp), // Rounds the list corners
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f), // Matches theme card alpha
-        tonalElevation = 4.dp, // Reduced to match app-wide theme consistency
-        shadowElevation = 8.dp, // 
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) // 
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        tonalElevation = 4.dp,
+        shadowElevation = 8.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
-        Column(modifier = Modifier.padding(vertical = 8.dp)) { // Vertical stacking of items
-            items.forEachIndexed { index, item -> // Loops through suggestions
-                Box(modifier = Modifier // Container for single item row
-                    .fillMaxWidth() // 
-                    .clickable { onItemClick(item) } // Makes row interactive
-                    .padding(horizontal = 16.dp, vertical = 12.dp) // 
-                ) {
-                    itemContent(item) // Renders the provided item UI
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Recent Searches", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                TextButton(onClick = onClearAll) {
+                    Icon(Icons.Default.DeleteSweep, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Clear All", style = MaterialTheme.typography.labelSmall)
                 }
-                if (index < items.size - 1) { // Adds dividers between items
-                    HorizontalDivider( // Visual separator line
-                        modifier = Modifier.padding(horizontal = 16.dp), // 
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f) // 
+            }
+            queries.forEachIndexed { index, query ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onQueryClick(query) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.History, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text(query, style = MaterialTheme.typography.bodyMedium)
+                }
+                if (index < queries.size - 1) {
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun <T> SearchSuggestionsList(
+    items: List<T>,
+    onItemClick: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    itemContent: @Composable (T) -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .animateContentSize(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        tonalElevation = 4.dp,
+        shadowElevation = 8.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            items.forEachIndexed { index, item ->
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onItemClick(item) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    itemContent(item)
+                }
+                if (index < items.size - 1) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
                 }
             }
@@ -197,16 +253,16 @@ fun <T> SearchSuggestionsList( // Reusable generic list for suggestions
     }
 }
 
-@Composable // 
-fun TopBarSearchAction( // Component for the search icon in the top bar
-    isSearchVisible: Boolean, // 
-    onSearchIconClick: () -> Unit // 
+@Composable
+fun TopBarSearchAction(
+    isSearchVisible: Boolean,
+    onSearchIconClick: () -> Unit
 ) {
-    if (!isSearchVisible) { // Only shows the icon if search bar is hidden
-        IconButton(onClick = onSearchIconClick) { // 
-            Icon( // 
-                imageVector = Icons.Default.Search, // 
-                contentDescription = "Open Search" // 
+    if (!isSearchVisible) {
+        IconButton(onClick = onSearchIconClick) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Open Search"
             )
         }
     }

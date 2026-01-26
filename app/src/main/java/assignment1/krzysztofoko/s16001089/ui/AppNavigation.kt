@@ -33,6 +33,7 @@ import assignment1.krzysztofoko.s16001089.ui.info.*
 import assignment1.krzysztofoko.s16001089.ui.components.AudioPlayerComponent
 import assignment1.krzysztofoko.s16001089.ui.components.InvoiceCreatingScreen
 import assignment1.krzysztofoko.s16001089.ui.components.TopLevelScaffold
+import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationScreen
 
 @Composable
 fun AppNavigation(
@@ -45,20 +46,18 @@ fun AppNavigation(
     val db = AppDatabase.getDatabase(context)
     val repository = remember { BookRepository(db) }
     
-    // Main brain of the navigation and global state
     val mainVm: MainViewModel = viewModel(factory = MainViewModelFactory(repository, db))
 
-    // Collect states from ViewModel
     val currentUser by mainVm.currentUser.collectAsState()
     val localUser by mainVm.localUser.collectAsState()
     val allBooks by mainVm.allBooks.collectAsState()
     val isDataLoading by mainVm.isDataLoading.collectAsState()
     val loadError by mainVm.loadError.collectAsState()
+    val unreadCount by mainVm.unreadNotificationsCount.collectAsState()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Sync external player state with ViewModel
     LaunchedEffect(externalPlayer) {
         externalPlayer?.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -67,23 +66,22 @@ fun AppNavigation(
         })
     }
 
-    // Auto-minimize player logic
     LaunchedEffect(currentRoute) {
         if (currentRoute != "bookDetails/{bookId}" && mainVm.showPlayer) {
             mainVm.isPlayerMinimized = true
         }
     }
 
-    // Main Scaffold with centralized TopBar and Logic
     TopLevelScaffold(
         currentUser = currentUser,
         localUser = localUser,
         currentRoute = currentRoute,
+        unreadCount = unreadCount,
         onDashboardClick = { navController.navigate("dashboard") },
+        onNotificationsClick = { navController.navigate("notifications") },
         onLogoutClick = { mainVm.showLogoutConfirm = true }
     ) { paddingValues ->
         
-        // Centralized Logout Dialog
         if (mainVm.showLogoutConfirm) {
             AppPopups.LogoutConfirmation(
                 onDismiss = { mainVm.showLogoutConfirm = false },
@@ -91,7 +89,6 @@ fun AppNavigation(
             )
         }
 
-        // Success Logout Popup
         AppPopups.SignedOutSuccess(
             show = mainVm.showSignedOutPopup,
             onDismiss = { mainVm.showSignedOutPopup = false }
@@ -106,7 +103,6 @@ fun AppNavigation(
                     HomeScreen(
                         navController = navController, 
                         isLoggedIn = currentUser != null, 
-                        allBooks = allBooks, 
                         isLoading = isDataLoading, 
                         error = loadError, 
                         onRefresh = { mainVm.refreshData() }, 
@@ -126,6 +122,14 @@ fun AppNavigation(
                         onToggleTheme = onToggleTheme, 
                         snackbarHostState = remember { SnackbarHostState() }
                     ) 
+                }
+                composable("notifications") {
+                    NotificationScreen(
+                        onNavigateToItem = { navController.navigate("bookDetails/$it") },
+                        onNavigateToInvoice = { navController.navigate("invoice/$it") },
+                        onBack = { navController.popBackStack() }, 
+                        isDarkTheme = isDarkTheme
+                    )
                 }
                 composable("bookDetails/{bookId}") { backStackEntry ->
                     val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
@@ -163,7 +167,7 @@ fun AppNavigation(
                     )
                 }
                 composable("profile") { 
-                    ProfileScreen(navController = navController, onBack = { navController.popBackStack() }, onLogout = { mainVm.showLogoutConfirm = true }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) 
+                    ProfileScreen(navController = navController, onLogout = { mainVm.showLogoutConfirm = true }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) 
                 }
                 composable("about") { 
                     AboutScreen(onBack = { navController.popBackStack() }, onDeveloperClick = { navController.navigate("developer") }, onInstructionClick = { navController.navigate("instructions") }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) 
@@ -188,7 +192,6 @@ fun AppNavigation(
                 }
             }
 
-            // Audio Player Overlay
             if (mainVm.showPlayer && mainVm.currentPlayingBook != null) {
                 if (!mainVm.isPlayerMinimized) {
                     Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { mainVm.isPlayerMinimized = true })

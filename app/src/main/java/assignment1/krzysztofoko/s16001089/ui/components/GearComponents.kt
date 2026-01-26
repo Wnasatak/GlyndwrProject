@@ -361,8 +361,8 @@ fun SimilarProductsSlider(
 }
 
 @Composable
-fun PickupInfoDialog(onDismiss: () -> Unit) {
-    val randomOrderNumber = remember { UUID.randomUUID().toString().take(8).uppercase() }
+fun PickupInfoDialog(orderConfirmation: String? = null, onDismiss: () -> Unit) {
+    val displayOrderNumber = orderConfirmation ?: remember { UUID.randomUUID().toString().take(8).uppercase() }
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -385,7 +385,7 @@ fun PickupInfoDialog(onDismiss: () -> Unit) {
                     Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = "Order Confirmation #", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                         Text(
-                            text = "WREX-$randomOrderNumber", 
+                            text = if (displayOrderNumber.startsWith("WREX-")) displayOrderNumber else "WREX-$displayOrderNumber", 
                             style = MaterialTheme.typography.headlineSmall, 
                             fontWeight = FontWeight.ExtraBold,
                             fontFamily = FontFamily.Monospace,

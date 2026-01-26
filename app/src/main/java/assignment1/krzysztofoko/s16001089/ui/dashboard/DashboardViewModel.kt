@@ -7,6 +7,10 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+/**
+ * Enhanced DashboardViewModel following professional MVVM patterns.
+ * Consolidates user collection, activity, and notifications.
+ */
 class DashboardViewModel(
     private val repository: BookRepository,
     private val userDao: UserDao,
@@ -31,9 +35,26 @@ class DashboardViewModel(
         flowOf(null)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val allBooks: StateFlow<List<Book>> = repository.getAllCombinedData()
+    // Main data stream from the unified repository
+    val allBooks: StateFlow<List<Book>> = repository.getAllCombinedData(userId)
         .map { it ?: emptyList() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Recent Searches flow
+    val recentSearches: StateFlow<List<String>> = if (userId.isNotEmpty()) {
+        userDao.getRecentSearches(userId)
+    } else {
+        flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Direct flow for notifications to show badge in top bar
+    val unreadNotificationsCount: StateFlow<Int> = if (userId.isNotEmpty()) {
+        userDao.getNotificationsForUser(userId).map { list ->
+            list.count { !it.isRead }
+        }
+    } else {
+        flowOf(0)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val wishlistBooks: StateFlow<List<Book>> = combine(allBooks, userDao.getWishlistIds(userId)) { books, ids ->
         ids.mapNotNull { id -> books.find { it.id == id } }
@@ -60,6 +81,20 @@ class DashboardViewModel(
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    fun saveSearchQuery(query: String) {
+        if (query.isBlank() || userId.isEmpty()) return
+        viewModelScope.launch {
+            userDao.addSearchQuery(SearchHistoryItem(userId = userId, query = query.trim()))
+        }
+    }
+
+    fun clearRecentSearches() {
+        if (userId.isEmpty()) return
+        viewModelScope.launch {
+            userDao.clearSearchHistory(userId)
+        }
     }
 
     fun setSearchVisible(visible: Boolean) {

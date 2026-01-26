@@ -2,37 +2,40 @@ package assignment1.krzysztofoko.s16001089.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 
 class BookRepository(private val db: AppDatabase) {
 
-    fun getAllCombinedData(): Flow<List<Book>?> {
+    fun getAllCombinedData(userId: String = ""): Flow<List<Book>?> {
         val booksFlow = db.bookDao().getAllBooks()
         val gearFlow = db.gearDao().getAllGear()
         val coursesFlow = db.courseDao().getAllCourses()
         val audioBooksFlow = db.audioBookDao().getAllAudioBooks()
+        
+        val purchasesFlow = if (userId.isNotEmpty()) {
+            db.userDao().getAllPurchasesFlow(userId)
+        } else flowOf(emptyList<PurchaseItem>())
 
-        return combine(booksFlow, gearFlow, coursesFlow, audioBooksFlow) { books, gear, courses, audioBooks ->
+        return combine(booksFlow, gearFlow, coursesFlow, audioBooksFlow, purchasesFlow) { books, gear, courses, audioBooks, purchaseRecords ->
             if (books.isEmpty() && gear.isEmpty() && courses.isEmpty() && audioBooks.isEmpty()) {
                 null
             } else {
-                val gearAsBooks = gear.map { g -> 
-                    Book(id = g.id, title = g.title, price = g.price, description = g.description, 
-                        imageUrl = g.imageUrl, category = g.category, mainCategory = g.mainCategory, 
-                        author = "Wrexham University") 
+                val gearAsBooks = gear.map { it.toBook(purchaseRecords.find { p -> p.productId == it.id }?.orderConfirmation) }
+                val coursesAsBooks = courses.map { it.toBook(purchaseRecords.find { p -> p.productId == it.id }?.orderConfirmation) }
+                val audioBooksAsBooks = audioBooks.map { it.toBook(purchaseRecords.find { p -> p.productId == it.id }?.orderConfirmation) }
+                
+                val regularBooks = books.map { b ->
+                    b.withOrderConf(purchaseRecords.find { it.productId == b.id }?.orderConfirmation)
                 }
-                val coursesAsBooks = courses.map { c -> 
-                    Book(id = c.id, title = c.title, price = c.price, description = c.description, 
-                        imageUrl = c.imageUrl, category = c.category, mainCategory = c.mainCategory, 
-                        author = c.department, isInstallmentAvailable = c.isInstallmentAvailable, 
-                        modulePrice = c.modulePrice) 
-                }
-                val audioBooksAsBooks = audioBooks.map { ab -> 
-                    Book(id = ab.id, title = ab.title, price = ab.price, description = ab.description, 
-                        imageUrl = ab.imageUrl, category = ab.category, mainCategory = ab.mainCategory, 
-                        author = ab.author, isAudioBook = true, audioUrl = ab.audioUrl) 
-                }
-                books + gearAsBooks + coursesAsBooks + audioBooksAsBooks
+                
+                regularBooks + gearAsBooks + coursesAsBooks + audioBooksAsBooks
             }
         }
+    }
+
+    suspend fun getItemById(id: String, userId: String = ""): Book? {
+        val books = getAllCombinedData(userId).first()
+        return books?.find { it.id == id }
     }
 }

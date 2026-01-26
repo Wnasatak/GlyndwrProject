@@ -59,6 +59,7 @@ fun GearDetailScreen(
     
     val localUser by viewModel.localUser.collectAsState()
     val isOwned by viewModel.isOwned.collectAsState()
+    val orderConfirmation by viewModel.orderConfirmation.collectAsState()
     val allReviews by viewModel.allReviews.collectAsState()
 
     var showPickupPopup by remember { mutableStateOf(false) }
@@ -210,7 +211,7 @@ fun GearDetailScreen(
 
         if (showOrderFlow && gear != null) {
             OrderFlowDialog(
-                book = Book(id = gear!!.id, title = gear!!.title, price = gear!!.price * quantity),
+                book = gear!!.toBook(),
                 user = localUser,
                 onDismiss = { showOrderFlow = false },
                 onEditProfile = { showOrderFlow = false; onNavigateToProfile() },
@@ -223,21 +224,17 @@ fun GearDetailScreen(
             )
         }
 
-        if (showPickupPopup) PickupInfoDialog(onDismiss = { showPickupPopup = false })
+        if (showPickupPopup) {
+            PickupInfoDialog(
+                orderConfirmation = orderConfirmation,
+                onDismiss = { showPickupPopup = false }
+            )
+        }
 
         // SIMILAR PRODUCT QUICK VIEW
         quickViewGear?.let { sGear ->
             QuickViewDialog(
-                book = Book(
-                    id = sGear.id,
-                    title = sGear.title,
-                    author = sGear.brand,
-                    price = sGear.price,
-                    description = sGear.description,
-                    imageUrl = sGear.imageUrl,
-                    category = sGear.category,
-                    mainCategory = sGear.mainCategory
-                ),
+                book = sGear.toBook(),
                 onDismiss = { quickViewGear = null },
                 onReadMore = { id ->
                     quickViewGear = null

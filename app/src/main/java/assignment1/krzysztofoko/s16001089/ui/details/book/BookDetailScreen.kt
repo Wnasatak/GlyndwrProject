@@ -132,29 +132,32 @@ fun BookDetailScreen(
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         if (isOwned) {
                                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                                if (currentBook.price > 0) {
-                                                    Button(onClick = { onViewInvoice(currentBook.id) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.primary)) {
-                                                        Icon(Icons.AutoMirrored.Filled.ReceiptLong, null); Spacer(Modifier.width(12.dp)); Text("View & Print Invoice", fontWeight = FontWeight.Bold)
-                                                    }
+                                                Button(onClick = { onViewInvoice(currentBook.id) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.primary)) {
+                                                    Icon(Icons.AutoMirrored.Filled.ReceiptLong, null); Spacer(Modifier.width(12.dp)); Text("View Official Invoice", fontWeight = FontWeight.Bold)
                                                 }
+                                                
                                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                                     Button(onClick = { onReadBook(currentBook.id) }, modifier = Modifier.weight(1f).height(56.dp), shape = RoundedCornerShape(16.dp)) {
                                                         Icon(Icons.Default.AutoStories, null)
                                                         Spacer(Modifier.width(12.dp))
-                                                        Text("Read", fontWeight = FontWeight.Bold)
+                                                        Text("Read Now", fontWeight = FontWeight.Bold)
                                                     }
-                                                    OutlinedButton(
-                                                        onClick = {
-                                                            viewModel.removePurchase { msg ->
-                                                                scope.launch { snackbarHostState.showSnackbar(msg) }
-                                                            }
-                                                        },
-                                                        modifier = Modifier.height(56.dp),
-                                                        shape = RoundedCornerShape(16.dp),
-                                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-                                                    ) {
-                                                        Icon(Icons.Default.DeleteOutline, null)
+                                                    
+                                                    // Only allow removal for free items, never for paid items
+                                                    if (currentBook.price <= 0) {
+                                                        OutlinedButton(
+                                                            onClick = {
+                                                                viewModel.removePurchase { msg ->
+                                                                    scope.launch { snackbarHostState.showSnackbar(msg) }
+                                                                }
+                                                            },
+                                                            modifier = Modifier.height(56.dp),
+                                                            shape = RoundedCornerShape(16.dp),
+                                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                                                        ) {
+                                                            Icon(Icons.Default.DeleteOutline, null)
+                                                        }
                                                     }
                                                 }
                                             }

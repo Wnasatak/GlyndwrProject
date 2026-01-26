@@ -15,6 +15,10 @@ object EmailTemplate {
         .accent { color: #00d2c1; font-weight: 700; }
         .icon-box { font-size: 50px; margin-bottom: 15px; }
         .status-badge { background: #e0fcf9; color: #00d2c1; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; display: inline-block; margin-bottom: 10px; }
+        .receipt-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .receipt-row { border-bottom: 1px solid #f1f2f6; }
+        .receipt-label { text-align: left; padding: 10px 0; color: #636e72; font-size: 14px; }
+        .receipt-value { text-align: right; padding: 10px 0; color: #2d3436; font-weight: bold; }
     """
 
     private fun getBaseHtml(title: String, bodyContent: String): String {
@@ -54,6 +58,35 @@ object EmailTemplate {
                 <p>To complete your login to the <span class="accent">Student Portal</span>, please use the following secure code:</p>
                 <div class="impact-box"><div class="impact-text" style="letter-spacing: 10px;">$code</div></div>
                 <p style="font-size: 14px; color: #999;">Expired in 10 minutes. If this wasn't you, please secure your account.</p>
+            """.trimIndent()
+        )
+    }
+
+    fun getPurchaseHtml(userName: String, itemTitle: String, orderRef: String, price: String): String {
+        return getBaseHtml(
+            "Order Confirmed",
+            """
+                <div class="status-badge">ORDER RECEIVED</div>
+                <h1>Success, $userName!</h1>
+                <p>Your purchase for <span class="accent">$itemTitle</span> has been processed successfully.</p>
+                
+                <table class="receipt-table">
+                    <tr class="receipt-row">
+                        <td class="receipt-label">Order Reference</td>
+                        <td class="receipt-value">$orderRef</td>
+                    </tr>
+                    <tr class="receipt-row">
+                        <td class="receipt-label">Amount Paid</td>
+                        <td class="receipt-value">$price</td>
+                    </tr>
+                </table>
+
+                <div class="impact-box">
+                    <div class="impact-text" style="font-size: 18px;">Pick-up Instructions</div>
+                    <p style="margin: 10px 0 0 0; font-size: 14px; color: #636e72;">Please visit the <strong>Wrexham Student Hub</strong> with your student ID and the reference code above to collect your items.</p>
+                </div>
+                
+                <p style="font-size: 13px; color: #b2bec3;">You can view your full invoice and order history in the app Dashboard at any time.</p>
             """.trimIndent()
         )
     }

@@ -14,13 +14,9 @@ import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel for AuthScreen handling the logic for registration, login, and 2FA.
- */
 class AuthViewModel(private val db: AppDatabase) : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
 
-    // UI States managed by the ViewModel
     var email by mutableStateOf("")
     var password by mutableStateOf("")
     var firstName by mutableStateOf("")
@@ -43,9 +39,6 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
     var isLoading by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
 
-    /**
-     * Triggers the 2FA process by generating a code and sending it via SMTP.
-     */
     fun trigger2FA(context: Context, userEmail: String, onCodeSent: (String) -> Unit) {
         isLoading = true
         val code = (100000..999999).random().toString()
@@ -59,7 +52,7 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                     showDemoPopup = true
                     onCodeSent(userEmail)
                 } else {
-                    error = "Failed to send verification code. Please check your network."
+                    error = "Failed to send verification code."
                 }
             } catch (e: Exception) {
                 error = "Error: ${e.localizedMessage}"
@@ -69,9 +62,6 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
         }
     }
 
-    /**
-     * Finalizes the authentication by saving the user to the local database.
-     */
     fun finalizeAuth() {
         isLoading = true
         viewModelScope.launch {
@@ -83,20 +73,17 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                     isTwoFactorStep = false
                 }
             } catch (e: Exception) {
-                error = "Finalization failed: ${e.localizedMessage}"
+                error = "Finalization failed."
             } finally {
                 isLoading = false
             }
         }
     }
 
-    /**
-     * Handles standard Email/Password Sign-In.
-     */
     fun handleSignIn(context: Context, onCodeSent: (String) -> Unit) {
         val trimmedEmail = email.trim()
         if (trimmedEmail.isEmpty() || password.isEmpty()) {
-            error = "Please fill all fields."
+            error = "Fields cannot be empty."
             return
         }
         isLoading = true
@@ -115,17 +102,14 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
             .addOnFailureListener {
                 isLoading = false
                 loginAttempts++
-                error = "Login failed. Check your password."
+                error = "Login failed."
             }
     }
 
-    /**
-     * Handles standard Email/Password Account Creation.
-     */
     fun handleSignUp() {
         val trimmedEmail = email.trim()
         if (trimmedEmail.isEmpty() || password.isEmpty() || firstName.isEmpty()) {
-            error = "Please fill all fields."
+            error = "Fields cannot be empty."
             return
         }
         isLoading = true
@@ -137,7 +121,8 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                         id = user.uid,
                         name = firstName,
                         email = trimmedEmail,
-                        balance = 1000.0
+                        balance = 1000.0,
+                        role = "student"
                     )
                     pendingAuthResult = "" to userData
                     user.sendEmailVerification()
@@ -151,16 +136,13 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
             }
     }
 
-    /**
-     * Handles Google Sign-In credentials.
-     */
     fun handleGoogleSignIn(credential: AuthCredential, idToken: String, context: Context, onCodeSent: (String) -> Unit) {
         isLoading = true
         auth.signInWithCredential(credential)
             .addOnSuccessListener { res ->
                 val user = res.user!!
                 viewModelScope.launch {
-                    val existing = db.userDao().getUserByEmail(user.email ?: "")
+                    val existing = db.userDao().getUserById(user.uid)
                     val userData = if (existing == null) {
                         UserLocal(
                             id = user.uid,
@@ -182,7 +164,7 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
             }
             .addOnFailureListener { e ->
                 isLoading = false
-                error = "Firebase Auth failed: ${e.localizedMessage}"
+                error = "Auth failed."
             }
     }
 

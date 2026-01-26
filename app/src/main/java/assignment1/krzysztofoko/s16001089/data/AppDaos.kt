@@ -78,6 +78,7 @@ data class UserLocal(
     val email: String,
     val photoUrl: String? = null,
     val address: String? = null,
+    val phoneNumber: String? = null,
     val selectedPaymentMethod: String? = null,
     val balance: Double = 0.0,
     val role: String = "student"
@@ -86,14 +87,68 @@ data class UserLocal(
 @Entity(tableName = "wishlist", primaryKeys = ["userId", "productId"])
 data class WishlistItem(val userId: String, val productId: String, val addedAt: Long = System.currentTimeMillis())
 
-@Entity(tableName = "purchases", primaryKeys = ["userId", "productId"])
+@Entity(tableName = "purchases")
 data class PurchaseItem(
+    @PrimaryKey val purchaseId: String, 
     val userId: String,
     val productId: String,
+    val mainCategory: String, 
     val purchasedAt: Long = System.currentTimeMillis(),
     val paymentMethod: String = "Unknown",
     val amountFromWallet: Double = 0.0,
-    val amountPaidExternal: Double = 0.0
+    val amountPaidExternal: Double = 0.0,
+    val totalPricePaid: Double = 0.0, 
+    val quantity: Int = 1,
+    val orderConfirmation: String? = null
+)
+
+@Entity(tableName = "invoices")
+data class Invoice(
+    @PrimaryKey val invoiceNumber: String,
+    val userId: String,
+    val productId: String,
+    val itemTitle: String,
+    val itemCategory: String,
+    val itemVariant: String? = null,
+    val pricePaid: Double,
+    val discountApplied: Double = 0.0,
+    val quantity: Int = 1,
+    val purchasedAt: Long = System.currentTimeMillis(),
+    val paymentMethod: String,
+    val orderReference: String? = null,
+    val billingName: String,
+    val billingEmail: String,
+    val billingAddress: String? = null
+)
+
+@Entity(tableName = "notifications")
+data class NotificationLocal(
+    @PrimaryKey val id: String,
+    val userId: String,
+    val productId: String, 
+    val title: String,
+    val message: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val isRead: Boolean = false,
+    val type: String = "GENERAL"
+)
+
+@Entity(tableName = "search_history")
+data class SearchHistoryItem(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val userId: String,
+    val query: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "course_installments", primaryKeys = ["userId", "courseId"])
+data class CourseInstallment(
+    val userId: String,
+    val courseId: String,
+    val modulesPaid: Int = 1,
+    val totalModules: Int = 4,
+    val isFullyPaid: Boolean = false,
+    val lastPaymentDate: Long = System.currentTimeMillis()
 )
 
 @Entity(tableName = "history", primaryKeys = ["userId", "productId"])
@@ -109,7 +164,7 @@ data class ReviewLocal(
     val comment: String,
     val rating: Int,
     val timestamp: Long = System.currentTimeMillis(),
-    val parentReviewId: Int? = null, // For threaded responses
+    val parentReviewId: Int? = null,
     val likes: Int = 0,
     val dislikes: Int = 0
 )
@@ -119,7 +174,7 @@ data class ReviewInteraction(
     val reviewId: Int,
     val userId: String,
     val userName: String,
-    val interactionType: String // "LIKE" or "DISLIKE"
+    val interactionType: String
 )
 
 @Dao
@@ -130,29 +185,8 @@ interface UserDao {
     @Query("SELECT * FROM users_local WHERE id = :id")
     suspend fun getUserById(id: String): UserLocal?
 
-    @Query("SELECT * FROM users_local WHERE email = :email LIMIT 1")
-    suspend fun getUserByEmail(email: String): UserLocal?
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertUser(user: UserLocal)
-
-    @Query("DELETE FROM users_local WHERE id = :id")
-    suspend fun deleteUser(id: String)
-
-    @Query("UPDATE reviews SET userId = :newId WHERE userId = :oldId")
-    suspend fun migrateReviewOwner(oldId: String, newId: String)
-
-    @Query("UPDATE purchases SET userId = :newId WHERE userId = :oldId")
-    suspend fun migratePurchases(oldId: String, newId: String)
-
-    @Query("UPDATE wishlist SET userId = :newId WHERE userId = :oldId")
-    suspend fun migrateWishlist(oldId: String, newId: String)
-
-    @Query("UPDATE history SET userId = :newId WHERE userId = :oldId")
-    suspend fun migrateHistory(oldId: String, newId: String)
-
-    @Query("UPDATE reviews SET userPhotoUrl = :newPhotoUrl WHERE userId = :userId")
-    suspend fun updateReviewAvatars(userId: String, newPhotoUrl: String?)
 
     @Query("SELECT productId FROM wishlist WHERE userId = :userId ORDER BY addedAt DESC")
     fun getWishlistIds(userId: String): Flow<List<String>>
@@ -166,7 +200,10 @@ interface UserDao {
     @Query("SELECT productId FROM purchases WHERE userId = :userId ORDER BY purchasedAt DESC")
     fun getPurchaseIds(userId: String): Flow<List<String>>
 
-    @Query("SELECT * FROM purchases WHERE userId = :userId AND productId = :productId")
+    @Query("SELECT * FROM purchases WHERE userId = :userId")
+    fun getAllPurchasesFlow(userId: String): Flow<List<PurchaseItem>>
+
+    @Query("SELECT * FROM purchases WHERE userId = :userId AND productId = :productId LIMIT 1")
     suspend fun getPurchaseRecord(userId: String, productId: String): PurchaseItem?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -174,6 +211,36 @@ interface UserDao {
 
     @Query("DELETE FROM purchases WHERE userId = :userId AND productId = :productId")
     suspend fun deletePurchase(userId: String, productId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addNotification(notification: NotificationLocal)
+
+    @Query("SELECT * FROM notifications WHERE userId = :userId ORDER BY timestamp DESC")
+    fun getNotificationsForUser(userId: String): Flow<List<NotificationLocal>>
+
+    @Query("UPDATE notifications SET isRead = 1 WHERE id = :id")
+    suspend fun markAsRead(id: String)
+
+    @Query("DELETE FROM notifications WHERE userId = :userId")
+    suspend fun clearNotifications(userId: String)
+
+    @Query("DELETE FROM notifications WHERE userId = :userId AND productId = :productId")
+    suspend fun deleteNotificationByProduct(userId: String, productId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addSearchQuery(item: SearchHistoryItem)
+
+    @Query("SELECT `query` FROM search_history WHERE userId = :userId ORDER BY timestamp DESC LIMIT 10")
+    fun getRecentSearches(userId: String): Flow<List<String>>
+
+    @Query("DELETE FROM search_history WHERE userId = :userId")
+    suspend fun clearSearchHistory(userId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCourseInstallment(installment: CourseInstallment)
+
+    @Query("SELECT * FROM course_installments WHERE userId = :userId AND courseId = :courseId")
+    suspend fun getCourseInstallment(userId: String, courseId: String): CourseInstallment?
 
     @Query("SELECT productId FROM history WHERE userId = :userId ORDER BY viewedAt DESC LIMIT 5")
     fun getHistoryIds(userId: String): Flow<List<String>>
@@ -192,6 +259,9 @@ interface UserDao {
 
     @Query("DELETE FROM reviews WHERE reviewId = :reviewId OR parentReviewId = :reviewId")
     suspend fun deleteReview(reviewId: Int)
+
+    @Query("UPDATE reviews SET userPhotoUrl = :newPhotoUrl WHERE userId = :userId")
+    suspend fun updateReviewAvatars(userId: String, newPhotoUrl: String?)
 
     @Query("UPDATE reviews SET likes = likes + 1 WHERE reviewId = :reviewId")
     suspend fun incrementLikes(reviewId: Int)
@@ -215,19 +285,11 @@ interface UserDao {
     suspend fun toggleInteraction(reviewId: Int, userId: String, userName: String, type: String) {
         val existing = getInteraction(reviewId, userId)
         if (existing != null) {
-            if (existing.interactionType == "LIKE") {
-                decrementLikes(reviewId)
-            } else {
-                decrementDislikes(reviewId)
-            }
+            if (existing.interactionType == "LIKE") decrementLikes(reviewId) else decrementDislikes(reviewId)
             deleteInteraction(reviewId, userId)
             if (existing.interactionType == type) return
         }
-        if (type == "LIKE") {
-            incrementLikes(reviewId)
-        } else {
-            incrementDislikes(reviewId)
-        }
+        if (type == "LIKE") incrementLikes(reviewId) else incrementDislikes(reviewId)
         insertInteraction(ReviewInteraction(reviewId, userId, userName, type))
     }
 
@@ -236,4 +298,16 @@ interface UserDao {
 
     @Query("UPDATE reviews SET dislikes = CASE WHEN dislikes > 0 THEN dislikes - 1 ELSE 0 END WHERE reviewId = :reviewId")
     suspend fun decrementDislikes(reviewId: Int)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addInvoice(invoice: Invoice)
+
+    @Query("SELECT * FROM invoices WHERE userId = :userId ORDER BY purchasedAt DESC")
+    fun getInvoicesForUser(userId: String): Flow<List<Invoice>>
+
+    @Query("SELECT * FROM invoices WHERE invoiceNumber = :invoiceNumber")
+    suspend fun getInvoiceByNumber(invoiceNumber: String): Invoice?
+
+    @Query("SELECT * FROM invoices WHERE productId = :productId AND userId = :userId LIMIT 1")
+    suspend fun getInvoiceForProduct(userId: String, productId: String): Invoice?
 }

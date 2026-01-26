@@ -28,13 +28,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
-import assignment1.krzysztofoko.s16001089.data.AppDatabase
-import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.data.LOCAL_USER_ID
-import assignment1.krzysztofoko.s16001089.data.PurchaseItem
+import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.generateAndSaveInvoicePdf
 import coil.compose.AsyncImage
+import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -42,23 +40,22 @@ import java.util.*
 @Composable
 fun InvoiceScreen(
     book: Book,
-    userName: String,
+    userName: String, 
     onBack: () -> Unit,
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit
 ) {
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
+    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     
     val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
-    val currentDate = sdf.format(Date())
-    val invoiceId = "INV-${System.currentTimeMillis().toString().takeLast(6)}"
 
-    var purchaseRecord by remember { mutableStateOf<PurchaseItem?>(null) }
+    var invoice by remember { mutableStateOf<Invoice?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(book.id) {
-        purchaseRecord = db.userDao().getPurchaseRecord(LOCAL_USER_ID, book.id)
+        invoice = db.userDao().getInvoiceForProduct(userId, book.id)
         isLoading = false
     }
 
@@ -102,7 +99,18 @@ fun InvoiceScreen(
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
+            } else if (invoice == null) {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Invoice record not found.")
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = onBack) { Text("Go Back") }
+                    }
+                }
             } else {
+                val currentInvoice = invoice!!
+                val formattedDate = sdf.format(Date(currentInvoice.purchasedAt))
+                
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -139,13 +147,16 @@ fun InvoiceScreen(
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Column(modifier = Modifier.weight(1.1f)) {
                                     Text("ISSUED TO", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                                    Text(userName, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("Student ID: ${AppConstants.STUDENT_ID}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Text(currentInvoice.billingName, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text("Email: " + currentInvoice.billingEmail, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    if (!currentInvoice.billingAddress.isNullOrBlank()) {
+                                        Text(currentInvoice.billingAddress, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    }
                                 }
                                 Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(0.9f)) {
                                     Text("INVOICE NO", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                                    Text(invoiceId, fontWeight = FontWeight.Bold)
-                                    Text(currentDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray, textAlign = TextAlign.End)
+                                    Text(currentInvoice.invoiceNumber, fontWeight = FontWeight.Bold)
+                                    Text(formattedDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray, textAlign = TextAlign.End)
                                 }
                             }
                             
@@ -154,10 +165,9 @@ fun InvoiceScreen(
                             Text("PURCHASED ITEM", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                             Spacer(modifier = Modifier.height(12.dp))
                             
-                            // Use actual prices from record if available
-                            val actualTotal = purchaseRecord?.let { it.amountFromWallet + it.amountPaidExternal } ?: (book.price * 0.9)
-                            val actualBase = actualTotal / 0.9
-                            val calculatedDiscount = actualBase * 0.1
+                            val pricePaid = currentInvoice.pricePaid
+                            val basePrice = if (pricePaid > 0) pricePaid + currentInvoice.discountApplied else 0.0
+                            val discount = currentInvoice.discountApplied
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
@@ -167,54 +177,47 @@ fun InvoiceScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = if (book.isAudioBook) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook,
+                                        imageVector = when(currentInvoice.itemCategory) {
+                                            "Audio Books" -> Icons.Default.Headphones
+                                            "University Courses" -> Icons.Default.School
+                                            "University Gear" -> Icons.Default.Inventory
+                                            else -> Icons.AutoMirrored.Filled.MenuBook
+                                        },
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
                                 Spacer(Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(book.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("${book.category} • ${if (book.isAudioBook) "Digital" else "Hardcopy"}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Text(currentInvoice.itemTitle, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    var categoryText = currentInvoice.itemCategory
+                                    if (!currentInvoice.itemVariant.isNullOrEmpty()) {
+                                        categoryText = categoryText + " • " + currentInvoice.itemVariant
+                                    }
+                                    Text(categoryText, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                 }
-                                Text("£${String.format(Locale.US, "%.2f", actualBase)}", fontWeight = FontWeight.Medium)
+                                Text("£" + String.format(Locale.US, "%.2f", basePrice), fontWeight = FontWeight.Medium)
                             }
                             
                             Spacer(modifier = Modifier.height(32.dp))
                             
                             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp)).padding(16.dp)) {
-                                InvoiceSummaryRow("Subtotal", "£${String.format(Locale.US, "%.2f", actualBase)}")
-                                InvoiceSummaryRow("Student Discount (10%)", "-£${String.format(Locale.US, "%.2f", calculatedDiscount)}", color = Color(0xFF2E7D32))
-                                
-                                purchaseRecord?.let { record ->
-                                    // Only show as deduction if it was a split payment
-                                    if (record.amountFromWallet > 0 && record.amountPaidExternal > 0) {
-                                        InvoiceSummaryRow("Account Balance Applied", "-£${String.format(Locale.US, "%.2f", record.amountFromWallet)}", color = MaterialTheme.colorScheme.primary)
-                                    }
+                                InvoiceSummaryRow("Subtotal", "£" + String.format(Locale.US, "%.2f", basePrice))
+                                if (discount > 0) {
+                                    InvoiceSummaryRow("Student Discount", "-£" + String.format(Locale.US, "%.2f", discount), color = Color(0xFF2E7D32))
                                 }
                                 
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                                 
-                                val finalChargeLabel: String
-                                val finalAmount: Double
-
-                                if (purchaseRecord != null) {
-                                    if (purchaseRecord!!.amountFromWallet > 0 && purchaseRecord!!.amountPaidExternal > 0) {
-                                        finalChargeLabel = "Paid via ${purchaseRecord!!.paymentMethod}"
-                                        finalAmount = purchaseRecord!!.amountPaidExternal
-                                    } else if (purchaseRecord!!.paymentMethod == "University Account") {
-                                        finalChargeLabel = "Paid via University Account"
-                                        finalAmount = purchaseRecord!!.amountFromWallet
-                                    } else {
-                                        finalChargeLabel = "Paid via ${purchaseRecord!!.paymentMethod}"
-                                        finalAmount = purchaseRecord!!.amountPaidExternal
-                                    }
-                                } else {
-                                    finalChargeLabel = "Total Paid"
-                                    finalAmount = actualTotal
+                                InvoiceSummaryRow("Total Paid via " + currentInvoice.paymentMethod, "£" + String.format(Locale.US, "%.2f", pricePaid), isTotal = true)
+                                if (!currentInvoice.orderReference.isNullOrEmpty()) {
+                                    Text(
+                                        text = "Reference: " + currentInvoice.orderReference,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.Gray,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
                                 }
-                                
-                                InvoiceSummaryRow(finalChargeLabel, "£${String.format(Locale.US, "%.2f", finalAmount)}", isTotal = true)
                             }
                             
                             Spacer(modifier = Modifier.height(40.dp))
@@ -233,7 +236,20 @@ fun InvoiceScreen(
                     
                     Button(
                         onClick = { 
-                            generateAndSaveInvoicePdf(context, book, userName, invoiceId, currentDate, purchaseRecord)
+                            val pRecord = PurchaseItem(
+                                purchaseId = UUID.randomUUID().toString(),
+                                userId = currentInvoice.userId,
+                                productId = currentInvoice.productId,
+                                mainCategory = currentInvoice.itemCategory,
+                                purchasedAt = currentInvoice.purchasedAt,
+                                paymentMethod = currentInvoice.paymentMethod,
+                                amountFromWallet = currentInvoice.pricePaid,
+                                amountPaidExternal = 0.0,
+                                totalPricePaid = currentInvoice.pricePaid,
+                                quantity = currentInvoice.quantity,
+                                orderConfirmation = currentInvoice.orderReference
+                            )
+                            generateAndSaveInvoicePdf(context, book, currentInvoice.billingName, currentInvoice.invoiceNumber, formattedDate, pRecord)
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp)

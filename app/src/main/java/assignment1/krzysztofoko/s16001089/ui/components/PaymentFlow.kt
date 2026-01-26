@@ -25,13 +25,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import assignment1.krzysztofoko.s16001089.data.AppDatabase
-import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.data.PurchaseItem
-import assignment1.krzysztofoko.s16001089.data.UserLocal
+import assignment1.krzysztofoko.s16001089.data.*
+import assignment1.krzysztofoko.s16001089.utils.OrderUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Locale
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +45,6 @@ fun OrderFlowDialog(
     var fullName by remember { mutableStateOf(user?.name ?: "") }
     var isProcessing by remember { mutableStateOf(false) }
     
-    // Default to University Account if balance is enough, otherwise default to PayPal
     val initialBalance = user?.balance ?: 0.0
     val basePrice = if (book.mainCategory == "University Courses" && selectedPlanIndex == 1) book.modulePrice else book.price
     val finalPrice = basePrice * 0.9
@@ -64,7 +61,6 @@ fun OrderFlowDialog(
     val userBalance = user?.balance ?: 0.0
     val isBalanceInsufficient = userBalance < finalPrice
 
-    // Logic for splitting payment
     val amountFromWallet = remember(currentPaymentMethod, useWalletBalance, userBalance, finalPrice) {
         if (currentPaymentMethod == "University Account") {
             if (userBalance >= finalPrice) finalPrice else userBalance
@@ -159,7 +155,6 @@ fun OrderFlowDialog(
                         ) { Text("Cancel") }
                     }
 
-                    // Blocking condition ONLY for University Account if funds are insufficient
                     val canProceed = if (step == 3) {
                         if (currentPaymentMethod == "University Account") !isBalanceInsufficient else true
                     } else true
@@ -172,19 +167,58 @@ fun OrderFlowDialog(
                                 isProcessing = true
                                 scope.launch {
                                     delay(1500)
+                                    val purchaseId = UUID.randomUUID().toString()
+                                    val orderConf = OrderUtils.generateOrderReference()
+                                    val invoiceNum = OrderUtils.generateInvoiceNumber()
+                                    
                                     if (amountFromWallet > 0) {
                                         val updatedUser = user?.copy(balance = userBalance - amountFromWallet)
                                         if (updatedUser != null) db.userDao().upsertUser(updatedUser)
                                     }
                                     
-                                    // Save detailed purchase record
                                     db.userDao().addPurchase(PurchaseItem(
+                                        purchaseId = purchaseId,
                                         userId = user?.id ?: "",
                                         productId = book.id,
+                                        mainCategory = book.mainCategory,
+                                        purchasedAt = System.currentTimeMillis(),
                                         paymentMethod = currentPaymentMethod,
                                         amountFromWallet = amountFromWallet,
-                                        amountPaidExternal = amountToPayExternal
+                                        amountPaidExternal = amountToPayExternal,
+                                        totalPricePaid = finalPrice,
+                                        quantity = 1,
+                                        orderConfirmation = orderConf
                                     ))
+
+                                    db.userDao().addInvoice(Invoice(
+                                        invoiceNumber = invoiceNum,
+                                        userId = user?.id ?: "",
+                                        productId = book.id,
+                                        itemTitle = book.title,
+                                        itemCategory = book.mainCategory,
+                                        itemVariant = null,
+                                        pricePaid = finalPrice,
+                                        discountApplied = basePrice * 0.1,
+                                        quantity = 1,
+                                        purchasedAt = System.currentTimeMillis(),
+                                        paymentMethod = currentPaymentMethod,
+                                        orderReference = orderConf,
+                                        billingName = fullName,
+                                        billingEmail = user?.email ?: "",
+                                        billingAddress = user?.address
+                                    ))
+
+                                    db.userDao().addNotification(NotificationLocal(
+                                        id = UUID.randomUUID().toString(),
+                                        userId = user?.id ?: "",
+                                        productId = book.id,
+                                        title = "Order Received",
+                                        message = "Your order for '${book.title}' has been received. Ref: $orderConf",
+                                        timestamp = System.currentTimeMillis(),
+                                        isRead = false,
+                                        type = "PURCHASE"
+                                    ))
+
                                     onComplete()
                                 }
                             }
@@ -232,10 +266,10 @@ fun Step1Review(book: Book, isCourse: Boolean, selectedPlanIndex: Int, basePrice
             }
         }
         Spacer(modifier = Modifier.height(24.dp))
-        DetailRow("Price", "£${String.format(Locale.US, "%.2f", basePrice)}")
-        DetailRow("Student Discount", "-£${String.format(Locale.US, "%.2f", basePrice * 0.1)}")
+        DetailRow("Price", "£" + String.format(Locale.US, "%.2f", basePrice))
+        DetailRow("Student Discount", "-£" + String.format(Locale.US, "%.2f", basePrice * 0.1))
         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-        DetailRow("Total Amount", "£${String.format(Locale.US, "%.2f", finalPrice)}", isTotal = true)
+        DetailRow("Total Amount", "£" + String.format(Locale.US, "%.2f", finalPrice), isTotal = true)
     }
 }
 
@@ -268,7 +302,6 @@ fun Step3Payment(
     var expanded by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Warning only for University Account
         if (currentMethod == "University Account" && isInsufficientForWallet) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)),
@@ -307,7 +340,7 @@ fun Step3Payment(
                     )
                 },
                 modifier = Modifier
-                    .menuAnchor()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     .fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -328,7 +361,7 @@ fun Step3Payment(
                                 Text(method, fontWeight = FontWeight.Bold)
                                 if (isAcc) {
                                     Text(
-                                        "Balance: £${String.format(Locale.US, "%.2f", balance)}",
+                                        text = "Balance: £" + String.format(Locale.US, "%.2f", balance),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = if (isInsufficientForWallet) MaterialTheme.colorScheme.error else Color.Gray
                                     )
@@ -348,7 +381,6 @@ fun Step3Payment(
             }
         }
 
-        // Split Payment Option - only shows if external method selected and balance > 0
         AnimatedVisibility(visible = currentMethod != "University Account" && balance > 0) {
             Column {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -361,13 +393,11 @@ fun Step3Payment(
                     border = BorderStroke(1.dp, if (useWalletBalance) MaterialTheme.colorScheme.secondary else Color.Transparent)
                 ) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = useWalletBalance, onCheckedChange = onToggleWallet)
+                        Checkbox(checked = useWalletBalance, onCheckedChange = { onToggleWallet(it) })
                         Spacer(Modifier.width(8.dp))
                         Column {
-                            // Fix: Show available balance credit potential instead of applied credit (amountFromWallet)
-                            // This ensures the number stays as the account balance (capped by total price) regardless of check state
                             val potentialUsage = minOf(balance, finalPrice)
-                            Text("Apply wallet balance (£${String.format(Locale.US, "%.2f", potentialUsage)})", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Text(text = "Apply wallet balance (£" + String.format(Locale.US, "%.2f", potentialUsage) + ")", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                             Text("Pay only the remaining balance via $currentMethod.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                         }
                     }
@@ -382,9 +412,9 @@ fun Step3Payment(
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                DetailRow("Order Total", "£${String.format(Locale.US, "%.2f", finalPrice)}")
+                DetailRow("Order Total", "£" + String.format(Locale.US, "%.2f", finalPrice))
                 if (amountFromWallet > 0 && currentMethod != "University Account") {
-                    DetailRow("Wallet usage", "-£${String.format(Locale.US, "%.2f", amountFromWallet)}")
+                    DetailRow("Wallet usage", "-£" + String.format(Locale.US, "%.2f", amountFromWallet))
                 }
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 12.dp),
@@ -392,7 +422,7 @@ fun Step3Payment(
                 )
                 DetailRow(
                     label = if (currentMethod == "University Account") "Final (Account)" else "Final ($currentMethod)",
-                    value = "£${String.format(Locale.US, "%.2f", amountToPayExternal)}",
+                    value = "£" + String.format(Locale.US, "%.2f", amountToPayExternal),
                     isTotal = true
                 )
             }
@@ -402,7 +432,7 @@ fun Step3Payment(
 
 fun currentPaymentMethodDisplayName(method: String, balance: Double): String {
     return if (method == "University Account") {
-        "$method (£${String.format(Locale.US, "%.2f", balance)})"
+        "$method (£" + String.format(Locale.US, "%.2f", balance) + ")"
     } else {
         method
     }

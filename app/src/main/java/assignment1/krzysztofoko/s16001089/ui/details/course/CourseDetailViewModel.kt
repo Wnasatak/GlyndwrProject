@@ -3,8 +3,10 @@ package assignment1.krzysztofoko.s16001089.ui.details.course
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import assignment1.krzysztofoko.s16001089.data.*
+import assignment1.krzysztofoko.s16001089.utils.OrderUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.*
 
 class CourseDetailViewModel(
     private val courseDao: CourseDao,
@@ -75,8 +77,59 @@ class CourseDetailViewModel(
     fun addFreePurchase(onComplete: (String) -> Unit) {
         viewModelScope.launch {
             if (userId.isEmpty()) return@launch
-            userDao.addPurchase(PurchaseItem(userId, courseId))
-            onComplete("Successfully enrolled in the course!")
+            val currentCourse = _course.value ?: return@launch
+            val orderConf = OrderUtils.generateOrderReference()
+            val invoiceNum = OrderUtils.generateInvoiceNumber()
+            val purchaseId = UUID.randomUUID().toString()
+            val user = localUser.value
+
+            // 1. Save purchase record with professional metadata
+            userDao.addPurchase(PurchaseItem(
+                purchaseId = purchaseId,
+                userId = userId, 
+                productId = courseId, 
+                mainCategory = currentCourse.mainCategory,
+                purchasedAt = System.currentTimeMillis(),
+                paymentMethod = "Free Enrollment",
+                amountFromWallet = 0.0,
+                amountPaidExternal = 0.0,
+                totalPricePaid = 0.0,
+                quantity = 1,
+                orderConfirmation = orderConf
+            ))
+
+            // 2. Generate official enrollment invoice
+            userDao.addInvoice(Invoice(
+                invoiceNumber = invoiceNum,
+                userId = userId,
+                productId = courseId,
+                itemTitle = currentCourse.title,
+                itemCategory = currentCourse.mainCategory,
+                itemVariant = null,
+                pricePaid = 0.0,
+                discountApplied = 0.0,
+                quantity = 1,
+                purchasedAt = System.currentTimeMillis(),
+                paymentMethod = "Free Enrollment",
+                orderReference = orderConf,
+                billingName = user?.name ?: "Student",
+                billingEmail = user?.email ?: "",
+                billingAddress = user?.address
+            ))
+
+            // 3. Trigger professional notification
+            userDao.addNotification(NotificationLocal(
+                id = UUID.randomUUID().toString(),
+                userId = userId,
+                productId = courseId,
+                title = "Enrollment Successful",
+                message = "You have successfully enrolled in '${currentCourse.title}'.",
+                timestamp = System.currentTimeMillis(),
+                isRead = false,
+                type = "PURCHASE"
+            ))
+
+            onComplete("Successfully enrolled! Ref: $orderConf")
         }
     }
 

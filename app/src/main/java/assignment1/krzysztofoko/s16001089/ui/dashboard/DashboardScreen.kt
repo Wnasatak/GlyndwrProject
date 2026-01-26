@@ -1,6 +1,5 @@
 package assignment1.krzysztofoko.s16001089.ui.dashboard
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -8,6 +7,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
@@ -28,6 +28,8 @@ import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.BookRepository
 import assignment1.krzysztofoko.s16001089.data.UserDao
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationViewModel
+import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationViewModelFactory
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
@@ -64,6 +66,12 @@ fun DashboardScreen(
     val showPaymentPopup by viewModel.showPaymentPopup.collectAsState()
     val bookToRemove by viewModel.bookToRemove.collectAsState()
     val suggestions by viewModel.suggestions.collectAsState()
+    val recentSearches by viewModel.recentSearches.collectAsState()
+
+    val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
+
+    var selectedBookForPickup by remember { mutableStateOf<Book?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) viewModel.setSearchVisible(false) }) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
@@ -77,10 +85,33 @@ fun DashboardScreen(
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                     actions = {
                         TopBarSearchAction(isSearchVisible = isSearchVisible) { viewModel.setSearchVisible(true) }
-                        IconButton(onClick = { viewModel.setSearchVisible(false); onToggleTheme() }) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
-                        if (localUser?.role == "admin") { IconButton(onClick = { navController.navigate("admin_panel") }) { Icon(Icons.Default.AdminPanelSettings, "Admin") } }
-                        IconButton(onClick = { navController.navigate("profile") }) { Icon(Icons.Default.Settings, "Settings") }
-                        IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Filled.Logout, "Log Out", tint = MaterialTheme.colorScheme.error) }
+                        
+                        Box(contentAlignment = Alignment.TopEnd) {
+                            IconButton(onClick = { viewModel.setSearchVisible(false); navController.navigate("notifications") }) {
+                                Icon(Icons.Default.Notifications, "Notifications")
+                            }
+                            if (unreadCount > 0) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.error,
+                                    shape = CircleShape,
+                                    modifier = Modifier.padding(6.dp).size(10.dp),
+                                    border = BorderStroke(1.dp, Color.White)
+                                ) {}
+                            }
+                        }
+
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, "More Options")
+                            }
+                            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                DropdownMenuItem(text = { Text(if (isDarkTheme) "Light Mode" else "Dark Mode") }, onClick = { showMenu = false; onToggleTheme() }, leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) })
+                                DropdownMenuItem(text = { Text("Profile Settings") }, onClick = { showMenu = false; navController.navigate("profile") }, leadingIcon = { Icon(Icons.Default.Settings, null) })
+                                if (localUser?.role == "admin") { DropdownMenuItem(text = { Text("Admin Panel") }, onClick = { showMenu = false; navController.navigate("admin_panel") }, leadingIcon = { Icon(Icons.Default.AdminPanelSettings, null) }) }
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                DropdownMenuItem(text = { Text("Log Out", color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; onLogout() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) })
+                            }
+                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                 )
@@ -100,7 +131,7 @@ fun DashboardScreen(
 
                     if (ownedBooks.isEmpty()) { item { EmptyLibraryPlaceholder(onBrowse = onBack) } } else {
                         items(ownedBooks) { book ->
-                            var showMenu by remember { mutableStateOf(false) }
+                            var showItemMenu by remember { mutableStateOf(false) }
                             BookItemCard(
                                 book = book,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -108,12 +139,11 @@ fun DashboardScreen(
                                 imageOverlay = { if (book.isAudioBook) { Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) { SpinningAudioButton(isPlaying = isAudioPlaying && currentPlayingBookId == book.id, onToggle = { onPlayAudio(book) }, size = 40) } } },
                                 topEndContent = {
                                     Box {
-                                        IconButton(onClick = { viewModel.setSearchVisible(false); showMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
-                                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                                            if (book.price > 0) { DropdownMenuItem(text = { Text("View Invoice") }, onClick = { showMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
-                                            if (book.mainCategory != "University Gear" && book.price <= 0) {
-                                                DropdownMenuItem(text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; viewModel.setBookToRemove(book) }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) })
-                                            }
+                                        IconButton(onClick = { viewModel.setSearchVisible(false); showItemMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
+                                        DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
+                                            if (book.price > 0) { DropdownMenuItem(text = { Text("View Invoice") }, onClick = { showItemMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
+                                            if (book.mainCategory == "University Gear") { DropdownMenuItem(text = { Text("Pick-up Info") }, onClick = { showItemMenu = false; selectedBookForPickup = book }, leadingIcon = { Icon(Icons.Default.Info, null) }) }
+                                            if (book.mainCategory != "University Gear" && book.price <= 0) { DropdownMenuItem(text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) }, onClick = { showItemMenu = false; viewModel.setBookToRemove(book) }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }) }
                                         }
                                     }
                                 },
@@ -132,38 +162,24 @@ fun DashboardScreen(
                 }
 
                 HomeSearchSection(
-                    isSearchVisible = isSearchVisible, searchQuery = searchQuery, onQueryChange = { viewModel.updateSearchQuery(it) }, onCloseClick = { viewModel.setSearchVisible(false) }, suggestions = suggestions,
-                    onSuggestionClick = { book -> viewModel.updateSearchQuery(book.title); viewModel.setSearchVisible(false); navController.navigate("bookDetails/${book.id}") },
+                    isSearchVisible = isSearchVisible, searchQuery = searchQuery, 
+                    recentSearches = recentSearches,
+                    onQueryChange = { viewModel.updateSearchQuery(it) }, 
+                    onClearHistory = { viewModel.clearRecentSearches() },
+                    onCloseClick = { viewModel.setSearchVisible(false) }, suggestions = suggestions,
+                    onSuggestionClick = { book -> 
+                        viewModel.saveSearchQuery(book.title)
+                        viewModel.setSearchVisible(false)
+                        navController.navigate("bookDetails/${book.id}") 
+                    },
                     modifier = Modifier.padding(top = padding.calculateTopPadding()).zIndex(10f)
                 )
             }
         }
 
-        // --- Centralized Popups ---
-        AppPopups.WalletTopUp(
-            show = showPaymentPopup,
-            user = localUser,
-            onDismiss = { viewModel.setShowPaymentPopup(false) },
-            onManageProfile = { viewModel.setShowPaymentPopup(false); navController.navigate("profile") },
-            onTopUpComplete = { amount ->
-                viewModel.topUp(amount) { msg ->
-                    viewModel.setShowPaymentPopup(false)
-                    scope.launch { snackbarHostState.showSnackbar(msg) }
-                }
-            }
-        )
-
-        AppPopups.RemoveFromLibraryConfirmation(
-            show = bookToRemove != null,
-            bookTitle = bookToRemove?.title ?: "",
-            onDismiss = { viewModel.setBookToRemove(null) },
-            onConfirm = {
-                viewModel.removePurchase(bookToRemove!!) { msg ->
-                    viewModel.setBookToRemove(null)
-                    scope.launch { snackbarHostState.showSnackbar(msg) }
-                }
-            }
-        )
+        if (selectedBookForPickup != null) { PickupInfoDialog(orderConfirmation = selectedBookForPickup?.orderConfirmation, onDismiss = { selectedBookForPickup = null }) }
+        AppPopups.WalletTopUp(show = showPaymentPopup, user = localUser, onDismiss = { viewModel.setShowPaymentPopup(false) }, onManageProfile = { viewModel.setShowPaymentPopup(false); navController.navigate("profile") }, onTopUpComplete = { amount -> viewModel.topUp(amount) { msg -> viewModel.setShowPaymentPopup(false); scope.launch { snackbarHostState.showSnackbar(msg) } } })
+        AppPopups.RemoveFromLibraryConfirmation(show = bookToRemove != null, bookTitle = bookToRemove?.title ?: "", onDismiss = { viewModel.setBookToRemove(null) }, onConfirm = { viewModel.removePurchase(bookToRemove!!) { msg -> viewModel.setBookToRemove(null); scope.launch { snackbarHostState.showSnackbar(msg) } } })
     }
 }
 

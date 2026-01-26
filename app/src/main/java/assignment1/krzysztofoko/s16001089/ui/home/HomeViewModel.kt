@@ -32,7 +32,7 @@ class HomeViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val allBooks: StateFlow<List<Book>> = _refreshTrigger
-        .flatMapLatest { repository.getAllCombinedData() }
+        .flatMapLatest { repository.getAllCombinedData(userId) }
         .map { it ?: emptyList() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -44,6 +44,13 @@ class HomeViewModel(
 
     val purchasedIds: StateFlow<List<String>> = if (userId.isNotEmpty()) {
         userDao.getPurchaseIds(userId)
+    } else {
+        flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Recent Searches flow
+    val recentSearches: StateFlow<List<String>> = if (userId.isNotEmpty()) {
+        userDao.getRecentSearches(userId)
     } else {
         flowOf(emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -87,6 +94,20 @@ class HomeViewModel(
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    fun saveSearchQuery(query: String) {
+        if (query.isBlank() || userId.isEmpty()) return
+        viewModelScope.launch {
+            userDao.addSearchQuery(SearchHistoryItem(userId = userId, query = query.trim()))
+        }
+    }
+
+    fun clearRecentSearches() {
+        if (userId.isEmpty()) return
+        viewModelScope.launch {
+            userDao.clearSearchHistory(userId)
+        }
     }
 
     fun setSearchVisible(visible: Boolean) {

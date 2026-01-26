@@ -1,6 +1,5 @@
 package assignment1.krzysztofoko.s16001089.ui.details.course
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,10 +28,6 @@ import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-/**
- * Screen displaying detailed information about a University Course.
- * Follows the MVVM pattern with CourseDetailViewModel.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CourseDetailScreen(
@@ -105,9 +100,8 @@ fun CourseDetailScreen(
                 course?.let { currentCourse ->
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp)) {
                         item {
-                            // Reusing ProductHeaderImage but passing Book representation
                             ProductHeaderImage(
-                                book = Book(id = currentCourse.id, title = currentCourse.title, imageUrl = currentCourse.imageUrl),
+                                book = currentCourse.toBook(),
                                 isOwned = isOwned,
                                 isDarkTheme = isDarkTheme,
                                 primaryColor = primaryColor
@@ -119,15 +113,11 @@ fun CourseDetailScreen(
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                                 shape = RoundedCornerShape(24.dp),
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (isDarkTheme) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-                                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
-                                )
+                                border = BorderStroke(1.dp, if (isDarkTheme) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                             ) {
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text(text = currentCourse.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-                                    Text(text = "Department: ${currentCourse.department}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                    Text(text = "Department: " + currentCourse.department, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { 
                                         AssistChip(onClick = {}, label = { Text(currentCourse.category) })
@@ -142,30 +132,15 @@ fun CourseDetailScreen(
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         if (isOwned) {
                                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                                Button(onClick = { /* Navigate to course content */ }, modifier = Modifier.weight(1f).height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                                                Button(onClick = { /* Classroom */ }, modifier = Modifier.weight(1f).height(56.dp), shape = RoundedCornerShape(16.dp)) {
                                                     Icon(Icons.Default.School, null)
                                                     Spacer(Modifier.width(12.dp))
                                                     Text("Enter Classroom", fontWeight = FontWeight.Bold)
                                                 }
                                                 if (currentCourse.price > 0) {
-                                                    OutlinedButton(
-                                                        onClick = { onViewInvoice(currentCourse.id) },
-                                                        modifier = Modifier.height(56.dp),
-                                                        shape = RoundedCornerShape(16.dp),
-                                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
-                                                    ) {
-                                                        Icon(Icons.AutoMirrored.Filled.ReceiptLong, null)
-                                                    }
+                                                    OutlinedButton(onClick = { onViewInvoice(currentCourse.id) }, modifier = Modifier.height(56.dp), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))) { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }
                                                 } else {
-                                                    OutlinedButton(
-                                                        onClick = { showRemoveConfirmation = true },
-                                                        modifier = Modifier.height(56.dp),
-                                                        shape = RoundedCornerShape(16.dp),
-                                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-                                                    ) {
-                                                        Icon(Icons.Default.DeleteOutline, null)
-                                                    }
+                                                    OutlinedButton(onClick = { showRemoveConfirmation = true }, modifier = Modifier.height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))) { Icon(Icons.Default.DeleteOutline, null) }
                                                 }
                                             }
                                         } else if (user == null) {
@@ -183,29 +158,29 @@ fun CourseDetailScreen(
                                             }
                                         } else {
                                             if (currentCourse.price == 0.0) {
-                                                Button(
-                                                    onClick = {
-                                                        viewModel.addFreePurchase { msg ->
-                                                            scope.launch { snackbarHostState.showSnackbar(msg) }
-                                                        }
-                                                    },
-                                                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                                                    shape = RoundedCornerShape(16.dp)
-                                                ) {
-                                                    Icon(Icons.Default.AddTask, null)
-                                                    Spacer(Modifier.width(12.dp))
-                                                    Text("Enroll for Free", fontWeight = FontWeight.Bold)
+                                                Button(onClick = { viewModel.addFreePurchase { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } } }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                                                    Icon(Icons.Default.AddTask, null); Spacer(Modifier.width(12.dp)); Text("Enroll for Free", fontWeight = FontWeight.Bold)
                                                 }
                                             } else {
                                                 val discountedPrice = currentCourse.price * 0.9
                                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                                        Text(text = "£${String.format(Locale.US, "%.2f", currentCourse.price)}", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
-                                                        Spacer(Modifier.width(12.dp)); Text(text = "£${String.format(Locale.US, "%.2f", discountedPrice)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                                        Text(
+                                                            text = "£" + String.format(Locale.US, "%.2f", currentCourse.price),
+                                                            style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough),
+                                                            color = Color.Gray
+                                                        )
+                                                        Spacer(Modifier.width(12.dp))
+                                                        Text(
+                                                            text = "£" + String.format(Locale.US, "%.2f", discountedPrice),
+                                                            style = MaterialTheme.typography.headlineMedium,
+                                                            fontWeight = FontWeight.Black,
+                                                            color = MaterialTheme.colorScheme.primary
+                                                        )
                                                     }
-                                                    Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { Text("STUDENT RATE (-10%)", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 10.sp) }
+                                                    Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { Text(text = "STUDENT RATE (-10%)", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 10.sp) }
                                                     if (currentCourse.isInstallmentAvailable) {
-                                                        Text(text = "or £${String.format(Locale.US, "%.2f", currentCourse.modulePrice)} per module", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 4.dp))
+                                                        Text(text = "or £" + String.format(Locale.US, "%.2f", currentCourse.modulePrice) + " per module", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 4.dp))
                                                     }
                                                     Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text("Enroll Now", fontWeight = FontWeight.Bold) }
                                                 }
@@ -218,18 +193,8 @@ fun CourseDetailScreen(
 
                         item {
                             Spacer(modifier = Modifier.height(32.dp))
-                            ReviewSection(
-                                productId = courseId,
-                                reviews = allReviews,
-                                localUser = localUser,
-                                isLoggedIn = user != null,
-                                db = AppDatabase.getDatabase(LocalContext.current),
-                                isDarkTheme = isDarkTheme,
-                                onReviewPosted = { scope.launch { snackbarHostState.showSnackbar("Review submitted!") } },
-                                onLoginClick = onLoginRequired
-                            )
+                            ReviewSection(productId = courseId, reviews = allReviews, localUser = localUser, isLoggedIn = user != null, db = AppDatabase.getDatabase(LocalContext.current), isDarkTheme = isDarkTheme, onReviewPosted = { scope.launch { snackbarHostState.showSnackbar("Review submitted!") } }, onLoginClick = onLoginRequired)
                         }
-                        
                         item { Spacer(modifier = Modifier.height(48.dp)) }
                     }
                 }
@@ -237,40 +202,9 @@ fun CourseDetailScreen(
         }
 
         if (showOrderFlow && course != null) {
-            // Mapping Course to Book for existing OrderFlowDialog
-            val courseAsBook = Book(
-                id = course!!.id,
-                title = course!!.title,
-                price = course!!.price,
-                imageUrl = course!!.imageUrl,
-                category = course!!.category,
-                mainCategory = course!!.mainCategory,
-                isInstallmentAvailable = course!!.isInstallmentAvailable,
-                modulePrice = course!!.modulePrice
-            )
-            AppPopups.OrderPurchase(
-                show = showOrderFlow,
-                book = courseAsBook,
-                user = localUser,
-                onDismiss = { showOrderFlow = false },
-                onEditProfile = { showOrderFlow = false; onNavigateToProfile() },
-                onComplete = { 
-                    showOrderFlow = false
-                    scope.launch { snackbarHostState.showSnackbar("Enrollment successful! Access your course in the Dashboard.") }
-                }
-            )
+            AppPopups.OrderPurchase(show = showOrderFlow, book = course!!.toBook(), user = localUser, onDismiss = { showOrderFlow = false }, onEditProfile = { showOrderFlow = false; onNavigateToProfile() }, onComplete = { showOrderFlow = false; scope.launch { snackbarHostState.showSnackbar("Enrollment successful!") } })
         }
 
-        AppPopups.RemoveFromLibraryConfirmation(
-            show = showRemoveConfirmation,
-            bookTitle = course?.title ?: "",
-            onDismiss = { showRemoveConfirmation = false },
-            onConfirm = {
-                viewModel.removePurchase { msg ->
-                    showRemoveConfirmation = false
-                    scope.launch { snackbarHostState.showSnackbar(msg) }
-                }
-            }
-        )
+        AppPopups.RemoveFromLibraryConfirmation(show = showRemoveConfirmation, bookTitle = course?.title ?: "", onDismiss = { showRemoveConfirmation = false }, onConfirm = { viewModel.removePurchase { msg -> showRemoveConfirmation = false; scope.launch { snackbarHostState.showSnackbar(msg) } } })
     }
 }

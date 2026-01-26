@@ -45,6 +45,15 @@ class MainViewModel(
     private val _loadError = MutableStateFlow<String?>(null)
     val loadError = _loadError.asStateFlow()
 
+    // Notification State
+    val unreadNotificationsCount: StateFlow<Int> = _currentUser.flatMapLatest { user ->
+        if (user != null) {
+            db.userDao().getNotificationsForUser(user.uid).map { list ->
+                list.count { !it.isRead }
+            }
+        } else flowOf(0)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     // Player State
     var currentPlayingBook by mutableStateOf<Book?>(null)
         private set
@@ -55,7 +64,7 @@ class MainViewModel(
 
     // UI State
     var showLogoutConfirm by mutableStateOf(false)
-    var showSignedOutPopup by mutableStateOf(false) // Added this state
+    var showSignedOutPopup by mutableStateOf(false)
 
     private val authListener = FirebaseAuth.AuthStateListener { 
         _currentUser.value = it.currentUser 
@@ -120,7 +129,7 @@ class MainViewModel(
     fun signOut(navController: NavController) {
         showLogoutConfirm = false
         auth.signOut()
-        showSignedOutPopup = true // Trigger the success popup
+        showSignedOutPopup = true
         navController.navigate("home") { popUpTo(0) }
     }
 

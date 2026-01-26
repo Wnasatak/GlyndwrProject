@@ -1,11 +1,14 @@
 package assignment1.krzysztofoko.s16001089.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,7 +30,9 @@ fun TopLevelScaffold(
     currentUser: FirebaseUser?,
     localUser: UserLocal?,
     currentRoute: String?,
+    unreadCount: Int,
     onDashboardClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
     onLogoutClick: () -> Unit,
     content: @Composable (PaddingValues) -> Unit
 ) {
@@ -40,6 +45,7 @@ fun TopLevelScaffold(
                 currentRoute != "auth" &&
                 currentRoute != "dashboard" && 
                 currentRoute != "profile" && 
+                currentRoute != "notifications" &&
                 currentRoute != "pdfReader/{bookId}" && 
                 currentRoute != "invoice/{bookId}" && 
                 currentRoute != "invoiceCreating/{bookId}") {
@@ -106,8 +112,32 @@ fun TopLevelScaffold(
                                     )
                                 }
                             }
+                            
+                            Spacer(Modifier.width(12.dp))
+
+                            // Notification Bell with dynamic badge
+                            Box(contentAlignment = Alignment.TopEnd) {
+                                IconButton(onClick = onNotificationsClick, modifier = Modifier.size(32.dp)) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        "Notifications",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                                if (unreadCount > 0) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.error,
+                                        shape = CircleShape,
+                                        modifier = Modifier.padding(top = 2.dp, end = 2.dp).size(8.dp),
+                                        border = BorderStroke(1.dp, Color.White)
+                                    ) {}
+                                }
+                            }
+
                             Spacer(Modifier.width(8.dp))
-                            IconButton(onClick = onLogoutClick) {
+                            
+                            IconButton(onClick = onLogoutClick, modifier = Modifier.size(32.dp)) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.Logout,
                                     contentDescription = "Sign Out",
