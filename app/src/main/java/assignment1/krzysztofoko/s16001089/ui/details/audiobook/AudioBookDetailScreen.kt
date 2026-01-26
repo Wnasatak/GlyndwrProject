@@ -1,9 +1,7 @@
-package assignment1.krzysztofoko.s16001089.ui.details
+package assignment1.krzysztofoko.s16001089.ui.details.audiobook
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,10 +21,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -42,44 +41,29 @@ fun AudioBookDetailScreen(
     onToggleTheme: () -> Unit,
     onPlayAudio: (Book) -> Unit,
     onNavigateToProfile: () -> Unit,
-    onViewInvoice: (String) -> Unit
+    onViewInvoice: (String) -> Unit,
+    viewModel: AudioBookViewModel = viewModel(factory = AudioBookViewModelFactory(
+        bookDao = AppDatabase.getDatabase(LocalContext.current).bookDao(),
+        audioBookDao = AppDatabase.getDatabase(LocalContext.current).audioBookDao(),
+        userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
+        bookId = bookId,
+        userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    ))
 ) {
-    val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var book by remember { mutableStateOf(initialBook) }
-    var loading by remember { mutableStateOf(true) }
-
-    val primaryColor = MaterialTheme.colorScheme.primary
-
-    // FETCH DATA LOCALLY
-    val localUser by remember(user) {
-        if (user != null) db.userDao().getUserFlow(user.uid) else flowOf(null)
-    }.collectAsState(initial = null)
-
-    val wishlistIds by remember(user?.uid) {
-        if (user != null) db.userDao().getWishlistIds(user.uid) else flowOf(emptyList())
-    }.collectAsState(initial = emptyList())
-
-    val purchaseIds by remember(user?.uid) {
-        if (user != null) db.userDao().getPurchaseIds(user.uid) else flowOf(emptyList())
-    }.collectAsState(initial = emptyList())
-
-    val inWishlist = remember(wishlistIds) { wishlistIds.contains(bookId) }
-    val isOwned = remember(purchaseIds) { purchaseIds.contains(bookId) }
-    val allReviews by db.userDao().getReviewsForProduct(bookId).collectAsState(initial = emptyList())
+    val book by viewModel.book.collectAsState()
+    val loading by viewModel.loading.collectAsState()
+    val localUser by viewModel.localUser.collectAsState()
+    val isOwned by viewModel.isOwned.collectAsState()
+    val inWishlist by viewModel.inWishlist.collectAsState()
+    val allReviews by viewModel.allReviews.collectAsState()
     
     var showOrderFlow by remember { mutableStateOf(false) }
     var showRemoveConfirmation by remember { mutableStateOf(false) }
 
-    LaunchedEffect(bookId, user) {
-        loading = true
-        if (book == null) book = db.bookDao().getBookById(bookId)
-        if (user != null) db.userDao().addToHistory(HistoryItem(user.uid, bookId))
-        loading = false
-    }
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme, wave1HeightFactor = 0.45f, wave2HeightFactor = 0.65f, wave1Amplitude = 80f, wave2Amplitude = 100f)
@@ -95,14 +79,8 @@ fun AudioBookDetailScreen(
                     actions = {
                         if (user != null) {
                             IconButton(onClick = {
-                                scope.launch {
-                                    if (inWishlist) {
-                                        db.userDao().removeFromWishlist(user.uid, bookId)
-                                        snackbarHostState.showSnackbar("Removed from favorites")
-                                    } else {
-                                        db.userDao().addToWishlist(WishlistItem(user.uid, bookId))
-                                        snackbarHostState.showSnackbar("Added to favorites!")
-                                    }
+                                viewModel.toggleWishlist { msg ->
+                                    scope.launch { snackbarHostState.showSnackbar(msg) }
                                 }
                             }) { Icon(imageVector = if (inWishlist) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Wishlist") }
                         }
@@ -199,9 +177,8 @@ fun AudioBookDetailScreen(
                                             if (currentBook.price == 0.0) {
                                                 Button(
                                                     onClick = {
-                                                        scope.launch {
-                                                            db.userDao().addPurchase(PurchaseItem(user.uid, currentBook.id))
-                                                            snackbarHostState.showSnackbar("Added to your library!")
+                                                        viewModel.addFreePurchase { msg ->
+                                                            scope.launch { snackbarHostState.showSnackbar(msg) }
                                                         }
                                                     },
                                                     modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -235,7 +212,7 @@ fun AudioBookDetailScreen(
                                 reviews = allReviews,
                                 localUser = localUser,
                                 isLoggedIn = user != null,
-                                db = db,
+                                db = AppDatabase.getDatabase(LocalContext.current),
                                 isDarkTheme = isDarkTheme,
                                 onReviewPosted = { scope.launch { snackbarHostState.showSnackbar("Thanks for your review!") } },
                                 onLoginClick = onLoginRequired
@@ -262,16 +239,14 @@ fun AudioBookDetailScreen(
             )
         }
 
-        // Use Centralized Confirmation Popup
         AppPopups.RemoveFromLibraryConfirmation(
             show = showRemoveConfirmation,
             bookTitle = book?.title ?: "",
             onDismiss = { showRemoveConfirmation = false },
             onConfirm = {
-                scope.launch {
-                    user?.let { db.userDao().deletePurchase(it.uid, bookId) }
+                viewModel.removePurchase { msg ->
                     showRemoveConfirmation = false
-                    snackbarHostState.showSnackbar("Removed from library")
+                    scope.launch { snackbarHostState.showSnackbar(msg) }
                 }
             }
         )

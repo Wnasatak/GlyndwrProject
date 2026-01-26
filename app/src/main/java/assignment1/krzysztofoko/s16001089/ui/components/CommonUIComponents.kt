@@ -3,7 +3,10 @@ package assignment1.krzysztofoko.s16001089.ui.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Headphones
@@ -33,9 +36,59 @@ import coil.compose.AsyncImage
 import java.util.Locale
 
 /**
+ * A universal slider to show similar or related products.
+ * Works for Books, Gear, Courses, and Audiobooks by using the unified Book model.
+ */
+@Composable
+fun UniversalProductSlider(
+    products: List<Book>,
+    onProductClick: (Book) -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(products) { item ->
+            Card(
+                modifier = Modifier
+                    .width(140.dp)
+                    .clickable { onProductClick(item) },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column {
+                    AsyncImage(
+                        model = item.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        val priceText = if (item.price == 0.0) "FREE" else "£${String.format(Locale.US, "%.2f", item.price)}"
+                        Text(
+                            text = priceText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * This component creates the beautiful header image for any product (Book, Audio, or Gear).
- * As a student, think of this as the "Hero Section" of the detail screen.
- * It handles the image loading, the moving gradient animations, and the "Purchased" badges.
  */
 @Composable
 fun ProductHeaderImage(
@@ -44,7 +97,6 @@ fun ProductHeaderImage(
     isDarkTheme: Boolean,
     primaryColor: Color
 ) {
-    // These two values create that "shimmer" or "light sweep" effect moving across the image
     val infiniteTransition = rememberInfiniteTransition(label = "shadeAnimation")
     val xPos by infiniteTransition.animateFloat(
         initialValue = -0.2f, targetValue = 1.2f,
@@ -69,12 +121,10 @@ fun ProductHeaderImage(
         )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // 1. Show the actual product photo from the database
             if (book.imageUrl.isNotEmpty()) {
                 AsyncImage(model = book.imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             }
             
-            // 2. Add a dark gradient at the bottom so white text is always readable
             Box(modifier = Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
                     colors = listOf(
@@ -85,7 +135,6 @@ fun ProductHeaderImage(
                 )
             ))
 
-            // 3. Apply the moving "light sweep" animation using the primary theme color
             Box(modifier = Modifier.fillMaxSize().drawBehind {
                 val brush = Brush.radialGradient(
                     colors = listOf(primaryColor.copy(alpha = 0.45f), Color.Transparent),
@@ -95,7 +144,6 @@ fun ProductHeaderImage(
                 drawRect(brush)
             })
 
-            // 4. Centered Icon Box: Changes based on whether it's an Audiobook, Course, or normal Book
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -125,7 +173,6 @@ fun ProductHeaderImage(
                 )
             }
             
-            // 5. If the student already bought this, show the "PURCHASED" badges in the corners
             if (isOwned) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -147,7 +194,6 @@ fun ProductHeaderImage(
 
 /**
  * This function creates the small "Quick View" popup when you tap on a book in the list.
- * It gives a summary (Photo, Title, Description, and Price) so the student doesn't have to navigate away.
  */
 @Composable
 fun QuickViewDialog(
@@ -158,7 +204,6 @@ fun QuickViewDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            // Main action button to go to the full details page
             Button(
                 onClick = { 
                     onDismiss()
@@ -177,13 +222,12 @@ fun QuickViewDialog(
                 Text("Close")
             }
         },
-        title = null, // Custom title is inside the 'text' content below
+        title = null,
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Large preview image of the item
                 AsyncImage(
                     model = book.imageUrl,
                     contentDescription = null,
@@ -195,7 +239,6 @@ fun QuickViewDialog(
                 
                 Spacer(modifier = Modifier.height(20.dp))
                 
-                // Item Title
                 Text(
                     text = book.title,
                     style = MaterialTheme.typography.titleLarge,
@@ -203,7 +246,6 @@ fun QuickViewDialog(
                     textAlign = TextAlign.Center
                 )
                 
-                // Author or Narrator name
                 Text(
                     text = if (book.isAudioBook) "Narrated by ${book.author}" else "by ${book.author}",
                     style = MaterialTheme.typography.bodyMedium,
@@ -213,7 +255,6 @@ fun QuickViewDialog(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Short description box with a shaded background
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(12.dp)
@@ -231,7 +272,6 @@ fun QuickViewDialog(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Bottom row showing the Price and the Category
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
@@ -240,8 +280,8 @@ fun QuickViewDialog(
                     if (book.price == 0.0) {
                         Text(text = "FREE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50))
                     } else {
-                        // Uses the shared 'formatPrice' function we created earlier
-                        Text(text = "£${formatPrice(book.price)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                        val formattedPrice = String.format(Locale.US, "%.2f", book.price)
+                        Text(text = "£$formattedPrice", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
                     }
                     Spacer(Modifier.width(8.dp))
                     AssistChip(onClick = {}, label = { Text(book.category) })
@@ -251,4 +291,22 @@ fun QuickViewDialog(
         shape = RoundedCornerShape(28.dp),
         tonalElevation = 8.dp
     )
+}
+
+@Composable
+fun StatusBadge(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Surface(
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(6.dp))
+            Text(text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        }
+    }
 }

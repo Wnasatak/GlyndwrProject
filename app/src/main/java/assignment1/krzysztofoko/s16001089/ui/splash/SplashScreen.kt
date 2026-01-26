@@ -1,8 +1,6 @@
 package assignment1.krzysztofoko.s16001089.ui.splash
 
-import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -37,9 +34,9 @@ fun SplashScreen(
     val entryAlpha = remember { Animatable(0f) }
     
     // Animation for the violet shade/glow disappearance
-    var startShadeFade by remember { mutableStateOf(false) }
+    val startShadeFade = remember { mutableStateOf(false) }
     val shadeAlpha by animateFloatAsState(
-        targetValue = if (startShadeFade) 0f else 1f,
+        targetValue = if (startShadeFade.value) 0f else 1f,
         animationSpec = tween(durationMillis = 4000, easing = LinearOutSlowInEasing),
         label = "shadeFade"
     )
@@ -102,7 +99,7 @@ fun SplashScreen(
         }
         
         delay(2000)
-        startShadeFade = true
+        startShadeFade.value = true
         
         delay(4000) 
         isTimerFinished = true
@@ -225,8 +222,6 @@ fun SplashScreen(
                     .padding(bottom = 60.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // FIXED: Keep the text visible as long as the spinner is there, 
-                // but change the message once synchronization is actually done.
                 Text(
                     text = if (isLoadingData) "Synchronising with database..." else "Database synchronized! ✓",
                     color = Color.White.copy(alpha = 0.8f),
@@ -234,7 +229,7 @@ fun SplashScreen(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .padding(bottom = 12.dp)
-                        .alpha(entryAlpha.value) // Use same alpha as spinner
+                        .alpha(entryAlpha.value) 
                 )
 
                 CircularProgressIndicator(

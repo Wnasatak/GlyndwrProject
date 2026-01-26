@@ -36,6 +36,10 @@ object EmailUtils {
             put("mail.smtp.starttls.enable", "true") // Secure connection
             put("mail.smtp.host", SMTP_HOST)
             put("mail.smtp.port", SMTP_PORT)
+            // Added timeouts to prevent infinite spinning if connection is poor
+            put("mail.smtp.connectiontimeout", "10000") 
+            put("mail.smtp.timeout", "10000")
+            put("mail.smtp.writetimeout", "10000")
         }
 
         // Step 2: Create a session with our credentials

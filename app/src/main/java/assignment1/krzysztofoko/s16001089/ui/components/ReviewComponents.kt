@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -184,6 +183,9 @@ fun ReviewItem(
     var replyComment by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
     var showInteractionsDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showEditConfirm by remember { mutableStateOf(false) }
+    
     val scope = rememberCoroutineScope()
 
     val interactions by db.userDao().getInteractionsForReview(review.reviewId).collectAsState(initial = emptyList())
@@ -193,6 +195,28 @@ fun ReviewItem(
     val reviewer by reviewerFlow.collectAsState(initial = null)
     val displayPhotoUrl = reviewer?.photoUrl ?: review.userPhotoUrl
     val isOwner = isLoggedIn && currentLocalUser != null && review.userId == currentLocalUser.id
+
+    // Use Centralized Popups
+    AppPopups.DeleteReviewConfirmation(
+        show = showDeleteConfirm,
+        onDismiss = { showDeleteConfirm = false },
+        onConfirm = {
+            scope.launch { db.userDao().deleteReview(review.reviewId) }
+            showDeleteConfirm = false
+        }
+    )
+
+    AppPopups.SaveReviewChangesConfirmation(
+        show = showEditConfirm,
+        onDismiss = { showEditConfirm = false },
+        onConfirm = {
+            scope.launch {
+                db.userDao().addReview(review.copy(comment = editComment))
+                isEditing = false
+                showEditConfirm = false
+            }
+        }
+    )
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -255,7 +279,7 @@ fun ReviewItem(
                                     DropdownMenuItem(
                                         text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
                                         onClick = {
-                                            scope.launch { db.userDao().deleteReview(review.reviewId) }
+                                            showDeleteConfirm = true
                                             showMenu = false
                                         },
                                         leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) }
@@ -273,14 +297,9 @@ fun ReviewItem(
                             shape = RoundedCornerShape(12.dp)
                         )
                         Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
-                            TextButton(onClick = { isEditing = false }) { Text("Cancel") }
+                            TextButton(onClick = { isEditing = false; editComment = review.comment }) { Text("Cancel") }
                             Button(
-                                onClick = {
-                                    scope.launch {
-                                        db.userDao().addReview(review.copy(comment = editComment))
-                                        isEditing = false
-                                    }
-                                },
+                                onClick = { showEditConfirm = true },
                                 shape = RoundedCornerShape(12.dp)
                             ) { Text("Save") }
                         }
@@ -370,7 +389,6 @@ fun ReviewItem(
                                                     modifier = Modifier.size(30.dp).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
                                                     iconSize = 18
                                                 )
-                                                // Added Indicator Badge
                                                 Surface(
                                                     color = MaterialTheme.colorScheme.surface,
                                                     shape = CircleShape,

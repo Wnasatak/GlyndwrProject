@@ -8,7 +8,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
@@ -17,32 +16,26 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
+import assignment1.krzysztofoko.s16001089.data.BookRepository
+import assignment1.krzysztofoko.s16001089.data.UserDao
 import assignment1.krzysztofoko.s16001089.ui.components.*
-import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     navController: NavController,
-    allBooks: List<Book>,
+    allBooks: List<Book>, // Deprecated in favor of VM state
     onBack: () -> Unit,
     onLogout: () -> Unit,
     isDarkTheme: Boolean,
@@ -50,36 +43,29 @@ fun DashboardScreen(
     onViewInvoice: (Book) -> Unit,
     onPlayAudio: (Book) -> Unit,
     currentPlayingBookId: String?,
-    isAudioPlaying: Boolean
+    isAudioPlaying: Boolean,
+    viewModel: DashboardViewModel = viewModel(factory = DashboardViewModelFactory(
+        repository = BookRepository(AppDatabase.getDatabase(LocalContext.current)),
+        userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
+        userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    ))
 ) {
-    val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val auth = FirebaseAuth.getInstance()
-    val user = auth.currentUser
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    val userId = user?.uid ?: ""
-    var searchQuery by remember { mutableStateOf("") }
-    var isSearchVisible by remember { mutableStateOf(false) }
+    val localUser by viewModel.localUser.collectAsState()
+    val wishlistBooks by viewModel.wishlistBooks.collectAsState()
+    val lastViewedBooks by viewModel.lastViewedBooks.collectAsState()
+    val commentedBooks by viewModel.commentedBooks.collectAsState()
+    val ownedBooks by viewModel.ownedBooks.collectAsState()
+    
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val isSearchVisible by viewModel.isSearchVisible.collectAsState()
+    val showPaymentPopup by viewModel.showPaymentPopup.collectAsState()
+    val bookToRemove by viewModel.bookToRemove.collectAsState()
+    val suggestions by viewModel.suggestions.collectAsState()
 
-    val localUser by remember(userId) { if (userId.isNotEmpty()) db.userDao().getUserFlow(userId) else flowOf(null) }.collectAsState(initial = null)
-    val wishlistIds by remember(userId) { if (userId.isNotEmpty()) db.userDao().getWishlistIds(userId) else flowOf(emptyList()) }.collectAsState(initial = emptyList())
-    val historyIds by remember(userId) { if (userId.isNotEmpty()) db.userDao().getHistoryIds(userId) else flowOf(emptyList()) }.collectAsState(initial = emptyList())
-    val commentedIds by remember(userId) { if (userId.isNotEmpty()) db.userDao().getCommentedProductIds(userId) else flowOf(emptyList()) }.collectAsState(initial = emptyList())
-    val purchaseIds by remember(userId) { if (userId.isNotEmpty()) db.userDao().getPurchaseIds(userId) else flowOf(emptyList()) }.collectAsState(initial = emptyList())
-
-    val lastViewedBooks = remember(historyIds, allBooks) { historyIds.mapNotNull { id -> allBooks.find { it.id == id } } }
-    val wishlistBooks = remember(wishlistIds, allBooks) { wishlistIds.mapNotNull { id -> allBooks.find { it.id == id } } }
-    val commentedBooks = remember(commentedIds, allBooks) { commentedIds.mapNotNull { id -> allBooks.find { it.id == id } } }
-    val ownedBooks = remember(purchaseIds, allBooks) { purchaseIds.mapNotNull { id -> allBooks.find { it.id == id } } }
-
-    val suggestions = remember(searchQuery, allBooks) { if (searchQuery.length < 2) emptyList() else allBooks.filter { it.title.contains(searchQuery, ignoreCase = true) || it.author.contains(searchQuery, ignoreCase = true) }.take(5) }
-
-    var showPaymentPopup by remember { mutableStateOf(false) }
-    var bookToRemove by remember { mutableStateOf<Book?>(null) }
-
-    Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) { isSearchVisible = false; searchQuery = "" } }) {
+    Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) viewModel.setSearchVisible(false) }) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
         Scaffold(
             containerColor = Color.Transparent,
@@ -90,8 +76,8 @@ fun DashboardScreen(
                     title = { Text(text = when(localUser?.role) { "admin" -> "Admin Hub"; "teacher" -> "Faculty"; else -> "Student Hub" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                     actions = {
-                        TopBarSearchAction(isSearchVisible = isSearchVisible) { isSearchVisible = true }
-                        IconButton(onClick = { isSearchVisible = false; onToggleTheme() }) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
+                        TopBarSearchAction(isSearchVisible = isSearchVisible) { viewModel.setSearchVisible(true) }
+                        IconButton(onClick = { viewModel.setSearchVisible(false); onToggleTheme() }) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
                         if (localUser?.role == "admin") { IconButton(onClick = { navController.navigate("admin_panel") }) { Icon(Icons.Default.AdminPanelSettings, "Admin") } }
                         IconButton(onClick = { navController.navigate("profile") }) { Icon(Icons.Default.Settings, "Settings") }
                         IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Filled.Logout, "Log Out", tint = MaterialTheme.colorScheme.error) }
@@ -102,14 +88,14 @@ fun DashboardScreen(
         ) { padding ->
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    item { DashboardHeader(name = localUser?.name ?: user?.displayName ?: "Student", photoUrl = localUser?.photoUrl ?: user?.photoUrl?.toString(), role = localUser?.role ?: "student", balance = localUser?.balance ?: 0.0, onTopUp = { isSearchVisible = false; showPaymentPopup = true }) }
-                    if (localUser?.role == "admin") { item { AdminQuickActions { isSearchVisible = false; navController.navigate("admin_panel") } } }
+                    item { DashboardHeader(name = localUser?.name ?: "Student", photoUrl = localUser?.photoUrl, role = localUser?.role ?: "student", balance = localUser?.balance ?: 0.0, onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) }) }
+                    if (localUser?.role == "admin") { item { AdminQuickActions { viewModel.setSearchVisible(false); navController.navigate("admin_panel") } } }
                     item { SectionHeader("Continue Reading") }
-                    if (lastViewedBooks.isNotEmpty()) { item { GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book -> isSearchVisible = false; navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("No recently viewed items yet.") } }
+                    if (lastViewedBooks.isNotEmpty()) { item { GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book -> viewModel.setSearchVisible(false); navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("No recently viewed items yet.") } }
                     item { SectionHeader("Your Recent Activity") }
-                    if (commentedBooks.isNotEmpty()) { item { GrowingLazyRow(commentedBooks, icon = Icons.AutoMirrored.Filled.Comment) { book -> isSearchVisible = false; navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("No recent reviews.") } }
+                    if (commentedBooks.isNotEmpty()) { item { GrowingLazyRow(commentedBooks, icon = Icons.AutoMirrored.Filled.Comment) { book -> viewModel.setSearchVisible(false); navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("No recent reviews.") } }
                     item { SectionHeader("Recently Liked") }
-                    if (wishlistBooks.isNotEmpty()) { item { GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book -> isSearchVisible = false; navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("Your favorites list is empty.") } }
+                    if (wishlistBooks.isNotEmpty()) { item { GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book -> viewModel.setSearchVisible(false); navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("Your favorites list is empty.") } }
                     item { SectionHeader("Your Collection") }
 
                     if (ownedBooks.isEmpty()) { item { EmptyLibraryPlaceholder(onBrowse = onBack) } } else {
@@ -118,15 +104,15 @@ fun DashboardScreen(
                             BookItemCard(
                                 book = book,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                onClick = { isSearchVisible = false; navController.navigate("bookDetails/${book.id}") },
+                                onClick = { viewModel.setSearchVisible(false); navController.navigate("bookDetails/${book.id}") },
                                 imageOverlay = { if (book.isAudioBook) { Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) { SpinningAudioButton(isPlaying = isAudioPlaying && currentPlayingBookId == book.id, onToggle = { onPlayAudio(book) }, size = 40) } } },
                                 topEndContent = {
                                     Box {
-                                        IconButton(onClick = { isSearchVisible = false; showMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
+                                        IconButton(onClick = { viewModel.setSearchVisible(false); showMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
                                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                                             if (book.price > 0) { DropdownMenuItem(text = { Text("View Invoice") }, onClick = { showMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
                                             if (book.mainCategory != "University Gear" && book.price <= 0) {
-                                                DropdownMenuItem(text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; bookToRemove = book }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) })
+                                                DropdownMenuItem(text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; viewModel.setBookToRemove(book) }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) })
                                             }
                                         }
                                     }
@@ -146,8 +132,8 @@ fun DashboardScreen(
                 }
 
                 HomeSearchSection(
-                    isSearchVisible = isSearchVisible, searchQuery = searchQuery, onQueryChange = { searchQuery = it }, onCloseClick = { isSearchVisible = false; searchQuery = "" }, suggestions = suggestions,
-                    onSuggestionClick = { book -> searchQuery = book.title; isSearchVisible = false; navController.navigate("bookDetails/${book.id}") },
+                    isSearchVisible = isSearchVisible, searchQuery = searchQuery, onQueryChange = { viewModel.updateSearchQuery(it) }, onCloseClick = { viewModel.setSearchVisible(false) }, suggestions = suggestions,
+                    onSuggestionClick = { book -> viewModel.updateSearchQuery(book.title); viewModel.setSearchVisible(false); navController.navigate("bookDetails/${book.id}") },
                     modifier = Modifier.padding(top = padding.calculateTopPadding()).zIndex(10f)
                 )
             }
@@ -157,13 +143,12 @@ fun DashboardScreen(
         AppPopups.WalletTopUp(
             show = showPaymentPopup,
             user = localUser,
-            onDismiss = { showPaymentPopup = false },
-            onManageProfile = { showPaymentPopup = false; navController.navigate("profile") },
+            onDismiss = { viewModel.setShowPaymentPopup(false) },
+            onManageProfile = { viewModel.setShowPaymentPopup(false); navController.navigate("profile") },
             onTopUpComplete = { amount ->
-                scope.launch {
-                    localUser?.let { db.userDao().upsertUser(it.copy(balance = it.balance + amount)) }
-                    snackbarHostState.showSnackbar("£${String.format(Locale.US, "%.2f", amount)} added to your wallet!")
-                    showPaymentPopup = false
+                viewModel.topUp(amount) { msg ->
+                    viewModel.setShowPaymentPopup(false)
+                    scope.launch { snackbarHostState.showSnackbar(msg) }
                 }
             }
         )
@@ -171,14 +156,27 @@ fun DashboardScreen(
         AppPopups.RemoveFromLibraryConfirmation(
             show = bookToRemove != null,
             bookTitle = bookToRemove?.title ?: "",
-            onDismiss = { bookToRemove = null },
+            onDismiss = { viewModel.setBookToRemove(null) },
             onConfirm = {
-                scope.launch {
-                    bookToRemove?.let { db.userDao().deletePurchase(userId, it.id) }
-                    bookToRemove = null
-                    snackbarHostState.showSnackbar("Removed from library")
+                viewModel.removePurchase(bookToRemove!!) { msg ->
+                    viewModel.setBookToRemove(null)
+                    scope.launch { snackbarHostState.showSnackbar(msg) }
                 }
             }
         )
+    }
+}
+
+class DashboardViewModelFactory(
+    private val repository: BookRepository,
+    private val userDao: UserDao,
+    private val userId: String
+) : androidx.lifecycle.ViewModelProvider.Factory {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return DashboardViewModel(repository, userDao, userId) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

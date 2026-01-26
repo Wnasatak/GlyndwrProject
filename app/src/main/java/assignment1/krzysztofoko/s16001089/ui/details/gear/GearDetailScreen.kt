@@ -1,4 +1,4 @@
-package assignment1.krzysztofoko.s16001089.ui.details
+package assignment1.krzysztofoko.s16001089.ui.details.gear
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,15 +18,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GearDetailScreen(
+    navController: NavController,
     gearId: String,
     initialGear: Gear? = null,
     user: FirebaseUser?,
@@ -35,64 +38,32 @@ fun GearDetailScreen(
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onViewInvoice: (String) -> Unit
+    onViewInvoice: (String) -> Unit,
+    viewModel: GearViewModel = viewModel(factory = GearViewModelFactory(
+        gearDao = AppDatabase.getDatabase(LocalContext.current).gearDao(),
+        userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
+        gearId = gearId,
+        userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    ))
 ) {
-    val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var gear by remember { mutableStateOf(initialGear) }
-    var loading by remember { mutableStateOf(true) }
+    val gear by viewModel.gear.collectAsState()
+    val loading by viewModel.loading.collectAsState()
+    val similarGear by viewModel.similarGear.collectAsState()
+    val selectedSize by viewModel.selectedSize.collectAsState()
+    val selectedColor by viewModel.selectedColor.collectAsState()
+    val quantity by viewModel.quantity.collectAsState()
+    val selectedImageIndex by viewModel.selectedImageIndex.collectAsState()
     
-    var selectedSize by remember { mutableStateOf("") }
-    var selectedColor by remember { mutableStateOf("") }
-    var quantity by remember { mutableIntStateOf(1) }
-    var selectedImageIndex by remember { mutableIntStateOf(0) }
+    val localUser by viewModel.localUser.collectAsState()
+    val isOwned by viewModel.isOwned.collectAsState()
+    val allReviews by viewModel.allReviews.collectAsState()
+
     var showPickupPopup by remember { mutableStateOf(false) }
-
     var quickViewGear by remember { mutableStateOf<Gear?>(null) }
-
-    val localUser by remember(user) {
-        if (user != null) db.userDao().getUserFlow(user.uid)
-        else flowOf(null)
-    }.collectAsState(initial = null)
-
-    val purchaseIds by remember(user?.uid) {
-        if (user != null) db.userDao().getPurchaseIds(user.uid) else flowOf(emptyList())
-    }.collectAsState(initial = emptyList())
-
-    val isOwned = remember(purchaseIds) { purchaseIds.contains(gearId) }
-    val allReviews by db.userDao().getReviewsForProduct(gearId).collectAsState(initial = emptyList())
-
-    var similarGear by remember { mutableStateOf(listOf<Gear>()) }
     var showOrderFlow by remember { mutableStateOf(false) }
-
-    suspend fun refreshGear() {
-        val updated = db.gearDao().getGearById(gearId)
-        if (updated != null) gear = updated
-    }
-
-    LaunchedEffect(gearId, user) {
-        loading = true
-        if (gear == null) {
-            val fetchedGear = db.gearDao().getGearById(gearId)
-            if (fetchedGear != null) {
-                gear = fetchedGear
-                selectedSize = fetchedGear.sizes.split(",").firstOrNull() ?: "M"
-                selectedColor = fetchedGear.colors.split(",").firstOrNull() ?: "Default"
-            }
-        } else {
-            selectedSize = gear?.sizes?.split(",")?.firstOrNull() ?: "M"
-            selectedColor = gear?.colors?.split(",")?.firstOrNull() ?: "Default"
-        }
-
-        val allGear = db.gearDao().getAllGearOnce()
-        similarGear = allGear.filter { it.id != gearId && it.mainCategory == gear?.mainCategory }.shuffled()
-
-        if (user != null) db.userDao().addToHistory(HistoryItem(user.uid, gearId))
-        loading = false
-    }
 
     val images = remember(gear) { listOfNotNull(gear?.imageUrl, gear?.secondaryImageUrl) }
 
@@ -132,7 +103,7 @@ fun GearDetailScreen(
                             GearImageGallery(
                                 images = images,
                                 selectedImageIndex = selectedImageIndex,
-                                onImageClick = { selectedImageIndex = it },
+                                onImageClick = { viewModel.setSelectedImageIndex(it) },
                                 isFeatured = currentGear.isFeatured,
                                 title = currentGear.title
                             )
@@ -156,13 +127,13 @@ fun GearDetailScreen(
                                     GearOptionSelectors(
                                         sizes = currentGear.sizes,
                                         selectedSize = selectedSize,
-                                        onSizeSelected = { selectedSize = it },
+                                        onSizeSelected = { viewModel.setSelectedSize(it) },
                                         colors = currentGear.colors,
                                         selectedColor = selectedColor,
-                                        onColorSelected = { selectedColor = it },
+                                        onColorSelected = { viewModel.setSelectedColor(it) },
                                         onColorClick = { color ->
                                             if (images.size > 1) {
-                                                selectedImageIndex = if (color.contains("Pink", ignoreCase = true)) 1 else 0
+                                                viewModel.setSelectedImageIndex(if (color.contains("Pink", ignoreCase = true)) 1 else 0)
                                             }
                                         }
                                     )
@@ -172,7 +143,7 @@ fun GearDetailScreen(
                                         quantity = quantity,
                                         isOwned = isOwned,
                                         isFree = isFree,
-                                        onQuantityChange = { quantity = it }
+                                        onQuantityChange = { viewModel.setQuantity(it) }
                                     )
 
                                     Spacer(modifier = Modifier.height(32.dp))
@@ -202,7 +173,7 @@ fun GearDetailScreen(
                                         reviews = allReviews,
                                         localUser = localUser,
                                         isLoggedIn = user != null,
-                                        db = db,
+                                        db = AppDatabase.getDatabase(LocalContext.current),
                                         isDarkTheme = isDarkTheme,
                                         onReviewPosted = { scope.launch { snackbarHostState.showSnackbar("Thanks for your review!") } },
                                         onLoginClick = onLoginRequired
@@ -229,11 +200,8 @@ fun GearDetailScreen(
                     onLoginRequired = onLoginRequired,
                     onCheckout = { showOrderFlow = true },
                     onFreePickup = {
-                        scope.launch {
-                            db.userDao().addPurchase(PurchaseItem(user!!.uid, currentGear.id))
-                            db.gearDao().reduceStock(currentGear.id, 1)
-                            refreshGear()
-                            snackbarHostState.showSnackbar("Success! Please pick up your item at Student Hub.")
+                        viewModel.handleFreePickup { msg ->
+                            scope.launch { snackbarHostState.showSnackbar(msg) }
                         }
                     }
                 )
@@ -247,11 +215,9 @@ fun GearDetailScreen(
                 onDismiss = { showOrderFlow = false },
                 onEditProfile = { showOrderFlow = false; onNavigateToProfile() },
                 onComplete = { 
-                    showOrderFlow = false
-                    scope.launch { 
-                        db.gearDao().reduceStock(gear!!.id, quantity)
-                        refreshGear()
-                        snackbarHostState.showSnackbar("Order successful!") 
+                    viewModel.handlePurchaseComplete(quantity) { msg ->
+                        showOrderFlow = false
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
                     }
                 }
             )
@@ -275,23 +241,7 @@ fun GearDetailScreen(
                 onDismiss = { quickViewGear = null },
                 onReadMore = { id ->
                     quickViewGear = null
-                    loading = true
-                    gear = null
-                    scope.launch {
-                        val newGear = db.gearDao().getGearById(id)
-                        if (newGear != null) {
-                            gear = newGear
-                            selectedSize = newGear.sizes.split(",").firstOrNull() ?: "M"
-                            selectedColor = newGear.colors.split(",").firstOrNull() ?: "Default"
-                            selectedImageIndex = 0
-                            
-                            val allGear = db.gearDao().getAllGearOnce()
-                            similarGear = allGear.filter { it.id != id && it.mainCategory == newGear.mainCategory }.shuffled()
-                            
-                            db.userDao().addToHistory(HistoryItem(user?.uid ?: "", id))
-                        }
-                        loading = false
-                    }
+                    navController.navigate("bookDetails/$id")
                 }
             )
         }

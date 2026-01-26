@@ -7,7 +7,6 @@ val BluePrimary = Color(0xFF0D47A1)
 val BlueSecondary = Color(0xFF1976D2)    
 val BlueTertiary = Color(0xFF42A5F5)     
 val LightBg = Color(0xFFF8F9FA)
-val VibrantViolet = Color(0xFF9D4EDD)
 
 // --- Dark Theme Palette (Deep Midnight/Slate) ---
 val DarkPrimary = Color(0xFFBB86FC)    

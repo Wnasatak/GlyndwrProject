@@ -1,9 +1,7 @@
-package assignment1.krzysztofoko.s16001089.ui.details
+package assignment1.krzysztofoko.s16001089.ui.details.book
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,10 +21,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -42,44 +41,27 @@ fun BookDetailScreen(
     onToggleTheme: () -> Unit,
     onReadBook: (String) -> Unit,
     onNavigateToProfile: () -> Unit,
-    onViewInvoice: (String) -> Unit
+    onViewInvoice: (String) -> Unit,
+    viewModel: BookDetailViewModel = viewModel(factory = BookDetailViewModelFactory(
+        bookDao = AppDatabase.getDatabase(LocalContext.current).bookDao(),
+        userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
+        bookId = bookId,
+        userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    ))
 ) {
-    val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var book by remember { mutableStateOf(initialBook) }
-    var loading by remember { mutableStateOf(true) }
-
-    val primaryColor = MaterialTheme.colorScheme.primary
-
-    val localUser by remember(user) {
-        if (user != null) db.userDao().getUserFlow(user.uid)
-        else flowOf(null)
-    }.collectAsState(initial = null)
-
-    val currentUid = user?.uid ?: "guest"
-    val wishlistIds by remember(currentUid) {
-        if (user != null) db.userDao().getWishlistIds(user.uid) else flowOf(emptyList())
-    }.collectAsState(initial = emptyList())
-
-    val purchaseIds by remember(currentUid) {
-        if (user != null) db.userDao().getPurchaseIds(user.uid) else flowOf(emptyList())
-    }.collectAsState(initial = emptyList())
-
-    val inWishlist = remember(wishlistIds) { wishlistIds.contains(bookId) }
-    val isOwned = remember(purchaseIds) { purchaseIds.contains(bookId) }
-    val allReviews by db.userDao().getReviewsForProduct(bookId).collectAsState(initial = emptyList())
+    val book by viewModel.book.collectAsState()
+    val loading by viewModel.loading.collectAsState()
+    val localUser by viewModel.localUser.collectAsState()
+    val isOwned by viewModel.isOwned.collectAsState()
+    val inWishlist by viewModel.inWishlist.collectAsState()
+    val allReviews by viewModel.allReviews.collectAsState()
     
     var showOrderFlow by remember { mutableStateOf(false) }
 
-    LaunchedEffect(bookId, user) {
-        loading = true
-        if (book == null) book = db.bookDao().getBookById(bookId)
-        if (user != null) db.userDao().addToHistory(HistoryItem(user.uid, bookId))
-        loading = false
-    }
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme, wave1HeightFactor = 0.45f, wave2HeightFactor = 0.65f, wave1Amplitude = 80f, wave2Amplitude = 100f)
@@ -95,14 +77,8 @@ fun BookDetailScreen(
                     actions = {
                         if (user != null) {
                             IconButton(onClick = {
-                                scope.launch {
-                                    if (inWishlist) {
-                                        db.userDao().removeFromWishlist(user.uid, bookId)
-                                        snackbarHostState.showSnackbar("Removed from favorites")
-                                    } else {
-                                        db.userDao().addToWishlist(WishlistItem(user.uid, bookId))
-                                        snackbarHostState.showSnackbar("Added to favorites!")
-                                    }
+                                viewModel.toggleWishlist { msg ->
+                                    scope.launch { snackbarHostState.showSnackbar(msg) }
                                 }
                             }) { Icon(imageVector = if (inWishlist) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = "Wishlist") }
                         }
@@ -132,7 +108,7 @@ fun BookDetailScreen(
                                 isDarkTheme = isDarkTheme,
                                 primaryColor = primaryColor
                             )
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(Modifier.height(24.dp))
                         }
 
                         item {
@@ -169,11 +145,8 @@ fun BookDetailScreen(
                                                     }
                                                     OutlinedButton(
                                                         onClick = {
-                                                            if (user != null) {
-                                                                scope.launch {
-                                                                    db.userDao().deletePurchase(user.uid, currentBook.id)
-                                                                    snackbarHostState.showSnackbar("Removed from library")
-                                                                }
+                                                            viewModel.removePurchase { msg ->
+                                                                scope.launch { snackbarHostState.showSnackbar(msg) }
                                                             }
                                                         },
                                                         modifier = Modifier.height(56.dp),
@@ -202,9 +175,8 @@ fun BookDetailScreen(
                                             if (currentBook.price == 0.0) {
                                                 Button(
                                                     onClick = {
-                                                        scope.launch {
-                                                            db.userDao().addPurchase(PurchaseItem(user.uid, currentBook.id))
-                                                            snackbarHostState.showSnackbar("Added to your library!")
+                                                        viewModel.addFreePurchase { msg ->
+                                                            scope.launch { snackbarHostState.showSnackbar(msg) }
                                                         }
                                                     },
                                                     modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -218,8 +190,10 @@ fun BookDetailScreen(
                                                 val discountedPrice = currentBook.price * 0.9
                                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                                        Text(text = "£${String.format(Locale.US, "%.2f", currentBook.price)}", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
-                                                        Spacer(Modifier.width(12.dp)); Text(text = "£${String.format(Locale.US, "%.2f", discountedPrice)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                                        val pPrice = String.format(Locale.US, "%.2f", currentBook.price)
+                                                        val dPrice = String.format(Locale.US, "%.2f", discountedPrice)
+                                                        Text(text = "£$pPrice", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
+                                                        Spacer(Modifier.width(12.dp)); Text(text = "£$dPrice", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                                     }
                                                     Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { Text("STUDENT PRICE (-10%)", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 10.sp) }
                                                     Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text("Order now!", fontWeight = FontWeight.Bold) }
@@ -238,7 +212,7 @@ fun BookDetailScreen(
                                 reviews = allReviews,
                                 localUser = localUser,
                                 isLoggedIn = user != null,
-                                db = db,
+                                db = AppDatabase.getDatabase(LocalContext.current),
                                 isDarkTheme = isDarkTheme,
                                 onReviewPosted = { scope.launch { snackbarHostState.showSnackbar("Thanks for your review!") } },
                                 onLoginClick = onLoginRequired

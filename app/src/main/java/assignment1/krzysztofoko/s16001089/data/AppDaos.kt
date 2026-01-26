@@ -28,6 +28,9 @@ interface AudioBookDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(audioBooks: List<AudioBook>)
 
+    @Query("SELECT * FROM audiobooks WHERE id = :id")
+    suspend fun getAudioBookById(id: String): AudioBook?
+
     @Query("DELETE FROM audiobooks")
     suspend fun deleteAll()
 }
@@ -39,6 +42,9 @@ interface CourseDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(courses: List<Course>)
+
+    @Query("SELECT * FROM courses WHERE id = :id")
+    suspend fun getCourseById(id: String): Course?
 
     @Query("DELETE FROM courses")
     suspend fun deleteAll()
