@@ -1,0 +1,78 @@
+package assignment1.krzysztofoko.s16001089.data
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "classroom_modules")
+data class ModuleContent(
+    @PrimaryKey val id: String,
+    val courseId: String,
+    val title: String,
+    val description: String,
+    val contentType: String, // "VIDEO", "PDF", "QUIZ"
+    val contentUrl: String,
+    val order: Int
+)
+
+@Entity(tableName = "assignments")
+data class Assignment(
+    @PrimaryKey val id: String,
+    val courseId: String,
+    val title: String,
+    val description: String,
+    val dueDate: Long,
+    val status: String = "PENDING" // "PENDING", "SUBMITTED", "GRADED"
+)
+
+@Entity(tableName = "assignment_submissions")
+data class AssignmentSubmission(
+    @PrimaryKey val id: String,
+    val assignmentId: String,
+    val userId: String,
+    val content: String, // Text response or URL to a file in cloud storage
+    val submittedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "grades")
+data class Grade(
+    @PrimaryKey val id: String,
+    val userId: String,
+    val courseId: String,
+    val assignmentId: String,
+    val score: Double,
+    val feedback: String?,
+    val gradedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "live_sessions")
+data class LiveSession(
+    @PrimaryKey val id: String,
+    val courseId: String,
+    val tutorId: String,
+    val tutorName: String,
+    val startTime: Long,
+    val streamUrl: String,
+    val isActive: Boolean = false
+)
+
+@Entity(tableName = "classroom_messages")
+data class ClassroomMessage(
+    @PrimaryKey val id: String,
+    val courseId: String,
+    val senderId: String,
+    val receiverId: String,
+    val message: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val isRead: Boolean = false
+)
+
+@Entity(tableName = "tutor_profiles")
+data class TutorProfile(
+    @PrimaryKey val id: String,
+    val name: String,
+    val email: String,
+    val photoUrl: String?,
+    val department: String,
+    val officeHours: String,
+    val bio: String
+)

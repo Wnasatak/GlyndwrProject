@@ -99,7 +99,7 @@ fun AboutScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text("About App", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    title = { Text(AppConstants.TITLE_ABOUT_APP, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -165,7 +165,6 @@ fun AboutScreen(
                     }
                 }
                 
-                // Increased spacers to center the name in the gap between logo and boxes
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
@@ -210,7 +209,7 @@ fun AboutScreen(
                 ) {
                     Icon(Icons.Default.HelpOutline, contentDescription = null, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("How to Use App", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                    Text(AppConstants.TITLE_HOW_TO_USE, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -222,7 +221,7 @@ fun AboutScreen(
                 ) {
                     Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Developer Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                    Text(AppConstants.TITLE_DEVELOPER_DETAILS, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                 }
 
                 Spacer(modifier = Modifier.height(48.dp))

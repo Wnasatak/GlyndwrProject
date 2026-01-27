@@ -23,13 +23,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.BookRepository
 import assignment1.krzysztofoko.s16001089.data.UserDao
 import assignment1.krzysztofoko.s16001089.ui.components.*
-import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationViewModel
-import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationViewModelFactory
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
@@ -81,13 +80,13 @@ fun DashboardScreen(
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text(text = when(localUser?.role) { "admin" -> "Admin Hub"; "teacher" -> "Faculty"; else -> "Student Hub" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black) },
+                    title = { Text(text = when(localUser?.role) { "admin" -> AppConstants.TITLE_ADMIN_HUB; "teacher" -> AppConstants.TITLE_FACULTY; else -> AppConstants.TITLE_STUDENT_HUB }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                     actions = {
                         TopBarSearchAction(isSearchVisible = isSearchVisible) { viewModel.setSearchVisible(true) }
                         
                         Box(contentAlignment = Alignment.TopEnd) {
-                            IconButton(onClick = { viewModel.setSearchVisible(false); navController.navigate("notifications") }) {
+                            IconButton(onClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) }) {
                                 Icon(Icons.Default.Notifications, "Notifications")
                             }
                             if (unreadCount > 0) {
@@ -105,29 +104,29 @@ fun DashboardScreen(
                                 Icon(Icons.Default.MoreVert, "More Options")
                             }
                             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                                DropdownMenuItem(text = { Text(if (isDarkTheme) "Light Mode" else "Dark Mode") }, onClick = { showMenu = false; onToggleTheme() }, leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) })
-                                DropdownMenuItem(text = { Text("Profile Settings") }, onClick = { showMenu = false; navController.navigate("profile") }, leadingIcon = { Icon(Icons.Default.Settings, null) })
-                                if (localUser?.role == "admin") { DropdownMenuItem(text = { Text("Admin Panel") }, onClick = { showMenu = false; navController.navigate("admin_panel") }, leadingIcon = { Icon(Icons.Default.AdminPanelSettings, null) }) }
+                                DropdownMenuItem(text = { Text(if (isDarkTheme) AppConstants.TITLE_LIGHT_MODE else AppConstants.TITLE_DARK_MODE) }, onClick = { showMenu = false; onToggleTheme() }, leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) })
+                                DropdownMenuItem(text = { Text(AppConstants.TITLE_PROFILE_SETTINGS) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_PROFILE) }, leadingIcon = { Icon(Icons.Default.Settings, null) })
+                                if (localUser?.role == "admin") { DropdownMenuItem(text = { Text(AppConstants.TITLE_ADMIN_PANEL) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) }, leadingIcon = { Icon(Icons.Default.AdminPanelSettings, null) }) }
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                                DropdownMenuItem(text = { Text("Log Out", color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; onLogout() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) })
+                                DropdownMenuItem(text = { Text(AppConstants.BTN_LOG_OUT, color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; onLogout() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) })
                             }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                 )
             }
-        ) { padding ->
+        ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+                LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                     item { DashboardHeader(name = localUser?.name ?: "Student", photoUrl = localUser?.photoUrl, role = localUser?.role ?: "student", balance = localUser?.balance ?: 0.0, onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) }) }
-                    if (localUser?.role == "admin") { item { AdminQuickActions { viewModel.setSearchVisible(false); navController.navigate("admin_panel") } } }
-                    item { SectionHeader("Continue Reading") }
-                    if (lastViewedBooks.isNotEmpty()) { item { GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book -> viewModel.setSearchVisible(false); navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("No recently viewed items yet.") } }
-                    item { SectionHeader("Your Recent Activity") }
-                    if (commentedBooks.isNotEmpty()) { item { GrowingLazyRow(commentedBooks, icon = Icons.AutoMirrored.Filled.Comment) { book -> viewModel.setSearchVisible(false); navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("No recent reviews.") } }
-                    item { SectionHeader("Recently Liked") }
-                    if (wishlistBooks.isNotEmpty()) { item { GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book -> viewModel.setSearchVisible(false); navController.navigate("bookDetails/${book.id}") } } } else { item { EmptySectionPlaceholder("Your favorites list is empty.") } }
-                    item { SectionHeader("Your Collection") }
+                    if (localUser?.role == "admin") { item { AdminQuickActions { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) } } }
+                    item { SectionHeader(AppConstants.TITLE_CONTINUE_READING) }
+                    if (lastViewedBooks.isNotEmpty()) { item { GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item { EmptySectionPlaceholder(AppConstants.MSG_NO_RECENTLY_VIEWED) } }
+                    item { SectionHeader(AppConstants.TITLE_RECENT_ACTIVITY) }
+                    if (commentedBooks.isNotEmpty()) { item { GrowingLazyRow(commentedBooks, icon = Icons.AutoMirrored.Filled.Comment) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item { EmptySectionPlaceholder(AppConstants.MSG_NO_RECENT_REVIEWS) } }
+                    item { SectionHeader(AppConstants.TITLE_RECENTLY_LIKED) }
+                    if (wishlistBooks.isNotEmpty()) { item { GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item { EmptySectionPlaceholder(AppConstants.MSG_FAVORITES_EMPTY) } }
+                    item { SectionHeader(AppConstants.TITLE_YOUR_COLLECTION) }
 
                     if (ownedBooks.isEmpty()) { item { EmptyLibraryPlaceholder(onBrowse = onBack) } } else {
                         items(ownedBooks) { book ->
@@ -135,21 +134,47 @@ fun DashboardScreen(
                             BookItemCard(
                                 book = book,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                onClick = { viewModel.setSearchVisible(false); navController.navigate("bookDetails/${book.id}") },
+                                onClick = { viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") },
                                 imageOverlay = { if (book.isAudioBook) { Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) { SpinningAudioButton(isPlaying = isAudioPlaying && currentPlayingBookId == book.id, onToggle = { onPlayAudio(book) }, size = 40) } } },
                                 topEndContent = {
                                     Box {
                                         IconButton(onClick = { viewModel.setSearchVisible(false); showItemMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
                                         DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
-                                            if (book.price > 0) { DropdownMenuItem(text = { Text("View Invoice") }, onClick = { showItemMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
-                                            if (book.mainCategory == "University Gear") { DropdownMenuItem(text = { Text("Pick-up Info") }, onClick = { showItemMenu = false; selectedBookForPickup = book }, leadingIcon = { Icon(Icons.Default.Info, null) }) }
-                                            if (book.mainCategory != "University Gear" && book.price <= 0) { DropdownMenuItem(text = { Text("Remove from Library", color = MaterialTheme.colorScheme.error) }, onClick = { showItemMenu = false; viewModel.setBookToRemove(book) }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }) }
+                                            // CLASSROOM ENTRY
+                                            if (book.mainCategory == AppConstants.CAT_COURSES) {
+                                                DropdownMenuItem(
+                                                    text = { Text(AppConstants.BTN_ENTER_CLASSROOM) },
+                                                    onClick = { showItemMenu = false; navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${book.id}") },
+                                                    leadingIcon = { Icon(Icons.Default.School, null) }
+                                                )
+                                            }
+                                            if (book.price > 0.0) { 
+                                                DropdownMenuItem(
+                                                    text = { Text(AppConstants.BTN_VIEW_INVOICE) }, 
+                                                    onClick = { showItemMenu = false; onViewInvoice(book) }, 
+                                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }
+                                                ) 
+                                            }
+                                            if (book.mainCategory == AppConstants.CAT_GEAR) { 
+                                                DropdownMenuItem(
+                                                    text = { Text(AppConstants.BTN_PICKUP_INFO) }, 
+                                                    onClick = { showItemMenu = false; selectedBookForPickup = book }, 
+                                                    leadingIcon = { Icon(Icons.Default.Info, null) }
+                                                ) 
+                                            }
+                                            if (book.mainCategory != AppConstants.CAT_GEAR && book.price <= 0.0) { 
+                                                DropdownMenuItem(
+                                                    text = { Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, color = MaterialTheme.colorScheme.error) }, 
+                                                    onClick = { showItemMenu = false; viewModel.setBookToRemove(book) }, 
+                                                    leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }
+                                                ) 
+                                            }
                                         }
                                     }
                                 },
                                 bottomContent = {
                                     Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                        val label = if (book.price > 0) "Purchased" else if (book.mainCategory == "University Gear") "Picked Up" else "In Library"
+                                        val label = AppConstants.getItemStatusLabel(book)
                                         Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
                                             Text(text = label, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                                         }
@@ -170,15 +195,15 @@ fun DashboardScreen(
                     onSuggestionClick = { book -> 
                         viewModel.saveSearchQuery(book.title)
                         viewModel.setSearchVisible(false)
-                        navController.navigate("bookDetails/${book.id}") 
+                        navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") 
                     },
-                    modifier = Modifier.padding(top = padding.calculateTopPadding()).zIndex(10f)
+                    modifier = Modifier.padding(top = paddingValues.calculateTopPadding()).zIndex(10f)
                 )
             }
         }
 
         if (selectedBookForPickup != null) { PickupInfoDialog(orderConfirmation = selectedBookForPickup?.orderConfirmation, onDismiss = { selectedBookForPickup = null }) }
-        AppPopups.WalletTopUp(show = showPaymentPopup, user = localUser, onDismiss = { viewModel.setShowPaymentPopup(false) }, onManageProfile = { viewModel.setShowPaymentPopup(false); navController.navigate("profile") }, onTopUpComplete = { amount -> viewModel.topUp(amount) { msg -> viewModel.setShowPaymentPopup(false); scope.launch { snackbarHostState.showSnackbar(msg) } } })
+        AppPopups.WalletTopUp(show = showPaymentPopup, user = localUser, onDismiss = { viewModel.setShowPaymentPopup(false) }, onTopUpComplete = { amount -> viewModel.topUp(amount) { msg -> viewModel.setShowPaymentPopup(false); scope.launch { snackbarHostState.showSnackbar(msg) } } }, onManageProfile = { viewModel.setShowPaymentPopup(false); navController.navigate(AppConstants.ROUTE_PROFILE) })
         AppPopups.RemoveFromLibraryConfirmation(show = bookToRemove != null, bookTitle = bookToRemove?.title ?: "", onDismiss = { viewModel.setBookToRemove(null) }, onConfirm = { viewModel.removePurchase(bookToRemove!!) { msg -> viewModel.setBookToRemove(null); scope.launch { snackbarHostState.showSnackbar(msg) } } })
     }
 }

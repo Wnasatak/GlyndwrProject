@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.UserDao
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import com.google.firebase.auth.FirebaseAuth
@@ -43,8 +44,8 @@ class ProfileViewModel(
             firstName = names.getOrNull(0) ?: ""
             surname = names.getOrNull(1) ?: ""
             phoneNumber = user.phoneNumber ?: ""
-            selectedPaymentMethod = user.selectedPaymentMethod ?: "University Account"
-            selectedAddress = user.address ?: "No address added yet"
+            selectedPaymentMethod = user.selectedPaymentMethod ?: AppConstants.METHOD_UNIVERSITY_ACCOUNT
+            selectedAddress = user.address ?: AppConstants.MSG_NO_ADDRESS_YET
         }
     }
 
@@ -64,11 +65,11 @@ class ProfileViewModel(
                         ))
                     }
                     isUploading = false
-                    onComplete("Profile updated successfully!")
+                    onComplete(AppConstants.MSG_PROFILE_UPDATE_SUCCESS)
                 }
             } else {
                 isUploading = false
-                onComplete("Failed to update Firebase profile.")
+                onComplete(AppConstants.MSG_PROFILE_UPDATE_FAILED)
             }
         }
     }
@@ -93,10 +94,10 @@ class ProfileViewModel(
                 
                 user?.updateProfile(userProfileChangeRequest { photoUri = Uri.parse(localFileUri) })
                 isUploading = false
-                onComplete("Avatar updated!")
+                onComplete(AppConstants.MSG_AVATAR_UPDATE_SUCCESS)
             } catch (e: Exception) {
                 isUploading = false
-                onComplete("Error saving image: ${e.message}")
+                onComplete("${AppConstants.MSG_AVATAR_UPDATE_FAILED}: ${e.message}")
             }
         }
     }

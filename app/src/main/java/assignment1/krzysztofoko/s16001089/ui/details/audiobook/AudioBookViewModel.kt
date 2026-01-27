@@ -2,6 +2,7 @@ package assignment1.krzysztofoko.s16001089.ui.details.audiobook
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.utils.OrderUtils
 import kotlinx.coroutines.flow.*
@@ -74,10 +75,10 @@ class AudioBookViewModel(
             if (userId.isEmpty()) return@launch
             if (inWishlist.value) {
                 userDao.removeFromWishlist(userId, bookId)
-                onComplete("Removed from favorites")
+                onComplete(AppConstants.MSG_REMOVED_FAVORITES)
             } else {
                 userDao.addToWishlist(WishlistItem(userId, bookId))
-                onComplete("Added to favorites!")
+                onComplete(AppConstants.MSG_ADDED_FAVORITES)
             }
         }
     }
@@ -87,9 +88,7 @@ class AudioBookViewModel(
             if (userId.isEmpty()) return@launch
             val currentBook = _book.value ?: return@launch
             val orderConf = OrderUtils.generateOrderReference()
-            val invoiceNum = OrderUtils.generateInvoiceNumber()
             val purchaseId = UUID.randomUUID().toString()
-            val user = localUser.value
 
             // Save purchase
             userDao.addPurchase(PurchaseItem(
@@ -98,7 +97,7 @@ class AudioBookViewModel(
                 productId = bookId, 
                 mainCategory = currentBook.mainCategory,
                 purchasedAt = System.currentTimeMillis(),
-                paymentMethod = "Free Library",
+                paymentMethod = AppConstants.METHOD_FREE_LIBRARY,
                 amountFromWallet = 0.0,
                 amountPaidExternal = 0.0,
                 totalPricePaid = 0.0,
@@ -106,38 +105,21 @@ class AudioBookViewModel(
                 orderConfirmation = orderConf
             ))
 
-            // Create official invoice
-            userDao.addInvoice(Invoice(
-                invoiceNumber = invoiceNum,
-                userId = userId,
-                productId = bookId,
-                itemTitle = currentBook.title,
-                itemCategory = currentBook.mainCategory,
-                itemVariant = null,
-                pricePaid = 0.0,
-                discountApplied = 0.0,
-                quantity = 1,
-                purchasedAt = System.currentTimeMillis(),
-                paymentMethod = "Free Library",
-                orderReference = orderConf,
-                billingName = user?.name ?: "Student",
-                billingEmail = user?.email ?: "",
-                billingAddress = user?.address
-            ))
+            // No invoice created for free items as requested
 
-            // Trigger notification
+            // Trigger notification - Wording: Audiobook Picked Up
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
                 userId = userId,
                 productId = bookId,
-                title = "Added to Library",
+                title = AppConstants.NOTIF_TITLE_AUDIOBOOK_PICKED_UP,
                 message = "'${currentBook.title}' is now available in your collection.",
                 timestamp = System.currentTimeMillis(),
                 isRead = false,
-                type = "PURCHASE"
+                type = "PICKUP"
             ))
 
-            onComplete("Added to your library! Ref: $orderConf")
+            onComplete("${AppConstants.MSG_ADDED_TO_LIBRARY} Ref: $orderConf")
         }
     }
 
@@ -145,7 +127,7 @@ class AudioBookViewModel(
         viewModelScope.launch {
             if (userId.isEmpty()) return@launch
             userDao.deletePurchase(userId, bookId)
-            onComplete("Removed from library")
+            onComplete(AppConstants.MSG_REMOVED_LIBRARY)
         }
     }
 }

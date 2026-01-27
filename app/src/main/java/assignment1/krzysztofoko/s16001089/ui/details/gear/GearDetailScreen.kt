@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
@@ -77,7 +78,7 @@ fun GearDetailScreen(
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text(text = gear?.title ?: "Gear Details", fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    title = { Text(text = gear?.title ?: AppConstants.TITLE_GEAR_DETAILS, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                     actions = {
                         IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
@@ -92,8 +93,8 @@ fun GearDetailScreen(
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
-                        Spacer(Modifier.height(16.dp)); Text("Item details not available.")
-                        TextButton(onClick = onBack) { Text("Go Back") }
+                        Spacer(Modifier.height(16.dp)); Text(AppConstants.MSG_ITEM_NOT_FOUND)
+                        TextButton(onClick = onBack) { Text(AppConstants.BTN_GO_BACK) }
                     }
                 }
             } else {
@@ -101,12 +102,11 @@ fun GearDetailScreen(
                     val isFree = currentGear.price <= 0
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(bottom = 120.dp)) {
                         item {
-                            GearImageGallery(
-                                images = images,
-                                selectedImageIndex = selectedImageIndex,
-                                onImageClick = { viewModel.setSelectedImageIndex(it) },
-                                isFeatured = currentGear.isFeatured,
-                                title = currentGear.title
+                            ProductHeaderImage(
+                                book = currentGear.toBook(),
+                                isOwned = isOwned,
+                                isDarkTheme = isDarkTheme,
+                                primaryColor = MaterialTheme.colorScheme.primary
                             )
                         }
 
@@ -148,7 +148,7 @@ fun GearDetailScreen(
                                     )
 
                                     Spacer(modifier = Modifier.height(32.dp))
-                                    Text(text = "Description", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                    Text(text = AppConstants.SECTION_DESCRIPTION_GEAR, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(text = currentGear.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
                                     
@@ -157,7 +157,7 @@ fun GearDetailScreen(
                                     
                                     if (similarGear.isNotEmpty()) {
                                         Spacer(modifier = Modifier.height(40.dp))
-                                        Text(text = "Similar Products", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                        Text(text = AppConstants.TITLE_SIMILAR_PRODUCTS, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.height(16.dp))
                                         
                                         SimilarProductsSlider(
@@ -176,7 +176,7 @@ fun GearDetailScreen(
                                         isLoggedIn = user != null,
                                         db = AppDatabase.getDatabase(LocalContext.current),
                                         isDarkTheme = isDarkTheme,
-                                        onReviewPosted = { scope.launch { snackbarHostState.showSnackbar("Thanks for your review!") } },
+                                        onReviewPosted = { scope.launch { snackbarHostState.showSnackbar(AppConstants.MSG_THANKS_REVIEW) } },
                                         onLoginClick = onLoginRequired
                                     )
                                 }

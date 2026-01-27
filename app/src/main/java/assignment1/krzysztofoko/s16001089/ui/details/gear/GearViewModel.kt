@@ -2,6 +2,7 @@ package assignment1.krzysztofoko.s16001089.ui.details.gear
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.utils.EmailUtils
 import assignment1.krzysztofoko.s16001089.utils.OrderUtils
@@ -74,7 +75,7 @@ class GearViewModel(
             if (fetchedGear != null) {
                 _gear.value = fetchedGear
                 _selectedSize.value = fetchedGear.sizes.split(",").firstOrNull() ?: "M"
-                _selectedColor.value = fetchedGear.colors.split(",").firstOrNull() ?: "Default"
+                _selectedColor.value = fetchedGear.colors.split(",").firstOrNull() ?: AppConstants.TEXT_DEFAULT
                 
                 val allGear = gearDao.getAllGearOnce()
                 _similarGear.value = allGear.filter { it.id != gearId && it.mainCategory == fetchedGear.mainCategory }.shuffled()
@@ -100,17 +101,15 @@ class GearViewModel(
     }
 
     private fun currentInvoiceTitle(gear: Gear): String {
-        return gear.title + if (selectedSize.value.isNotEmpty() && selectedSize.value != "Default") " (${selectedSize.value})" else ""
+        return gear.title + if (selectedSize.value.isNotEmpty() && selectedSize.value != AppConstants.TEXT_DEFAULT) " (${selectedSize.value})" else ""
     }
 
     fun handleFreePickup(onComplete: (String) -> Unit) {
         viewModelScope.launch {
             val orderConf = OrderUtils.generateOrderReference()
-            val invoiceNum = OrderUtils.generateInvoiceNumber()
             val purchaseId = UUID.randomUUID().toString()
             val user = localUser.value
             val currentGear = _gear.value ?: return@launch
-            val variant = "Size: ${selectedSize.value}, Color: ${selectedColor.value}"
 
             // 1. Create robust purchase record
             userDao.addPurchase(PurchaseItem(
@@ -119,7 +118,7 @@ class GearViewModel(
                 productId = gearId, 
                 mainCategory = currentGear.mainCategory,
                 purchasedAt = System.currentTimeMillis(),
-                paymentMethod = "Free Pickup",
+                paymentMethod = AppConstants.METHOD_FREE_PICKUP,
                 amountFromWallet = 0.0,
                 amountPaidExternal = 0.0,
                 totalPricePaid = 0.0,
@@ -127,31 +126,14 @@ class GearViewModel(
                 orderConfirmation = orderConf
             ))
 
-            // 2. Create official pickup invoice
-            userDao.addInvoice(Invoice(
-                invoiceNumber = invoiceNum,
-                userId = userId,
-                productId = gearId,
-                itemTitle = currentInvoiceTitle(currentGear),
-                itemCategory = currentGear.mainCategory,
-                itemVariant = variant,
-                pricePaid = 0.0,
-                discountApplied = 0.0,
-                quantity = 1,
-                purchasedAt = System.currentTimeMillis(),
-                paymentMethod = "Free Pickup",
-                orderReference = orderConf,
-                billingName = user?.name ?: "Guest Student",
-                billingEmail = user?.email ?: "",
-                billingAddress = user?.address
-            ))
+            // No invoice created for free items as requested
 
             // 3. Trigger notification
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
                 userId = userId,
                 productId = gearId,
-                title = "Pick-up Ready",
+                title = AppConstants.NOTIF_TITLE_GEAR_PICKUP,
                 message = "Your ${currentGear.title} is ready for collection at Student Hub. Ref: $orderConf",
                 timestamp = System.currentTimeMillis(),
                 isRead = false,
@@ -167,75 +149,33 @@ class GearViewModel(
                         userName = user.name,
                         itemTitle = currentGear.title,
                         orderRef = orderConf,
-                        price = "FREE"
+                        price = AppConstants.LABEL_FREE
                     )
                 }
             }
 
             gearDao.reduceStock(gearId, 1)
             refreshGear()
-            onComplete("Success! Please pick up your item at Student Hub. Ref: $orderConf")
+            onComplete("${AppConstants.MSG_GEAR_PICKUP_SUCCESS} Ref: $orderConf")
         }
     }
 
+    /**
+     * Completes the non-free purchase of gear.
+     * Note: Notification is already triggered by OrderFlowDialog (PaymentFlow.kt),
+     * so we don't trigger it again here to avoid duplicates.
+     */
     fun handlePurchaseComplete(qty: Int, onComplete: (String) -> Unit) {
         viewModelScope.launch {
-            val orderConf = OrderUtils.generateOrderReference()
-            val invoiceNum = OrderUtils.generateInvoiceNumber()
-            val purchaseId = UUID.randomUUID().toString()
             val user = localUser.value
             val currentGear = _gear.value ?: return@launch
             val finalPrice = currentGear.price * qty * 0.9
-            val variant = "Size: ${selectedSize.value}, Color: ${selectedColor.value}"
 
-            // 1. Create robust purchase record
-            userDao.addPurchase(PurchaseItem(
-                purchaseId = purchaseId,
-                userId = userId, 
-                productId = gearId, 
-                mainCategory = currentGear.mainCategory,
-                purchasedAt = System.currentTimeMillis(),
-                paymentMethod = "Student Balance",
-                amountFromWallet = finalPrice,
-                amountPaidExternal = 0.0,
-                totalPricePaid = finalPrice,
-                quantity = qty,
-                orderConfirmation = orderConf
-            ))
-
-            // 2. Create official university invoice
-            userDao.addInvoice(Invoice(
-                invoiceNumber = invoiceNum,
-                userId = userId,
-                productId = gearId,
-                itemTitle = currentInvoiceTitle(currentGear),
-                itemCategory = currentGear.mainCategory,
-                itemVariant = variant,
-                pricePaid = finalPrice,
-                discountApplied = (currentGear.price * qty) * 0.1,
-                quantity = qty,
-                purchasedAt = System.currentTimeMillis(),
-                paymentMethod = "Student Balance",
-                orderReference = orderConf,
-                billingName = user?.name ?: "Guest Student",
-                billingEmail = user?.email ?: "",
-                billingAddress = user?.address
-            ))
-
-            // 3. Trigger notification
-            userDao.addNotification(NotificationLocal(
-                id = UUID.randomUUID().toString(),
-                userId = userId,
-                productId = gearId,
-                title = "Order Confirmed",
-                message = "Your order for ${currentGear.title} was successful! Ref: $orderConf",
-                timestamp = System.currentTimeMillis(),
-                isRead = false,
-                type = "PURCHASE"
-            ))
-
-            // 4. Send Email Confirmation
+            // 4. Send Email Confirmation (Notifications handled by PaymentFlow)
             if (user != null && user.email.isNotEmpty()) {
+                val orderRecord = userDao.getPurchaseRecord(userId, gearId)
+                val orderRef = orderRecord?.orderConfirmation ?: "N/A"
+                
                 viewModelScope.launch {
                     val priceStr = "£" + String.format(Locale.US, "%.2f", finalPrice)
                     EmailUtils.sendPurchaseConfirmation(
@@ -243,7 +183,7 @@ class GearViewModel(
                         recipientEmail = user.email,
                         userName = user.name,
                         itemTitle = currentGear.title,
-                        orderRef = orderConf,
+                        orderRef = orderRef,
                         price = priceStr
                     )
                 }
@@ -251,7 +191,7 @@ class GearViewModel(
 
             gearDao.reduceStock(gearId, qty)
             refreshGear()
-            onComplete("Order successful! Ref: $orderConf")
+            onComplete(AppConstants.MSG_ORDER_SUCCESS)
         }
     }
 }

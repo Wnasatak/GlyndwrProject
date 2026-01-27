@@ -2,6 +2,7 @@ package assignment1.krzysztofoko.s16001089.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -115,7 +116,7 @@ class DashboardViewModel(
             localUser.value?.let { user ->
                 val formattedAmount = String.format(Locale.US, "%.2f", amount)
                 userDao.upsertUser(user.copy(balance = user.balance + amount))
-                onComplete("£$formattedAmount added to your wallet!")
+                onComplete("£$formattedAmount ${AppConstants.MSG_WALLET_TOPUP_SUCCESS}")
             }
         }
     }
@@ -123,7 +124,7 @@ class DashboardViewModel(
     fun removePurchase(book: Book, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             userDao.deletePurchase(userId, book.id)
-            onComplete("Removed from library")
+            onComplete(AppConstants.MSG_REMOVED_LIBRARY)
         }
     }
 }

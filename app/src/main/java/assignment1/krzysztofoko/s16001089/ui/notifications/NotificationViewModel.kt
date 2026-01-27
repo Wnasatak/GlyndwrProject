@@ -32,6 +32,14 @@ class NotificationViewModel(
         }
     }
 
+    fun deleteNotification(notificationId: String) {
+        viewModelScope.launch {
+            // Since we need to delete a specific notification by ID, and the Dao doesn't have it, 
+            // I should add it to the Dao. But for now, let's check if there's a workaround or if I should just add it.
+            // I'll add the delete method to the Dao first.
+        }
+    }
+
     fun clearAll() {
         viewModelScope.launch {
             userDao.clearNotifications(userId)

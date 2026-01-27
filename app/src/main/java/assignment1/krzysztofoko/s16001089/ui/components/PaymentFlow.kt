@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.utils.OrderUtils
 import kotlinx.coroutines.delay
@@ -46,11 +47,11 @@ fun OrderFlowDialog(
     var isProcessing by remember { mutableStateOf(false) }
     
     val initialBalance = user?.balance ?: 0.0
-    val basePrice = if (book.mainCategory == "University Courses" && selectedPlanIndex == 1) book.modulePrice else book.price
+    val basePrice = if (book.mainCategory == AppConstants.CAT_COURSES && selectedPlanIndex == 1) book.modulePrice else book.price
     val finalPrice = basePrice * 0.9
     
     var currentPaymentMethod by remember { 
-        mutableStateOf(if (initialBalance >= finalPrice) "University Account" else "PayPal") 
+        mutableStateOf(if (initialBalance >= finalPrice) AppConstants.METHOD_UNIVERSITY_ACCOUNT else AppConstants.METHOD_PAYPAL) 
     }
     var useWalletBalance by remember { mutableStateOf(true) }
 
@@ -62,7 +63,7 @@ fun OrderFlowDialog(
     val isBalanceInsufficient = userBalance < finalPrice
 
     val amountFromWallet = remember(currentPaymentMethod, useWalletBalance, userBalance, finalPrice) {
-        if (currentPaymentMethod == "University Account") {
+        if (currentPaymentMethod == AppConstants.METHOD_UNIVERSITY_ACCOUNT) {
             if (userBalance >= finalPrice) finalPrice else userBalance
         } else if (useWalletBalance) {
             minOf(userBalance, finalPrice)
@@ -97,10 +98,10 @@ fun OrderFlowDialog(
                 ) {
                     Text(
                         text = when (step) {
-                            1 -> "Order Review"
-                            2 -> "Billing Info"
-                            3 -> "Payment"
-                            else -> "Processing"
+                            1 -> AppConstants.TITLE_ORDER_REVIEW
+                            2 -> AppConstants.TITLE_BILLING_INFO
+                            3 -> AppConstants.TITLE_PAYMENT
+                            else -> AppConstants.TITLE_PROCESSING
                         },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
@@ -123,7 +124,7 @@ fun OrderFlowDialog(
                 Box(modifier = Modifier.wrapContentHeight()) {
                     AnimatedContent(targetState = step, label = "orderStep") { currentStep ->
                         when (currentStep) {
-                            1 -> Step1Review(book, book.mainCategory == "University Courses", selectedPlanIndex, basePrice, finalPrice) { selectedPlanIndex = it }
+                            1 -> Step1Review(book, book.mainCategory == AppConstants.CAT_COURSES, selectedPlanIndex, basePrice, finalPrice) { selectedPlanIndex = it }
                             2 -> Step2Billing(fullName, user?.email ?: "") { fullName = it }
                             3 -> Step3Payment(
                                 user = user,
@@ -146,17 +147,17 @@ fun OrderFlowDialog(
                             onClick = { step-- },
                             modifier = Modifier.weight(1f),
                             enabled = !isProcessing
-                        ) { Text("Back") }
+                        ) { Text(AppConstants.BTN_BACK) }
                     } else {
                         TextButton(
                             onClick = onDismiss,
                             modifier = Modifier.weight(1f),
                             enabled = !isProcessing
-                        ) { Text("Cancel") }
+                        ) { Text(AppConstants.BTN_CANCEL) }
                     }
 
                     val canProceed = if (step == 3) {
-                        if (currentPaymentMethod == "University Account") !isBalanceInsufficient else true
+                        if (currentPaymentMethod == AppConstants.METHOD_UNIVERSITY_ACCOUNT) !isBalanceInsufficient else true
                     } else true
 
                     Button(
@@ -208,12 +209,22 @@ fun OrderFlowDialog(
                                         billingAddress = user?.address
                                     ))
 
+                                    // Determine dynamic notification title based on category
+                                    val notificationTitle = when (book.mainCategory) {
+                                        AppConstants.CAT_BOOKS -> AppConstants.NOTIF_TITLE_BOOK_PURCHASED
+                                        AppConstants.CAT_AUDIOBOOKS -> AppConstants.NOTIF_TITLE_AUDIOBOOK_PURCHASED
+                                        AppConstants.CAT_COURSES -> AppConstants.NOTIF_TITLE_COURSE_ENROLLED
+                                        AppConstants.CAT_GEAR -> AppConstants.NOTIF_TITLE_PRODUCT_PURCHASED
+                                        else -> AppConstants.NOTIF_TITLE_PRODUCT_PURCHASED
+                                    }
+
+                                    // Trigger notification - CATEGORY SPECIFIC
                                     db.userDao().addNotification(NotificationLocal(
                                         id = UUID.randomUUID().toString(),
                                         userId = user?.id ?: "",
                                         productId = book.id,
-                                        title = "Order Received",
-                                        message = "Your order for '${book.title}' has been received. Ref: $orderConf",
+                                        title = notificationTitle,
+                                        message = "Your order for '${book.title}' has been confirmed. Ref: $orderConf",
                                         timestamp = System.currentTimeMillis(),
                                         isRead = false,
                                         type = "PURCHASE"
@@ -227,7 +238,7 @@ fun OrderFlowDialog(
                         enabled = !isProcessing && canProceed
                     ) {
                         if (isProcessing) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                        else Text(if (step == 3) "Pay Now" else "Continue")
+                        else Text(if (step == 3) AppConstants.BTN_PAY_NOW else AppConstants.BTN_CONTINUE)
                     }
                 }
             }
@@ -252,35 +263,35 @@ fun Step1Review(book: Book, isCourse: Boolean, selectedPlanIndex: Int, basePrice
                 Spacer(Modifier.width(16.dp))
                 Column {
                     Text(book.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(if (selectedPlanIndex == 1) "Module 1 Access" else "Full Access", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text(if (selectedPlanIndex == 1) AppConstants.LABEL_MODULE_ACCESS else AppConstants.LABEL_FULL_ACCESS, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
         if (isCourse && book.isInstallmentAvailable) {
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Select Payment Plan", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Text(AppConstants.TITLE_PAYMENT_PLAN, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(selected = selectedPlanIndex == 0, onClick = { onPlanSelect(0) }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text("Full Course") }
-                SegmentedButton(selected = selectedPlanIndex == 1, onClick = { onPlanSelect(1) }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text("Installment") }
+                SegmentedButton(selected = selectedPlanIndex == 0, onClick = { onPlanSelect(0) }, shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text(AppConstants.LABEL_FULL_COURSE) }
+                SegmentedButton(selected = selectedPlanIndex == 1, onClick = { onPlanSelect(1) }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text(AppConstants.LABEL_INSTALLMENT) }
             }
         }
         Spacer(modifier = Modifier.height(24.dp))
-        DetailRow("Price", "£" + String.format(Locale.US, "%.2f", basePrice))
-        DetailRow("Student Discount", "-£" + String.format(Locale.US, "%.2f", basePrice * 0.1))
+        DetailRow(AppConstants.LABEL_PRICE, "£" + String.format(Locale.US, "%.2f", basePrice))
+        DetailRow(AppConstants.LABEL_STUDENT_DISCOUNT_VAL, "-£" + String.format(Locale.US, "%.2f", basePrice * 0.1))
         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-        DetailRow("Total Amount", "£" + String.format(Locale.US, "%.2f", finalPrice), isTotal = true)
+        DetailRow(AppConstants.LABEL_TOTAL_AMOUNT, "£" + String.format(Locale.US, "%.2f", finalPrice), isTotal = true)
     }
 }
 
 @Composable
 fun Step2Billing(fullName: String, email: String, onNameChange: (String) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text("Confirmation Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(AppConstants.TITLE_CONFIRMATION_DETAILS, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(24.dp))
-        OutlinedTextField(value = fullName, onValueChange = onNameChange, label = { Text("Full Name") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+        OutlinedTextField(value = fullName, onValueChange = onNameChange, label = { Text(AppConstants.LABEL_FULL_NAME) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
         Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(value = email, onValueChange = {}, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), enabled = false, shape = RoundedCornerShape(12.dp))
+        OutlinedTextField(value = email, onValueChange = {}, label = { Text(AppConstants.TEXT_EMAIL) }, modifier = Modifier.fillMaxWidth(), enabled = false, shape = RoundedCornerShape(12.dp))
     }
 }
 
@@ -298,11 +309,11 @@ fun Step3Payment(
 ) {
     val balance = user?.balance ?: 0.0
     val isInsufficientForWallet = balance < finalPrice
-    val methods = listOf("University Account", "PayPal", "Google Pay", "Credit Card")
+    val methods = listOf(AppConstants.METHOD_UNIVERSITY_ACCOUNT, AppConstants.METHOD_PAYPAL, AppConstants.METHOD_GOOGLE_PAY, AppConstants.METHOD_CREDIT_CARD)
     var expanded by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        if (currentMethod == "University Account" && isInsufficientForWallet) {
+        if (currentMethod == AppConstants.METHOD_UNIVERSITY_ACCOUNT && isInsufficientForWallet) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)),
                 modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
@@ -311,7 +322,7 @@ fun Step3Payment(
                     Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        "Insufficient funds. Select another method or top up your wallet.",
+                        AppConstants.MSG_INSUFFICIENT_FUNDS,
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         style = MaterialTheme.typography.labelSmall
                     )
@@ -319,7 +330,7 @@ fun Step3Payment(
             }
         }
 
-        Text("Payment Method", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+        Text(AppConstants.TITLE_PAYMENT, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
         Spacer(modifier = Modifier.height(8.dp))
 
         ExposedDropdownMenuBox(
@@ -354,14 +365,14 @@ fun Step3Payment(
                 onDismissRequest = { expanded = false }
             ) {
                 methods.forEach { method ->
-                    val isAcc = method == "University Account"
+                    val isAcc = method == AppConstants.METHOD_UNIVERSITY_ACCOUNT
                     DropdownMenuItem(
                         text = {
                             Column {
                                 Text(method, fontWeight = FontWeight.Bold)
                                 if (isAcc) {
                                     Text(
-                                        text = "Balance: £" + String.format(Locale.US, "%.2f", balance),
+                                        text = "${AppConstants.LABEL_BALANCE}: £" + String.format(Locale.US, "%.2f", balance),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = if (isInsufficientForWallet) MaterialTheme.colorScheme.error else Color.Gray
                                     )
@@ -381,7 +392,7 @@ fun Step3Payment(
             }
         }
 
-        AnimatedVisibility(visible = currentMethod != "University Account" && balance > 0) {
+        AnimatedVisibility(visible = currentMethod != AppConstants.METHOD_UNIVERSITY_ACCOUNT && balance > 0) {
             Column {
                 Spacer(modifier = Modifier.height(12.dp))
                 Surface(
@@ -412,16 +423,16 @@ fun Step3Payment(
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                DetailRow("Order Total", "£" + String.format(Locale.US, "%.2f", finalPrice))
-                if (amountFromWallet > 0 && currentMethod != "University Account") {
-                    DetailRow("Wallet usage", "-£" + String.format(Locale.US, "%.2f", amountFromWallet))
+                DetailRow(AppConstants.LABEL_ORDER_TOTAL, "£" + String.format(Locale.US, "%.2f", finalPrice))
+                if (amountFromWallet > 0 && currentMethod != AppConstants.METHOD_UNIVERSITY_ACCOUNT) {
+                    DetailRow(AppConstants.LABEL_WALLET_USAGE, "-£" + String.format(Locale.US, "%.2f", amountFromWallet))
                 }
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 12.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                 )
                 DetailRow(
-                    label = if (currentMethod == "University Account") "Final (Account)" else "Final ($currentMethod)",
+                    label = if (currentMethod == AppConstants.METHOD_UNIVERSITY_ACCOUNT) "${AppConstants.LABEL_FINAL} (${AppConstants.METHOD_UNIVERSITY_ACCOUNT})" else "${AppConstants.LABEL_FINAL} ($currentMethod)",
                     value = "£" + String.format(Locale.US, "%.2f", amountToPayExternal),
                     isTotal = true
                 )
@@ -431,7 +442,7 @@ fun Step3Payment(
 }
 
 fun currentPaymentMethodDisplayName(method: String, balance: Double): String {
-    return if (method == "University Account") {
+    return if (method == AppConstants.METHOD_UNIVERSITY_ACCOUNT) {
         "$method (£" + String.format(Locale.US, "%.2f", balance) + ")"
     } else {
         method
@@ -440,9 +451,9 @@ fun currentPaymentMethodDisplayName(method: String, balance: Double): String {
 
 fun getPaymentMethodIcon(method: String): ImageVector {
     return when (method) {
-        "University Account" -> Icons.Default.AccountBalance
-        "PayPal" -> Icons.Default.Payment
-        "Google Pay" -> Icons.Default.Smartphone
+        AppConstants.METHOD_UNIVERSITY_ACCOUNT -> Icons.Default.AccountBalance
+        AppConstants.METHOD_PAYPAL -> Icons.Default.Payment
+        AppConstants.METHOD_GOOGLE_PAY -> Icons.Default.Smartphone
         else -> Icons.Default.CreditCard
     }
 }

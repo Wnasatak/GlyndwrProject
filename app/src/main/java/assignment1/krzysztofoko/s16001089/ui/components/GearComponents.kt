@@ -264,7 +264,7 @@ fun GearBottomActionBar(
                 Button(onClick = onViewInvoice, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                     Icon(Icons.AutoMirrored.Filled.ReceiptLong, null)
                     Spacer(Modifier.width(12.dp))
-                    Text("View Order Receipt", fontWeight = FontWeight.Bold)
+                    Text("View Invoice", fontWeight = FontWeight.Bold)
                 }
             } else {
                 Button(

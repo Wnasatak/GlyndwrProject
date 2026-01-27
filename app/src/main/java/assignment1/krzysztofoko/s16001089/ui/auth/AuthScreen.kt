@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.R
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
@@ -97,11 +98,11 @@ fun AuthScreen(
                         title = { 
                             Text(
                                 when {
-                                    viewModel.isTwoFactorStep -> "Identity Verification"
-                                    viewModel.isVerifyingEmail -> "Email Verification"
-                                    viewModel.isResettingPassword -> "Reset Password"
-                                    viewModel.isLogin -> "Member Login"
-                                    else -> "Registration"
+                                    viewModel.isTwoFactorStep -> AppConstants.TITLE_IDENTITY_VERIFICATION
+                                    viewModel.isVerifyingEmail -> AppConstants.TITLE_EMAIL_VERIFICATION
+                                    viewModel.isResettingPassword -> AppConstants.TITLE_RESET_PASSWORD
+                                    viewModel.isLogin -> AppConstants.TITLE_MEMBER_LOGIN
+                                    else -> AppConstants.TITLE_REGISTRATION
                                 }, 
                                 fontWeight = FontWeight.Bold
                             ) 
@@ -152,7 +153,7 @@ fun AuthScreen(
                                 } else {
                                     Icon(Icons.Default.VpnKey, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                                     Spacer(modifier = Modifier.height(24.dp))
-                                    Text("Security Verification", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                                    Text(AppConstants.TITLE_SECURITY_VERIFICATION, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                                     Text("A code has been sent to your email. Please enter it below to verify your identity.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
                                     
                                     Spacer(modifier = Modifier.height(32.dp))
@@ -172,14 +173,14 @@ fun AuthScreen(
                                             viewModel.error = "Invalid code. Please try again."
                                         }
                                     }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) {
-                                        Text("Verify Identity")
+                                        Text(AppConstants.BTN_VERIFY_IDENTITY)
                                     }
-                                    TextButton(onClick = { viewModel.trigger2FA(context, viewModel.email) { scope.launch { snackbarHostState.showSnackbar("New code sent") } } }) { Text("Resend Code") }
+                                    TextButton(onClick = { viewModel.trigger2FA(context, viewModel.email) { scope.launch { snackbarHostState.showSnackbar("New code sent") } } }) { Text(AppConstants.BTN_RESEND_CODE) }
                                 }
                             } else if (viewModel.isVerifyingEmail) {
                                 Icon(Icons.Default.MarkEmailRead, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(24.dp))
-                                Text("Check your Inbox", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                                Text(AppConstants.TITLE_CHECK_INBOX, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                                 Text("We've sent a verification link to:", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
                                 Text(viewModel.email, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(32.dp))
@@ -193,23 +194,23 @@ fun AuthScreen(
                                             }
                                         } else viewModel.error = "Email not yet verified."
                                     }
-                                }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) { Text("Verification Done") }
-                                TextButton(onClick = { viewModel.signOut(); viewModel.isVerifyingEmail = false }) { Text("Back to Login") }
+                                }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) { Text(AppConstants.BTN_VERIFICATION_DONE) }
+                                TextButton(onClick = { viewModel.signOut(); viewModel.isVerifyingEmail = false }) { Text(AppConstants.BTN_BACK_TO_LOGIN) }
                             } else if (viewModel.isResettingPassword) {
                                 Icon(Icons.Default.LockReset, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(24.dp))
-                                Text("Account Recovery", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                                Text(AppConstants.TITLE_ACCOUNT_RECOVERY, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 OutlinedTextField(value = viewModel.email, onValueChange = { viewModel.email = it; viewModel.error = null }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(12.dp))
                                 Spacer(modifier = Modifier.height(24.dp))
-                                Button(onClick = { viewModel.resetPassword() }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) { Text("Send Reset Link") }
-                                TextButton(onClick = { viewModel.isResettingPassword = false; viewModel.error = null }) { Text("Return to Login") }
+                                Button(onClick = { viewModel.resetPassword() }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) { Text(AppConstants.BTN_SEND_RESET_LINK) }
+                                TextButton(onClick = { viewModel.isResettingPassword = false; viewModel.error = null }) { Text(AppConstants.BTN_RETURN_TO_LOGIN) }
                             } else {
                                 AuthLogo(isLogin = viewModel.isLogin, glowScale = glowScale, glowAlpha = glowAlpha)
 
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                Text(text = if (viewModel.isLogin) "Welcome Back" else "Student Registration", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                                Text(text = if (viewModel.isLogin) AppConstants.TITLE_WELCOME_BACK else AppConstants.TITLE_STUDENT_REGISTRATION, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                                 Spacer(modifier = Modifier.height(32.dp))
                                 
                                 if (!viewModel.isLogin) {
@@ -234,7 +235,7 @@ fun AuthScreen(
                                         viewModel.handleSignUp()
                                     }
                                 }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(12.dp)) {
-                                    if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White) else Text(if (viewModel.isLogin) "Sign In" else "Create Account")
+                                    if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White) else Text(if (viewModel.isLogin) AppConstants.BTN_SIGN_IN else AppConstants.BTN_CREATE_ACCOUNT)
                                 }
 
                                 Spacer(modifier = Modifier.height(16.dp))
@@ -246,7 +247,7 @@ fun AuthScreen(
                                     modifier = Modifier.fillMaxWidth().height(52.dp),
                                     shape = RoundedCornerShape(12.dp),
                                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                                ) { Icon(Icons.Default.AccountCircle, null); Spacer(Modifier.width(12.dp)); Text(if (viewModel.isLogin) "Google Login" else "Google Sign up") }
+                                ) { Icon(Icons.Default.AccountCircle, null); Spacer(Modifier.width(12.dp)); Text(if (viewModel.isLogin) AppConstants.BTN_GOOGLE_LOGIN else AppConstants.BTN_GOOGLE_SIGNUP) }
 
                                 TextButton(onClick = { viewModel.isLogin = !viewModel.isLogin; viewModel.error = null; viewModel.loginAttempts = 0 }) { Text(if (viewModel.isLogin) "New student? Register" else "Have an account? Sign In") }
                             }

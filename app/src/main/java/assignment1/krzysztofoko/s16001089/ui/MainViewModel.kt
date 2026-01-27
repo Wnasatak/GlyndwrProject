@@ -12,6 +12,7 @@ import androidx.media3.common.Player
 import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.data.*
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -33,6 +34,7 @@ class MainViewModel(
             if (user != null) db.userDao().getUserFlow(user.uid)
             else flowOf(null)
         }
+        .flowOn(Dispatchers.IO) // Optimize: Run DB query on IO thread
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     // Data State
@@ -46,13 +48,16 @@ class MainViewModel(
     val loadError = _loadError.asStateFlow()
 
     // Notification State
+    @OptIn(ExperimentalCoroutinesApi::class)
     val unreadNotificationsCount: StateFlow<Int> = _currentUser.flatMapLatest { user ->
         if (user != null) {
             db.userDao().getNotificationsForUser(user.uid).map { list ->
                 list.count { !it.isRead }
             }
         } else flowOf(0)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    }
+    .flowOn(Dispatchers.IO)
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     // Player State
     var currentPlayingBook by mutableStateOf<Book?>(null)
@@ -72,21 +77,26 @@ class MainViewModel(
 
     init {
         auth.addAuthStateListener(authListener)
+        
+        // Initial load
         refreshData()
     }
 
     fun refreshData() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _isDataLoading.value = true
             _loadError.value = null
             try {
+                // Optimize: Only seed if necessary (handled inside seedDatabase now)
                 seedDatabase(db)
+                
+                // Fetch and cache data efficiently
                 repository.getAllCombinedData().collect { combined ->
                     _allBooks.value = combined ?: emptyList()
                     _isDataLoading.value = false
                 }
-            } catch (_: Exception) {
-                _loadError.value = "Offline Database Error"
+            } catch (e: Exception) {
+                _loadError.value = "Connectivity error. Using local cache."
                 _isDataLoading.value = false
             }
         }

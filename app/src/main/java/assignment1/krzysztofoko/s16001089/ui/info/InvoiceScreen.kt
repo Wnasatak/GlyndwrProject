@@ -75,7 +75,7 @@ fun InvoiceScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text("Official Invoice", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    title = { Text(AppConstants.TITLE_OFFICIAL_INVOICE, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -102,9 +102,9 @@ fun InvoiceScreen(
             } else if (invoice == null) {
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Invoice record not found.")
+                        Text(AppConstants.MSG_INVOICE_NOT_FOUND)
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = onBack) { Text("Go Back") }
+                        Button(onClick = onBack) { Text(AppConstants.BTN_GO_BACK) }
                     }
                 }
             } else {
@@ -129,7 +129,7 @@ fun InvoiceScreen(
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(text = AppConstants.APP_NAME, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                                    Text(text = "Official University Store", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                    Text(text = AppConstants.LABEL_STORE_TAGLINE, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                                 }
                                 AsyncImage(
                                     model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
@@ -146,15 +146,15 @@ fun InvoiceScreen(
                             
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Column(modifier = Modifier.weight(1.1f)) {
-                                    Text("ISSUED TO", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                    Text(AppConstants.TITLE_ISSUED_TO, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     Text(currentInvoice.billingName, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("Email: " + currentInvoice.billingEmail, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Text("${AppConstants.TEXT_EMAIL}: ${currentInvoice.billingEmail}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                     if (!currentInvoice.billingAddress.isNullOrBlank()) {
                                         Text(currentInvoice.billingAddress, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                     }
                                 }
                                 Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(0.9f)) {
-                                    Text("INVOICE NO", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                    Text(AppConstants.TITLE_INVOICE_NO, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     Text(currentInvoice.invoiceNumber, fontWeight = FontWeight.Bold)
                                     Text(formattedDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray, textAlign = TextAlign.End)
                                 }
@@ -162,7 +162,7 @@ fun InvoiceScreen(
                             
                             HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                             
-                            Text("PURCHASED ITEM", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                            Text(AppConstants.TITLE_PURCHASED_ITEM, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                             Spacer(modifier = Modifier.height(12.dp))
                             
                             val pricePaid = currentInvoice.pricePaid
@@ -192,7 +192,7 @@ fun InvoiceScreen(
                                     Text(currentInvoice.itemTitle, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     var categoryText = currentInvoice.itemCategory
                                     if (!currentInvoice.itemVariant.isNullOrEmpty()) {
-                                        categoryText = categoryText + " • " + currentInvoice.itemVariant
+                                        categoryText = "$categoryText • ${currentInvoice.itemVariant}"
                                     }
                                     Text(categoryText, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                 }
@@ -202,17 +202,17 @@ fun InvoiceScreen(
                             Spacer(modifier = Modifier.height(32.dp))
                             
                             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp)).padding(16.dp)) {
-                                InvoiceSummaryRow("Subtotal", "£" + String.format(Locale.US, "%.2f", basePrice))
+                                InvoiceSummaryRow(AppConstants.LABEL_SUBTOTAL, "£" + String.format(Locale.US, "%.2f", basePrice))
                                 if (discount > 0) {
-                                    InvoiceSummaryRow("Student Discount", "-£" + String.format(Locale.US, "%.2f", discount), color = Color(0xFF2E7D32))
+                                    InvoiceSummaryRow(AppConstants.LABEL_STUDENT_DISCOUNT_VAL, "-£" + String.format(Locale.US, "%.2f", discount), color = Color(0xFF2E7D32))
                                 }
                                 
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                                 
-                                InvoiceSummaryRow("Total Paid via " + currentInvoice.paymentMethod, "£" + String.format(Locale.US, "%.2f", pricePaid), isTotal = true)
+                                InvoiceSummaryRow("${AppConstants.LABEL_TOTAL_PAID} ${AppConstants.LABEL_PAID_VIA} ${currentInvoice.paymentMethod}", "£" + String.format(Locale.US, "%.2f", pricePaid), isTotal = true)
                                 if (!currentInvoice.orderReference.isNullOrEmpty()) {
                                     Text(
-                                        text = "Reference: " + currentInvoice.orderReference,
+                                        text = "${AppConstants.LABEL_REFERENCE}: ${currentInvoice.orderReference}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.Gray,
                                         modifier = Modifier.padding(top = 4.dp)
@@ -223,7 +223,7 @@ fun InvoiceScreen(
                             Spacer(modifier = Modifier.height(40.dp))
                             
                             Text(
-                                text = "Thank you for supporting our university store!\nThis is an official computer-generated document.",
+                                text = "${AppConstants.MSG_THANK_YOU_STORE}\n${AppConstants.LABEL_COMPUTER_GENERATED}",
                                 style = MaterialTheme.typography.labelSmall,
                                 textAlign = TextAlign.Center,
                                 color = Color.Gray,
@@ -256,7 +256,7 @@ fun InvoiceScreen(
                     ) {
                         Icon(Icons.Default.PictureAsPdf, null)
                         Spacer(Modifier.width(12.dp))
-                        Text("Download PDF Invoice", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(AppConstants.BTN_DOWNLOAD_PDF, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
             }

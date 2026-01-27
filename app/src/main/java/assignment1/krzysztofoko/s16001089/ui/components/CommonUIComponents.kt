@@ -9,12 +9,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.LibraryAddCheck
-import androidx.compose.material.icons.filled.Paid
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +20,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
 import coil.compose.AsyncImage
 import java.util.Locale
@@ -73,7 +71,7 @@ fun UniversalProductSlider(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        val priceText = if (item.price == 0.0) "FREE" else "£${String.format(Locale.US, "%.2f", item.price)}"
+                        val priceText = if (item.price == 0.0) AppConstants.LABEL_FREE else "£${String.format(Locale.US, "%.2f", item.price)}"
                         Text(
                             text = priceText,
                             style = MaterialTheme.typography.labelSmall,
@@ -109,9 +107,12 @@ fun ProductHeaderImage(
         label = "yPos"
     )
 
+    // Gear images stay square, others remain rounded
+    val headerShape = if (book.mainCategory == AppConstants.CAT_GEAR) RectangleShape else RoundedCornerShape(28.dp)
+
     Surface(
         modifier = Modifier.fillMaxWidth().height(320.dp),
-        shape = RoundedCornerShape(28.dp),
+        shape = headerShape,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
         shadowElevation = 12.dp,
         border = BorderStroke(
@@ -125,52 +126,67 @@ fun ProductHeaderImage(
                 AsyncImage(model = book.imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             }
             
-            Box(modifier = Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.75f),
-                        Color.Transparent,
-                        Color.Black.copy(alpha = 0.6f)
-                    )
-                )
-            ))
-
-            Box(modifier = Modifier.fillMaxSize().drawBehind {
-                val brush = Brush.radialGradient(
-                    colors = listOf(primaryColor.copy(alpha = 0.45f), Color.Transparent),
-                    center = Offset(size.width * xPos, size.height * yPos),
-                    radius = size.maxDimension * 0.8f
-                )
-                drawRect(brush)
-            })
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(110.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), 
-                        shape = RoundedCornerShape(28.dp)
-                    )
-                    .drawBehind {
-                        drawRoundRect(
-                            color = primaryColor.copy(alpha = 0.6f),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(28.dp.toPx()),
-                            style = Stroke(width = 2.dp.toPx())
+            // Only show fancy overlays and central icon if NOT a Gear product
+            if (book.mainCategory != AppConstants.CAT_GEAR) {
+                Box(modifier = Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.75f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.6f)
                         )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = when {
-                        book.isAudioBook -> Icons.Default.Headphones
-                        book.mainCategory == "University Courses" -> Icons.Default.School
-                        else -> Icons.AutoMirrored.Filled.MenuBook
-                    }, 
-                    contentDescription = null, 
-                    modifier = Modifier.size(64.dp), 
-                    tint = Color.White
-                )
+                    )
+                ))
+
+                Box(modifier = Modifier.fillMaxSize().drawBehind {
+                    val brush = Brush.radialGradient(
+                        colors = listOf(primaryColor.copy(alpha = 0.45f), Color.Transparent),
+                        center = Offset(size.width * xPos, size.height * yPos),
+                        radius = size.maxDimension * 0.8f
+                    )
+                    drawRect(brush)
+                })
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(110.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), 
+                            shape = RoundedCornerShape(28.dp)
+                        )
+                        .drawBehind {
+                            drawRoundRect(
+                                color = primaryColor.copy(alpha = 0.6f),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(28.dp.toPx()),
+                                style = Stroke(width = 2.dp.toPx())
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when {
+                            book.isAudioBook -> Icons.Default.Headphones
+                            book.mainCategory == AppConstants.CAT_COURSES -> Icons.Default.School
+                            else -> Icons.AutoMirrored.Filled.MenuBook
+                        }, 
+                        contentDescription = null, 
+                        modifier = Modifier.size(64.dp), 
+                        tint = Color.White
+                    )
+                }
+            } else {
+                // For Gear, still add a slight dark gradient at the top/bottom 
+                // just so the badges and text are readable if the image is white.
+                Box(modifier = Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.3f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.3f)
+                        )
+                    )
+                ))
             }
             
             if (isOwned) {
@@ -179,11 +195,13 @@ fun ProductHeaderImage(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     if (book.price > 0) {
-                        StatusBadge(text = "Paid", icon = Icons.Default.Paid)
+                        StatusBadge(text = AppConstants.LABEL_PAID, icon = Icons.Default.Paid)
                     } else { Spacer(Modifier.width(1.dp)) }
 
+                    val statusLabel = AppConstants.getItemStatusLabel(book)
+                    
                     StatusBadge(
-                        text = if (book.price > 0) "PURCHASED" else "IN LIBRARY",
+                        text = statusLabel.uppercase(),
                         icon = Icons.Default.LibraryAddCheck
                     )
                 }
@@ -212,14 +230,14 @@ fun QuickViewDialog(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Show More Details", fontWeight = FontWeight.Bold)
+                Text(AppConstants.BTN_SIGN_IN_SHOP, fontWeight = FontWeight.Bold) // Using shop details label if available
                 Spacer(Modifier.width(8.dp))
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(18.dp))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(AppConstants.BTN_CLOSE)
             }
         },
         title = null,
@@ -247,7 +265,7 @@ fun QuickViewDialog(
                 )
                 
                 Text(
-                    text = if (book.isAudioBook) "Narrated by ${book.author}" else "by ${book.author}",
+                    text = if (book.isAudioBook) "${AppConstants.TEXT_NARRATED_BY} ${book.author}" else "${AppConstants.TEXT_BY} ${book.author}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center
@@ -278,7 +296,7 @@ fun QuickViewDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (book.price == 0.0) {
-                        Text(text = "FREE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50))
+                        Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50))
                     } else {
                         val formattedPrice = String.format(Locale.US, "%.2f", book.price)
                         Text(text = "£$formattedPrice", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
@@ -307,6 +325,33 @@ fun StatusBadge(text: String, icon: androidx.compose.ui.graphics.vector.ImageVec
             Icon(icon, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(6.dp))
             Text(text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+/**
+ * Universal action button to view invoice.
+ * Only displays if the product price is greater than 0.
+ */
+@Composable
+fun ViewInvoiceButton(
+    price: Double,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (price > 0) {
+        Button(
+            onClick = onClick,
+            modifier = modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                contentColor = MaterialTheme.colorScheme.primary
+            )
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ReceiptLong, null)
+            Spacer(Modifier.width(12.dp))
+            Text(AppConstants.BTN_VIEW_INVOICE, fontWeight = FontWeight.Bold)
         }
     }
 }

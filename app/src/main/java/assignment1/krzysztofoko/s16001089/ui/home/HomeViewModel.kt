@@ -2,6 +2,7 @@ package assignment1.krzysztofoko.s16001089.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -13,7 +14,7 @@ class HomeViewModel(
     private val userId: String
 ) : ViewModel() {
 
-    private val _selectedMainCategory = MutableStateFlow("All")
+    private val _selectedMainCategory = MutableStateFlow(AppConstants.CAT_ALL)
     val selectedMainCategory: StateFlow<String> = _selectedMainCategory.asStateFlow()
 
     private val _selectedSubCategory = MutableStateFlow("All Genres")
@@ -60,11 +61,11 @@ class HomeViewModel(
     ) { books, mainCat, subCat, query ->
         books.filter { book ->
             val matchMain = when (mainCat) {
-                "All" -> true
-                "Free" -> book.price == 0.0
+                AppConstants.CAT_ALL -> true
+                AppConstants.CAT_FREE -> book.price == 0.0
                 else -> book.mainCategory.equals(mainCat, ignoreCase = true)
             }
-            val matchSub = if (subCat.contains("All", ignoreCase = true) || mainCat == "Free") true 
+            val matchSub = if (subCat.contains("All", ignoreCase = true) || mainCat == AppConstants.CAT_FREE) true 
                            else book.category.equals(subCat, ignoreCase = true)
             val matchQuery = if (query.isEmpty()) true 
                              else book.title.contains(query, ignoreCase = true) || 
@@ -83,7 +84,7 @@ class HomeViewModel(
 
     fun selectMainCategory(category: String) {
         _selectedMainCategory.value = category
-        _selectedSubCategory.value = if (category == "University Courses") "All Departments" else "All Genres"
+        _selectedSubCategory.value = AppConstants.getDefaultSubcategory(category)
         _isSearchVisible.value = false
     }
 
@@ -123,11 +124,11 @@ class HomeViewModel(
         viewModelScope.launch {
             if (isLiked) {
                 userDao.removeFromWishlist(userId, book.id)
-                onComplete("Removed from favorites")
+                onComplete(AppConstants.MSG_REMOVED_FAVORITES)
             } else {
                 userDao.addToHistory(HistoryItem(userId, book.id))
                 userDao.addToWishlist(WishlistItem(userId, book.id))
-                onComplete("Added to favorites!")
+                onComplete(AppConstants.MSG_ADDED_FAVORITES)
             }
         }
     }
@@ -135,7 +136,7 @@ class HomeViewModel(
     fun removePurchase(book: Book, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             userDao.deletePurchase(userId, book.id)
-            onComplete("Removed from library")
+            onComplete(AppConstants.MSG_REMOVED_LIBRARY)
         }
     }
 }

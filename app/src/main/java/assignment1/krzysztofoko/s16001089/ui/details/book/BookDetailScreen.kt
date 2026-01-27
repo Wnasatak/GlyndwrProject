@@ -22,6 +22,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
@@ -60,6 +62,7 @@ fun BookDetailScreen(
     val allReviews by viewModel.allReviews.collectAsState()
     
     var showOrderFlow by remember { mutableStateOf(false) }
+    var showRemoveConfirm by remember { mutableStateOf(false) }
 
     val primaryColor = MaterialTheme.colorScheme.primary
 
@@ -72,7 +75,7 @@ fun BookDetailScreen(
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text(text = book?.title ?: "Item Details", fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    title = { Text(text = book?.title ?: AppConstants.TITLE_BOOK_DETAILS, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                     actions = {
                         if (user != null) {
@@ -123,34 +126,28 @@ fun BookDetailScreen(
                             ) {
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text(text = currentBook.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-                                    Text(text = "by ${currentBook.author}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                                    Spacer(modifier = Modifier.height(16.dp)); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { AssistChip(onClick = {}, label = { Text(currentBook.category) }); AssistChip(onClick = {}, label = { Text("Academic Material") }) }
-                                    Spacer(modifier = Modifier.height(24.dp)); Text(text = "About this item", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                    Text(text = "${AppConstants.TEXT_BY} ${currentBook.author}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                    Spacer(modifier = Modifier.height(16.dp)); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { AssistChip(onClick = {}, label = { Text(currentBook.category) }); AssistChip(onClick = {}, label = { Text(AppConstants.TEXT_ACADEMIC_MATERIAL) }) }
+                                    Spacer(modifier = Modifier.height(24.dp)); Text(text = AppConstants.SECTION_ABOUT_ITEM, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(8.dp)); Text(text = currentBook.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp)
                                     Spacer(modifier = Modifier.height(32.dp))
                                     
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         if (isOwned) {
                                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                                Button(onClick = { onViewInvoice(currentBook.id) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.primary)) {
-                                                    Icon(Icons.AutoMirrored.Filled.ReceiptLong, null); Spacer(Modifier.width(12.dp)); Text("View Official Invoice", fontWeight = FontWeight.Bold)
-                                                }
+                                                ViewInvoiceButton(price = currentBook.price, onClick = { onViewInvoice(currentBook.id) })
                                                 
                                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                                     Button(onClick = { onReadBook(currentBook.id) }, modifier = Modifier.weight(1f).height(56.dp), shape = RoundedCornerShape(16.dp)) {
                                                         Icon(Icons.Default.AutoStories, null)
                                                         Spacer(Modifier.width(12.dp))
-                                                        Text("Read Now", fontWeight = FontWeight.Bold)
+                                                        Text(AppConstants.BTN_READ_NOW, fontWeight = FontWeight.Bold)
                                                     }
                                                     
-                                                    // Only allow removal for free items, never for paid items
+                                                    // Only allow removal for free items
                                                     if (currentBook.price <= 0) {
                                                         OutlinedButton(
-                                                            onClick = {
-                                                                viewModel.removePurchase { msg ->
-                                                                    scope.launch { snackbarHostState.showSnackbar(msg) }
-                                                                }
-                                                            },
+                                                            onClick = { showRemoveConfirm = true },
                                                             modifier = Modifier.height(56.dp),
                                                             shape = RoundedCornerShape(16.dp),
                                                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -165,12 +162,12 @@ fun BookDetailScreen(
                                             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
                                                 Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                                     Icon(Icons.Default.LockPerson, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-                                                    Spacer(Modifier.height(12.dp)); Text("Sign In Required", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                                    Text("Sign in to add this item to your library.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
+                                                    Spacer(Modifier.height(12.dp)); Text(AppConstants.TITLE_SIGN_IN_REQUIRED, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                                    Text(AppConstants.MSG_SIGN_IN_PROMPT_BOOK, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
                                                     Spacer(Modifier.height(20.dp)); Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { 
                                                         Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp))
                                                         Spacer(Modifier.width(8.dp))
-                                                        Text("Sign in / Register") 
+                                                        Text(AppConstants.BTN_SIGN_IN_REGISTER) 
                                                     }
                                                 }
                                             }
@@ -187,7 +184,7 @@ fun BookDetailScreen(
                                                 ) {
                                                     Icon(Icons.Default.LibraryAdd, null)
                                                     Spacer(Modifier.width(12.dp))
-                                                    Text("Add to Library", fontWeight = FontWeight.Bold)
+                                                    Text(AppConstants.BTN_ADD_TO_LIBRARY, fontWeight = FontWeight.Bold)
                                                 }
                                             } else {
                                                 val discountedPrice = currentBook.price * 0.9
@@ -199,7 +196,7 @@ fun BookDetailScreen(
                                                         Spacer(Modifier.width(12.dp)); Text(text = "£$dPrice", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                                     }
                                                     Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { Text("STUDENT PRICE (-10%)", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 10.sp) }
-                                                    Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text("Order now!", fontWeight = FontWeight.Bold) }
+                                                    Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text(AppConstants.BTN_ORDER_NOW, fontWeight = FontWeight.Bold) }
                                                 }
                                             }
                                         }
@@ -217,7 +214,7 @@ fun BookDetailScreen(
                                 isLoggedIn = user != null,
                                 db = AppDatabase.getDatabase(LocalContext.current),
                                 isDarkTheme = isDarkTheme,
-                                onReviewPosted = { scope.launch { snackbarHostState.showSnackbar("Thanks for your review!") } },
+                                onReviewPosted = { scope.launch { snackbarHostState.showSnackbar(AppConstants.MSG_THANKS_REVIEW) } },
                                 onLoginClick = onLoginRequired
                             )
                         }
@@ -236,9 +233,21 @@ fun BookDetailScreen(
                 onEditProfile = { showOrderFlow = false; onNavigateToProfile() },
                 onComplete = { 
                     showOrderFlow = false
-                    scope.launch { snackbarHostState.showSnackbar("Purchase successful! Item added to your library.") }
+                    scope.launch { snackbarHostState.showSnackbar(AppConstants.MSG_PURCHASE_SUCCESS) }
                 }
             )
         }
+
+        AppPopups.RemoveFromLibraryConfirmation(
+            show = showRemoveConfirm,
+            bookTitle = book?.title ?: "",
+            onDismiss = { showRemoveConfirm = false },
+            onConfirm = {
+                viewModel.removePurchase { msg ->
+                    showRemoveConfirm = false
+                    scope.launch { snackbarHostState.showSnackbar(msg) }
+                }
+            }
+        )
     }
 }

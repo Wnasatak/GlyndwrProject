@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
@@ -55,7 +56,7 @@ fun PdfReaderScreen(
                     title = {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = book?.title ?: "Reading...",
+                                text = book?.title ?: AppConstants.TEXT_READING,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -70,7 +71,7 @@ fun PdfReaderScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Close")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_CLOSE)
                         }
                     },
                     actions = {
@@ -97,7 +98,7 @@ fun PdfReaderScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = { /* Previous Page */ }) {
-                            Icon(Icons.Default.ChevronLeft, "Previous")
+                            Icon(Icons.Default.ChevronLeft, AppConstants.BTN_PREVIOUS)
                         }
                         
                         Slider(
@@ -107,7 +108,7 @@ fun PdfReaderScreen(
                         )
                         
                         IconButton(onClick = { /* Next Page */ }) {
-                            Icon(Icons.Default.ChevronRight, "Next")
+                            Icon(Icons.Default.ChevronRight, AppConstants.BTN_NEXT)
                         }
                     }
                 }

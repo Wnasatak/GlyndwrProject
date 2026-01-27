@@ -1,15 +1,9 @@
 package assignment1.krzysztofoko.s16001089.ui
 
-import androidx.compose.animation.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
@@ -19,7 +13,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.auth.AuthScreen
-import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
 import assignment1.krzysztofoko.s16001089.ui.home.HomeScreen
 import assignment1.krzysztofoko.s16001089.ui.details.book.BookDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.details.audiobook.AudioBookDetailScreen
@@ -30,10 +23,9 @@ import assignment1.krzysztofoko.s16001089.ui.dashboard.DashboardScreen
 import assignment1.krzysztofoko.s16001089.ui.profile.ProfileScreen
 import assignment1.krzysztofoko.s16001089.ui.splash.SplashScreen
 import assignment1.krzysztofoko.s16001089.ui.info.*
-import assignment1.krzysztofoko.s16001089.ui.components.AudioPlayerComponent
-import assignment1.krzysztofoko.s16001089.ui.components.InvoiceCreatingScreen
-import assignment1.krzysztofoko.s16001089.ui.components.TopLevelScaffold
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationScreen
+import assignment1.krzysztofoko.s16001089.ui.classroom.ClassroomScreen
 
 @Composable
 fun AppNavigation(
@@ -82,16 +74,12 @@ fun AppNavigation(
         onLogoutClick = { mainVm.showLogoutConfirm = true }
     ) { paddingValues ->
         
-        if (mainVm.showLogoutConfirm) {
-            AppPopups.LogoutConfirmation(
-                onDismiss = { mainVm.showLogoutConfirm = false },
-                onConfirm = { mainVm.signOut(navController) }
-            )
-        }
-
-        AppPopups.SignedOutSuccess(
-            show = mainVm.showSignedOutPopup,
-            onDismiss = { mainVm.showSignedOutPopup = false }
+        AppNavigationPopups(
+            showLogoutConfirm = mainVm.showLogoutConfirm,
+            showSignedOutPopup = mainVm.showSignedOutPopup,
+            onLogoutConfirm = { mainVm.signOut(navController) },
+            onLogoutDismiss = { mainVm.showLogoutConfirm = false },
+            onSignedOutDismiss = { mainVm.showSignedOutPopup = false }
         )
 
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -131,6 +119,15 @@ fun AppNavigation(
                         isDarkTheme = isDarkTheme
                     )
                 }
+                composable("classroom/{courseId}") { backStackEntry ->
+                    val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
+                    ClassroomScreen(
+                        courseId = courseId,
+                        onBack = { navController.popBackStack() },
+                        isDarkTheme = isDarkTheme,
+                        onToggleTheme = onToggleTheme
+                    )
+                }
                 composable("bookDetails/{bookId}") { backStackEntry ->
                     val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
                     val selectedBook = allBooks.find { it.id == bookId }
@@ -147,7 +144,8 @@ fun AppNavigation(
                         )
                         selectedBook?.mainCategory == "University Courses" -> CourseDetailScreen(
                             courseId = bookId, user = currentUser, onLoginRequired = { navController.navigate("auth") }, onBack = { navController.popBackStack() },
-                            isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme, onNavigateToProfile = { navController.navigate("profile") }, onViewInvoice = { navController.navigate("invoiceCreating/$it") }
+                            isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme, onNavigateToProfile = { navController.navigate("profile") }, onViewInvoice = { navController.navigate("invoiceCreating/$it") },
+                            onEnterClassroom = { navController.navigate("classroom/$it") }
                         )
                         else -> BookDetailScreen(
                             bookId = bookId, initialBook = selectedBook, user = currentUser, onLoginRequired = { navController.navigate("auth") }, onBack = { navController.popBackStack() },
@@ -192,16 +190,16 @@ fun AppNavigation(
                 }
             }
 
-            if (mainVm.showPlayer && mainVm.currentPlayingBook != null) {
-                if (!mainVm.isPlayerMinimized) {
-                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { mainVm.isPlayerMinimized = true })
-                }
-                AnimatedVisibility(visible = true, enter = slideInVertically(initialOffsetY = { it }) + fadeIn(), exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(), modifier = Modifier.align(Alignment.BottomCenter)) {
-                    mainVm.currentPlayingBook?.let { book ->
-                        AudioPlayerComponent(book = book, isMinimized = mainVm.isPlayerMinimized, onToggleMinimize = { mainVm.isPlayerMinimized = !mainVm.isPlayerMinimized }, onClose = { mainVm.stopPlayer(externalPlayer) }, isDarkTheme = isDarkTheme, player = externalPlayer)
-                    }
-                }
-            }
+            GlobalAudioPlayerOverlay(
+                showPlayer = mainVm.showPlayer,
+                currentBook = mainVm.currentPlayingBook,
+                isMinimized = mainVm.isPlayerMinimized,
+                isDarkTheme = isDarkTheme,
+                externalPlayer = externalPlayer,
+                onToggleMinimize = { mainVm.isPlayerMinimized = !mainVm.isPlayerMinimized },
+                onClose = { mainVm.stopPlayer(externalPlayer) },
+                onSetMinimized = { mainVm.isPlayerMinimized = it }
+            )
         }
     }
 }

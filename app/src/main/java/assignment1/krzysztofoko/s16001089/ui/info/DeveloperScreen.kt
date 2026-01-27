@@ -50,7 +50,7 @@ fun DeveloperScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text("Developer Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    title = { Text(AppConstants.TITLE_DEVELOPER_DETAILS, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -136,7 +136,7 @@ fun DeveloperScreen(
                         )
                         
                         Text(
-                            text = "Student ID: ${AppConstants.STUDENT_ID}",
+                            text = "${AppConstants.TEXT_STUDENT_ID}: ${AppConstants.STUDENT_ID}",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.secondary
                         )
@@ -149,6 +149,7 @@ fun DeveloperScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    ""
                     Column(
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -192,7 +193,7 @@ fun DeveloperScreen(
                 ) {
                     Icon(Icons.Default.Upcoming, contentDescription = null, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Future roadmap", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                    Text(AppConstants.TITLE_FUTURE_ROADMAP, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                 }
             }
         }

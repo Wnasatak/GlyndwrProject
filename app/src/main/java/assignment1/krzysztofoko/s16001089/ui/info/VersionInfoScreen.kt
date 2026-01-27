@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.InfoCard
 
@@ -33,7 +34,7 @@ fun VersionInfoScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text("What's New", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    title = { Text(AppConstants.TITLE_WHATS_NEW, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -62,7 +63,7 @@ fun VersionInfoScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Latest Updates",
+                    text = AppConstants.TITLE_LATEST_UPDATES,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary
@@ -72,8 +73,8 @@ fun VersionInfoScreen(
                 
                 InfoCard(
                     icon = Icons.Default.History,
-                    title = "VERSION 1.0.0 (FINAL DEMO)",
-                    content = "The complete student hub experience is here! This final release brings polished security, interactive features, and a cohesive design across all platforms.",
+                    title = AppConstants.VER_FINAL_DEMO_TITLE,
+                    content = AppConstants.VER_FINAL_DEMO_DESC,
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     modifier = Modifier.padding(vertical = 4.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
@@ -81,8 +82,8 @@ fun VersionInfoScreen(
 
                 InfoCard(
                     icon = Icons.Default.Security,
-                    title = "SECURE AUTHENTICATION",
-                    content = "Added 2FA (Two-Factor Authentication) verification for all logins to ensure student data protection. Includes a simulated demo mode for presentations.",
+                    title = AppConstants.VER_SECURITY_TITLE,
+                    content = AppConstants.VER_SECURITY_DESC,
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     modifier = Modifier.padding(vertical = 4.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
@@ -90,8 +91,8 @@ fun VersionInfoScreen(
 
                 InfoCard(
                     icon = Icons.Default.Comment,
-                    title = "INTERACTIVE REVIEWS",
-                    content = "You can now like and dislike comments! Reviews include real-time timestamps and confirmation popups for edits and removals.",
+                    title = AppConstants.VER_REVIEWS_TITLE,
+                    content = AppConstants.VER_REVIEWS_DESC,
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     modifier = Modifier.padding(vertical = 4.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
@@ -99,8 +100,8 @@ fun VersionInfoScreen(
 
                 InfoCard(
                     icon = Icons.Default.ColorLens,
-                    title = "THEME ENHANCEMENTS",
-                    content = "Unified the visual style across all informative screens. High-readability solid backgrounds (0.95 alpha) and professional borders applied to all cards.",
+                    title = AppConstants.VER_THEME_TITLE,
+                    content = AppConstants.VER_THEME_DESC,
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     modifier = Modifier.padding(vertical = 4.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
@@ -108,8 +109,8 @@ fun VersionInfoScreen(
 
                 InfoCard(
                     icon = Icons.Default.Inventory,
-                    title = "EXPANDED CATALOG",
-                    content = "The store now includes University Courses, official Glyndŵr Gear, and Audio Books with student discounts automatically applied.",
+                    title = AppConstants.VER_CATALOG_TITLE,
+                    content = AppConstants.VER_CATALOG_DESC,
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     modifier = Modifier.padding(vertical = 4.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
@@ -122,7 +123,7 @@ fun VersionInfoScreen(
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("Close", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(AppConstants.BTN_CLOSE, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }

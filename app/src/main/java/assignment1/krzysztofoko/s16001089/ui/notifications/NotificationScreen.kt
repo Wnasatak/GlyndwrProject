@@ -3,6 +3,7 @@ package assignment1.krzysztofoko.s16001089.ui.notifications
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,7 +18,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -30,6 +34,7 @@ import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.NotificationLocal
 import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
 import assignment1.krzysztofoko.s16001089.ui.components.VerticalWavyBackground
+import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -54,7 +59,9 @@ fun NotificationScreen(
     
     var selectedNotification by remember { mutableStateOf<NotificationLocal?>(null) }
     var relatedBook by remember { mutableStateOf<Book?>(null) }
-    val sheetState = rememberModalBottomSheetState()
+    
+    // Fix: skipPartiallyExpanded = true ensures the sheet opens fully immediately
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showSheet by remember { mutableStateOf(false) }
     var showRemoveConfirm by remember { mutableStateOf(false) }
 
@@ -71,7 +78,19 @@ fun NotificationScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("Notifications", fontWeight = FontWeight.Black)
                             if (unreadCount > 0) {
-                                Text("$unreadCount unread", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = CircleShape,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                ) {
+                                    Text(
+                                        "$unreadCount NEW", 
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        style = MaterialTheme.typography.labelSmall, 
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     },
@@ -97,11 +116,14 @@ fun NotificationScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(notifications, key = { it.id }) { notification ->
                         NotificationItem(
                             notification = notification,
+                            isDarkTheme = isDarkTheme,
+                            viewModel = viewModel,
+                            onDelete = { viewModel.deleteNotification(notification.id) },
                             onClick = { 
                                 scope.launch {
                                     relatedBook = viewModel.getRelatedBook(notification.productId)
@@ -130,23 +152,43 @@ fun NotificationScreen(
                         .padding(bottom = 40.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = when(selectedNotification!!.type) {
+                                "PURCHASE" -> Icons.Default.ShoppingBag
+                                "PICKUP" -> Icons.Default.Storefront
+                                else -> Icons.Default.Notifications
+                            },
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
                     Text(
                         text = selectedNotification!!.title,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Black,
                         textAlign = TextAlign.Center
                     )
+                    
                     Text(
                         text = selectedNotification!!.message,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(vertical = 12.dp)
                     )
                     
                     Spacer(modifier = Modifier.height(24.dp))
                     
-                    // Button 1: Check it out (Always visible)
                     Button(
                         onClick = { 
                             showSheet = false
@@ -155,14 +197,13 @@ fun NotificationScreen(
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Icon(Icons.Default.Search, null)
+                        Icon(Icons.Default.OpenInNew, null)
                         Spacer(Modifier.width(12.dp))
-                        Text("Check it out", fontWeight = FontWeight.Bold)
+                        Text("View Product Details", fontWeight = FontWeight.Bold)
                     }
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    // Button 2: View Invoice (Only if not free)
                     if (relatedBook != null && relatedBook!!.price > 0) {
                         OutlinedButton(
                             onClick = { 
@@ -179,7 +220,6 @@ fun NotificationScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                     
-                    // Button 3: Remove from library (Only if free AND not Gear)
                     if (relatedBook != null && relatedBook!!.price <= 0 && relatedBook!!.mainCategory != "University Gear") {
                         OutlinedButton(
                             onClick = { 
@@ -197,18 +237,32 @@ fun NotificationScreen(
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
+
+                    OutlinedButton(
+                        onClick = { 
+                            viewModel.deleteNotification(selectedNotification!!.id)
+                            showSheet = false 
+                        },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                    ) {
+                        Icon(Icons.Default.DeleteSweep, null)
+                        Spacer(Modifier.width(12.dp))
+                        Text("Delete Notification", fontWeight = FontWeight.Bold)
+                    }
                     
                     TextButton(
                         onClick = { showSheet = false },
                         modifier = Modifier.padding(top = 8.dp)
                     ) {
-                        Text("Dismiss", color = Color.Gray)
+                        Text("Close", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         }
 
-        // Professional Confirmation Popup
         AppPopups.RemoveFromLibraryConfirmation(
             show = showRemoveConfirm,
             bookTitle = relatedBook?.title ?: "",
@@ -226,74 +280,160 @@ fun NotificationScreen(
 @Composable
 fun NotificationItem(
     notification: NotificationLocal,
+    isDarkTheme: Boolean,
+    viewModel: NotificationViewModel,
+    onDelete: () -> Unit,
     onClick: () -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()) }
     val timeStr = sdf.format(Date(notification.timestamp))
+    
+    var relatedItem by remember { mutableStateOf<Book?>(null) }
+    LaunchedEffect(notification.productId) {
+        relatedItem = viewModel.getRelatedBook(notification.productId)
+    }
 
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (notification.isRead) MaterialTheme.colorScheme.surface.copy(alpha = 0.7f) 
-                            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
-        ),
-        border = if (!notification.isRead) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)) else null
+    // Determine category-specific Icon and Color
+    val (categoryIcon, categoryColor) = when (relatedItem?.mainCategory) {
+        "Books" -> Icons.Default.MenuBook to Color(0xFF3F51B5)
+        "Audio Books" -> Icons.Default.Headphones to Color(0xFFE91E63)
+        "University Courses" -> Icons.Default.School to Color(0xFF009688)
+        "University Gear" -> Icons.Default.ShoppingBag to Color(0xFFFF9800)
+        else -> when (notification.type) {
+            "PURCHASE" -> Icons.Default.ShoppingBag to Color(0xFF4CAF50)
+            "PICKUP" -> Icons.Default.Storefront to Color(0xFF2196F3)
+            else -> Icons.Default.Notifications to MaterialTheme.colorScheme.primary
+        }
+    }
+
+    // Completely uniform color, semi-transparent
+    val baseColor = if (isDarkTheme) Color(0xFF1E1E1E) else Color.White
+    val accentColor = if (isDarkTheme) Color(0xFF311B92) else Color(0xFFF3E5F5)
+    
+    // Transparent but uniform color
+    val cardColor = if (notification.isRead) {
+        baseColor.copy(alpha = 0.8f)
+    } else {
+        accentColor.copy(alpha = 0.6f)
+    }
+    
+    val borderColor = if (!notification.isRead) {
+        categoryColor.copy(alpha = 0.4f)
+    } else {
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+    }
+
+    // Using Box with border modifier to ensure NO internal "squares"
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(cardColor)
+            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+            .clickable { onClick() }
+            .padding(16.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = if (notification.isRead) MaterialTheme.colorScheme.surfaceVariant 
-                                else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = when(notification.type) {
-                        "PURCHASE" -> Icons.Default.ShoppingBag
-                        "PICKUP" -> Icons.Default.Storefront
-                        else -> Icons.Default.Notifications
-                    },
+            // AVATAR WITH BADGE
+            Box(modifier = Modifier.size(56.dp)) {
+                // Product Image
+                AsyncImage(
+                    model = relatedItem?.imageUrl ?: "file:///android_asset/images/media/GlyndwrUniversity.jpg",
                     contentDescription = null,
-                    tint = if (notification.isRead) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentScale = ContentScale.Crop
                 )
+                
+                // Badge Icon (Categorized)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 4.dp, y = 4.dp)
+                        .size(24.dp)
+                        .background(categoryColor, CircleShape)
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = categoryIcon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
             
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(20.dp))
             
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         text = notification.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = if (notification.isRead) FontWeight.Bold else FontWeight.Black,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (notification.isRead) FontWeight.SemiBold else FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-                    if (!notification.isRead) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(8.dp),
-                            shape = CircleShape
-                        ) {}
+                    
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (!notification.isRead) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .background(categoryColor, CircleShape)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        IconButton(
+                            onClick = onDelete,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
                 Text(
                     text = notification.message,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 20.sp
                 )
-                Text(
-                    text = timeStr,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.AccessTime, 
+                        null, 
+                        modifier = Modifier.size(12.dp), 
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = timeStr,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
             }
         }
     }
@@ -302,29 +442,48 @@ fun NotificationItem(
 @Composable
 fun EmptyNotificationsView(modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = Icons.Default.NotificationsNone,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = Color.Gray.copy(alpha = 0.3f)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f)
+                        )
+                    ),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.NotificationsNone,
+                contentDescription = null,
+                modifier = Modifier.size(60.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
         Text(
-            "Inbox is empty",
-            style = MaterialTheme.typography.titleLarge,
-            color = Color.Gray,
-            fontWeight = FontWeight.Bold
+            "All caught up!",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.onSurface
         )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
         Text(
-            "We'll notify you about your orders and updates here.",
+            "Your notifications inbox is currently empty. Check back later for order updates and news!",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 32.dp).padding(top = 8.dp)
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
         )
     }
 }

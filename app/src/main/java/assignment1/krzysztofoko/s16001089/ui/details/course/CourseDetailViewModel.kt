@@ -2,6 +2,7 @@ package assignment1.krzysztofoko.s16001089.ui.details.course
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.utils.OrderUtils
 import kotlinx.coroutines.flow.*
@@ -65,11 +66,11 @@ class CourseDetailViewModel(
             if (userId.isEmpty()) return@launch
             if (inWishlist.value) {
                 userDao.removeFromWishlist(userId, courseId)
-                onComplete("Removed from favorites")
+                onComplete(AppConstants.MSG_REMOVED_FAVORITES)
             } else {
                 userDao.addToHistory(HistoryItem(userId, courseId))
                 userDao.addToWishlist(WishlistItem(userId, courseId))
-                onComplete("Added to favorites!")
+                onComplete(AppConstants.MSG_ADDED_FAVORITES)
             }
         }
     }
@@ -79,9 +80,7 @@ class CourseDetailViewModel(
             if (userId.isEmpty()) return@launch
             val currentCourse = _course.value ?: return@launch
             val orderConf = OrderUtils.generateOrderReference()
-            val invoiceNum = OrderUtils.generateInvoiceNumber()
             val purchaseId = UUID.randomUUID().toString()
-            val user = localUser.value
 
             // 1. Save purchase record with professional metadata
             userDao.addPurchase(PurchaseItem(
@@ -90,7 +89,7 @@ class CourseDetailViewModel(
                 productId = courseId, 
                 mainCategory = currentCourse.mainCategory,
                 purchasedAt = System.currentTimeMillis(),
-                paymentMethod = "Free Enrollment",
+                paymentMethod = AppConstants.METHOD_FREE_ENROLLMENT,
                 amountFromWallet = 0.0,
                 amountPaidExternal = 0.0,
                 totalPricePaid = 0.0,
@@ -98,38 +97,21 @@ class CourseDetailViewModel(
                 orderConfirmation = orderConf
             ))
 
-            // 2. Generate official enrollment invoice
-            userDao.addInvoice(Invoice(
-                invoiceNumber = invoiceNum,
-                userId = userId,
-                productId = courseId,
-                itemTitle = currentCourse.title,
-                itemCategory = currentCourse.mainCategory,
-                itemVariant = null,
-                pricePaid = 0.0,
-                discountApplied = 0.0,
-                quantity = 1,
-                purchasedAt = System.currentTimeMillis(),
-                paymentMethod = "Free Enrollment",
-                orderReference = orderConf,
-                billingName = user?.name ?: "Student",
-                billingEmail = user?.email ?: "",
-                billingAddress = user?.address
-            ))
+            // No invoice created for free items as requested
 
-            // 3. Trigger professional notification
+            // 3. Trigger professional notification - TYPE PICKUP FOR FREE
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
                 userId = userId,
                 productId = courseId,
-                title = "Enrollment Successful",
+                title = AppConstants.NOTIF_TITLE_COURSE_ENROLLED,
                 message = "You have successfully enrolled in '${currentCourse.title}'.",
                 timestamp = System.currentTimeMillis(),
                 isRead = false,
-                type = "PURCHASE"
+                type = "PICKUP"
             ))
 
-            onComplete("Successfully enrolled! Ref: $orderConf")
+            onComplete("${AppConstants.MSG_ENROLL_SUCCESS} Ref: $orderConf")
         }
     }
 
@@ -137,7 +119,7 @@ class CourseDetailViewModel(
         viewModelScope.launch {
             if (userId.isEmpty()) return@launch
             userDao.deletePurchase(userId, courseId)
-            onComplete("Course removed from your dashboard")
+            onComplete(AppConstants.MSG_REMOVED_LIBRARY)
         }
     }
 }
