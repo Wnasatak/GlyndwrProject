@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,19 +31,28 @@ import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.rememberGlowAnimation
 import coil.compose.AsyncImage
 
+/**
+ * Screen displaying the developer's credentials and project metadata.
+ * 
+ * Includes an animated profile section with a radial glow effect and 
+ * high-level technical details about the project's creator.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeveloperScreen(
-    onBack: () -> Unit,
-    onVersionClick: () -> Unit,
-    onFutureFeaturesClick: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    onBack: () -> Unit,               // Callback to return to the previous screen
+    onVersionClick: () -> Unit,       // Callback to navigate to Version History
+    onFutureFeaturesClick: () -> Unit, // Callback to navigate to Project Roadmap
+    isDarkTheme: Boolean,             // Current theme state
+    onToggleTheme: () -> Unit         // Callback to flip between Dark and Light mode
 ) {
+    // Custom animation utility for the avatar glow effect
     val (glowScale, glowAlpha) = rememberGlowAnimation()
+    // Brand color specifically chosen for the developer profile section
     val vibrantVioletColor = Color(0xFF9D4EDD)
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Standard informational background
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
@@ -50,17 +60,23 @@ fun DeveloperScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text(AppConstants.TITLE_DEVELOPER_DETAILS, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    title = { 
+                        Text(
+                            text = AppConstants.TITLE_DEVELOPER_DETAILS, 
+                            style = MaterialTheme.typography.titleLarge, 
+                            fontWeight = FontWeight.Bold
+                        ) 
+                    },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
                         }
                     },
                     actions = {
                         IconButton(onClick = onToggleTheme) {
                             Icon(
                                 imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                contentDescription = "Toggle Theme"
+                                contentDescription = "Switch appearance"
                             )
                         }
                     },
@@ -79,8 +95,9 @@ fun DeveloperScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Avatar with flashing vibrant violet light effect behind it
+                // PROFILE SECTION: Avatar with flashing vibrant violet light effect
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(220.dp)) {
+                    // Outer Pulsating Glow Layer
                     Box(
                         modifier = Modifier
                             .size(140.dp)
@@ -88,15 +105,13 @@ fun DeveloperScreen(
                             .alpha(glowAlpha)
                             .background(
                                 brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        vibrantVioletColor,
-                                        Color.Transparent
-                                    )
+                                    colors = listOf(vibrantVioletColor, Color.Transparent)
                                 ),
                                 shape = CircleShape
                             )
                     )
 
+                    // Avatar Surface with professional border and shadow
                     Surface(
                         modifier = Modifier.size(160.dp),
                         shape = CircleShape,
@@ -110,7 +125,7 @@ fun DeveloperScreen(
                         Box(contentAlignment = Alignment.Center) {
                             AsyncImage(
                                 model = "file:///android_asset/images/users/avatars/KrzysztofOko.jpeg",
-                                contentDescription = "Developer Avatar",
+                                contentDescription = "Official Photo",
                                 modifier = Modifier
                                     .size(150.dp)
                                     .clip(CircleShape),
@@ -120,6 +135,7 @@ fun DeveloperScreen(
                     }
                 }
                 
+                // Primary Developer Info Card
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                     shape = RoundedCornerShape(16.dp),
@@ -143,13 +159,13 @@ fun DeveloperScreen(
                     }
                 }
                 
+                // Academic Context Card
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                     shape = RoundedCornerShape(16.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    ""
                     Column(
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -168,6 +184,7 @@ fun DeveloperScreen(
                     }
                 }
 
+                // Action Button: Link to detailed Changelog
                 Button(
                     onClick = onVersionClick,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -182,6 +199,7 @@ fun DeveloperScreen(
                     Text("This version includes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                 }
 
+                // Action Button: Link to the Future Roadmap
                 Button(
                     onClick = onFutureFeaturesClick,
                     modifier = Modifier.fillMaxWidth().height(56.dp),

@@ -17,16 +17,30 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * The initial landing screen of the application.
+ * 
+ * This screen serves two primary purposes:
+ * 1. Visual Branding: Showcases high-fidelity animations (Logo scale, pulses, rainbow hues).
+ * 2. Data Synchronization: Acts as a gateway that only transitions to the home screen 
+ *    once both the minimum display time has elapsed and the global data loading is finished.
+ */
 @Composable
 fun SplashScreen(
-    isLoadingData: Boolean, 
-    onTimeout: () -> Unit
+    isLoadingData: Boolean, // External state indicating if database synchronization is ongoing
+    onTimeout: () -> Unit   // Navigation callback to transition to the main app
 ) {
-    // Animation states for the logo entry
+    /**
+     * Entry Animation States:
+     * Controls the initial "pop-in" effect of the branding elements.
+     */
     val entryScale = remember { Animatable(0.8f) }
     val entryAlpha = remember { Animatable(0f) }
     
-    // Animation for the violet shade/glow disappearance
+    /**
+     * Visual State: Violet Shade/Glow.
+     * Manages the disappearance of the background ambient light after the initial entry.
+     */
     val startShadeFade = remember { mutableStateOf(false) }
     val shadeAlpha by animateFloatAsState(
         targetValue = if (startShadeFade.value) 0f else 1f,
@@ -34,10 +48,13 @@ fun SplashScreen(
         label = "shadeFade"
     )
 
-    // Infinite transition for the "swimming" background and pulsing logo
+    /**
+     * Infinite Loop Animations:
+     * Defines the continuous movement patterns that stay active as long as the screen is visible.
+     */
     val infiniteTransition = rememberInfiniteTransition(label = "splashAnimations")
     
-    // Swimming background progress
+    // Background Movement: Progresses from 0 to 1 every 8 seconds to drive path animations
     val animationProgress by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -48,7 +65,7 @@ fun SplashScreen(
         label = "bgProgress"
     )
 
-    // Pulsing logo animation
+    // Logo Pulsing: Subtly scales the logo up and down to simulate a "breathing" effect
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = 1.08f,
@@ -59,7 +76,7 @@ fun SplashScreen(
         label = "pulseScale"
     )
 
-    // Rainbow Hue animation for the flashing logo effect
+    // Logo Rainbow Hue: Cycles through the HSV color space to create a shifting color border/glow
     val rainbowHue by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -71,10 +88,14 @@ fun SplashScreen(
     )
     val rainbowColor = Color.hsv(rainbowHue, 0.6f, 1f)
 
-    // WAIT FOR BOTH TIMEOUT AND DATA LOADING
+    /**
+     * Synchronization Logic:
+     * Tracks the minimum display timer.
+     */
     var isTimerFinished by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        // Parallel launch for entry animations
         launch {
             entryScale.animateTo(
                 targetValue = 1f,
@@ -91,13 +112,21 @@ fun SplashScreen(
             )
         }
         
+        // Wait 2 seconds before starting the ambient light fade out
         delay(2000)
         startShadeFade.value = true
         
+        // Minimum total splash duration (4 seconds)
         delay(4000) 
         isTimerFinished = true
     }
 
+    /**
+     * Gateway Effect:
+     * Only allows the user into the app if:
+     * 1. The 4-second timer is done.
+     * 2. The ViewModel has finished loading all books/courses from the DB.
+     */
     LaunchedEffect(isTimerFinished, isLoadingData) {
         if (isTimerFinished && !isLoadingData) {
             onTimeout()
@@ -106,7 +135,7 @@ fun SplashScreen(
 
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Extracted Background logic
+            // Renders the moving path background (extracted to components)
             AnimatedSplashBackground(progress = animationProgress)
 
             Column(
@@ -116,7 +145,7 @@ fun SplashScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Extracted Logo logic
+                // Renders the multi-layered animated logo (extracted to components)
                 AnimatedSplashLogo(
                     scale = entryScale.value,
                     alpha = entryAlpha.value,
@@ -127,6 +156,7 @@ fun SplashScreen(
                 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // Institutional Branding Text
                 Text(
                     text = AppConstants.INSTITUTION,
                     style = MaterialTheme.typography.titleLarge,
@@ -136,6 +166,7 @@ fun SplashScreen(
                     modifier = Modifier.fillMaxWidth().alpha(entryAlpha.value)
                 )
                 
+                // Application Name with specialized spacing
                 Text(
                     text = AppConstants.APP_NAME,
                     style = MaterialTheme.typography.headlineSmall,
@@ -149,7 +180,7 @@ fun SplashScreen(
                 Spacer(modifier = Modifier.height(100.dp))
             }
 
-            // Extracted Footer logic
+            // Renders the dynamic loading progress text at the bottom
             Box(modifier = Modifier.align(Alignment.BottomCenter)) {
                 SplashFooter(isLoadingData = isLoadingData, alpha = entryAlpha.value)
             }

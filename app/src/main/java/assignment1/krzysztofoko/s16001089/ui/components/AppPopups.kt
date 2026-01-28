@@ -57,6 +57,12 @@ object AppPopups {
             else -> Icons.Default.LibraryAdd
         }
 
+        val title = when {
+            category == AppConstants.CAT_COURSES -> AppConstants.TITLE_COURSE_ENROLLMENT
+            category == AppConstants.CAT_GEAR -> AppConstants.TITLE_ITEM_RESERVATION
+            else -> AppConstants.TITLE_ADD_TO_LIBRARY
+        }
+
         val prompt = when {
             isAudioBook -> "Do you want to add the digital audiobook '$itemTitle' to your library collection?"
             category == AppConstants.CAT_GEAR -> "Would you like to reserve '$itemTitle' for free pick-up at the Student Hub?"
@@ -73,7 +79,7 @@ object AppPopups {
         AlertDialog(
             onDismissRequest = onDismiss,
             icon = { Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp)) },
-            title = { Text("Add to Library", fontWeight = FontWeight.ExtraBold) },
+            title = { Text(title, fontWeight = FontWeight.ExtraBold) },
             text = { Text(prompt, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium) },
             confirmButton = {
                 Button(onClick = onConfirm, shape = RoundedCornerShape(12.dp)) {
@@ -124,7 +130,7 @@ object AppPopups {
 
     @Composable
     fun LogoutConfirmation(onDismiss: () -> Unit, onConfirm: () -> Unit) {
-        AlertDialog(onDismissRequest = onDismiss, title = { Text(AppConstants.TITLE_LOG_OFF, fontWeight = FontWeight.Bold) }, text = { Text(AppConstants.MSG_LOG_OFF_DESC) }, confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(AppConstants.BTN_LOG_OFF, fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) } })
+        AlertDialog(onDismissRequest = onDismiss, title = { Text(AppConstants.TITLE_LOG_OFF, fontWeight = FontWeight.Bold) }, text = { Text(AppConstants.MSG_LOG_OFF_DESC) }, confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(AppConstants.BTN_LOG_OUT, fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) } })
     }
 
     @Composable

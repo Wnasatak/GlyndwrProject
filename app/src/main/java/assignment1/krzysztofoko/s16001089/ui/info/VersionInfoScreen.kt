@@ -19,28 +19,40 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.InfoCard
 
+/**
+ * Screen displaying the version history and "What's New" information.
+ * Shows users the latest features and security updates.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VersionInfoScreen(
-    onBack: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    onBack: () -> Unit,             // Callback to return to previous screen
+    isDarkTheme: Boolean,           // Current theme state
+    onToggleTheme: () -> Unit       // Callback to change theme
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
+        // Shared wavy background used across info screens
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Transparent to let wavy background show through
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text(AppConstants.TITLE_WHATS_NEW, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    title = { 
+                        Text(
+                            text = AppConstants.TITLE_WHATS_NEW, 
+                            style = MaterialTheme.typography.titleLarge, 
+                            fontWeight = FontWeight.Bold
+                        ) 
+                    },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
                     actions = {
+                        // Quick theme toggle icon
                         IconButton(onClick = onToggleTheme) {
                             Icon(
                                 imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
@@ -54,6 +66,7 @@ fun VersionInfoScreen(
                 )
             }
         ) { padding ->
+            // Scrollable column to hold all version update cards
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -62,6 +75,7 @@ fun VersionInfoScreen(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Section header
                 Text(
                     text = AppConstants.TITLE_LATEST_UPDATES,
                     style = MaterialTheme.typography.headlineSmall,
@@ -71,6 +85,17 @@ fun VersionInfoScreen(
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
+                // NEW: PDF Reader Update Card
+                InfoCard(
+                    icon = Icons.Default.PictureAsPdf,
+                    title = AppConstants.VER_READER_TITLE,
+                    content = AppConstants.VER_READER_DESC,
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                )
+
+                // Version 1.0.0 Final Release Card
                 InfoCard(
                     icon = Icons.Default.History,
                     title = AppConstants.VER_FINAL_DEMO_TITLE,
@@ -80,6 +105,7 @@ fun VersionInfoScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                 )
 
+                // Security & 2FA Update Card
                 InfoCard(
                     icon = Icons.Default.Security,
                     title = AppConstants.VER_SECURITY_TITLE,
@@ -89,6 +115,7 @@ fun VersionInfoScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                 )
 
+                // Interactive Reviews & Interactions Update Card
                 InfoCard(
                     icon = Icons.Default.Comment,
                     title = AppConstants.VER_REVIEWS_TITLE,
@@ -98,6 +125,7 @@ fun VersionInfoScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                 )
 
+                // UI/Theme System Update Card
                 InfoCard(
                     icon = Icons.Default.ColorLens,
                     title = AppConstants.VER_THEME_TITLE,
@@ -107,6 +135,7 @@ fun VersionInfoScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                 )
 
+                // Product Catalog Expansion Card
                 InfoCard(
                     icon = Icons.Default.Inventory,
                     title = AppConstants.VER_CATALOG_TITLE,
@@ -118,6 +147,7 @@ fun VersionInfoScreen(
                 
                 Spacer(modifier = Modifier.height(32.dp))
                 
+                // Return button
                 Button(
                     onClick = onBack,
                     modifier = Modifier.fillMaxWidth().height(56.dp),

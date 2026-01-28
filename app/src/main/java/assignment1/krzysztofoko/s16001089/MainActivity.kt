@@ -20,20 +20,30 @@ import assignment1.krzysztofoko.s16001089.ui.theme.GlyndwrProjectTheme
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 
+/**
+ * Main entry point of the application.
+ * Handles Activity lifecycle, theme switching, and Media3 controller initialization for audiobooks.
+ */
 class MainActivity : ComponentActivity() {
+    // Future to handle asynchronous initialization of the Media3 Controller
     private var controllerFuture: ListenableFuture<MediaController>? = null
+    // The actual media controller used to interact with the PlaybackService
     private var mediaController: MediaController? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Initialize Media3 session token for background audio playback
         val sessionToken = SessionToken(this, ComponentName(this, PlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, sessionToken).buildAsync()
 
         setContent {
+            // Global app theme state
             var isDarkTheme by remember { mutableStateOf(true) }
+            // State holding the player instance, used by UI components to control playback
             var playerState by remember { mutableStateOf<Player?>(null) }
 
+            // Listener to capture the media controller when it's ready
             LaunchedEffect(controllerFuture) {
                 controllerFuture?.addListener({
                     try {
@@ -45,6 +55,7 @@ class MainActivity : ComponentActivity() {
                 }, MoreExecutors.directExecutor())
             }
 
+            // Dynamically update status bar color when theme changes
             LaunchedEffect(isDarkTheme) {
                 enableEdgeToEdge(
                     statusBarStyle = if (isDarkTheme) {
@@ -58,6 +69,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+            // Apply global theme and set up root navigation
             GlyndwrProjectTheme(darkTheme = isDarkTheme) {
                 AppNavigation(
                     isDarkTheme = isDarkTheme,
@@ -68,14 +80,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        // We don't release in onDestroy because we want it to survive rotations
-        // but if we are really closing, we should. 
-        // Actually, MediaController is usually managed in onStart/onStop
-    }
-
     override fun onDestroy() {
+        // Properly release the media controller to prevent memory leaks
         controllerFuture?.let {
             MediaController.releaseFuture(it)
         }

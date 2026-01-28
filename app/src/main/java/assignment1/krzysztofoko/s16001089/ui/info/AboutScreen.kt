@@ -34,15 +34,27 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import coil.compose.AsyncImage
 
+/**
+ * Main 'About' screen of the application.
+ * 
+ * This screen provides users with general information about the app, 
+ * including the university name, project details, and the current version.
+ * It serves as a hub for navigating to more specific information like 
+ * developer details and usage instructions.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
-    onBack: () -> Unit,
-    onDeveloperClick: () -> Unit,
-    onInstructionClick: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    onBack: () -> Unit,               // Callback to return to previous screen
+    onDeveloperClick: () -> Unit,     // Callback to navigate to Developer details
+    onInstructionClick: () -> Unit,   // Callback to navigate to 'How to Use'
+    isDarkTheme: Boolean,             // Current theme state
+    onToggleTheme: () -> Unit         // Callback to toggle theme
 ) {
+    /**
+     * Logo Rotation Animation:
+     * One-time 360-degree spin when the screen is first loaded to draw attention.
+     */
     val logoRotation = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         logoRotation.animateTo(
@@ -51,6 +63,10 @@ fun AboutScreen(
         )
     }
 
+    /**
+     * Glow Animation:
+     * Continuous pulsating effect used for the background of the university logo.
+     */
     val glowAnim = rememberGlowAnimation()
     val glowScale = glowAnim.first
     val glowAlpha = glowAnim.second
@@ -58,10 +74,11 @@ fun AboutScreen(
     val accentColor = MaterialTheme.colorScheme.primary
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Unified wavy background consistent with the rest of the info screens
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Allows the wavy background to show through
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
@@ -72,6 +89,7 @@ fun AboutScreen(
                         }
                     },
                     actions = {
+                        // Action icon to switch between Light and Dark mode
                         IconButton(onClick = onToggleTheme) {
                             Icon(
                                 imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
@@ -93,7 +111,9 @@ fun AboutScreen(
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Animated Branding Section: pulsing logo with rotation
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(180.dp)) {
+                    // Pulstating Glow Layer
                     Box(
                         modifier = Modifier
                             .size(130.dp)
@@ -107,6 +127,7 @@ fun AboutScreen(
                             )
                     )
                     
+                    // Logo Container Card
                     Surface(
                         modifier = Modifier.size(110.dp),
                         shape = CircleShape,
@@ -133,6 +154,7 @@ fun AboutScreen(
                 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Official Application Name
                 Text(
                     text = AppConstants.APP_NAME,
                     style = MaterialTheme.typography.headlineSmall, 
@@ -142,6 +164,7 @@ fun AboutScreen(
                 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Information Card: Institution Name
                 InfoCard(
                     icon = Icons.Default.School,
                     title = "INSTITUTION",
@@ -153,6 +176,7 @@ fun AboutScreen(
                 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Information Card: Project/Module Context
                 InfoCard(
                     icon = Icons.AutoMirrored.Filled.Assignment,
                     title = "PROJECT INFO",
@@ -164,6 +188,7 @@ fun AboutScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                // Primary Action: Navigation to 'How to Use' instructions
                 Button(
                     onClick = onInstructionClick,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -180,6 +205,7 @@ fun AboutScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Secondary Action: Navigation to Developer profile
                 Button(
                     onClick = onDeveloperClick,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -192,6 +218,7 @@ fun AboutScreen(
 
                 Spacer(modifier = Modifier.height(48.dp))
 
+                // Static Footer showing current app version
                 @Suppress("DEPRECATION")
                 Text(
                     text = "Version ${AppConstants.VERSION_NAME}",

@@ -20,54 +20,74 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.InfoCard
 
+/**
+ * Instruction Screen providing a user guide for the application.
+ * 
+ * This screen explains the core features of the Glyndŵr Store, such as browsing,
+ * signing in for discounts, making purchases, and personalizing the app theme.
+ * It uses a consistent visual style with the rest of the 'Info' module.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstructionScreen(
-    onBack: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    onBack: () -> Unit,               // Callback to return to the previous screen
+    isDarkTheme: Boolean,             // Current global theme state
+    onToggleTheme: () -> Unit         // Callback to flip between Dark and Light mode
 ) {
+    // Root container allowing for background layering
     Box(modifier = Modifier.fillMaxSize()) {
+        
+        // The shared wavy background component used for all informational screens
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Transparent background to show the waves behind
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text("How to Use App", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    title = { 
+                        Text(
+                            text = AppConstants.TITLE_HOW_TO_USE, 
+                            style = MaterialTheme.typography.titleLarge, 
+                            fontWeight = FontWeight.Bold
+                        ) 
+                    },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
                         }
                     },
                     actions = {
+                        // Quick theme toggle icon button in the header
                         IconButton(onClick = onToggleTheme) {
                             Icon(
                                 imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                contentDescription = "Toggle Theme"
+                                contentDescription = "Switch Theme"
                             )
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f) // Glass-morphism effect
                     )
                 )
             }
         ) { padding ->
+            // Scrollable column to accommodate varying screen sizes and content lengths
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()) // Enables vertical scrolling
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Section welcome header
                 Text(
-                    text = "Welcome to Glyndŵr Store!",
+                    text = AppConstants.TITLE_WELCOME_STORE,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -75,6 +95,10 @@ fun InstructionScreen(
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
+                /**
+                 * Feature Guide: Browse Items
+                 * Explains the main Home screen navigation and filtering.
+                 */
                 InfoCard(
                     icon = Icons.Default.MenuBook,
                     title = "Browse Items",
@@ -84,6 +108,10 @@ fun InstructionScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                 )
                 
+                /**
+                 * Feature Guide: Authentication
+                 * Highlights the benefits of logging in, such as the student discount.
+                 */
                 InfoCard(
                     icon = Icons.Default.Person,
                     title = "Sign In",
@@ -93,6 +121,10 @@ fun InstructionScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                 )
                 
+                /**
+                 * Feature Guide: Purchases
+                 * Describes the workflow for viewing item details and adding them to the collection.
+                 */
                 InfoCard(
                     icon = Icons.Default.ShoppingCart,
                     title = "Buy & Details",
@@ -102,6 +134,10 @@ fun InstructionScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                 )
                 
+                /**
+                 * Feature Guide: Customization
+                 * Explains how to use the theme toggle for accessibility and preference.
+                 */
                 InfoCard(
                     icon = Icons.Default.Settings,
                     title = "Customization",
@@ -113,12 +149,13 @@ fun InstructionScreen(
                 
                 Spacer(modifier = Modifier.height(32.dp))
                 
+                // Primary 'Dismiss' button at the bottom of the guide
                 Button(
                     onClick = onBack,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("Got it!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(AppConstants.BTN_GOT_IT, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }

@@ -28,19 +28,28 @@ import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * Detailed Information Screen for University Gear (Merchandise).
+ * 
+ * This screen provides a high-fidelity interface for browsing physical products.
+ * It includes an image gallery, variant selection (Size/Color), live stock tracking, 
+ * technical specifications, and a related products carousel. It handles both 
+ * paid checkout flows and free item reservation workflows.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GearDetailScreen(
-    navController: NavController,
-    gearId: String,
-    initialGear: Gear? = null,
-    user: FirebaseUser?,
-    onLoginRequired: () -> Unit,
-    onBack: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
-    onNavigateToProfile: () -> Unit,
-    onViewInvoice: (String) -> Unit,
+    navController: NavController,     // Global navigation controller
+    gearId: String,                   // Unique identifier for the gear item
+    initialGear: Gear? = null,        // Optional pre-fetched gear data
+    user: FirebaseUser?,              // Current Firebase authentication session
+    onLoginRequired: () -> Unit,      // Callback to prompt user authentication
+    onBack: () -> Unit,               // Navigation return callback
+    isDarkTheme: Boolean,             // Current app-wide theme state
+    onToggleTheme: () -> Unit,        // Function to flip theme state
+    onNavigateToProfile: () -> Unit,  // Link to user profile screen
+    onViewInvoice: (String) -> Unit,  // Link to digital receipt viewer
+    // ViewModel setup with factory injection for Gear-specific DAOs
     viewModel: GearViewModel = viewModel(factory = GearViewModelFactory(
         gearDao = AppDatabase.getDatabase(LocalContext.current).gearDao(),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
@@ -52,6 +61,7 @@ fun GearDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
+    // Observation of reactive UI states from the ViewModel
     val gear by viewModel.gear.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val similarGear by viewModel.similarGear.collectAsState()
@@ -65,15 +75,17 @@ fun GearDetailScreen(
     val orderConfirmation by viewModel.orderConfirmation.collectAsState()
     val allReviews by viewModel.allReviews.collectAsState()
 
+    // UI flags for dialog and overlay visibility
     var showPickupPopup by remember { mutableStateOf(false) }
-    var quickViewGear by remember { mutableStateOf<Gear?>(null) }
     var showOrderFlow by remember { mutableStateOf(false) }
     var showAddConfirm by remember { mutableStateOf(false) }
     var isProcessingAddition by remember { mutableStateOf(false) }
 
+    // Logic to build the image gallery from primary and secondary sources
     val images = remember(gear) { listOfNotNull(gear?.imageUrl, gear?.secondaryImageUrl) }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // High-readability wavy background consistent across product details
         HorizontalWavyBackground(isDarkTheme = isDarkTheme, wave1HeightFactor = 0.45f, wave2HeightFactor = 0.65f, wave1Amplitude = 80f, wave2Amplitude = 100f)
 
         Scaffold(
@@ -82,30 +94,50 @@ fun GearDetailScreen(
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text(text = gear?.title ?: AppConstants.TITLE_GEAR_DETAILS, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                    actions = {
-                        IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
+                    title = { 
+                        Text(
+                            text = gear?.title ?: AppConstants.TITLE_GEAR_DETAILS, 
+                            fontSize = 16.sp, 
+                            fontWeight = FontWeight.Bold, 
+                            maxLines = 1, 
+                            overflow = TextOverflow.Ellipsis
+                        ) 
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+                    navigationIcon = { 
+                        IconButton(onClick = onBack) { 
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Return") 
+                        } 
+                    },
+                    actions = {
+                        IconButton(onClick = onToggleTheme) { 
+                            Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) 
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                    )
                 )
             }
         ) { paddingValues ->
+            // CONDITIONAL UI: Loading -> Not Found -> Product Content
             if (loading && gear == null) {
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             } else if (gear == null) {
+                // Handle cases where the item ID cannot be resolved
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
                         Spacer(Modifier.height(16.dp)); Text(AppConstants.MSG_ITEM_NOT_FOUND)
-                        @Suppress("DEPRECATION")
                         TextButton(onClick = onBack) { Text(AppConstants.BTN_GO_BACK) }
                     }
                 }
             } else {
+                // Success: Display Product Gallery and Information
                 gear?.let { currentGear ->
                     val isFree = currentGear.price <= 0
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(bottom = 120.dp)) {
+                        
+                        // Header Image with support for multiple gallery indices
                         item {
                             ProductHeaderImage(
                                 book = currentGear.toBook(),
@@ -115,6 +147,7 @@ fun GearDetailScreen(
                             )
                         }
 
+                        // Main Product Card: Handles detailed info and selections
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth().offset(y = (-24).dp),
@@ -123,13 +156,21 @@ fun GearDetailScreen(
                                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                             ) {
                                 Column(modifier = Modifier.padding(24.dp)) {
+                                    // Basic Title and Price section
                                     GearHeaderSection(gear = currentGear)
                                     Spacer(modifier = Modifier.height(16.dp))
+                                    // Dynamic attribute tags
                                     GearTagsSection(tags = currentGear.productTags)
+                                    
                                     Spacer(modifier = Modifier.height(24.dp))
                                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                                     Spacer(modifier = Modifier.height(24.dp))
 
+                                    /**
+                                     * SELECTORS: Size and Color
+                                     * Updates ViewModel state and automatically flips gallery images
+                                     * when specific colors (like Pink) are selected.
+                                     */
                                     GearOptionSelectors(
                                         sizes = currentGear.sizes,
                                         selectedSize = selectedSize,
@@ -144,6 +185,7 @@ fun GearDetailScreen(
                                         }
                                     )
 
+                                    // Inventory counter and quantity picker
                                     GearStockIndicator(
                                         stockCount = currentGear.stockCount,
                                         quantity = quantity,
@@ -152,18 +194,22 @@ fun GearDetailScreen(
                                         onQuantityChange = { viewModel.setQuantity(it) }
                                     )
 
+                                    // Detailed description body
                                     Spacer(modifier = Modifier.height(32.dp))
-                                    @Suppress("DEPRECATION")
                                     Text(text = AppConstants.SECTION_DESCRIPTION_GEAR, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(text = currentGear.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
                                     
+                                    // Technical spec summary (Material, SKU, Category)
                                     Spacer(modifier = Modifier.height(32.dp))
                                     GearSpecsCard(material = currentGear.material, sku = currentGear.sku, category = currentGear.category)
                                     
+                                    /**
+                                     * CAROUSEL: Similar Products
+                                     * Horizontal list of related merchandise filtered by category.
+                                     */
                                     if (similarGear.isNotEmpty()) {
                                         Spacer(modifier = Modifier.height(40.dp))
-                                        @Suppress("DEPRECATION")
                                         Text(text = AppConstants.TITLE_SIMILAR_PRODUCTS, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.height(16.dp))
                                         
@@ -175,6 +221,7 @@ fun GearDetailScreen(
                                         )
                                     }
 
+                                    // Social Section: User community feedback
                                     Spacer(modifier = Modifier.height(40.dp))
                                     ReviewSection(
                                         productId = gearId,
@@ -194,6 +241,13 @@ fun GearDetailScreen(
             }
         }
 
+        /**
+         * STICKY FOOTER: Interaction Bar
+         * Automatically appears at the bottom. Handles logic for:
+         * 1. Guest users (Login required)
+         * 2. Owned items (View pickup/invoice)
+         * 3. Unowned items (Checkout flow)
+         */
         if (gear != null && !loading) {
             val currentGear = gear!!
             Box(modifier = Modifier.align(Alignment.BottomCenter)) {
@@ -207,13 +261,14 @@ fun GearDetailScreen(
                     onPickupInfo = { showPickupPopup = true },
                     onLoginRequired = onLoginRequired,
                     onCheckout = { showOrderFlow = true },
-                    onFreePickup = {
-                        showAddConfirm = true
-                    }
+                    onFreePickup = { showAddConfirm = true }
                 )
             }
         }
 
+        // --- OVERLAY FLOWS ---
+
+        // Workflow for multi-stage checkout and stock validation
         if (showOrderFlow && gear != null) {
             AppPopups.OrderPurchase(
                 show = showOrderFlow,
@@ -230,6 +285,7 @@ fun GearDetailScreen(
             )
         }
 
+        // Informational popup regarding physical collection at Student Hub
         if (showPickupPopup) {
             PickupInfoDialog(
                 orderConfirmation = orderConfirmation,
@@ -237,6 +293,7 @@ fun GearDetailScreen(
             )
         }
 
+        // Workflow for free merchandise reservation
         AppPopups.AddToLibraryConfirmation(
             show = showAddConfirm,
             itemTitle = gear?.title ?: "",
@@ -246,7 +303,7 @@ fun GearDetailScreen(
                 showAddConfirm = false
                 isProcessingAddition = true
                 scope.launch {
-                    delay(2000)
+                    delay(2000) // Simulated processing for DB transaction
                     viewModel.handleFreePickup(context) { msg ->
                         isProcessingAddition = false
                         scope.launch { snackbarHostState.showSnackbar(msg) }
@@ -255,6 +312,7 @@ fun GearDetailScreen(
             }
         )
 
+        // Global loading spinner for database-heavy interactions
         AppPopups.AddingToLibraryLoading(
             show = isProcessingAddition,
             category = AppConstants.CAT_GEAR

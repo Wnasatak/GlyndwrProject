@@ -15,20 +15,29 @@ import javax.mail.internet.MimeMessage
 import javax.mail.internet.MimeMultipart
 import javax.mail.util.ByteArrayDataSource
 
+/**
+ * Utility object for sending emails using JavaMail API.
+ * Handles 2FA codes, welcome emails, and order confirmations.
+ */
 object EmailUtils {
     private const val TAG = "EmailUtils"
     
+    // SMTP Server Configuration
     private const val SMTP_HOST = "smtp.gmail.com"
     private const val SMTP_PORT = "587"
     private const val SMTP_USER = "prokocomp@gmail.com"
-    private const val SMTP_PASS = "zxwe kbit dapj efcc"
+    private const val SMTP_PASS = "zxwe kbit dapj efcc" // App-specific password
 
+    /**
+     * Internal function to handle the core email sending logic via SMTP.
+     */
     private suspend fun sendBaseEmail(
         context: Context?, 
         recipientEmail: String, 
         subject: String, 
         htmlBody: String
     ): Boolean = withContext(Dispatchers.IO) {
+        // Configure SMTP properties for Gmail
         val props = Properties().apply {
             put("mail.smtp.auth", "true")
             put("mail.smtp.starttls.enable", "true")
@@ -39,6 +48,7 @@ object EmailUtils {
             put("mail.smtp.writetimeout", "10000")
         }
 
+        // Authenticate the SMTP session
         val session = Session.getInstance(props, object : Authenticator() {
             override fun getPasswordAuthentication(): PasswordAuthentication {
                 return PasswordAuthentication(SMTP_USER, SMTP_PASS)
@@ -46,20 +56,22 @@ object EmailUtils {
         })
 
         try {
+            // Create a new MIME message
             val message = MimeMessage(session).apply {
                 setFrom(InternetAddress(SMTP_USER, AppConstants.INSTITUTION))
                 addRecipient(Message.RecipientType.TO, InternetAddress(recipientEmail))
                 this.subject = subject
             }
 
+            // Use Multipart to allow both HTML content and embedded images (logo)
             val multipart = MimeMultipart("related")
             
-            // HTML Part
+            // 1. Create the HTML Text Part
             val htmlPart = MimeBodyPart()
             htmlPart.setContent(htmlBody, "text/html; charset=utf-8")
             multipart.addBodyPart(htmlPart)
 
-            // Logo part
+            // 2. Attach the Institution Logo as an Inline Resource
             if (context != null) {
                 try {
                     val logoPath = "images/media/GlyndwrUniversity.jpg"
@@ -68,7 +80,7 @@ object EmailUtils {
                         val dataSource: DataSource = ByteArrayDataSource(bytes, "image/jpeg")
                         val imagePart = MimeBodyPart()
                         imagePart.dataHandler = DataHandler(dataSource)
-                        imagePart.setHeader("Content-ID", "<logo>")
+                        imagePart.setHeader("Content-ID", "<logo>") // References <img src='cid:logo'> in template
                         imagePart.disposition = MimeBodyPart.INLINE
                         imagePart.fileName = "logo.jpg"
                         multipart.addBodyPart(imagePart)
@@ -78,6 +90,7 @@ object EmailUtils {
                 }
             }
 
+            // Set content and send
             message.setContent(multipart)
             Transport.send(message)
             true
@@ -87,18 +100,30 @@ object EmailUtils {
         }
     }
 
+    /**
+     * Sends a 6-digit verification code for Login.
+     */
     suspend fun send2FACode(context: Context?, recipientEmail: String, code: String): Boolean {
         return sendBaseEmail(context, recipientEmail, "Login Verification: $code", EmailTemplate.get2FAHtml(code))
     }
 
+    /**
+     * Sends a welcome email after successful registration.
+     */
     suspend fun sendWelcomeEmail(context: Context?, recipientEmail: String, userName: String): Boolean {
         return sendBaseEmail(context, recipientEmail, "Welcome to ${AppConstants.INSTITUTION}!", EmailTemplate.getRegistrationHtml(userName))
     }
 
+    /**
+     * Sends a generic security update/reset notification.
+     */
     suspend fun sendPasswordResetEmail(context: Context?, recipientEmail: String): Boolean {
         return sendBaseEmail(context, recipientEmail, "Password Reset Security Update", EmailTemplate.getPasswordResetHtml())
     }
 
+    /**
+     * Sends a detailed receipt after a purchase or enrollment.
+     */
     suspend fun sendPurchaseConfirmation(
         context: Context?, 
         recipientEmail: String, 

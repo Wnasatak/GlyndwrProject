@@ -28,13 +28,17 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
+/**
+ * Composable representing the User Profile and Settings screen.
+ * Allows users to update personal info, manage addresses, payment methods, and account security.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    onLogout: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
+    onLogout: () -> Unit,             // Callback to handle user logout
+    isDarkTheme: Boolean,             // Current theme state
+    onToggleTheme: () -> Unit,        // Callback to toggle dark/light mode
     viewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
         userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
@@ -46,12 +50,15 @@ fun ProfileScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Observe local user data from the Room database
     val localUser by viewModel.localUser.collectAsState(initial = null)
 
+    // Sync ViewModel fields with database data when it loads
     LaunchedEffect(localUser) {
         localUser?.let { viewModel.initFields(it) }
     }
 
+    // States to control various settings popups/dialogs
     var showSelectionPopup by remember { mutableStateOf(false) }
     var currentPopupStep by remember { mutableIntStateOf(1) }
     var cardNumber by remember { mutableStateOf("") }
@@ -62,8 +69,10 @@ fun ProfileScreen(
     var showAddressPopup by remember { mutableStateOf(false) }
     var showEmailPopup by remember { mutableStateOf(false) }
 
+    // Determine the user's display photo (prefer local DB over Firebase)
     val currentPhotoUrl = localUser?.photoUrl ?: user?.photoUrl?.toString()
 
+    // Launcher for selecting a profile picture from the gallery
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -75,23 +84,37 @@ fun ProfileScreen(
     }
 
     Scaffold(
-        containerColor = Color.Transparent,
+        containerColor = Color.Transparent, // Transparent to show wavy background behind
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { Text(AppConstants.TITLE_PROFILE_SETTINGS, fontWeight = FontWeight.ExtraBold) },
-                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                actions = {
-                    IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
-                    IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Filled.Logout, AppConstants.BTN_LOG_OUT, tint = MaterialTheme.colorScheme.error) }
+                navigationIcon = { 
+                    IconButton(onClick = { navController.popBackStack() }) { 
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") 
+                    } 
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+                actions = {
+                    // Quick theme toggle
+                    IconButton(onClick = onToggleTheme) { 
+                        Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) 
+                    }
+                    // Logout button
+                    IconButton(onClick = onLogout) { 
+                        Icon(Icons.AutoMirrored.Filled.Logout, AppConstants.BTN_LOG_OUT, tint = MaterialTheme.colorScheme.error) 
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                )
             )
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
+            // Reusable wavy background component
             HorizontalWavyBackground(isDarkTheme = isDarkTheme)
+            
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -100,18 +123,23 @@ fun ProfileScreen(
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Header displaying profile picture and upload status
                 ProfileHeader(
                     photoUrl = currentPhotoUrl,
                     isUploading = viewModel.isUploading,
                     onPickPhoto = { photoPickerLauncher.launch("image/*") }
                 )
 
+                // Main card containing editable profile sections
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+                    ),
                     shape = RoundedCornerShape(24.dp)
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
+                        // Section for Name, Phone, and Email
                         PersonalInfoSection(
                             firstName = viewModel.firstName,
                             onFirstNameChange = { viewModel.firstName = it },
@@ -124,23 +152,31 @@ fun ProfileScreen(
                         )
                         
                         Spacer(modifier = Modifier.height(32.dp))
+                        
+                        // Address management section
                         ProfileAddressSection(
                             address = viewModel.selectedAddress,
                             onChangeAddress = { showAddressPopup = true }
                         )
                         
                         Spacer(modifier = Modifier.height(32.dp))
+                        
+                        // Payment method selection section
                         ProfilePaymentSection(
                             paymentMethod = viewModel.selectedPaymentMethod,
                             onChangePayment = { currentPopupStep = 1; showSelectionPopup = true }
                         )
                         
                         Spacer(modifier = Modifier.height(32.dp))
+                        
+                        // Security (Password) section
                         ProfileSecuritySection(
                             onChangePassword = { showPasswordPopup = true }
                         )
                         
                         Spacer(modifier = Modifier.height(32.dp))
+                        
+                        // Main Save Button
                         Button(
                             onClick = {
                                 viewModel.updateProfile { msg ->
@@ -163,6 +199,9 @@ fun ProfileScreen(
             }
         }
 
+        // --- Dialogs and Popups for specific settings ---
+
+        // Dialog for adding/switching payment methods (Card or PayPal)
         PaymentMethodDialog(
             show = showSelectionPopup,
             currentStep = currentPopupStep,
@@ -186,6 +225,7 @@ fun ProfileScreen(
             onPaypalEmailChange = { paypalEmail = it }
         )
 
+        // Popup for requesting a password reset email
         AppPopups.ProfilePasswordChange(
             show = showPasswordPopup,
             userEmail = user?.email ?: "",
@@ -196,6 +236,7 @@ fun ProfileScreen(
             }
         )
 
+        // Dialog for managing physical shipping/billing addresses
         AppPopups.AddressManagement(
             show = showAddressPopup,
             onDismiss = { showAddressPopup = false },
@@ -208,11 +249,13 @@ fun ProfileScreen(
             }
         )
 
+        // Popup for changing the primary login email
         AppPopups.ProfileEmailChange(
             show = showEmailPopup,
             currentEmail = user?.email ?: "",
             onDismiss = { showEmailPopup = false },
             onSuccess = { _ -> 
+                // Logout and return to Auth screen after email change for security
                 auth.signOut()
                 navController.navigate(AppConstants.ROUTE_AUTH) { popUpTo(0) } 
             }

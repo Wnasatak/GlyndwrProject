@@ -19,13 +19,30 @@ import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import coil.compose.AsyncImage
 
+/**
+ * Visual components for the SplashScreen.
+ * 
+ * This file contains specialized UI elements like the animated moving background,
+ * the multi-layered breathing logo, and the loading status footer.
+ */
+
+/**
+ * Renders an animated background using a linear gradient overlay on top of a campus image.
+ * 
+ * Logic:
+ * - Base Layer: Static image of the Glyndŵr University campus.
+ * - Overlay Layer: A 'swimming' linear gradient that shifts its start/end offsets based 
+ *   on the animation progress (0.0 to 1.0) passed from the parent screen.
+ */
 @Composable
 fun AnimatedSplashBackground(progress: Float) {
+    // Definining blue tones for the 'water' or 'sky' movement effect
     val waterOverlay1 = Color(0xFF1E88E5).copy(alpha = 0.6f)
     val waterOverlay2 = Color(0xFF1565C0).copy(alpha = 0.7f)
     val waterOverlay3 = Color(0xFF0D47A1).copy(alpha = 0.8f)
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // High-resolution campus background from local assets
         AsyncImage(
             model = "file:///android_asset/images/media/GlyndwrUniversityCampus.jpg",
             contentDescription = null,
@@ -34,6 +51,7 @@ fun AnimatedSplashBackground(progress: Float) {
             alignment = Alignment.CenterEnd
         )
 
+        // Custom drawing layer for the moving gradient effect
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -41,6 +59,7 @@ fun AnimatedSplashBackground(progress: Float) {
                     val width = size.width
                     val height = size.height
 
+                    // Linear brush that creates a seamless looping movement across the screen
                     val brush = Brush.linearGradient(
                         colors = listOf(waterOverlay1, waterOverlay2, waterOverlay3, waterOverlay2, waterOverlay1),
                         start = Offset(
@@ -58,16 +77,23 @@ fun AnimatedSplashBackground(progress: Float) {
     }
 }
 
+/**
+ * Renders the primary animated logo with its associated visual effects.
+ * 
+ * Layers:
+ * 1. Radial Glow: A color-shifting (rainbow) glow that pulses behind the logo.
+ * 2. Branding Logo: The official institution logo tinted with shifting hues.
+ */
 @Composable
 fun AnimatedSplashLogo(
-    scale: Float,
-    alpha: Float,
-    pulseScale: Float,
-    shadeAlpha: Float,
-    rainbowColor: Color
+    scale: Float,         // Initial pop-in scale
+    alpha: Float,         // Initial fade-in alpha
+    pulseScale: Float,    // Subtle continuous breathing scale
+    shadeAlpha: Float,    // Background ambient light fade state
+    rainbowColor: Color   // Current hue in the cycling color animation
 ) {
     Box(contentAlignment = Alignment.Center) {
-        // Outer Radial Glow
+        // OUTER GLOW: Draws a pulsing radial gradient circle using the current rainbow color
         Box(
             modifier = Modifier
                 .size(350.dp)
@@ -88,7 +114,7 @@ fun AnimatedSplashLogo(
                 }
         )
 
-        // Main University Logo
+        // INSTITUTION LOGO: Uses a ColorFilter with Modulate blend mode to apply the shifting rainbow hue
         AsyncImage(
             model = "file:///android_asset/images/media/Glyndwr_University_Logo.png",
             contentDescription = "Glyndŵr University Logo",
@@ -102,10 +128,16 @@ fun AnimatedSplashLogo(
     }
 }
 
+/**
+ * Footer component displaying data synchronization status and version info.
+ * 
+ * Provides visual feedback to the user while the app connects to the 
+ * local database and seeds initial content.
+ */
 @Composable
 fun SplashFooter(
-    isLoadingData: Boolean,
-    alpha: Float
+    isLoadingData: Boolean, // State tracking database readiness
+    alpha: Float            // Global entry fade status
 ) {
     Column(
         modifier = Modifier
@@ -113,6 +145,7 @@ fun SplashFooter(
             .padding(bottom = 60.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Status Text: Switches from 'Synchronizing' to 'Complete ✓'
         Text(
             text = if (isLoadingData) AppConstants.MSG_SYNC_DATABASE else AppConstants.MSG_SYNC_COMPLETE,
             color = Color.White.copy(alpha = 0.8f),
@@ -123,6 +156,7 @@ fun SplashFooter(
                 .alpha(alpha)
         )
 
+        // White loading spinner synced with splash fade-in
         CircularProgressIndicator(
             color = Color.White,
             strokeWidth = 4.dp,
@@ -133,6 +167,7 @@ fun SplashFooter(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Static version label
         Text(
             text = "Version ${AppConstants.VERSION_NAME}",
             modifier = Modifier.alpha(alpha * 0.9f),

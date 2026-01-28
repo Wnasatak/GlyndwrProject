@@ -7,7 +7,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.ui.details.PdfReaderScreen
+import assignment1.krzysztofoko.s16001089.ui.details.pdf.PdfReaderScreen
 import assignment1.krzysztofoko.s16001089.ui.details.audiobook.AudioBookDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.details.book.BookDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.details.course.CourseDetailScreen

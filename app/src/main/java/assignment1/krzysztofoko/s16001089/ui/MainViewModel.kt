@@ -17,37 +17,52 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+/**
+ * Global ViewModel for the application.
+ * Manages the top-level application state, including authentication, shared product data,
+ * notifications, wallet history, and the global audio player state.
+ */
 class MainViewModel(
-    private val repository: BookRepository,
-    private val db: AppDatabase
+    private val repository: BookRepository, // Repository for fetching products (books, courses, gear)
+    private val db: AppDatabase             // Direct database handle for low-level DAO operations
 ) : ViewModel() {
 
     private val auth = FirebaseAuth.getInstance()
 
-    // User State
+    // --- User Authentication State ---
+    
+    // Flow representing the current Firebase User (notifies UI on login/logout)
     private val _currentUser = MutableStateFlow(auth.currentUser)
     val currentUser = _currentUser.asStateFlow()
 
+    // Flow representing extended user profile data from the local Room database
     @OptIn(ExperimentalCoroutinesApi::class)
     val localUser: StateFlow<UserLocal?> = _currentUser
         .flatMapLatest { user ->
+            // Switches to a new local database flow every time the Firebase user changes
             if (user != null) db.userDao().getUserFlow(user.uid)
             else flowOf(null)
         }
-        .flowOn(Dispatchers.IO)
+        .flowOn(Dispatchers.IO) // Ensures database operations run off the main thread
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    // Data State
+    // --- Global Data State ---
+    
+    // Master list of all products fetched from the combined data repository
     private val _allBooks = MutableStateFlow<List<Book>>(emptyList())
     val allBooks = _allBooks.asStateFlow()
 
+    // Flags to track loading progress and handle UI spinners
     private val _isDataLoading = MutableStateFlow(true)
     val isDataLoading = _isDataLoading.asStateFlow()
 
+    // Holds connectivity or caching error messages
     private val _loadError = MutableStateFlow<String?>(null)
     val loadError = _loadError.asStateFlow()
 
-    // Notification State
+    // --- Shared Notification State ---
+    
+    // Counts unread alerts for the current user to display badges on icons
     @OptIn(ExperimentalCoroutinesApi::class)
     val unreadNotificationsCount: StateFlow<Int> = _currentUser.flatMapLatest { user ->
         if (user != null) {
@@ -59,7 +74,9 @@ class MainViewModel(
     .flowOn(Dispatchers.IO)
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    // Wallet History State (Global)
+    // --- Wallet History State ---
+    
+    // Provides a globally accessible stream of transaction history (Top-ups and Purchases)
     @OptIn(ExperimentalCoroutinesApi::class)
     val walletHistory: StateFlow<List<WalletTransaction>> = _currentUser.flatMapLatest { user ->
         if (user != null) db.userDao().getWalletHistory(user.uid)
@@ -68,34 +85,45 @@ class MainViewModel(
     .flowOn(Dispatchers.IO)
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Player State
+    // --- Global Audio Player UI State ---
+    
+    // Tracks which book is currently loaded in the media session
     var currentPlayingBook by mutableStateOf<Book?>(null)
         private set
+    
+    // Tracks playback status (Playing vs Paused) for icon updates
     var isAudioPlaying by mutableStateOf(false)
         private set
+    
+    // Controls visibility of the persistent player overlay/floating bar
     var showPlayer by mutableStateOf(false)
     var isPlayerMinimized by mutableStateOf(false)
 
-    // UI State
-    var showLogoutConfirm by mutableStateOf(false)
-    var showSignedOutPopup by mutableStateOf(false)
-    var showWalletHistory by mutableStateOf(false)
+    // --- Shared UI Dialog States ---
+    var showLogoutConfirm by mutableStateOf(false)   // Controls the logout confirmation prompt
+    var showSignedOutPopup by mutableStateOf(false)  // Controls the "Securely Signed Out" timer popup
+    var showWalletHistory by mutableStateOf(false)   // Controls the visibility of the global wallet sheet
 
+    // Listener to update the internal state whenever Firebase auth changes
     private val authListener = FirebaseAuth.AuthStateListener { 
         _currentUser.value = it.currentUser 
     }
 
     init {
         auth.addAuthStateListener(authListener)
-        refreshData()
+        refreshData() // Load initial data on startup
     }
 
+    /**
+     * Refreshes the application catalog.
+     * Seeds the database if empty and collects combined data from all DAOs.
+     */
     fun refreshData() {
         viewModelScope.launch(Dispatchers.IO) {
             _isDataLoading.value = true
             _loadError.value = null
             try {
-                seedDatabase(db)
+                seedDatabase(db) // Ensures default content exists in the local DB
                 repository.getAllCombinedData().collect { combined ->
                     _allBooks.value = combined ?: emptyList()
                     _isDataLoading.value = false
@@ -107,16 +135,22 @@ class MainViewModel(
         }
     }
 
+    /**
+     * Entry point for starting audiobook playback.
+     * Integrates with the Media3 player instance passed from MainActivity.
+     */
     fun onPlayAudio(book: Book, player: Player?) {
+        // Toggle pause/play if it's the same book already loaded
         if (currentPlayingBook?.id == book.id) {
             if (player?.isPlaying == true) player.pause() else player?.play()
         } else {
+            // Load a new media item if switching books
             currentPlayingBook = book
             showPlayer = true
             isPlayerMinimized = false
             player?.let { p ->
                 val mediaItem = MediaItem.Builder()
-                    .setUri("asset:///${book.audioUrl}")
+                    .setUri("asset:///${book.audioUrl}") // Audio files are played from local assets
                     .setMediaMetadata(
                         MediaMetadata.Builder()
                             .setTitle(book.title)
@@ -131,16 +165,25 @@ class MainViewModel(
         }
     }
 
+    /**
+     * Updates the UI playback state (called by listeners in the UI layer).
+     */
     fun syncPlayerState(isPlaying: Boolean) {
         isAudioPlaying = isPlaying
     }
 
+    /**
+     * Stops the player and hides the persistent UI bar.
+     */
     fun stopPlayer(player: Player?) {
         showPlayer = false
         player?.stop()
         currentPlayingBook = null
     }
 
+    /**
+     * Handles the secure logout flow and redirects the user to the home screen.
+     */
     fun signOut(navController: NavController) {
         showLogoutConfirm = false
         auth.signOut()
@@ -150,16 +193,20 @@ class MainViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        // Prevents memory leaks by removing the auth listener
         auth.removeAuthStateListener(authListener)
     }
 }
 
+/**
+ * Factory class to create MainViewModel with manual dependency injection.
+ */
 class MainViewModelFactory(
     private val repository: BookRepository,
     private val db: AppDatabase
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
         return MainViewModel(repository, db) as T
     }
 }

@@ -37,6 +37,10 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
+/**
+ * Main User Dashboard Screen.
+ * Provides access to the user's collection, wallet, recent activity, and classroom modules.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -50,6 +54,7 @@ fun DashboardScreen(
     onPlayAudio: (Book) -> Unit,
     currentPlayingBookId: String?,
     isAudioPlaying: Boolean,
+    // Initialize ViewModel using a factory to inject the Repository and DAO
     viewModel: DashboardViewModel = viewModel(factory = DashboardViewModelFactory(
         repository = BookRepository(AppDatabase.getDatabase(LocalContext.current)),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
@@ -59,6 +64,7 @@ fun DashboardScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
+    // UI State observation from ViewModel
     val localUser by viewModel.localUser.collectAsState()
     val wishlistBooks by viewModel.wishlistBooks.collectAsState()
     val lastViewedBooks by viewModel.lastViewedBooks.collectAsState()
@@ -67,6 +73,7 @@ fun DashboardScreen(
     val selectedFilter by viewModel.selectedCollectionFilter.collectAsState()
     val walletHistory by viewModel.walletHistory.collectAsState()
     
+    // Search and Interaction states
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearchVisible by viewModel.isSearchVisible.collectAsState()
     val showPaymentPopup by viewModel.showPaymentPopup.collectAsState()
@@ -76,35 +83,62 @@ fun DashboardScreen(
 
     val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
 
+    // Local UI states for dialogs and menus
     var selectedBookForPickup by remember { mutableStateOf<Book?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     var showWalletHistory by remember { mutableStateOf(false) }
 
-    val filterOptions = listOf("All", "Books", "Audiobooks", "Gear", "Courses")
+    // List of filter chips for the user's library
+    val filterOptions = listOf(
+        AppConstants.FILTER_ALL,
+        AppConstants.FILTER_BOOKS,
+        AppConstants.FILTER_AUDIOBOOKS,
+        AppConstants.FILTER_GEAR,
+        AppConstants.FILTER_COURSES
+    )
     
+    // Setup for the infinite horizontal scrolling filter bar
     val infiniteCount = Int.MAX_VALUE
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % filterOptions.size)
     val filterListState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
 
+    // Root container handling clicks to dismiss search overlay
     Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) viewModel.setSearchVisible(false) }) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
+        
         Scaffold(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
+                    // Title changes based on user role (Admin/Faculty/Student)
                     title = { Text(text = when(localUser?.role) { "admin" -> AppConstants.TITLE_ADMIN_HUB; "teacher" -> AppConstants.TITLE_FACULTY; else -> AppConstants.TITLE_STUDENT_HUB }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black) },
-                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) } },
                     actions = {
                         TopBarSearchAction(isSearchVisible = isSearchVisible) { viewModel.setSearchVisible(true) }
+                        IconButton(onClick = { navController.navigate(AppConstants.ROUTE_HOME) }) { Icon(Icons.Default.Storefront, AppConstants.TITLE_STORE) }
                         Box(contentAlignment = Alignment.TopEnd) {
-                            IconButton(onClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) }) { Icon(Icons.Default.Notifications, "Notifications") }
+                            IconButton(onClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) }) { Icon(Icons.Default.Notifications, AppConstants.TITLE_NOTIFICATIONS) }
                             if (unreadCount > 0) { Surface(color = MaterialTheme.colorScheme.error, shape = CircleShape, modifier = Modifier.padding(6.dp).size(10.dp), border = BorderStroke(1.dp, Color.White)) {} }
                         }
                         Box {
-                            IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, "More Options") }
+                            IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, AppConstants.TITLE_MORE_OPTIONS) }
+                            // Global dashboard menu
                             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                val hasCourses = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES }
+                                if (hasCourses) {
+                                    DropdownMenuItem(
+                                        text = { Text(AppConstants.TITLE_CLASSROOM) },
+                                        onClick = { 
+                                            showMenu = false
+                                            val firstCourseId = filteredOwnedBooks.first { it.mainCategory == AppConstants.CAT_COURSES }.id
+                                            navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$firstCourseId")
+                                        },
+                                        leadingIcon = { Icon(Icons.Default.School, null) }
+                                    )
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                }
                                 DropdownMenuItem(text = { Text(if (isDarkTheme) AppConstants.TITLE_LIGHT_MODE else AppConstants.TITLE_DARK_MODE) }, onClick = { showMenu = false; onToggleTheme() }, leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) })
                                 DropdownMenuItem(text = { Text(AppConstants.TITLE_PROFILE_SETTINGS) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_PROFILE) }, leadingIcon = { Icon(Icons.Default.Settings, null) })
                                 if (localUser?.role == "admin") { DropdownMenuItem(text = { Text(AppConstants.TITLE_ADMIN_PANEL) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) }, leadingIcon = { Icon(Icons.Default.AdminPanelSettings, null) }) }
@@ -119,10 +153,27 @@ fun DashboardScreen(
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                    item { DashboardHeader(name = localUser?.name ?: "Student", photoUrl = localUser?.photoUrl, role = localUser?.role ?: "student", balance = localUser?.balance ?: 0.0, onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) }, onViewHistory = { showWalletHistory = true }) }
+                    // Header with profile summary and wallet balance
+                    item { DashboardHeader(name = localUser?.name ?: AppConstants.TEXT_STUDENT, photoUrl = localUser?.photoUrl, role = localUser?.role ?: "student", balance = localUser?.balance ?: 0.0, onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) }, onViewHistory = { showWalletHistory = true }) }
                     
+                    // QUICK ACCESS: My Courses Section
+                    val enrolledPaidCourse = filteredOwnedBooks.find { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 }
+                    val enrolledFreeCourses = filteredOwnedBooks.filter { it.mainCategory == AppConstants.CAT_COURSES && it.price <= 0.0 }
+
+                    if (enrolledPaidCourse != null || enrolledFreeCourses.isNotEmpty()) {
+                        item { SectionHeader(AppConstants.LABEL_MY_COURSES) }
+                        if (enrolledPaidCourse != null) {
+                            item { EnrolledCourseHeader(course = enrolledPaidCourse, onEnterClassroom = { navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$it") }) }
+                        }
+                        items(enrolledFreeCourses) { freeCourse ->
+                            FreeCourseHeader(course = freeCourse, onEnterClassroom = { navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$it") })
+                        }
+                    }
+
+                    // Admin Shortcut
                     if (localUser?.role == "admin") { item { AdminQuickActions { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) } } }
                     
+                    // History and Favorites Sections
                     item { SectionHeader(AppConstants.TITLE_CONTINUE_READING) }
                     if (lastViewedBooks.isNotEmpty()) { item { GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item { EmptySectionPlaceholder(AppConstants.MSG_NO_RECENTLY_VIEWED) } }
                     
@@ -132,59 +183,36 @@ fun DashboardScreen(
                     item { SectionHeader(AppConstants.TITLE_RECENTLY_LIKED) }
                     if (wishlistBooks.isNotEmpty()) { item { GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item { EmptySectionPlaceholder(AppConstants.MSG_FAVORITES_EMPTY) } }
                     
+                    // MAIN COLLECTION: User's owned items with Category Filter
                     item { 
                         SectionHeader(AppConstants.TITLE_YOUR_COLLECTION)
-                        LazyRow(
-                            state = filterListState,
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        LazyRow(state = filterListState, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             items(infiniteCount) { index ->
                                 val filterIndex = index % filterOptions.size
                                 val filter = filterOptions[filterIndex]
-                                
-                                val scale by remember {
-                                    derivedStateOf {
-                                        val layoutInfo = filterListState.layoutInfo
-                                        val visibleItemsInfo = layoutInfo.visibleItemsInfo
-                                        val itemInfo = visibleItemsInfo.find { it.index == index }
-                                        if (itemInfo != null) {
-                                            val center = layoutInfo.viewportEndOffset / 2
-                                            val itemCenter = itemInfo.offset + (itemInfo.size / 2)
-                                            val dist = abs(center - itemCenter).toFloat()
-                                            val normDist = (dist / center).coerceIn(0f, 1f)
-                                            1.25f - (normDist * 0.4f)
-                                        } else 0.85f
-                                    }
-                                }
-
-                                CategorySquareButton(
-                                    label = filter,
-                                    icon = when(filter) {
-                                        "Books" -> Icons.AutoMirrored.Filled.MenuBook
-                                        "Audiobooks" -> Icons.Default.Headphones
-                                        "Gear" -> Icons.Default.Checkroom
-                                        "Courses" -> Icons.Default.School
-                                        else -> Icons.Default.GridView
-                                    },
-                                    isSelected = selectedFilter == filter,
-                                    scale = scale,
-                                    onClick = { viewModel.setCollectionFilter(filter) }
-                                )
+                                val scale by remember { derivedStateOf {
+                                    val layoutInfo = filterListState.layoutInfo
+                                    val visibleItemsInfo = layoutInfo.visibleItemsInfo
+                                    val itemInfo = visibleItemsInfo.find { it.index == index }
+                                    if (itemInfo != null) {
+                                        val center = layoutInfo.viewportEndOffset / 2
+                                        val itemCenter = itemInfo.offset + (itemInfo.size / 2)
+                                        val dist = abs(center - itemCenter).toFloat()
+                                        val normDist = (dist / center).coerceIn(0f, 1f)
+                                        1.25f - (normDist * 0.4f)
+                                    } else 0.85f
+                                } }
+                                CategorySquareButton(label = filter, icon = when(filter) { AppConstants.FILTER_BOOKS -> Icons.AutoMirrored.Filled.MenuBook; AppConstants.FILTER_AUDIOBOOKS -> Icons.Default.Headphones; AppConstants.FILTER_GEAR -> Icons.Default.Checkroom; AppConstants.FILTER_COURSES -> Icons.Default.School; else -> Icons.Default.GridView }, isSelected = selectedFilter == filter, scale = scale, onClick = { viewModel.setCollectionFilter(filter) })
                             }
                         }
                     }
 
+                    // Display filtered collection items
                     if (filteredOwnedBooks.isEmpty()) { 
-                        item { 
-                            EmptyLibraryPlaceholder(
-                                onBrowse = { 
-                                    val targetCategory = if (selectedFilter == "All") AppConstants.CAT_ALL else AppConstants.mapFilterToCategory(selectedFilter)
-                                    navController.navigate("${AppConstants.ROUTE_HOME}?category=$targetCategory") 
-                                }
-                            ) 
-                        } 
+                        item { EmptyLibraryPlaceholder(onBrowse = { 
+                            val targetCategory = if (selectedFilter == AppConstants.FILTER_ALL) AppConstants.CAT_ALL else AppConstants.mapFilterToCategory(selectedFilter)
+                            navController.navigate("${AppConstants.ROUTE_HOME}?category=$targetCategory") 
+                        }) } 
                     } else {
                         items(filteredOwnedBooks) { book ->
                             var showItemMenu by remember { mutableStateOf(false) }
@@ -195,7 +223,7 @@ fun DashboardScreen(
                                 imageOverlay = { if (book.isAudioBook) { Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) { SpinningAudioButton(isPlaying = isAudioPlaying && currentPlayingBookId == book.id, onToggle = { onPlayAudio(book) }, size = 40) } } },
                                 topEndContent = {
                                     Box {
-                                        IconButton(onClick = { viewModel.setSearchVisible(false); showItemMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
+                                        IconButton(onClick = { viewModel.setSearchVisible(false); showItemMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = AppConstants.TITLE_OPTIONS, modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
                                         DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
                                             if (book.mainCategory == AppConstants.CAT_COURSES) { DropdownMenuItem(text = { Text(AppConstants.BTN_ENTER_CLASSROOM) }, onClick = { showItemMenu = false; navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${book.id}") }, leadingIcon = { Icon(Icons.Default.School, null) }) }
                                             if (book.price > 0.0) { DropdownMenuItem(text = { Text(AppConstants.BTN_VIEW_INVOICE) }, onClick = { showItemMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
@@ -217,11 +245,13 @@ fun DashboardScreen(
                     }
                     item { Spacer(Modifier.height(140.dp)) }
                 }
-
+                
+                // Overlay Search Section
                 HomeSearchSection(isSearchVisible = isSearchVisible, searchQuery = searchQuery, recentSearches = recentSearches, onQueryChange = { viewModel.updateSearchQuery(it) }, onClearHistory = { viewModel.clearRecentSearches() }, onCloseClick = { viewModel.setSearchVisible(false) }, suggestions = suggestions, onSuggestionClick = { book -> viewModel.saveSearchQuery(book.title); viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") }, modifier = Modifier.padding(top = paddingValues.calculateTopPadding()).zIndex(10f))
             }
         }
-
+        
+        // --- Overlay Dialogs ---
         if (showWalletHistory) { WalletHistorySheet(transactions = walletHistory, onNavigateToProduct = { id -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") }, onViewInvoice = { id -> navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/$id") }, onDismiss = { showWalletHistory = false }) }
         if (selectedBookForPickup != null) { PickupInfoDialog(orderConfirmation = selectedBookForPickup?.orderConfirmation, onDismiss = { selectedBookForPickup = null }) }
         AppPopups.WalletTopUp(show = showPaymentPopup, user = localUser, onDismiss = { viewModel.setShowPaymentPopup(false) }, onTopUpComplete = { amount -> viewModel.topUp(amount) { msg -> viewModel.setShowPaymentPopup(false); scope.launch { snackbarHostState.showSnackbar(msg) } } }, onManageProfile = { viewModel.setShowPaymentPopup(false); navController.navigate(AppConstants.ROUTE_PROFILE) })
@@ -229,6 +259,9 @@ fun DashboardScreen(
     }
 }
 
+/**
+ * Factory class to create instances of DashboardViewModel with required dependencies.
+ */
 class DashboardViewModelFactory(
     private val repository: BookRepository,
     private val userDao: UserDao,

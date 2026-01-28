@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
@@ -31,19 +32,27 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+/**
+ * Detailed Information Screen for a Book item.
+ * 
+ * Provides a comprehensive overview of a specific book, including its cover, author, 
+ * detailed description, and user reviews. It manages various interaction flows such 
+ * as purchasing, adding to favorites, reading (if owned), and deleting from collection.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookDetailScreen(
-    bookId: String,
-    initialBook: Book? = null,
-    user: FirebaseUser?,
-    onLoginRequired: () -> Unit,
-    onBack: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
-    onReadBook: (String) -> Unit,
-    onNavigateToProfile: () -> Unit,
-    onViewInvoice: (String) -> Unit,
+    bookId: String,                   // Unique ID of the book to display
+    initialBook: Book? = null,        // Pre-fetched book data (optional)
+    user: FirebaseUser?,              // Current Firebase authentication state
+    onLoginRequired: () -> Unit,      // Redirect callback for unauthenticated actions
+    onBack: () -> Unit,               // Navigation return callback
+    isDarkTheme: Boolean,             // App-wide theme state
+    onToggleTheme: () -> Unit,        // Global theme toggle function
+    onReadBook: (String) -> Unit,     // Triggers the PDF reader module
+    onNavigateToProfile: () -> Unit,  // Link to profile for data editing
+    onViewInvoice: (String) -> Unit,  // Triggers the digital receipt viewer
+    // ViewModel initialization with custom factory for DAO injection
     viewModel: BookDetailViewModel = viewModel(factory = BookDetailViewModelFactory(
         bookDao = AppDatabase.getDatabase(LocalContext.current).bookDao(),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
@@ -55,6 +64,7 @@ fun BookDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
+    // Observe reactive state streams from the ViewModel
     val book by viewModel.book.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val localUser by viewModel.localUser.collectAsState()
@@ -62,6 +72,7 @@ fun BookDetailScreen(
     val inWishlist by viewModel.inWishlist.collectAsState()
     val allReviews by viewModel.allReviews.collectAsState()
     
+    // UI Local State for interaction overlays
     var showOrderFlow by remember { mutableStateOf(false) }
     var showRemoveConfirm by remember { mutableStateOf(false) }
     var showAddConfirm by remember { mutableStateOf(false) }
@@ -70,6 +81,7 @@ fun BookDetailScreen(
     val primaryColor = MaterialTheme.colorScheme.primary
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // High-readability background with customized wave amplitudes
         HorizontalWavyBackground(isDarkTheme = isDarkTheme, wave1HeightFactor = 0.45f, wave2HeightFactor = 0.65f, wave1Amplitude = 80f, wave2Amplitude = 100f)
 
         Scaffold(
@@ -78,36 +90,56 @@ fun BookDetailScreen(
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text(text = book?.title ?: AppConstants.TITLE_BOOK_DETAILS, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                    title = { 
+                        Text(
+                            text = book?.title ?: AppConstants.TITLE_BOOK_DETAILS, 
+                            fontSize = 16.sp, 
+                            fontWeight = FontWeight.Bold, 
+                            maxLines = 1, 
+                            overflow = TextOverflow.Ellipsis
+                        ) 
+                    },
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) } },
                     actions = {
+                        // Wishlist toggle visible only to logged-in users
                         if (user != null) {
                             IconButton(onClick = {
                                 viewModel.toggleWishlist { msg ->
                                     scope.launch { snackbarHostState.showSnackbar(msg) }
                                 }
-                            }) { Icon(imageVector = if (inWishlist) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = "Wishlist") }
+                            }) { 
+                                Icon(
+                                    imageVector = if (inWishlist) Icons.Default.Favorite else Icons.Default.FavoriteBorder, 
+                                    contentDescription = "Wishlist"
+                                ) 
+                            }
                         }
-                        IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
+                        IconButton(onClick = onToggleTheme) { 
+                            Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) 
+                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                 )
             }
         ) { paddingValues ->
+            // CONDITIONAL CONTENT: Loading Spinner -> Item Not Found -> Product Details
             if (loading && book == null) {
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             } else if (book == null) {
+                // Error display when product data cannot be resolved
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                    @Suppress("DEPRECATION")
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
-                        Spacer(Modifier.height(16.dp)); Text("Item details not available.")
-                        TextButton(onClick = onBack) { Text("Go Back") }
+                        Spacer(Modifier.height(16.dp)); Text(AppConstants.MSG_ITEM_NOT_FOUND)
+                        TextButton(onClick = onBack) { Text(AppConstants.BTN_GO_BACK) }
                     }
                 }
             } else {
+                // Success: Product content is loaded
                 book?.let { currentBook ->
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp)) {
+                        
+                        // Header: Large product image with dynamic status overlays
                         item {
                             ProductHeaderImage(
                                 book = currentBook,
@@ -118,6 +150,7 @@ fun BookDetailScreen(
                             Spacer(Modifier.height(24.dp))
                         }
 
+                        // Info Section: Title, Author, Description, and Actions
                         item {
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)), 
@@ -129,26 +162,41 @@ fun BookDetailScreen(
                                 )
                             ) {
                                 Column(modifier = Modifier.padding(20.dp)) {
+                                    // Primary metadata
                                     Text(text = currentBook.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
                                     Text(text = "${AppConstants.TEXT_BY} ${currentBook.author}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                                    Spacer(modifier = Modifier.height(16.dp)); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { @Suppress("DEPRECATION") AssistChip(onClick = {}, label = { Text(currentBook.category) }); @Suppress("DEPRECATION") AssistChip(onClick = {}, label = { Text(AppConstants.TEXT_ACADEMIC_MATERIAL) }) }
-                                    Spacer(modifier = Modifier.height(24.dp)); Text(text = AppConstants.SECTION_ABOUT_ITEM, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.height(8.dp)); Text(text = currentBook.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp)
+                                    
+                                    // Metadata Chips
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { 
+                                        AssistChip(onClick = {}, label = { Text(currentBook.category) })
+                                        AssistChip(onClick = {}, label = { Text(AppConstants.TEXT_ACADEMIC_MATERIAL) }) 
+                                    }
+                                    
+                                    // Detailed description body
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    Text(text = AppConstants.SECTION_ABOUT_ITEM, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(text = currentBook.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp)
+                                    
                                     Spacer(modifier = Modifier.height(32.dp))
                                     
+                                    // CONTEXTUAL ACTIONS: Owned vs Guest vs Purchase Flow
                                     Box(modifier = Modifier.fillMaxWidth()) {
                                         if (isOwned) {
+                                            // Actions for items already in the user's library
                                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                                 ViewInvoiceButton(price = currentBook.price, onClick = { onViewInvoice(currentBook.id) })
                                                 
                                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                                    // PDF Reader trigger
                                                     Button(onClick = { onReadBook(currentBook.id) }, modifier = Modifier.weight(1f).height(56.dp), shape = RoundedCornerShape(16.dp)) {
                                                         Icon(Icons.Default.AutoStories, null)
                                                         Spacer(Modifier.width(12.dp))
-                                                        @Suppress("DEPRECATION")
                                                         Text(AppConstants.BTN_READ_NOW, fontWeight = FontWeight.Bold)
                                                     }
                                                     
+                                                    // Allow deletion only for free digital items (hardcopy gear remains in library)
                                                     if (currentBook.price <= 0) {
                                                         OutlinedButton(
                                                             onClick = { showRemoveConfirm = true },
@@ -163,6 +211,7 @@ fun BookDetailScreen(
                                                 }
                                             }
                                         } else if (user == null) {
+                                            // Call to action for unauthenticated users
                                             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
                                                 Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                                     Icon(Icons.Default.LockPerson, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
@@ -176,17 +225,24 @@ fun BookDetailScreen(
                                                 }
                                             }
                                         } else {
+                                            // Purchase Logic for authenticated users
                                             if (currentBook.price == 0.0) {
-                                                Button(
-                                                    onClick = { showAddConfirm = true },
-                                                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                                                    shape = RoundedCornerShape(16.dp)
-                                                ) {
-                                                    Icon(Icons.Default.LibraryAdd, null)
-                                                    Spacer(Modifier.width(12.dp))
-                                                    Text(AppConstants.BTN_ADD_TO_LIBRARY, fontWeight = FontWeight.Bold)
+                                                // Free item collection flow
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                                    Spacer(modifier = Modifier.height(24.dp))
+                                                    Button(
+                                                        onClick = { showAddConfirm = true },
+                                                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                                                        shape = RoundedCornerShape(16.dp)
+                                                    ) {
+                                                        Icon(Icons.Default.LibraryAdd, null)
+                                                        Spacer(Modifier.width(12.dp))
+                                                        Text(AppConstants.BTN_ADD_TO_LIBRARY, fontWeight = FontWeight.Bold)
+                                                    }
                                                 }
                                             } else {
+                                                // Paid item checkout flow with student discount display
                                                 val discountedPrice = currentBook.price * 0.9
                                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -195,7 +251,7 @@ fun BookDetailScreen(
                                                         Text(text = "£$pPrice", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
                                                         Spacer(Modifier.width(12.dp)); Text(text = "£$dPrice", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                                     }
-                                                    Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { Text("STUDENT PRICE (-10%)", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 10.sp) }
+                                                    Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { Text(AppConstants.TEXT_STUDENT_DISCOUNT, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 10.sp) }
                                                     Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text(AppConstants.BTN_ORDER_NOW, fontWeight = FontWeight.Bold) }
                                                 }
                                             }
@@ -205,6 +261,7 @@ fun BookDetailScreen(
                             }
                         }
 
+                        // Social Section: Collaborative user reviews and ratings
                         item {
                             Spacer(modifier = Modifier.height(32.dp))
                             ReviewSection(
@@ -225,6 +282,10 @@ fun BookDetailScreen(
             }
         }
 
+        /**
+         * FLOW OVERLAY: Order and Payment
+         * Handles the multi-step transaction process for paid items.
+         */
         if (showOrderFlow && book != null) {
             OrderFlowDialog(
                 book = book!!,
@@ -240,6 +301,10 @@ fun BookDetailScreen(
             )
         }
 
+        /**
+         * FLOW OVERLAY: Removal Confirmation
+         * Safety check before deleting an item from the local database.
+         */
         AppPopups.RemoveFromLibraryConfirmation(
             show = showRemoveConfirm,
             bookTitle = book?.title ?: "",
@@ -252,6 +317,10 @@ fun BookDetailScreen(
             }
         )
 
+        /**
+         * FLOW OVERLAY: Free Item Collection
+         * Handles immediate addition of free content to the user's library.
+         */
         AppPopups.AddToLibraryConfirmation(
             show = showAddConfirm,
             itemTitle = book?.title ?: "",
@@ -262,7 +331,7 @@ fun BookDetailScreen(
                 showAddConfirm = false
                 isProcessingAddition = true
                 scope.launch {
-                    delay(2000) // Animated delay
+                    delay(2000) // Aesthetic delay to simulate processing
                     viewModel.addFreePurchase(context) { msg ->
                         isProcessingAddition = false
                         scope.launch { snackbarHostState.showSnackbar(msg) }
@@ -271,6 +340,9 @@ fun BookDetailScreen(
             }
         )
 
+        /**
+         * Persistent Loading Overlay for asynchronous collection updates.
+         */
         AppPopups.AddingToLibraryLoading(
             show = isProcessingAddition,
             category = book?.mainCategory ?: AppConstants.CAT_BOOKS,

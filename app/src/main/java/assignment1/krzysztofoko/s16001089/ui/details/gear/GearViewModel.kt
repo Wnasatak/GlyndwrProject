@@ -12,23 +12,36 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
 
+/**
+ * ViewModel for the Gear Details screen.
+ * 
+ * Manages the state and logic for university merchandise (gear). This includes 
+ * handling product variants (sizes, colors), managing inventory/stock counts, 
+ * processing reservations for free items, and handling paid purchases with 
+ * detailed email confirmations.
+ */
 class GearViewModel(
-    private val gearDao: GearDao,
-    private val userDao: UserDao,
-    private val gearId: String,
-    private val userId: String
+    private val gearDao: GearDao,           // DAO for accessing core gear product data
+    private val userDao: UserDao,           // DAO for user session data (History, Purchases, Notifications)
+    private val gearId: String,             // Unique identifier for the specific gear item
+    private val userId: String              // Identifier for the current student session
 ) : ViewModel() {
 
+    // --- Core Data Streams ---
+
+    // Holds the resolved gear metadata from the local database
     private val _gear = MutableStateFlow<Gear?>(null)
     val gear: StateFlow<Gear?> = _gear.asStateFlow()
 
+    // Flag to track the initial data loading state for the UI spinner
     private val _loading = MutableStateFlow(true)
     val loading: StateFlow<Boolean> = _loading.asStateFlow()
 
+    // A randomized list of related items from the same category
     private val _similarGear = MutableStateFlow<List<Gear>>(emptyList())
     val similarGear: StateFlow<List<Gear>> = _similarGear.asStateFlow()
 
-    // UI States
+    // --- User Variant Selection States ---
     private val _selectedSize = MutableStateFlow("")
     val selectedSize: StateFlow<String> = _selectedSize.asStateFlow()
 
@@ -38,21 +51,34 @@ class GearViewModel(
     private val _quantity = MutableStateFlow(1)
     val quantity: StateFlow<Int> = _quantity.asStateFlow()
 
+    // Tracks which image (primary vs secondary) is currently displayed in the gallery
     private val _selectedImageIndex = MutableStateFlow(0)
     val selectedImageIndex: StateFlow<Int> = _selectedImageIndex.asStateFlow()
 
+    /**
+     * Local User Profile Flow:
+     * Provides real-time profile data (balance, email) used for purchase validations.
+     */
     val localUser: StateFlow<UserLocal?> = if (userId.isNotEmpty()) {
         userDao.getUserFlow(userId)
     } else {
         flowOf(null)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /**
+     * Ownership Check:
+     * Reactively determines if the user has already reserved or bought this item.
+     */
     val isOwned: StateFlow<Boolean> = if (userId.isNotEmpty()) {
         userDao.getPurchaseIds(userId).map { it.contains(gearId) }
     } else {
         flowOf(false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    /**
+     * Order Reference Flow:
+     * Resolves the official confirmation code if the item is already owned.
+     */
     val orderConfirmation: StateFlow<String?> = if (userId.isNotEmpty()) {
         userDao.getPurchaseIds(userId).map { ids ->
             if (ids.contains(gearId)) {
@@ -63,26 +89,40 @@ class GearViewModel(
         flowOf(null)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /**
+     * Social Data:
+     * Collects all user reviews for this specific piece of gear.
+     */
     val allReviews: StateFlow<List<ReviewLocal>> = userDao.getReviewsForProduct(gearId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
+        // Initialize the screen by fetching metadata and updating history
         loadGear()
     }
 
+    /**
+     * Data Resolution Logic:
+     * 1. Fetches gear details and similar items.
+     * 2. Sets initial variant defaults (Size/Color).
+     * 3. Logs the visit in the student's local history.
+     */
     private fun loadGear() {
         viewModelScope.launch {
             _loading.value = true
             val fetchedGear = gearDao.getGearById(gearId)
             if (fetchedGear != null) {
                 _gear.value = fetchedGear
+                // Default to first available size/color from comma-separated strings in DB
                 _selectedSize.value = fetchedGear.sizes.split(",").firstOrNull() ?: "M"
                 _selectedColor.value = fetchedGear.colors.split(",").firstOrNull() ?: AppConstants.TEXT_DEFAULT
                 
+                // Load similar products for the 'Similar Gear' carousel
                 val allGear = gearDao.getAllGearOnce()
                 _similarGear.value = allGear.filter { it.id != gearId && it.mainCategory == fetchedGear.mainCategory }.shuffled()
             }
             
+            // Log interaction for personal recommendations
             if (userId.isNotEmpty()) {
                 userDao.addToHistory(HistoryItem(userId, gearId))
             }
@@ -90,11 +130,15 @@ class GearViewModel(
         }
     }
 
+    // --- State Updaters ---
     fun setSelectedSize(size: String) { _selectedSize.value = size }
     fun setSelectedColor(color: String) { _selectedColor.value = color }
     fun setQuantity(q: Int) { _quantity.value = q }
     fun setSelectedImageIndex(index: Int) { _selectedImageIndex.value = index }
 
+    /**
+     * Refetches the gear data from the DB to sync stock levels.
+     */
     fun refreshGear() {
         viewModelScope.launch {
             val updated = gearDao.getGearById(gearId)
@@ -102,6 +146,15 @@ class GearViewModel(
         }
     }
 
+    /**
+     * Workflow for free item pick-up reservation.
+     * 
+     * Process:
+     * 1. Creates a local purchase record.
+     * 2. Triggers a "Ready for Pickup" system notification.
+     * 3. Dispatches an item-specific HTML confirmation email with variant details.
+     * 4. Deducts 1 item from local stock inventory.
+     */
     fun handleFreePickup(context: Context?, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             val orderConf = OrderUtils.generateOrderReference()
@@ -109,7 +162,7 @@ class GearViewModel(
             val user = userDao.getUserById(userId)
             val currentGear = _gear.value ?: return@launch
 
-            // 1. Create robust purchase record
+            // Persist the reservation
             userDao.addPurchase(PurchaseItem(
                 purchaseId = purchaseId,
                 userId = userId, 
@@ -124,7 +177,7 @@ class GearViewModel(
                 orderConfirmation = orderConf
             ))
 
-            // 2. Trigger notification
+            // Create notification alert
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
                 userId = userId,
@@ -136,7 +189,7 @@ class GearViewModel(
                 type = AppConstants.NOTIF_TYPE_PICKUP
             ))
 
-            // 3. Send Email Confirmation
+            // Dispatch external confirmation via SMTP
             if (user != null && user.email.isNotEmpty()) {
                 val gearDetails = mapOf(
                     "Brand" to currentGear.brand,
@@ -157,6 +210,7 @@ class GearViewModel(
                 )
             }
 
+            // Sync stock and UI
             gearDao.reduceStock(gearId, 1)
             refreshGear()
             onComplete("${AppConstants.MSG_GEAR_PICKUP_SUCCESS} Ref: $orderConf")
@@ -164,14 +218,14 @@ class GearViewModel(
     }
 
     /**
-     * Completes the non-free purchase of gear and sends email confirmation.
+     * Finalizes a paid purchase of gear and dispatches detailed variant info via email.
      */
     fun handlePurchaseComplete(context: Context?, qty: Int, finalPrice: Double, orderRef: String, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             val user = userDao.getUserById(userId)
             val currentGear = _gear.value ?: return@launch
 
-            // 1. Send Email Confirmation
+            // Dispatch external confirmation via SMTP
             if (user != null && user.email.isNotEmpty()) {
                 val priceStr = "£" + String.format(Locale.US, "%.2f", finalPrice)
                 val gearDetails = mapOf(
@@ -194,6 +248,7 @@ class GearViewModel(
                 )
             }
 
+            // Update local stock based on purchased quantity
             gearDao.reduceStock(gearId, qty)
             refreshGear()
             onComplete(AppConstants.MSG_ORDER_SUCCESS)

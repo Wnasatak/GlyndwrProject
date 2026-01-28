@@ -2,15 +2,19 @@ package assignment1.krzysztofoko.s16001089
 
 import assignment1.krzysztofoko.s16001089.data.Book
 
+/**
+ * Global constants used throughout the application.
+ * Centralizes UI strings, navigation routes, and configuration values.
+ */
 object AppConstants {
-    const val VERSION_NAME = "0.07.589"
+    const val VERSION_NAME = "0.8.652 Under Development"
     const val INSTITUTION = "Wrexham Glyndŵr University"
     const val DEVELOPER_NAME = "Krzysztof Oko"
     const val STUDENT_ID = "S16001089"
     const val PROJECT_INFO = "Assignment 1 - CONL709 Mobile App Development"
     const val APP_NAME = "Glyndŵr Store"
 
-    // Unified Categories
+    // Unified Categories for filtering products
     const val CAT_COURSES = "University Courses"
     const val CAT_GEAR = "University Gear"
     const val CAT_BOOKS = "Books"
@@ -54,7 +58,7 @@ object AppConstants {
     const val TITLE_FACULTY = "Faculty"
     const val TITLE_STUDENT_HUB = "Student Hub"
     const val TITLE_LIGHT_MODE = "Light Mode"
-    const val TITLE_DARK_MODE = "Dark Mode"
+    const val TITLE_DARK_MODE = "DarkMode"
     const val TITLE_ADMIN_PANEL = "Admin Panel"
     const val TITLE_CONTINUE_READING = "Continue Reading"
     const val TITLE_RECENT_ACTIVITY = "Your Recent Activity"
@@ -76,6 +80,12 @@ object AppConstants {
     const val TITLE_LOG_OFF = "Log Off"
     const val TITLE_DEMO_MODE = "Demo Mode"
     const val TITLE_REMOVE_LIBRARY = "Remove from Library?"
+    const val TITLE_STORE = "Store"
+    const val TITLE_MORE_OPTIONS = "More Options"
+    const val TITLE_OPTIONS = "Options"
+    const val TITLE_ADD_TO_LIBRARY = "Add to Library"
+    const val TITLE_COURSE_ENROLLMENT = "Course Enrollment"
+    const val TITLE_ITEM_RESERVATION = "Item Reservation"
 
     const val BTN_SIGN_IN_REGISTER = "Sign in / Register"
     const val BTN_SIGN_IN_ENROLL = "Sign in to Enroll"
@@ -134,7 +144,7 @@ object AppConstants {
     const val TITLE_AUDIO_DETAILS = "Audiobook Details"
     const val TITLE_COURSE_DETAILS = "Course Details"
     const val TITLE_GEAR_DETAILS = "Gear Details"
-    const val TITLE_CLASSROOM = "University Classroom"
+    const val TITLE_CLASSROOM = "Classroom"
     const val TITLE_SIMILAR_PRODUCTS = "Similar Products"
 
     const val SECTION_ABOUT_ITEM = "About this item"
@@ -163,6 +173,7 @@ object AppConstants {
     const val TEXT_ACCOUNT_BALANCE = "Account Balance"
     const val TEXT_ACCOUNT_BALANCE_TOPUP = "Top up your balance"
     const val TEXT_ADMIN_CONTROLS = "Admin Controls: Manage Catalog & Users"
+    const val LABEL_MY_COURSES = "MY COURSES"
     
     // Classroom Tabs
     const val TAB_MODULES = "Modules"
@@ -183,7 +194,7 @@ object AppConstants {
     const val LABEL_TOTAL_PAID = "Total Paid"
     const val LABEL_PAID_VIA = "Paid via"
     const val LABEL_REFERENCE = "Reference"
-    const val LABEL_WALLET_APPLIED = "Wallet Balance Applied"
+    const val LABEL_WALLET_BALANCE_APPLIED = "Wallet Balance Applied"
     const val LABEL_STORE_TAGLINE = "Official University Store"
     const val LABEL_COMPUTER_GENERATED = "This is an official computer-generated document."
     
@@ -260,6 +271,8 @@ object AppConstants {
     const val ROADMAP_PAYMENTS_DESC = "Integration with major regional banks and crypto-wallets to provide more flexibility in payment options beyond the University Account."
 
     // Version Info Items
+    const val VER_READER_TITLE = "ENHANCED PDF READER"
+    const val VER_READER_DESC = "Introduced a high-performance PDF renderer with pinch-to-zoom, night mode, sepia mode, and full-screen reading capabilities."
     const val VER_FINAL_DEMO_TITLE = "VERSION 1.0.0 (FINAL DEMO)"
     const val VER_FINAL_DEMO_DESC = "The complete student hub experience is here! This final release brings polished security, interactive features, and a cohesive design across all platforms."
     const val VER_SECURITY_TITLE = "SECURE AUTHENTICATION"
@@ -334,7 +347,15 @@ object AppConstants {
     const val ROUTE_PDF_READER = "pdfReader"
     const val ROUTE_INVOICE_CREATING = "invoiceCreating"
     const val ROUTE_INVOICE = "invoice"
-    
+    const val ROUTE_LATEST = "latest"
+
+    // Filter Labels
+    const val FILTER_ALL = "All"
+    const val FILTER_BOOKS = "Books"
+    const val FILTER_AUDIOBOOKS = "Audiobooks"
+    const val FILTER_GEAR = "Gear"
+    const val FILTER_COURSES = "Courses"
+
     // Technical IDs
     const val ID_TOPUP = "TOPUP"
 
@@ -362,10 +383,10 @@ object AppConstants {
      */
     fun mapFilterToCategory(filter: String): String {
         return when (filter) {
-            "Books" -> CAT_BOOKS
-            "Audiobooks" -> CAT_AUDIOBOOKS
-            "Gear" -> CAT_GEAR
-            "Courses" -> CAT_COURSES
+            FILTER_BOOKS -> CAT_BOOKS
+            FILTER_AUDIOBOOKS -> CAT_AUDIOBOOKS
+            FILTER_GEAR -> CAT_GEAR
+            FILTER_COURSES -> CAT_COURSES
             else -> CAT_ALL
         }
     }
