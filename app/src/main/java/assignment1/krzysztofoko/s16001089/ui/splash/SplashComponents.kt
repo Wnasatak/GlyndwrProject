@@ -1,7 +1,6 @@
 package assignment1.krzysztofoko.s16001089.ui.splash
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,9 +15,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import coil.compose.AsyncImage
 
@@ -117,13 +114,13 @@ fun SplashFooter(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = if (isLoadingData) "Synchronising with database..." else "Database synchronized! ✓",
+            text = if (isLoadingData) AppConstants.MSG_SYNC_DATABASE else AppConstants.MSG_SYNC_COMPLETE,
             color = Color.White.copy(alpha = 0.8f),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .padding(bottom = 12.dp)
-                .alpha(alpha) 
+                .alpha(alpha)
         )
 
         CircularProgressIndicator(
@@ -133,9 +130,9 @@ fun SplashFooter(
                 .size(40.dp)
                 .alpha(alpha)
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Text(
             text = "Version ${AppConstants.VERSION_NAME}",
             modifier = Modifier.alpha(alpha * 0.9f),

@@ -15,6 +15,7 @@ object AppConstants {
     const val CAT_GEAR = "University Gear"
     const val CAT_BOOKS = "Books"
     const val CAT_AUDIOBOOKS = "Audio Books"
+    const val CAT_FINANCE = "Finance"
     const val CAT_FREE = "Free"
     const val CAT_ALL = "All"
 
@@ -33,6 +34,7 @@ object AppConstants {
     const val LABEL_IN_LIBRARY = "In Library"
     const val LABEL_FREE = "FREE"
     const val LABEL_PAID = "Paid"
+    const val LABEL_NEW = "NEW"
     
     // Auth & Profile Labels
     const val TITLE_SIGN_IN_REQUIRED = "Sign In Required"
@@ -66,6 +68,14 @@ object AppConstants {
     const val TITLE_UPCOMING_IMPROVEMENTS = "Upcoming Improvements"
     const val TITLE_LATEST_UPDATES = "Latest Updates"
     const val TITLE_WELCOME_STORE = "Welcome to Glyndŵr Store!"
+    const val TITLE_NOTIFICATIONS = "Notifications"
+    const val TITLE_IDENTITY_VERIFIED = "Identity Verified!"
+    const val TITLE_SIGNED_OUT = "Signed Out"
+    const val TITLE_DELETE_REVIEW = "Delete Review"
+    const val TITLE_SAVE_CHANGES = "Save Changes"
+    const val TITLE_LOG_OFF = "Log Off"
+    const val TITLE_DEMO_MODE = "Demo Mode"
+    const val TITLE_REMOVE_LIBRARY = "Remove from Library?"
 
     const val BTN_SIGN_IN_REGISTER = "Sign in / Register"
     const val BTN_SIGN_IN_ENROLL = "Sign in to Enroll"
@@ -74,7 +84,7 @@ object AppConstants {
     const val BTN_CREATE_ACCOUNT = "Create Account"
     const val BTN_GOOGLE_LOGIN = "Google Login"
     const val BTN_GOOGLE_SIGNUP = "Google Sign up"
-    const val BTN_LOG_OUT = "Log Out"
+    const val BTN_LOG_OUT = "Sign Off"
     const val BTN_SAVE_PROFILE = "Save General Profile"
 
     // Action Buttons
@@ -106,6 +116,18 @@ object AppConstants {
     const val BTN_BACK = "Back"
     const val BTN_GOT_IT = "Got it!"
     const val BTN_EXCITING_STUFF = "Exciting stuff!"
+    const val BTN_VIEW_PRODUCT_DETAILS = "View Product Details"
+    const val BTN_DELETE_NOTIFICATION = "Delete Notification"
+    const val BTN_DISMISS = "Dismiss"
+    const val BTN_SAVE = "Save"
+    const val BTN_DISCARD = "Discard"
+    const val BTN_REMOVE = "Remove"
+    const val BTN_LOG_OFF = "Sign Off"
+    const val BTN_CLEAR_ALL = "Clear All"
+    const val BTN_DELETE = "Delete"
+    const val BTN_CONTINUE_HOME = "Continue to Home"
+    const val BTN_TOP_UP = "Top Up"
+    const val BTN_EXPLORE_STORE = "Explore Store"
     
     // Item Details Strings
     const val TITLE_BOOK_DETAILS = "Item Details"
@@ -132,6 +154,15 @@ object AppConstants {
     const val TEXT_DEFAULT = "Default"
     const val TEXT_EMAIL = "Email"
     const val TEXT_STUDENT_ID = "Student ID"
+    const val TEXT_STUDENT = "Student"
+    const val TEXT_ALL_CAUGHT_UP = "All caught up!"
+    const val TEXT_REDIRECTING = "Redirecting in"
+    const val TEXT_SECONDS = "seconds..."
+    const val TEXT_SMTP_IMPLEMENTED = "SMTP Verification Implemented!"
+    const val TEXT_WELCOME = "Welcome"
+    const val TEXT_ACCOUNT_BALANCE = "Account Balance"
+    const val TEXT_ACCOUNT_BALANCE_TOPUP = "Top up your balance"
+    const val TEXT_ADMIN_CONTROLS = "Admin Controls: Manage Catalog & Users"
     
     // Classroom Tabs
     const val TAB_MODULES = "Modules"
@@ -167,6 +198,10 @@ object AppConstants {
     const val TEXT_DIGITAL_AUDIO = "Digital Audio"
     const val TEXT_HARDCOPY = "Hardcopy"
 
+    // Splash sync messages
+    const val MSG_SYNC_DATABASE = "Synchronising with database..."
+    const val MSG_SYNC_COMPLETE = "Database synchronized! ✓"
+
     // Error/Empty State Messages
     const val MSG_ITEM_NOT_FOUND = "Item details not available."
     const val MSG_AUDIOBOOK_NOT_FOUND = "Audiobook not found."
@@ -175,10 +210,15 @@ object AppConstants {
     const val MSG_NO_RECENT_REVIEWS = "No recent reviews."
     const val MSG_FAVORITES_EMPTY = "Your favorites list is empty."
     const val MSG_INSUFFICIENT_FUNDS = "Insufficient funds. Select another method or top up your wallet."
+    const val MSG_EMPTY_NOTIFICATIONS = "Your notifications inbox is currently empty. Check back later for order updates and news!"
+    const val MSG_LIBRARY_EMPTY = "Your library is empty"
+    const val MSG_GET_ITEMS_PROMPT = "Get books, courses or gear to see them here."
 
     // Messages
     const val MSG_PURCHASE_SUCCESS = "Purchase successful! Item added to your library."
     const val MSG_ENROLL_SUCCESS = "Enrollment successful!"
+    const val MSG_ENROLL_FREE_SUCCESS = "You have successfully enrolled in your free course!"
+    const val MSG_ENROLL_PAID_SUCCESS = "You have successfully enrolled in your course!"
     const val MSG_SIGN_IN_PROMPT_BOOK = "Sign in to add this item to your library."
     const val MSG_SIGN_IN_PROMPT_AUDIO = "Sign in to add this audiobook to your library and listen."
     const val MSG_SIGN_IN_PROMPT_COURSE = "Please sign in to enroll in this university course."
@@ -198,6 +238,14 @@ object AppConstants {
     const val MSG_AVATAR_UPDATE_SUCCESS = "Avatar updated!"
     const val MSG_AVATAR_UPDATE_FAILED = "Error saving image"
     const val MSG_NO_ADDRESS_YET = "No address added yet"
+    const val MSG_IDENTITY_VERIFIED_DESC = "Your security check was successful.\nYou are now fully logged in to the Glyndwr University portal."
+    const val MSG_SIGNED_OUT_DESC = "You have been securely signed out. This message will close in"
+    const val MSG_REMOVE_LIBRARY_DESC = "Are you sure you want to remove this item from your library? You can always add it back later if it's still available."
+    const val MSG_DELETE_REVIEW_DESC = "Are you sure you want to permanently delete your review? This action cannot be undone."
+    const val MSG_SAVE_CHANGES_DESC = "Do you want to save the changes to your review?"
+    const val MSG_LOG_OFF_DESC = "Are you sure you want to sign off?"
+    const val MSG_DEMO_MODE_DESC = "For this demonstration, your code is provided below, but please also check your email! 😊"
+    const val MSG_PAID_COURSE_LIMIT = "You can only be enrolled in one paid course at a time."
 
     // Roadmap Items
     const val ROADMAP_AI_TITLE = "AI-POWERED RECOMMENDATIONS"
@@ -261,10 +309,15 @@ object AppConstants {
     const val METHOD_GOOGLE_PAY = "Google Pay"
     const val METHOD_CREDIT_CARD = "Credit Card"
 
+    // Notification Types
+    const val NOTIF_TYPE_PURCHASE = "PURCHASE"
+    const val NOTIF_TYPE_PICKUP = "PICKUP"
+
     // Menu Items
     const val MENU_REMOVE_FROM_LIBRARY = "Remove from Library"
 
     // Routes
+    const val ROUTE_SPLASH = "splash"
     const val ROUTE_HOME = "home"
     const val ROUTE_AUTH = "auth"
     const val ROUTE_DASHBOARD = "dashboard"
@@ -281,6 +334,9 @@ object AppConstants {
     const val ROUTE_PDF_READER = "pdfReader"
     const val ROUTE_INVOICE_CREATING = "invoiceCreating"
     const val ROUTE_INVOICE = "invoice"
+    
+    // Technical IDs
+    const val ID_TOPUP = "TOPUP"
 
     /**
      * Centralized logic to determine the status label for a book/item.
@@ -299,5 +355,18 @@ object AppConstants {
      */
     fun getDefaultSubcategory(mainCat: String): String {
         return if (mainCat == CAT_COURSES) "All Departments" else "All Genres"
+    }
+
+    /**
+     * Maps Filter Names to Store Categories
+     */
+    fun mapFilterToCategory(filter: String): String {
+        return when (filter) {
+            "Books" -> CAT_BOOKS
+            "Audiobooks" -> CAT_AUDIOBOOKS
+            "Gear" -> CAT_GEAR
+            "Courses" -> CAT_COURSES
+            else -> CAT_ALL
+        }
     }
 }

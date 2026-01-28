@@ -1,9 +1,11 @@
 package assignment1.krzysztofoko.s16001089.ui.details.audiobook
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
+import assignment1.krzysztofoko.s16001089.utils.EmailUtils
 import assignment1.krzysztofoko.s16001089.utils.OrderUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -83,12 +85,13 @@ class AudioBookViewModel(
         }
     }
 
-    fun addFreePurchase(onComplete: (String) -> Unit) {
+    fun addFreePurchase(context: Context?, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             if (userId.isEmpty()) return@launch
             val currentBook = _book.value ?: return@launch
             val orderConf = OrderUtils.generateOrderReference()
             val purchaseId = UUID.randomUUID().toString()
+            val user = userDao.getUserById(userId)
 
             // Save purchase
             userDao.addPurchase(PurchaseItem(
@@ -105,8 +108,6 @@ class AudioBookViewModel(
                 orderConfirmation = orderConf
             ))
 
-            // No invoice created for free items as requested
-
             // Trigger notification - Wording: Audiobook Picked Up
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
@@ -119,7 +120,57 @@ class AudioBookViewModel(
                 type = "PICKUP"
             ))
 
-            onComplete("${AppConstants.MSG_ADDED_TO_LIBRARY} Ref: $orderConf")
+            // Send Email Confirmation for free audiobook
+            if (user != null && user.email.isNotEmpty()) {
+                val bookDetails = mapOf(
+                    "Title" to currentBook.title,
+                    "Author" to currentBook.author,
+                    "Format" to "Digital Audio",
+                    "Category" to currentBook.category
+                )
+                EmailUtils.sendPurchaseConfirmation(
+                    context = context,
+                    recipientEmail = user.email,
+                    userName = user.name,
+                    itemTitle = currentBook.title,
+                    orderRef = orderConf,
+                    price = AppConstants.LABEL_FREE,
+                    category = currentBook.mainCategory,
+                    details = bookDetails
+                )
+            }
+
+            onComplete(AppConstants.MSG_ADDED_TO_LIBRARY)
+        }
+    }
+
+    fun handlePurchaseComplete(context: Context?, finalPrice: Double, orderRef: String, onComplete: (String) -> Unit) {
+        viewModelScope.launch {
+            val user = userDao.getUserById(userId)
+            val currentBook = _book.value ?: return@launch
+            
+            // Send Email Confirmation
+            if (user != null && user.email.isNotEmpty()) {
+                val priceStr = "£" + String.format(Locale.US, "%.2f", finalPrice)
+                val bookDetails = mapOf(
+                    "Title" to currentBook.title,
+                    "Author" to currentBook.author,
+                    "Format" to "Digital Audio",
+                    "Category" to currentBook.category
+                )
+                EmailUtils.sendPurchaseConfirmation(
+                    context = context,
+                    recipientEmail = user.email,
+                    userName = user.name,
+                    itemTitle = currentBook.title,
+                    orderRef = orderRef,
+                    price = priceStr,
+                    category = currentBook.mainCategory,
+                    details = bookDetails
+                )
+            }
+
+            onComplete(AppConstants.MSG_PURCHASE_SUCCESS)
         }
     }
 

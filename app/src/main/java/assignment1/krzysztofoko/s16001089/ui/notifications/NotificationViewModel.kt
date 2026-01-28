@@ -3,6 +3,7 @@ package assignment1.krzysztofoko.s16001089.ui.notifications
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.BookRepository
@@ -34,9 +35,7 @@ class NotificationViewModel(
 
     fun deleteNotification(notificationId: String) {
         viewModelScope.launch {
-            // Since we need to delete a specific notification by ID, and the Dao doesn't have it, 
-            // I should add it to the Dao. But for now, let's check if there's a workaround or if I should just add it.
-            // I'll add the delete method to the Dao first.
+            userDao.deleteNotification(notificationId)
         }
     }
 
@@ -52,7 +51,7 @@ class NotificationViewModel(
             userDao.deletePurchase(userId, productId)
             // 2. Remove the related notification automatically
             userDao.deleteNotificationByProduct(userId, productId)
-            onComplete("Removed from library")
+            onComplete(AppConstants.MSG_REMOVED_LIBRARY)
         }
     }
 }

@@ -177,6 +177,20 @@ data class ReviewInteraction(
     val interactionType: String
 )
 
+@Entity(tableName = "wallet_history")
+data class WalletTransaction(
+    @PrimaryKey val id: String,
+    val userId: String,
+    val type: String, // "TOP_UP" or "PURCHASE"
+    val amount: Double,
+    val timestamp: Long = System.currentTimeMillis(),
+    val paymentMethod: String,
+    val description: String,
+    val orderReference: String? = null,
+    val productId: String? = null,
+    val purchaseId: String? = null
+)
+
 @Dao
 interface UserDao {
     @Query("SELECT * FROM users_local WHERE id = :id")
@@ -313,4 +327,10 @@ interface UserDao {
 
     @Query("SELECT * FROM invoices WHERE productId = :productId AND userId = :userId LIMIT 1")
     suspend fun getInvoiceForProduct(userId: String, productId: String): Invoice?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addWalletTransaction(transaction: WalletTransaction)
+
+    @Query("SELECT * FROM wallet_history WHERE userId = :userId ORDER BY timestamp DESC")
+    fun getWalletHistory(userId: String): Flow<List<WalletTransaction>>
 }

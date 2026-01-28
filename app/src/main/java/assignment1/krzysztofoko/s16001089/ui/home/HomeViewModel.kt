@@ -8,93 +8,107 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel for the Home screen.
+ * Handles item filtering, search, wishlist, and wallet history visibility.
+ */
 class HomeViewModel(
     private val repository: BookRepository,
     private val userDao: UserDao,
-    private val userId: String
+    private val userId: String,
+    initialCategory: String? = null
 ) : ViewModel() {
 
-    private val _selectedMainCategory = MutableStateFlow(AppConstants.CAT_ALL)
-    val selectedMainCategory: StateFlow<String> = _selectedMainCategory.asStateFlow()
-
-    private val _selectedSubCategory = MutableStateFlow("All Genres")
-    val selectedSubCategory: StateFlow<String> = _selectedSubCategory.asStateFlow()
-
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-
-    private val _isSearchVisible = MutableStateFlow(false)
-    val isSearchVisible: StateFlow<Boolean> = _isSearchVisible.asStateFlow()
-
-    private val _bookToRemove = MutableStateFlow<Book?>(null)
-    val bookToRemove: StateFlow<Book?> = _bookToRemove.asStateFlow()
-
     private val _refreshTrigger = MutableStateFlow(0)
+    
+    // Internal state for user-driven filters and UI toggles
+    private val _filterSettings = MutableStateFlow(
+        FilterSettings(
+            mainCategory = initialCategory ?: AppConstants.CAT_ALL,
+            subCategory = AppConstants.getDefaultSubcategory(initialCategory ?: AppConstants.CAT_ALL)
+        )
+    )
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val allBooks: StateFlow<List<Book>> = _refreshTrigger
-        .flatMapLatest { repository.getAllCombinedData(userId) }
-        .map { it ?: emptyList() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val uiState: StateFlow<HomeUiState> = combine(
+        _refreshTrigger.flatMapLatest { repository.getAllCombinedData(userId) },
+        if (userId.isNotEmpty()) userDao.getWishlistIds(userId) else flowOf(emptyList<String>()),
+        if (userId.isNotEmpty()) userDao.getPurchaseIds(userId) else flowOf(emptyList<String>()),
+        if (userId.isNotEmpty()) userDao.getRecentSearches(userId) else flowOf(emptyList<String>()),
+        if (userId.isNotEmpty()) userDao.getWalletHistory(userId) else flowOf(emptyList<WalletTransaction>()),
+        _filterSettings
+    ) { array ->
+        @Suppress("UNCHECKED_CAST")
+        val books = array[0] as List<Book>?
+        @Suppress("UNCHECKED_CAST")
+        val wishlist = array[1] as List<String>
+        @Suppress("UNCHECKED_CAST")
+        val purchased = array[2] as List<String>
+        @Suppress("UNCHECKED_CAST")
+        val searches = array[3] as List<String>
+        @Suppress("UNCHECKED_CAST")
+        val wallet = array[4] as List<WalletTransaction>
+        @Suppress("UNCHECKED_CAST")
+        val filters = array[5] as FilterSettings
 
-    val wishlistIds: StateFlow<List<String>> = if (userId.isNotEmpty()) {
-        userDao.getWishlistIds(userId)
-    } else {
-        flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val purchasedIds: StateFlow<List<String>> = if (userId.isNotEmpty()) {
-        userDao.getPurchaseIds(userId)
-    } else {
-        flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // Recent Searches flow
-    val recentSearches: StateFlow<List<String>> = if (userId.isNotEmpty()) {
-        userDao.getRecentSearches(userId)
-    } else {
-        flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val filteredBooks: StateFlow<List<Book>> = combine(
-        allBooks, _selectedMainCategory, _selectedSubCategory, _searchQuery
-    ) { books, mainCat, subCat, query ->
-        books.filter { book ->
-            val matchMain = when (mainCat) {
+        val allBooks = books ?: emptyList()
+        
+        val filtered = allBooks.filter { book ->
+            val matchMain = when (filters.mainCategory) {
                 AppConstants.CAT_ALL -> true
                 AppConstants.CAT_FREE -> book.price == 0.0
-                else -> book.mainCategory.equals(mainCat, ignoreCase = true)
+                else -> book.mainCategory.equals(filters.mainCategory, ignoreCase = true)
             }
-            val matchSub = if (subCat.contains("All", ignoreCase = true) || mainCat == AppConstants.CAT_FREE) true 
-                           else book.category.equals(subCat, ignoreCase = true)
-            val matchQuery = if (query.isEmpty()) true 
-                             else book.title.contains(query, ignoreCase = true) || 
-                                  book.author.contains(query, ignoreCase = true) ||
-                                  book.category.contains(query, ignoreCase = true)
+            val matchSub = if (filters.subCategory.contains("All", ignoreCase = true) || filters.mainCategory == AppConstants.CAT_FREE) true 
+                           else book.category.equals(filters.subCategory, ignoreCase = true)
+            val matchQuery = if (filters.searchQuery.isEmpty()) true 
+                             else book.title.contains(filters.searchQuery, ignoreCase = true) || 
+                                  book.author.contains(filters.searchQuery, ignoreCase = true) ||
+                                  book.category.contains(filters.searchQuery, ignoreCase = true)
             matchMain && matchSub && matchQuery
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val suggestions: StateFlow<List<Book>> = combine(allBooks, _searchQuery) { books, query ->
-        if (query.length < 2) emptyList()
-        else books.filter { 
-            it.title.contains(query, ignoreCase = true) || it.author.contains(query, ignoreCase = true)
+        val suggestions = if (filters.searchQuery.length < 2) emptyList()
+        else allBooks.filter { 
+            it.title.contains(filters.searchQuery, ignoreCase = true) || it.author.contains(filters.searchQuery, ignoreCase = true)
         }.take(5)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+        HomeUiState(
+            allBooks = allBooks,
+            filteredBooks = filtered,
+            wishlistIds = wishlist.toSet(),
+            purchasedIds = purchased.toSet(),
+            selectedMainCategory = filters.mainCategory,
+            selectedSubCategory = filters.subCategory,
+            searchQuery = filters.searchQuery,
+            isSearchVisible = filters.isSearchVisible,
+            suggestions = suggestions,
+            recentSearches = searches,
+            isLoading = false,
+            error = null,
+            bookToRemove = filters.bookToRemove,
+            walletHistory = wallet,
+            showWalletHistory = filters.showWalletHistory
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState(isLoading = true))
 
     fun selectMainCategory(category: String) {
-        _selectedMainCategory.value = category
-        _selectedSubCategory.value = AppConstants.getDefaultSubcategory(category)
-        _isSearchVisible.value = false
+        _filterSettings.update { 
+            it.copy(
+                mainCategory = category,
+                subCategory = AppConstants.getDefaultSubcategory(category),
+                isSearchVisible = false,
+                searchQuery = ""
+            )
+        }
     }
 
     fun selectSubCategory(category: String) {
-        _selectedSubCategory.value = category
-        _isSearchVisible.value = false
+        _filterSettings.update { it.copy(subCategory = category, isSearchVisible = false) }
     }
 
     fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
+        _filterSettings.update { it.copy(searchQuery = query) }
     }
 
     fun saveSearchQuery(query: String) {
@@ -112,12 +126,20 @@ class HomeViewModel(
     }
 
     fun setSearchVisible(visible: Boolean) {
-        _isSearchVisible.value = visible
-        if (!visible) _searchQuery.value = ""
+        _filterSettings.update { 
+            it.copy(
+                isSearchVisible = visible,
+                searchQuery = if (!visible) "" else it.searchQuery
+            )
+        }
     }
 
     fun setBookToRemove(book: Book?) {
-        _bookToRemove.value = book
+        _filterSettings.update { it.copy(bookToRemove = book) }
+    }
+
+    fun setWalletHistoryVisible(visible: Boolean) {
+        _filterSettings.update { it.copy(showWalletHistory = visible) }
     }
 
     fun toggleWishlist(book: Book, isLiked: Boolean, onComplete: (String) -> Unit) {
@@ -138,5 +160,33 @@ class HomeViewModel(
             userDao.deletePurchase(userId, book.id)
             onComplete(AppConstants.MSG_REMOVED_LIBRARY)
         }
+    }
+
+    fun refresh() {
+        _refreshTrigger.value += 1
+    }
+}
+
+private data class FilterSettings(
+    val mainCategory: String = AppConstants.CAT_ALL,
+    val subCategory: String = "All Genres",
+    val searchQuery: String = "",
+    val isSearchVisible: Boolean = false,
+    val bookToRemove: Book? = null,
+    val showWalletHistory: Boolean = false
+)
+
+class HomeViewModelFactory(
+    private val repository: BookRepository,
+    private val userDao: UserDao,
+    private val userId: String,
+    private val initialCategory: String? = null
+) : androidx.lifecycle.ViewModelProvider.Factory {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return HomeViewModel(repository, userDao, userId, initialCategory) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

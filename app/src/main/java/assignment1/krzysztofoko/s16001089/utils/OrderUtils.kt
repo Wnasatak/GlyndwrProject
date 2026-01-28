@@ -22,4 +22,13 @@ object OrderUtils {
         val randomSuffix = UUID.randomUUID().toString().take(4).uppercase()
         return "INV-$timestamp-$randomSuffix"
     }
+
+    /**
+     * Generates a longer order number for purchased items.
+     */
+    fun generateDetailedOrderNumber(): String {
+        val datePart = java.text.SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+        val randomPart = (100000..999999).random()
+        return "ORD-$datePart-$randomPart"
+    }
 }

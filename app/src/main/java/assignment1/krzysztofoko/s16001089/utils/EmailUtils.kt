@@ -2,6 +2,7 @@ package assignment1.krzysztofoko.s16001089.utils
 
 import android.content.Context
 import android.util.Log
+import assignment1.krzysztofoko.s16001089.AppConstants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Properties
@@ -46,29 +47,34 @@ object EmailUtils {
 
         try {
             val message = MimeMessage(session).apply {
-                setFrom(InternetAddress(SMTP_USER, "Glyndwr University"))
+                setFrom(InternetAddress(SMTP_USER, AppConstants.INSTITUTION))
                 addRecipient(Message.RecipientType.TO, InternetAddress(recipientEmail))
                 this.subject = subject
             }
 
             val multipart = MimeMultipart("related")
+            
+            // HTML Part
             val htmlPart = MimeBodyPart()
             htmlPart.setContent(htmlBody, "text/html; charset=utf-8")
             multipart.addBodyPart(htmlPart)
 
-            // Logo part - only add if context is available
+            // Logo part
             if (context != null) {
-                val imagePart = MimeBodyPart()
                 try {
-                    context.assets.open("images/media/GlyndwrUniversity.jpg").use { inputStream ->
-                        val dataSource: DataSource = ByteArrayDataSource(inputStream.readBytes(), "image/jpeg")
+                    val logoPath = "images/media/GlyndwrUniversity.jpg"
+                    context.assets.open(logoPath).use { inputStream ->
+                        val bytes = inputStream.readBytes()
+                        val dataSource: DataSource = ByteArrayDataSource(bytes, "image/jpeg")
+                        val imagePart = MimeBodyPart()
                         imagePart.dataHandler = DataHandler(dataSource)
                         imagePart.setHeader("Content-ID", "<logo>")
                         imagePart.disposition = MimeBodyPart.INLINE
+                        imagePart.fileName = "logo.jpg"
                         multipart.addBodyPart(imagePart)
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Could not load logo: ${e.message}")
+                    Log.e(TAG, "Logo error: ${e.message}")
                 }
             }
 
@@ -76,7 +82,7 @@ object EmailUtils {
             Transport.send(message)
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to send email: ${e.message}")
+            Log.e(TAG, "Email failed: ${e.message}")
             false
         }
     }
@@ -86,7 +92,7 @@ object EmailUtils {
     }
 
     suspend fun sendWelcomeEmail(context: Context?, recipientEmail: String, userName: String): Boolean {
-        return sendBaseEmail(context, recipientEmail, "Welcome to Glyndwr University!", EmailTemplate.getRegistrationHtml(userName))
+        return sendBaseEmail(context, recipientEmail, "Welcome to ${AppConstants.INSTITUTION}!", EmailTemplate.getRegistrationHtml(userName))
     }
 
     suspend fun sendPasswordResetEmail(context: Context?, recipientEmail: String): Boolean {
@@ -99,13 +105,19 @@ object EmailUtils {
         userName: String, 
         itemTitle: String, 
         orderRef: String, 
-        price: String
+        price: String,
+        category: String,
+        details: Map<String, String> = emptyMap()
     ): Boolean {
+        val isFree = price.contains("FREE", ignoreCase = true)
+        val isCourse = category == AppConstants.CAT_COURSES
+        val subjectPrefix = if (isCourse) "Enrollment Confirmed" else if (isFree) "Collection Confirmed" else "Order Confirmation"
+        
         return sendBaseEmail(
             context, 
             recipientEmail, 
-            "Order Confirmation: $orderRef", 
-            EmailTemplate.getPurchaseHtml(userName, itemTitle, orderRef, price)
+            "$subjectPrefix: $orderRef", 
+            EmailTemplate.getPurchaseHtml(userName, itemTitle, orderRef, price, category, details)
         )
     }
 }

@@ -89,13 +89,24 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
         isLoading = true
         auth.signInWithEmailAndPassword(trimmedEmail, password)
             .addOnSuccessListener { res ->
+                val user = res.user
                 loginAttempts = 0
-                if (res.user?.isEmailVerified == true) {
-                    pendingAuthResult = "" to null
-                    trigger2FA(context, trimmedEmail, onCodeSent)
+                if (user?.isEmailVerified == true) {
+                    viewModelScope.launch {
+                        val existing = db.userDao().getUserById(user.uid)
+                        val userData = existing ?: UserLocal(
+                            id = user.uid,
+                            name = user.displayName ?: "Student",
+                            email = user.email ?: trimmedEmail,
+                            balance = 1000.0,
+                            role = "student"
+                        )
+                        pendingAuthResult = "" to userData
+                        trigger2FA(context, trimmedEmail, onCodeSent)
+                    }
                 } else {
                     isVerifyingEmail = true
-                    res.user?.sendEmailVerification()
+                    user?.sendEmailVerification()
                     isLoading = false
                 }
             }

@@ -28,9 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.R
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
-import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
-import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
-import assignment1.krzysztofoko.s16001089.ui.components.rememberGlowAnimation
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -52,13 +50,14 @@ fun AuthScreen(
     val viewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(db))
     val scope = rememberCoroutineScope()
     
-    // UI-only animations stay in the Composable
-    val (glowScale, glowAlpha) = rememberGlowAnimation()
+    // Fixed: Get individual values from Pair to avoid ambiguity in destructuring
+    val glowAnim = rememberGlowAnimation()
+    val glowScale = glowAnim.first
+    val glowAlpha = glowAnim.second
 
-    // Auto-redirect effect: Navigates to home after 10 seconds of showing the success screen
     LaunchedEffect(viewModel.showSuccessPopup) {
         if (viewModel.showSuccessPopup) {
-            delay(10000) // Wait for 10 seconds
+            delay(10000)
             if (viewModel.showSuccessPopup) {
                 viewModel.showSuccessPopup = false
                 onAuthSuccess()

@@ -10,9 +10,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -31,12 +30,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
-import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
-import assignment1.krzysztofoko.s16001089.ui.components.InfoCard
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import coil.compose.AsyncImage
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,13 +43,6 @@ fun AboutScreen(
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit
 ) {
-    var startAnimation by remember { mutableStateOf(false) }
-    val initialFrameAlpha by animateFloatAsState(
-        targetValue = if (startAnimation) 0f else 1f,
-        animationSpec = tween(durationMillis = 3000, easing = LinearOutSlowInEasing),
-        label = "initialFrameAlpha"
-    )
-
     val logoRotation = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         logoRotation.animateTo(
@@ -62,34 +51,11 @@ fun AboutScreen(
         )
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "glow")
-    
-    // Pulsing circle animation
-    val glowScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.4f, 
-        animationSpec = infiniteRepeatable(
-            animation = tween(3500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowScale"
-    )
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.6f, 
-        animationSpec = infiniteRepeatable(
-            animation = tween(3500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
+    val glowAnim = rememberGlowAnimation()
+    val glowScale = glowAnim.first
+    val glowAlpha = glowAnim.second
 
     val accentColor = MaterialTheme.colorScheme.primary
-
-    LaunchedEffect(Unit) {
-        delay(1000) 
-        startAnimation = true
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
@@ -148,12 +114,12 @@ fun AboutScreen(
                         shadowElevation = 8.dp,
                         border = BorderStroke(
                             width = 4.dp, 
-                            color = accentColor.copy(alpha = maxOf(initialFrameAlpha, glowAlpha))
+                            color = accentColor.copy(alpha = glowAlpha)
                         )
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             AsyncImage(
-                                model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
+                                model = formatAssetUrl("images/media/GlyndwrUniversity.jpg"),
                                 contentDescription = "Glyndŵr Logo",
                                 modifier = Modifier
                                     .size(100.dp)
@@ -188,7 +154,7 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 InfoCard(
-                    icon = Icons.Default.Assignment,
+                    icon = Icons.AutoMirrored.Filled.Assignment,
                     title = "PROJECT INFO",
                     content = AppConstants.PROJECT_INFO,
                     contentStyle = MaterialTheme.typography.bodyMedium,
@@ -207,7 +173,7 @@ fun AboutScreen(
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 ) {
-                    Icon(Icons.Default.HelpOutline, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(AppConstants.TITLE_HOW_TO_USE, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                 }
@@ -226,6 +192,7 @@ fun AboutScreen(
 
                 Spacer(modifier = Modifier.height(48.dp))
 
+                @Suppress("DEPRECATION")
                 Text(
                     text = "Version ${AppConstants.VERSION_NAME}",
                     style = MaterialTheme.typography.titleSmall,

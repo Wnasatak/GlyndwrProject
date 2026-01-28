@@ -34,7 +34,7 @@ class MainViewModel(
             if (user != null) db.userDao().getUserFlow(user.uid)
             else flowOf(null)
         }
-        .flowOn(Dispatchers.IO) // Optimize: Run DB query on IO thread
+        .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     // Data State
@@ -59,6 +59,15 @@ class MainViewModel(
     .flowOn(Dispatchers.IO)
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    // Wallet History State (Global)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val walletHistory: StateFlow<List<WalletTransaction>> = _currentUser.flatMapLatest { user ->
+        if (user != null) db.userDao().getWalletHistory(user.uid)
+        else flowOf(emptyList())
+    }
+    .flowOn(Dispatchers.IO)
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Player State
     var currentPlayingBook by mutableStateOf<Book?>(null)
         private set
@@ -70,6 +79,7 @@ class MainViewModel(
     // UI State
     var showLogoutConfirm by mutableStateOf(false)
     var showSignedOutPopup by mutableStateOf(false)
+    var showWalletHistory by mutableStateOf(false)
 
     private val authListener = FirebaseAuth.AuthStateListener { 
         _currentUser.value = it.currentUser 
@@ -77,8 +87,6 @@ class MainViewModel(
 
     init {
         auth.addAuthStateListener(authListener)
-        
-        // Initial load
         refreshData()
     }
 
@@ -87,10 +95,7 @@ class MainViewModel(
             _isDataLoading.value = true
             _loadError.value = null
             try {
-                // Optimize: Only seed if necessary (handled inside seedDatabase now)
                 seedDatabase(db)
-                
-                // Fetch and cache data efficiently
                 repository.getAllCombinedData().collect { combined ->
                     _allBooks.value = combined ?: emptyList()
                     _isDataLoading.value = false

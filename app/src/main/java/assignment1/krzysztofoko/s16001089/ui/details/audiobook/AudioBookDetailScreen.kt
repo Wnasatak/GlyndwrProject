@@ -27,6 +27,7 @@ import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -53,6 +54,7 @@ fun AudioBookDetailScreen(
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     val book by viewModel.book.collectAsState()
     val loading by viewModel.loading.collectAsState()
@@ -63,6 +65,8 @@ fun AudioBookDetailScreen(
     
     var showOrderFlow by remember { mutableStateOf(false) }
     var showRemoveConfirmation by remember { mutableStateOf(false) }
+    var showAddConfirm by remember { mutableStateOf(false) }
+    var isProcessingAddition by remember { mutableStateOf(false) }
 
     val primaryColor = MaterialTheme.colorScheme.primary
 
@@ -98,6 +102,7 @@ fun AudioBookDetailScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
                         Spacer(Modifier.height(16.dp)); Text(AppConstants.MSG_AUDIOBOOK_NOT_FOUND)
+                        @Suppress("DEPRECATION")
                         TextButton(onClick = onBack) { Text(AppConstants.BTN_GO_BACK) }
                     }
                 }
@@ -127,7 +132,7 @@ fun AudioBookDetailScreen(
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text(text = currentBook.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
                                     Text(text = "${AppConstants.TEXT_NARRATED_BY} ${currentBook.author}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                                    Spacer(modifier = Modifier.height(16.dp)); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { AssistChip(onClick = {}, label = { Text(currentBook.category) }); AssistChip(onClick = {}, label = { Text(AppConstants.TEXT_AUDIO_CONTENT) }) }
+                                    Spacer(modifier = Modifier.height(16.dp)); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { @Suppress("DEPRECATION") AssistChip(onClick = {}, label = { Text(currentBook.category) }); @Suppress("DEPRECATION") AssistChip(onClick = {}, label = { Text(AppConstants.TEXT_AUDIO_CONTENT) }) }
                                     Spacer(modifier = Modifier.height(24.dp)); Text(text = AppConstants.SECTION_ABOUT_AUDIO, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(8.dp)); Text(text = currentBook.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp)
                                     Spacer(modifier = Modifier.height(32.dp))
@@ -172,11 +177,7 @@ fun AudioBookDetailScreen(
                                         } else {
                                             if (currentBook.price == 0.0) {
                                                 Button(
-                                                    onClick = {
-                                                        viewModel.addFreePurchase { msg ->
-                                                            scope.launch { snackbarHostState.showSnackbar(msg) }
-                                                        }
-                                                    },
+                                                    onClick = { showAddConfirm = true },
                                                     modifier = Modifier.fillMaxWidth().height(56.dp),
                                                     shape = RoundedCornerShape(16.dp)
                                                 ) {
@@ -228,9 +229,11 @@ fun AudioBookDetailScreen(
                 user = localUser,
                 onDismiss = { showOrderFlow = false },
                 onEditProfile = { showOrderFlow = false; onNavigateToProfile() },
-                onComplete = { 
-                    showOrderFlow = false
-                    scope.launch { snackbarHostState.showSnackbar(AppConstants.MSG_PURCHASE_SUCCESS) }
+                onComplete = { finalPrice, orderRef -> 
+                    viewModel.handlePurchaseComplete(context, finalPrice, orderRef) { msg ->
+                        showOrderFlow = false
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                    }
                 }
             )
         }
@@ -245,6 +248,31 @@ fun AudioBookDetailScreen(
                     scope.launch { snackbarHostState.showSnackbar(msg) }
                 }
             }
+        )
+
+        AppPopups.AddToLibraryConfirmation(
+            show = showAddConfirm,
+            itemTitle = book?.title ?: "",
+            category = book?.mainCategory ?: AppConstants.CAT_AUDIOBOOKS,
+            isAudioBook = true,
+            onDismiss = { showAddConfirm = false },
+            onConfirm = {
+                showAddConfirm = false
+                isProcessingAddition = true
+                scope.launch {
+                    delay(2000)
+                    viewModel.addFreePurchase(context) { msg ->
+                        isProcessingAddition = false
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                    }
+                }
+            }
+        )
+
+        AppPopups.AddingToLibraryLoading(
+            show = isProcessingAddition,
+            category = book?.mainCategory ?: AppConstants.CAT_AUDIOBOOKS,
+            isAudioBook = true
         )
     }
 }

@@ -14,9 +14,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ReviewInteraction::class, Invoice::class, NotificationLocal::class, 
         SearchHistoryItem::class, CourseInstallment::class, ModuleContent::class, 
         Assignment::class, AssignmentSubmission::class, Grade::class, LiveSession::class, 
-        ClassroomMessage::class, TutorProfile::class
+        ClassroomMessage::class, TutorProfile::class, WalletTransaction::class
     ], 
-    version = 13, 
+    version = 16, 
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -43,6 +43,9 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_10_11 = object : Migration(10, 11) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE users_local ADD COLUMN phoneNumber TEXT DEFAULT NULL"); db.execSQL("CREATE TABLE IF NOT EXISTS `search_history` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `userId` TEXT NOT NULL, `query` TEXT NOT NULL, `timestamp` INTEGER NOT NULL)"); db.execSQL("CREATE TABLE IF NOT EXISTS `course_installments` (`userId` TEXT NOT NULL, `courseId` TEXT NOT NULL, `modulesPaid` INTEGER NOT NULL DEFAULT 1, `totalModules` INTEGER NOT NULL DEFAULT 4, `isFullyPaid` INTEGER NOT NULL DEFAULT 0, `lastPaymentDate` INTEGER NOT NULL, PRIMARY KEY(`userId`, `courseId`))") } }
         private val MIGRATION_11_12 = object : Migration(11, 12) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE IF NOT EXISTS `classroom_modules` (`id` TEXT NOT NULL, `courseId` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `contentType` TEXT NOT NULL, `contentUrl` TEXT NOT NULL, `order` INTEGER NOT NULL, PRIMARY KEY(`id`))"); db.execSQL("CREATE TABLE IF NOT EXISTS `assignments` (`id` TEXT NOT NULL, `courseId` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `dueDate` INTEGER NOT NULL, `status` TEXT NOT NULL, PRIMARY KEY(`id`))"); db.execSQL("CREATE TABLE IF NOT EXISTS `grades` (`id` TEXT NOT NULL, `userId` TEXT NOT NULL, `courseId` TEXT NOT NULL, `assignmentId` TEXT NOT NULL, `score` REAL NOT NULL, `feedback` TEXT, `gradedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))"); db.execSQL("CREATE TABLE IF NOT EXISTS `live_sessions` (`id` TEXT NOT NULL, `courseId` TEXT NOT NULL, `tutorId` TEXT NOT NULL DEFAULT '', `tutorName` TEXT NOT NULL, `startTime` INTEGER NOT NULL, `streamUrl` TEXT NOT NULL, `isActive` INTEGER NOT NULL, PRIMARY KEY(`id`))") } }
         private val MIGRATION_12_13 = object : Migration(12, 13) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE IF NOT EXISTS `assignment_submissions` (`id` TEXT NOT NULL, `assignmentId` TEXT NOT NULL, `userId` TEXT NOT NULL, `content` TEXT NOT NULL, `submittedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))"); db.execSQL("CREATE TABLE IF NOT EXISTS `classroom_messages` (`id` TEXT NOT NULL, `courseId` TEXT NOT NULL, `senderId` TEXT NOT NULL, `receiverId` TEXT NOT NULL, `message` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `isRead` INTEGER NOT NULL, PRIMARY KEY(`id`))"); db.execSQL("CREATE TABLE IF NOT EXISTS `tutor_profiles` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `email` TEXT NOT NULL, `photoUrl` TEXT, `department` TEXT NOT NULL, `officeHours` TEXT NOT NULL, `bio` TEXT NOT NULL, PRIMARY KEY(`id`))") } }
+        private val MIGRATION_13_14 = object : Migration(13, 14) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE IF NOT EXISTS `wallet_history` (`id` TEXT NOT NULL, `userId` TEXT NOT NULL, `type` TEXT NOT NULL, `amount` REAL NOT NULL, `timestamp` INTEGER NOT NULL, `paymentMethod` TEXT NOT NULL, `description` TEXT NOT NULL, `orderReference` TEXT, PRIMARY KEY(`id`))") } }
+        private val MIGRATION_14_15 = object : Migration(14, 15) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE wallet_history ADD COLUMN productId TEXT DEFAULT NULL") } }
+        private val MIGRATION_15_16 = object : Migration(15, 16) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE wallet_history ADD COLUMN purchaseId TEXT DEFAULT NULL") } }
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -51,11 +54,12 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "glyndwr_database.db"
                 )
-                .createFromAsset("database/glyndwr_database.db") // Re-enabled asset loading
+                .createFromAsset("database/glyndwr_database.db")
                 .addMigrations(
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, 
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, 
-                    MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13
+                    MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+                    MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16
                 )
                 .fallbackToDestructiveMigration()
                 .build()

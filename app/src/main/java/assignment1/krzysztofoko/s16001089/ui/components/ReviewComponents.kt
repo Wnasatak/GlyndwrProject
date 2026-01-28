@@ -22,9 +22,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.ReviewLocal
 import assignment1.krzysztofoko.s16001089.data.UserLocal
+import assignment1.krzysztofoko.s16001089.ui.theme.RatingYellow
 import kotlinx.coroutines.launch
 
 @Composable
@@ -77,7 +79,7 @@ fun ReviewSection(
                                 Icon(
                                     imageVector = if (index < userRating) Icons.Default.Star else Icons.Default.StarBorder,
                                     contentDescription = null,
-                                    tint = if (index < userRating) Color(0xFFFFB300) else Color.Gray
+                                    tint = if (index < userRating) RatingYellow else Color.Gray
                                 )
                             }
                         }
@@ -258,7 +260,7 @@ fun ReviewItem(
                                             imageVector = if (index < review.rating) Icons.Default.Star else Icons.Default.StarBorder,
                                             contentDescription = null,
                                             modifier = Modifier.size(14.dp),
-                                            tint = if (index < review.rating) Color(0xFFFFB300) else Color.Gray
+                                            tint = if (index < review.rating) RatingYellow else Color.Gray
                                         )
                                     }
                                 }

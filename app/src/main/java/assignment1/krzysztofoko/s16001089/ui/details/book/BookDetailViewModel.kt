@@ -1,10 +1,13 @@
 package assignment1.krzysztofoko.s16001089.ui.details.book
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
+import assignment1.krzysztofoko.s16001089.utils.EmailUtils
 import assignment1.krzysztofoko.s16001089.utils.OrderUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
@@ -72,14 +75,15 @@ class BookDetailViewModel(
         }
     }
 
-    fun addFreePurchase(onComplete: (String) -> Unit) {
+    fun addFreePurchase(context: Context?, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             if (userId.isEmpty()) return@launch
             val currentBook = _book.value ?: return@launch
             val orderConf = OrderUtils.generateOrderReference()
             val purchaseId = UUID.randomUUID().toString()
+            
+            val user = userDao.getUserById(userId)
 
-            // Save purchase record
             userDao.addPurchase(PurchaseItem(
                 purchaseId = purchaseId,
                 userId = userId, 
@@ -94,7 +98,6 @@ class BookDetailViewModel(
                 orderConfirmation = orderConf
             ))
 
-            // Trigger internal notification
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
                 userId = userId,
@@ -103,10 +106,61 @@ class BookDetailViewModel(
                 message = "'${currentBook.title}' has been added to your library collection.",
                 timestamp = System.currentTimeMillis(),
                 isRead = false,
-                type = "PICKUP"
+                type = AppConstants.NOTIF_TYPE_PICKUP
             ))
 
-            onComplete("${AppConstants.MSG_ADDED_TO_LIBRARY} Ref: $orderConf")
+            if (user != null && user.email.isNotEmpty()) {
+                val bookDetails = mapOf(
+                    "Title" to currentBook.title,
+                    "Author" to currentBook.author,
+                    "Category" to currentBook.category,
+                    "Format" to "Digital eBook"
+                )
+                EmailUtils.sendPurchaseConfirmation(
+                    context = context,
+                    recipientEmail = user.email,
+                    userName = user.name,
+                    itemTitle = currentBook.title,
+                    orderRef = orderConf,
+                    price = AppConstants.LABEL_FREE,
+                    category = currentBook.mainCategory,
+                    details = bookDetails
+                )
+            }
+
+            onComplete(AppConstants.MSG_ADDED_TO_LIBRARY)
+        }
+    }
+
+    /**
+     * Completes the non-free purchase of a book and sends email confirmation.
+     */
+    fun handlePurchaseComplete(context: Context?, finalPrice: Double, orderRef: String, onComplete: (String) -> Unit) {
+        viewModelScope.launch {
+            val user = userDao.getUserById(userId)
+            val currentBook = _book.value ?: return@launch
+            
+            if (user != null && user.email.isNotEmpty()) {
+                val priceStr = "£" + String.format(Locale.US, "%.2f", finalPrice)
+                val bookDetails = mapOf(
+                    "Title" to currentBook.title,
+                    "Author" to currentBook.author,
+                    "Category" to currentBook.category,
+                    "Format" to "Digital eBook"
+                )
+                EmailUtils.sendPurchaseConfirmation(
+                    context = context,
+                    recipientEmail = user.email,
+                    userName = user.name,
+                    itemTitle = currentBook.title,
+                    orderRef = orderRef,
+                    price = priceStr,
+                    category = currentBook.mainCategory,
+                    details = bookDetails
+                )
+            }
+
+            onComplete(AppConstants.MSG_PURCHASE_SUCCESS)
         }
     }
 

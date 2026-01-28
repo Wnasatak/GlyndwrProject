@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
@@ -145,7 +146,7 @@ fun InvoiceScreen(
                             Spacer(modifier = Modifier.height(32.dp))
                             
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Column(modifier = Modifier.weight(1.1f)) {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(AppConstants.TITLE_ISSUED_TO, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     Text(currentInvoice.billingName, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text("${AppConstants.TEXT_EMAIL}: ${currentInvoice.billingEmail}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
@@ -153,10 +154,16 @@ fun InvoiceScreen(
                                         Text(currentInvoice.billingAddress, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                     }
                                 }
-                                Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(0.9f)) {
+                                Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
                                     Text(AppConstants.TITLE_INVOICE_NO, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                                    Text(currentInvoice.invoiceNumber, fontWeight = FontWeight.Bold)
-                                    Text(formattedDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray, textAlign = TextAlign.End)
+                                    Text(
+                                        text = currentInvoice.invoiceNumber, 
+                                        style = MaterialTheme.typography.bodySmall, 
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1, 
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(formattedDate, style = MaterialTheme.typography.labelSmall, color = Color.Gray, textAlign = TextAlign.End)
                                 }
                             }
                             
@@ -178,9 +185,10 @@ fun InvoiceScreen(
                                 ) {
                                     Icon(
                                         imageVector = when(currentInvoice.itemCategory) {
-                                            "Audio Books" -> Icons.Default.Headphones
-                                            "University Courses" -> Icons.Default.School
-                                            "University Gear" -> Icons.Default.Inventory
+                                            AppConstants.CAT_AUDIOBOOKS -> Icons.Default.Headphones
+                                            AppConstants.CAT_COURSES -> Icons.Default.School
+                                            AppConstants.CAT_GEAR -> Icons.Default.Inventory
+                                            AppConstants.CAT_FINANCE -> Icons.Default.AccountBalanceWallet
                                             else -> Icons.AutoMirrored.Filled.MenuBook
                                         },
                                         contentDescription = null,
@@ -209,13 +217,22 @@ fun InvoiceScreen(
                                 
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                                 
-                                InvoiceSummaryRow("${AppConstants.LABEL_TOTAL_PAID} ${AppConstants.LABEL_PAID_VIA} ${currentInvoice.paymentMethod}", "£" + String.format(Locale.US, "%.2f", pricePaid), isTotal = true)
+                                InvoiceSummaryRow(AppConstants.LABEL_TOTAL_PAID, "£" + String.format(Locale.US, "%.2f", pricePaid), isTotal = true)
+                                
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "${AppConstants.LABEL_PAID_VIA} ${currentInvoice.paymentMethod}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+                                )
+
                                 if (!currentInvoice.orderReference.isNullOrEmpty()) {
                                     Text(
                                         text = "${AppConstants.LABEL_REFERENCE}: ${currentInvoice.orderReference}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.Gray,
-                                        modifier = Modifier.padding(top = 4.dp)
+                                        modifier = Modifier.padding(top = 2.dp)
                                     )
                                 }
                             }

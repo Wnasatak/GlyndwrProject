@@ -1,11 +1,13 @@
 package assignment1.krzysztofoko.s16001089.ui.details.gear
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.utils.EmailUtils
 import assignment1.krzysztofoko.s16001089.utils.OrderUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
@@ -100,15 +102,11 @@ class GearViewModel(
         }
     }
 
-    private fun currentInvoiceTitle(gear: Gear): String {
-        return gear.title + if (selectedSize.value.isNotEmpty() && selectedSize.value != AppConstants.TEXT_DEFAULT) " (${selectedSize.value})" else ""
-    }
-
-    fun handleFreePickup(onComplete: (String) -> Unit) {
+    fun handleFreePickup(context: Context?, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             val orderConf = OrderUtils.generateOrderReference()
             val purchaseId = UUID.randomUUID().toString()
-            val user = localUser.value
+            val user = userDao.getUserById(userId)
             val currentGear = _gear.value ?: return@launch
 
             // 1. Create robust purchase record
@@ -126,9 +124,7 @@ class GearViewModel(
                 orderConfirmation = orderConf
             ))
 
-            // No invoice created for free items as requested
-
-            // 3. Trigger notification
+            // 2. Trigger notification
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
                 userId = userId,
@@ -137,21 +133,28 @@ class GearViewModel(
                 message = "Your ${currentGear.title} is ready for collection at Student Hub. Ref: $orderConf",
                 timestamp = System.currentTimeMillis(),
                 isRead = false,
-                type = "PICKUP"
+                type = AppConstants.NOTIF_TYPE_PICKUP
             ))
 
-            // 4. Send Email Confirmation
+            // 3. Send Email Confirmation
             if (user != null && user.email.isNotEmpty()) {
-                viewModelScope.launch {
-                    EmailUtils.sendPurchaseConfirmation(
-                        context = null,
-                        recipientEmail = user.email,
-                        userName = user.name,
-                        itemTitle = currentGear.title,
-                        orderRef = orderConf,
-                        price = AppConstants.LABEL_FREE
-                    )
-                }
+                val gearDetails = mapOf(
+                    "Brand" to currentGear.brand,
+                    "Size" to selectedSize.value,
+                    "Color" to selectedColor.value,
+                    "Material" to currentGear.material,
+                    "SKU" to currentGear.sku
+                )
+                EmailUtils.sendPurchaseConfirmation(
+                    context = context,
+                    recipientEmail = user.email,
+                    userName = user.name,
+                    itemTitle = currentGear.title,
+                    orderRef = orderConf,
+                    price = AppConstants.LABEL_FREE,
+                    category = currentGear.mainCategory,
+                    details = gearDetails
+                )
             }
 
             gearDao.reduceStock(gearId, 1)
@@ -161,32 +164,34 @@ class GearViewModel(
     }
 
     /**
-     * Completes the non-free purchase of gear.
-     * Note: Notification is already triggered by OrderFlowDialog (PaymentFlow.kt),
-     * so we don't trigger it again here to avoid duplicates.
+     * Completes the non-free purchase of gear and sends email confirmation.
      */
-    fun handlePurchaseComplete(qty: Int, onComplete: (String) -> Unit) {
+    fun handlePurchaseComplete(context: Context?, qty: Int, finalPrice: Double, orderRef: String, onComplete: (String) -> Unit) {
         viewModelScope.launch {
-            val user = localUser.value
+            val user = userDao.getUserById(userId)
             val currentGear = _gear.value ?: return@launch
-            val finalPrice = currentGear.price * qty * 0.9
 
-            // 4. Send Email Confirmation (Notifications handled by PaymentFlow)
+            // 1. Send Email Confirmation
             if (user != null && user.email.isNotEmpty()) {
-                val orderRecord = userDao.getPurchaseRecord(userId, gearId)
-                val orderRef = orderRecord?.orderConfirmation ?: "N/A"
-                
-                viewModelScope.launch {
-                    val priceStr = "£" + String.format(Locale.US, "%.2f", finalPrice)
-                    EmailUtils.sendPurchaseConfirmation(
-                        context = null,
-                        recipientEmail = user.email,
-                        userName = user.name,
-                        itemTitle = currentGear.title,
-                        orderRef = orderRef,
-                        price = priceStr
-                    )
-                }
+                val priceStr = "£" + String.format(Locale.US, "%.2f", finalPrice)
+                val gearDetails = mapOf(
+                    "Brand" to currentGear.brand,
+                    "Quantity" to qty.toString(),
+                    "Size" to selectedSize.value,
+                    "Color" to selectedColor.value,
+                    "Material" to currentGear.material,
+                    "SKU" to currentGear.sku
+                )
+                EmailUtils.sendPurchaseConfirmation(
+                    context = context,
+                    recipientEmail = user.email,
+                    userName = user.name,
+                    itemTitle = currentGear.title,
+                    orderRef = orderRef,
+                    price = priceStr,
+                    category = currentGear.mainCategory,
+                    details = gearDetails
+                )
             }
 
             gearDao.reduceStock(gearId, qty)

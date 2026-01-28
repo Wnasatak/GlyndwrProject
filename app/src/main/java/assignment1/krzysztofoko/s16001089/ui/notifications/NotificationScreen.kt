@@ -29,13 +29,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.NotificationLocal
 import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
 import assignment1.krzysztofoko.s16001089.ui.components.VerticalWavyBackground
+import assignment1.krzysztofoko.s16001089.ui.theme.*
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -55,12 +58,15 @@ fun NotificationScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val notifications by viewModel.notifications.collectAsState()
+    
+    // State to track IDs that are currently animating out
+    val dismissingIds = remember { mutableStateListOf<String>() }
+    
     val unreadCount = notifications.count { !it.isRead }
     
     var selectedNotification by remember { mutableStateOf<NotificationLocal?>(null) }
     var relatedBook by remember { mutableStateOf<Book?>(null) }
     
-    // Fix: skipPartiallyExpanded = true ensures the sheet opens fully immediately
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showSheet by remember { mutableStateOf(false) }
     var showRemoveConfirm by remember { mutableStateOf(false) }
@@ -76,7 +82,7 @@ fun NotificationScreen(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Notifications", fontWeight = FontWeight.Black)
+                            Text(AppConstants.TITLE_NOTIFICATIONS, fontWeight = FontWeight.Black)
                             if (unreadCount > 0) {
                                 Surface(
                                     color = MaterialTheme.colorScheme.primary,
@@ -84,7 +90,7 @@ fun NotificationScreen(
                                     modifier = Modifier.padding(top = 2.dp)
                                 ) {
                                     Text(
-                                        "$unreadCount NEW", 
+                                        "$unreadCount ${AppConstants.LABEL_NEW}", 
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                         style = MaterialTheme.typography.labelSmall, 
                                         color = MaterialTheme.colorScheme.onPrimary,
@@ -95,12 +101,26 @@ fun NotificationScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) }
                     },
                     actions = {
                         if (notifications.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.clearAll() }) {
-                                Icon(Icons.Default.DeleteSweep, "Clear All", tint = MaterialTheme.colorScheme.error)
+                            IconButton(onClick = { 
+                                scope.launch {
+                                    // Staggered exit animation for all items
+                                    val idsToClear = notifications.map { it.id }
+                                    idsToClear.forEach { id ->
+                                        if (!dismissingIds.contains(id)) {
+                                            dismissingIds.add(id)
+                                            delay(30) // Small delay between each item start
+                                        }
+                                    }
+                                    delay(400) // Wait for the last animation to finish
+                                    viewModel.clearAll()
+                                    dismissingIds.clear()
+                                }
+                            }) {
+                                Icon(Icons.Default.DeleteSweep, AppConstants.BTN_CLEAR_ALL, tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     },
@@ -109,30 +129,48 @@ fun NotificationScreen(
                     )
                 )
             }
-        ) { padding ->
+        ) { paddingValues ->
             if (notifications.isEmpty()) {
-                EmptyNotificationsView(modifier = Modifier.padding(padding))
+                EmptyNotificationsView(modifier = Modifier.padding(paddingValues))
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
+                    modifier = Modifier.fillMaxSize().padding(paddingValues),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(notifications, key = { it.id }) { notification ->
-                        NotificationItem(
-                            notification = notification,
-                            isDarkTheme = isDarkTheme,
-                            viewModel = viewModel,
-                            onDelete = { viewModel.deleteNotification(notification.id) },
-                            onClick = { 
-                                scope.launch {
-                                    relatedBook = viewModel.getRelatedBook(notification.productId)
-                                    selectedNotification = notification
-                                    showSheet = true
-                                    viewModel.markAsRead(notification.id)
-                                }
+                        val isVisible = !dismissingIds.contains(notification.id)
+
+                        // Trigger actual deletion after animation completes
+                        LaunchedEffect(isVisible) {
+                            if (!isVisible) {
+                                delay(300) // Match exit animation duration
+                                viewModel.deleteNotification(notification.id)
+                                dismissingIds.remove(notification.id)
                             }
-                        )
+                        }
+
+                        AnimatedVisibility(
+                            visible = isVisible,
+                            enter = fadeIn() + expandVertically(),
+                            exit = slideOutHorizontally(targetOffsetX = { -it }) + shrinkVertically() + fadeOut(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            NotificationItem(
+                                notification = notification,
+                                isDarkTheme = isDarkTheme,
+                                viewModel = viewModel,
+                                onDelete = { dismissingIds.add(notification.id) },
+                                onClick = { 
+                                    scope.launch {
+                                        relatedBook = viewModel.getRelatedBook(notification.productId)
+                                        selectedNotification = notification
+                                        showSheet = true
+                                        viewModel.markAsRead(notification.id)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -160,8 +198,8 @@ fun NotificationScreen(
                     ) {
                         Icon(
                             imageVector = when(selectedNotification!!.type) {
-                                "PURCHASE" -> Icons.Default.ShoppingBag
-                                "PICKUP" -> Icons.Default.Storefront
+                                AppConstants.NOTIF_TYPE_PURCHASE -> Icons.Default.ShoppingBag
+                                AppConstants.NOTIF_TYPE_PICKUP -> Icons.Default.Storefront
                                 else -> Icons.Default.Notifications
                             },
                             contentDescription = null,
@@ -199,7 +237,7 @@ fun NotificationScreen(
                     ) {
                         Icon(Icons.Default.OpenInNew, null)
                         Spacer(Modifier.width(12.dp))
-                        Text("View Product Details", fontWeight = FontWeight.Bold)
+                        Text(AppConstants.BTN_VIEW_PRODUCT_DETAILS, fontWeight = FontWeight.Bold)
                     }
                     
                     Spacer(modifier = Modifier.height(12.dp))
@@ -215,12 +253,12 @@ fun NotificationScreen(
                         ) {
                             Icon(Icons.AutoMirrored.Filled.ReceiptLong, null)
                             Spacer(Modifier.width(12.dp))
-                            Text("View Invoice", fontWeight = FontWeight.Bold)
+                            Text(AppConstants.BTN_VIEW_INVOICE, fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                     
-                    if (relatedBook != null && relatedBook!!.price <= 0 && relatedBook!!.mainCategory != "University Gear") {
+                    if (relatedBook != null && relatedBook!!.price <= 0 && relatedBook!!.mainCategory != AppConstants.CAT_GEAR) {
                         OutlinedButton(
                             onClick = { 
                                 showSheet = false
@@ -233,14 +271,14 @@ fun NotificationScreen(
                         ) {
                             Icon(Icons.Default.DeleteOutline, null)
                             Spacer(Modifier.width(12.dp))
-                            Text("Remove from Library", fontWeight = FontWeight.Bold)
+                            Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
 
                     OutlinedButton(
                         onClick = { 
-                            viewModel.deleteNotification(selectedNotification!!.id)
+                            dismissingIds.add(selectedNotification!!.id)
                             showSheet = false 
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -250,14 +288,14 @@ fun NotificationScreen(
                     ) {
                         Icon(Icons.Default.DeleteSweep, null)
                         Spacer(Modifier.width(12.dp))
-                        Text("Delete Notification", fontWeight = FontWeight.Bold)
+                        Text(AppConstants.BTN_DELETE_NOTIFICATION, fontWeight = FontWeight.Bold)
                     }
                     
                     TextButton(
                         onClick = { showSheet = false },
                         modifier = Modifier.padding(top = 8.dp)
                     ) {
-                        Text("Close", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(AppConstants.BTN_CLOSE, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -295,13 +333,13 @@ fun NotificationItem(
 
     // Determine category-specific Icon and Color
     val (categoryIcon, categoryColor) = when (relatedItem?.mainCategory) {
-        "Books" -> Icons.Default.MenuBook to Color(0xFF3F51B5)
-        "Audio Books" -> Icons.Default.Headphones to Color(0xFFE91E63)
-        "University Courses" -> Icons.Default.School to Color(0xFF009688)
-        "University Gear" -> Icons.Default.ShoppingBag to Color(0xFFFF9800)
+        AppConstants.CAT_BOOKS -> Icons.Default.MenuBook to CatBooksBlue
+        AppConstants.CAT_AUDIOBOOKS -> Icons.Default.Headphones to CatAudioBooksPink
+        AppConstants.CAT_COURSES -> Icons.Default.School to CatCoursesTeal
+        AppConstants.CAT_GEAR -> Icons.Default.ShoppingBag to CatGearOrange
         else -> when (notification.type) {
-            "PURCHASE" -> Icons.Default.ShoppingBag to Color(0xFF4CAF50)
-            "PICKUP" -> Icons.Default.Storefront to Color(0xFF2196F3)
+            AppConstants.NOTIF_TYPE_PURCHASE -> Icons.Default.ShoppingBag to SuccessGreen
+            AppConstants.NOTIF_TYPE_PICKUP -> Icons.Default.Storefront to InfoBlue
             else -> Icons.Default.Notifications to MaterialTheme.colorScheme.primary
         }
     }
@@ -401,7 +439,7 @@ fun NotificationItem(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Delete",
+                                contentDescription = AppConstants.BTN_DELETE,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                 modifier = Modifier.size(16.dp)
                             )
@@ -471,7 +509,7 @@ fun EmptyNotificationsView(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            "All caught up!",
+            AppConstants.TEXT_ALL_CAUGHT_UP,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onSurface
@@ -480,7 +518,7 @@ fun EmptyNotificationsView(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            "Your notifications inbox is currently empty. Check back later for order updates and news!",
+            AppConstants.MSG_EMPTY_NOTIFICATIONS,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center

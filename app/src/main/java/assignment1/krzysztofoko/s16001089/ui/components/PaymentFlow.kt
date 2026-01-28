@@ -39,7 +39,7 @@ fun OrderFlowDialog(
     user: UserLocal?,
     onDismiss: () -> Unit,
     onEditProfile: () -> Unit,
-    onComplete: () -> Unit
+    onComplete: (Double, String) -> Unit
 ) {
     var step by remember { mutableIntStateOf(1) }
     var selectedPlanIndex by remember { mutableIntStateOf(0) }
@@ -209,6 +209,18 @@ fun OrderFlowDialog(
                                         billingAddress = user?.address
                                     ))
 
+                                    // Record wallet transaction history WITH productId linkage
+                                    db.userDao().addWalletTransaction(WalletTransaction(
+                                        id = UUID.randomUUID().toString(),
+                                        userId = user?.id ?: "",
+                                        type = "PURCHASE",
+                                        amount = finalPrice,
+                                        paymentMethod = currentPaymentMethod,
+                                        description = "Purchase: ${book.title}",
+                                        orderReference = orderConf,
+                                        productId = book.id
+                                    ))
+
                                     // Determine dynamic notification title based on category
                                     val notificationTitle = when (book.mainCategory) {
                                         AppConstants.CAT_BOOKS -> AppConstants.NOTIF_TITLE_BOOK_PURCHASED
@@ -230,7 +242,7 @@ fun OrderFlowDialog(
                                         type = "PURCHASE"
                                     ))
 
-                                    onComplete()
+                                    onComplete(finalPrice, orderConf)
                                 }
                             }
                         },
@@ -431,9 +443,13 @@ fun Step3Payment(
                     modifier = Modifier.padding(vertical = 12.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                 )
+                
+                // For University Account, the "Final" amount is actually what's taken from the wallet
+                val displayAmount = if (currentMethod == AppConstants.METHOD_UNIVERSITY_ACCOUNT) amountFromWallet else amountToPayExternal
+                
                 DetailRow(
                     label = if (currentMethod == AppConstants.METHOD_UNIVERSITY_ACCOUNT) "${AppConstants.LABEL_FINAL} (${AppConstants.METHOD_UNIVERSITY_ACCOUNT})" else "${AppConstants.LABEL_FINAL} ($currentMethod)",
-                    value = "£" + String.format(Locale.US, "%.2f", amountToPayExternal),
+                    value = "£" + String.format(Locale.US, "%.2f", displayAmount),
                     isTotal = true
                 )
             }

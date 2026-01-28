@@ -18,15 +18,16 @@ import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
-import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 /**
  * Main Entry Point for the Student Store Application.
- * This screen manages data filtering, search, and user-item interactions.
+ * Updated to support deep-linked category filtering from the Dashboard.
  */
 @Composable
 fun HomeScreen(
+    userId: String,
+    initialCategory: String? = null, // Received from Navigation
     navController: NavController,
     isLoggedIn: Boolean,
     isLoading: Boolean,
@@ -41,25 +42,24 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(factory = HomeViewModelFactory(
         repository = BookRepository(AppDatabase.getDatabase(LocalContext.current)),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
-        userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        userId = userId,
+        initialCategory = initialCategory // Pass to ViewModel
     ))
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    
-    val selectedMainCategory by viewModel.selectedMainCategory.collectAsState()
-    val selectedSubCategory by viewModel.selectedSubCategory.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val isSearchVisible by viewModel.isSearchVisible.collectAsState()
-    val bookToRemove by viewModel.bookToRemove.collectAsState()
-    
-    val wishlistIds by viewModel.wishlistIds.collectAsState()
-    val purchasedIds by viewModel.purchasedIds.collectAsState()
-    val filteredBooks by viewModel.filteredBooks.collectAsState()
-    val suggestions by viewModel.suggestions.collectAsState()
-    val recentSearches by viewModel.recentSearches.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) viewModel.setSearchVisible(false) }) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() }, 
+                indication = null
+            ) { 
+                if (uiState.isSearchVisible) viewModel.setSearchVisible(false) 
+            }
+    ) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
@@ -67,48 +67,109 @@ fun HomeScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 HomeTopBar(
-                    isSearchVisible = isSearchVisible,
+                    isSearchVisible = uiState.isSearchVisible,
                     isLoggedIn = isLoggedIn,
                     isDarkTheme = isDarkTheme,
                     onSearchClick = { viewModel.setSearchVisible(true) },
                     onToggleTheme = { viewModel.setSearchVisible(false); onToggleTheme() },
                     onAboutClick = { viewModel.setSearchVisible(false); onAboutClick() },
-                    onAuthClick = { viewModel.setSearchVisible(false); navController.navigate("auth") },
-                    onDashboardClick = { viewModel.setSearchVisible(false); navController.navigate("dashboard") }
+                    onAuthClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_AUTH) },
+                    onDashboardClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_DASHBOARD) }
                 )
             }
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                    item { if (!isLoggedIn) PromotionBanner { viewModel.setSearchVisible(false); navController.navigate("auth") } else MemberWelcomeBanner() }
-                    item { MainCategoryFilterBar(categories = AppConstants.MainCategories, selectedCategory = selectedMainCategory) { viewModel.selectMainCategory(it) } }
-                    item { AnimatedVisibility(visible = AppConstants.SubCategoriesMap.containsKey(selectedMainCategory)) { SubCategoryFilterBar(categories = AppConstants.SubCategoriesMap[selectedMainCategory] ?: emptyList(), selectedCategory = selectedSubCategory) { viewModel.selectSubCategory(it) } } }
+                    item { 
+                        if (!isLoggedIn) {
+                            PromotionBanner { 
+                                viewModel.setSearchVisible(false)
+                                navController.navigate(AppConstants.ROUTE_AUTH) 
+                            } 
+                        } else {
+                            MemberWelcomeBanner() 
+                        }
+                    }
 
-                    if (isLoading) {
+                    if (isLoggedIn) {
+                        val enrolledPaidCourse = uiState.allBooks.find { 
+                            it.mainCategory == AppConstants.CAT_COURSES && uiState.purchasedIds.contains(it.id) && it.price > 0.0
+                        }
+                        val enrolledFreeCourses = uiState.allBooks.filter { 
+                            it.mainCategory == AppConstants.CAT_COURSES && uiState.purchasedIds.contains(it.id) && it.price <= 0.0
+                        }
+
+                        if (enrolledPaidCourse != null) {
+                            item {
+                                EnrolledCourseHeader(
+                                    course = enrolledPaidCourse,
+                                    onEnterClassroom = { courseId -> 
+                                        navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId") 
+                                    }
+                                )
+                            }
+                        }
+                        
+                        items(enrolledFreeCourses) { freeCourse ->
+                            FreeCourseHeader(
+                                course = freeCourse,
+                                onEnterClassroom = { courseId -> 
+                                    navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId") 
+                                }
+                            )
+                        }
+                    }
+                    
+                    item { 
+                        MainCategoryFilterBar(
+                            categories = AppConstants.MainCategories, 
+                            selectedCategory = uiState.selectedMainCategory
+                        ) { viewModel.selectMainCategory(it) } 
+                    }
+                    
+                    item { 
+                        AnimatedVisibility(visible = AppConstants.SubCategoriesMap.containsKey(uiState.selectedMainCategory)) { 
+                            SubCategoryFilterBar(
+                                categories = AppConstants.SubCategoriesMap[uiState.selectedMainCategory] ?: emptyList(), 
+                                selectedCategory = uiState.selectedSubCategory
+                            ) { viewModel.selectSubCategory(it) } 
+                        } 
+                    }
+
+                    if (isLoading || uiState.isLoading) {
                         item { HomeLoadingState() }
-                    } else if (error != null) {
-                        item { HomeErrorState(error = error, onRetry = onRefresh) }
+                    } else if (error != null || uiState.error != null) {
+                        item { HomeErrorState(error = error ?: uiState.error!!, onRetry = onRefresh) }
                     } else {
-                        if (filteredBooks.isEmpty()) {
+                        if (uiState.filteredBooks.isEmpty()) {
                             item { HomeEmptyState { viewModel.setSearchVisible(false) } }
                         } else {
-                            items(filteredBooks) { book ->
+                            items(uiState.filteredBooks) { book ->
                                 HomeBookItem(
                                     book = book,
                                     isLoggedIn = isLoggedIn,
-                                    isLiked = wishlistIds.contains(book.id),
-                                    isPurchased = purchasedIds.contains(book.id),
+                                    isLiked = uiState.wishlistIds.contains(book.id),
+                                    isPurchased = uiState.purchasedIds.contains(book.id),
                                     isAudioPlaying = isAudioPlaying && currentPlayingBookId == book.id,
-                                    onItemClick = { viewModel.setSearchVisible(false); navController.navigate("bookDetails/${book.id}") },
+                                    onItemClick = { 
+                                        viewModel.setSearchVisible(false)
+                                        navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") 
+                                    },
                                     onToggleWishlist = {
                                         viewModel.setSearchVisible(false)
-                                        viewModel.toggleWishlist(book, wishlistIds.contains(book.id)) { msg ->
+                                        viewModel.toggleWishlist(book, uiState.wishlistIds.contains(book.id)) { msg ->
                                             scope.launch { snackbarHostState.showSnackbar(msg) }
                                         }
                                     },
                                     onPlayAudio = { onPlayAudio(book) },
-                                    onInvoiceClick = { viewModel.setSearchVisible(false); navController.navigate("invoiceCreating/${book.id}") },
-                                    onRemoveClick = { viewModel.setSearchVisible(false); viewModel.setBookToRemove(book) }
+                                    onInvoiceClick = { 
+                                        viewModel.setSearchVisible(false)
+                                        navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/${book.id}") 
+                                    },
+                                    onRemoveClick = { 
+                                        viewModel.setSearchVisible(false)
+                                        viewModel.setBookToRemove(book) 
+                                    }
                                 )
                             }
                         }
@@ -117,15 +178,17 @@ fun HomeScreen(
                 }
 
                 HomeSearchSection(
-                    isSearchVisible = isSearchVisible, searchQuery = searchQuery, 
-                    recentSearches = recentSearches,
+                    isSearchVisible = uiState.isSearchVisible, 
+                    searchQuery = uiState.searchQuery, 
+                    recentSearches = uiState.recentSearches,
                     onQueryChange = { viewModel.updateSearchQuery(it) }, 
                     onClearHistory = { viewModel.clearRecentSearches() },
-                    onCloseClick = { viewModel.setSearchVisible(false) }, suggestions = suggestions,
+                    onCloseClick = { viewModel.setSearchVisible(false) }, 
+                    suggestions = uiState.suggestions,
                     onSuggestionClick = { book -> 
                         viewModel.saveSearchQuery(book.title)
                         viewModel.setSearchVisible(false)
-                        navController.navigate("bookDetails/${book.id}") 
+                        navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") 
                     },
                     modifier = Modifier.padding(top = paddingValues.calculateTopPadding()).zIndex(10f)
                 )
@@ -133,29 +196,15 @@ fun HomeScreen(
         }
 
         AppPopups.RemoveFromLibraryConfirmation(
-            show = bookToRemove != null,
-            bookTitle = bookToRemove?.title ?: "",
+            show = uiState.bookToRemove != null,
+            bookTitle = uiState.bookToRemove?.title ?: "",
             onDismiss = { viewModel.setBookToRemove(null) },
             onConfirm = {
-                viewModel.removePurchase(bookToRemove!!) { msg ->
+                viewModel.removePurchase(uiState.bookToRemove!!) { msg ->
                     viewModel.setBookToRemove(null)
                     scope.launch { snackbarHostState.showSnackbar(msg) }
                 }
             }
         )
-    }
-}
-
-class HomeViewModelFactory(
-    private val repository: BookRepository,
-    private val userDao: UserDao,
-    private val userId: String
-) : androidx.lifecycle.ViewModelProvider.Factory {
-    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return HomeViewModel(repository, userDao, userId) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

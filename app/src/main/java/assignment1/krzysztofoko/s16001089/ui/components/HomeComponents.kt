@@ -37,8 +37,6 @@ import coil.compose.AsyncImage
 import java.util.Locale
 import kotlin.math.abs
 
-// --- Components ---
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeTopBar(
@@ -64,7 +62,7 @@ fun HomeTopBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AsyncImage(
-                    model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
+                    model = formatAssetUrl("images/media/GlyndwrUniversity.jpg"),
                     contentDescription = "Logo",
                     modifier = Modifier
                         .size(32.dp)

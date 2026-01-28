@@ -32,6 +32,7 @@ fun TopLevelScaffold(
     currentRoute: String?,
     unreadCount: Int,
     onDashboardClick: () -> Unit,
+    onWalletClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     onLogoutClick: () -> Unit,
     content: @Composable (PaddingValues) -> Unit
@@ -90,7 +91,7 @@ fun TopLevelScaffold(
                             Surface(
                                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
                                 shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.clickable { onDashboardClick() }
+                                modifier = Modifier.clickable { onWalletClick() }
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),

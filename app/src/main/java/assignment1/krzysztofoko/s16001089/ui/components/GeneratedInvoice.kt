@@ -69,12 +69,14 @@ fun generateAndSaveInvoicePdf(
     paint.color = android.graphics.Color.GRAY
     canvas.drawText("Official University Store", 40f, 122f, paint)
 
-    // Invoice Meta (ID and Date)
+    // Invoice Meta (ID and Date) - Right aligned and more compact
     paint.textAlign = Paint.Align.RIGHT
     paint.color = android.graphics.Color.parseColor("#2D3436")
-    paint.textSize = 11f
-    canvas.drawText("Invoice No: $invoiceId", 555f, 110f, paint)
-    canvas.drawText("Date: $date", 555f, 125f, paint)
+    paint.isFakeBoldText = false
+    paint.textSize = 9f
+    canvas.drawText("INVOICE NO: $invoiceId", 555f, 110f, paint)
+    paint.color = android.graphics.Color.GRAY
+    canvas.drawText(date, 555f, 122f, paint)
 
     // Customer Info Section
     paint.textAlign = Paint.Align.LEFT
@@ -102,10 +104,10 @@ fun generateAndSaveInvoicePdf(
     canvas.drawText("Amount", 540f, 280f, paint)
 
     // Item Row
-    // Calculate actual values based on record if available (handles installments)
     val actualTotal = purchaseRecord?.let { it.amountFromWallet + it.amountPaidExternal } ?: (book.price * 0.9)
-    val actualBase = actualTotal / 0.9
-    val calculatedDiscount = actualBase * 0.1
+    val isFinance = book.mainCategory == AppConstants.CAT_FINANCE || book.id == AppConstants.ID_TOPUP
+    val actualBase = if (isFinance) actualTotal else actualTotal / 0.9
+    val calculatedDiscount = if (isFinance) 0.0 else actualBase * 0.1
     val actualBaseStr = String.format(Locale.US, "%.2f", actualBase)
 
     paint.textAlign = Paint.Align.LEFT
@@ -143,53 +145,40 @@ fun generateAndSaveInvoicePdf(
     currentY += 20f
     
     // Discount
-    paint.color = android.graphics.Color.GRAY
-    canvas.drawText("Student Discount (10%):", 460f, currentY, paint)
-    paint.color = android.graphics.Color.parseColor("#2E7D32")
-    canvas.drawText("-£${String.format(Locale.US, "%.2f", calculatedDiscount)}", 540f, currentY, paint)
-    currentY += 20f
-
-    // Wallet Usage - only show as deduction if it was a split payment
-    purchaseRecord?.let { record ->
-        if (record.amountFromWallet > 0 && record.amountPaidExternal > 0) {
-            paint.color = android.graphics.Color.GRAY
-            canvas.drawText("Wallet Balance Applied:", 460f, currentY, paint)
-            paint.color = android.graphics.Color.parseColor("#6C5CE7") // Primary-ish color
-            canvas.drawText("-£${String.format(Locale.US, "%.2f", record.amountFromWallet)}", 540f, currentY, paint)
-            currentY += 20f
-        }
+    if (calculatedDiscount > 0) {
+        paint.color = android.graphics.Color.GRAY
+        canvas.drawText("Student Discount (10%):", 460f, currentY, paint)
+        paint.color = android.graphics.Color.parseColor("#2E7D32")
+        canvas.drawText("-£${String.format(Locale.US, "%.2f", calculatedDiscount)}", 540f, currentY, paint)
+        currentY += 20f
     }
-    
-    // Total Box
+
+    // Total Box - Updated to include payment method info
     val boxStartY = currentY + 10f
     paint.color = android.graphics.Color.parseColor("#F8F9FA")
-    canvas.drawRect(350f, boxStartY, 555f, boxStartY + 40f, paint)
+    canvas.drawRect(350f, boxStartY, 555f, boxStartY + 60f, paint)
     
+    paint.textAlign = Paint.Align.RIGHT
     paint.textSize = 13f
     paint.isFakeBoldText = true
     paint.color = android.graphics.Color.parseColor("#1A1A1A")
     
-    val finalLabel: String
-    val finalAmount: Double
+    canvas.drawText("Total Paid:", 460f, boxStartY + 25f, paint)
+    canvas.drawText("£${String.format(Locale.US, "%.2f", actualTotal)}", 540f, boxStartY + 25f, paint)
     
-    if (purchaseRecord != null) {
-        if (purchaseRecord.amountFromWallet > 0 && purchaseRecord.amountPaidExternal > 0) {
-            finalLabel = "Paid via ${purchaseRecord.paymentMethod}:"
-            finalAmount = purchaseRecord.amountPaidExternal
-        } else if (purchaseRecord.paymentMethod == "University Account") {
-            finalLabel = "Paid via Account:"
-            finalAmount = purchaseRecord.amountFromWallet
-        } else {
-            finalLabel = "Paid via ${purchaseRecord.paymentMethod}:"
-            finalAmount = purchaseRecord.amountPaidExternal
-        }
-    } else {
-        finalLabel = "Total Paid:"
-        finalAmount = actualTotal
+    // Payment Method
+    paint.textSize = 10f
+    paint.isFakeBoldText = false
+    paint.color = android.graphics.Color.parseColor("#6C5CE7") // Primary Color
+    val methodText = "Paid via ${purchaseRecord?.paymentMethod ?: "University Account"}"
+    canvas.drawText(methodText, 540f, boxStartY + 42f, paint)
+    
+    // Reference
+    purchaseRecord?.orderConfirmation?.let { ref ->
+        paint.textSize = 8f
+        paint.color = android.graphics.Color.GRAY
+        canvas.drawText("Ref: $ref", 540f, boxStartY + 54f, paint)
     }
-    
-    canvas.drawText(finalLabel, 460f, boxStartY + 26f, paint)
-    canvas.drawText("£${String.format(Locale.US, "%.2f", finalAmount)}", 540f, boxStartY + 26f, paint)
 
     // Footer
     paint.textSize = 11f

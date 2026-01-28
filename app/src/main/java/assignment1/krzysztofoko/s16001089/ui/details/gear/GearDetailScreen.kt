@@ -25,6 +25,7 @@ import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,6 +50,7 @@ fun GearDetailScreen(
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     val gear by viewModel.gear.collectAsState()
     val loading by viewModel.loading.collectAsState()
@@ -66,6 +68,8 @@ fun GearDetailScreen(
     var showPickupPopup by remember { mutableStateOf(false) }
     var quickViewGear by remember { mutableStateOf<Gear?>(null) }
     var showOrderFlow by remember { mutableStateOf(false) }
+    var showAddConfirm by remember { mutableStateOf(false) }
+    var isProcessingAddition by remember { mutableStateOf(false) }
 
     val images = remember(gear) { listOfNotNull(gear?.imageUrl, gear?.secondaryImageUrl) }
 
@@ -94,6 +98,7 @@ fun GearDetailScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
                         Spacer(Modifier.height(16.dp)); Text(AppConstants.MSG_ITEM_NOT_FOUND)
+                        @Suppress("DEPRECATION")
                         TextButton(onClick = onBack) { Text(AppConstants.BTN_GO_BACK) }
                     }
                 }
@@ -148,6 +153,7 @@ fun GearDetailScreen(
                                     )
 
                                     Spacer(modifier = Modifier.height(32.dp))
+                                    @Suppress("DEPRECATION")
                                     Text(text = AppConstants.SECTION_DESCRIPTION_GEAR, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(text = currentGear.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
@@ -157,13 +163,14 @@ fun GearDetailScreen(
                                     
                                     if (similarGear.isNotEmpty()) {
                                         Spacer(modifier = Modifier.height(40.dp))
+                                        @Suppress("DEPRECATION")
                                         Text(text = AppConstants.TITLE_SIMILAR_PRODUCTS, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.height(16.dp))
                                         
-                                        SimilarProductsSlider(
-                                            products = similarGear,
-                                            onProductClick = { selectedGear ->
-                                                quickViewGear = selectedGear
+                                        UniversalProductSlider(
+                                            products = similarGear.map { it.toBook() },
+                                            onProductClick = { selectedBook ->
+                                                navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${selectedBook.id}")
                                             }
                                         )
                                     }
@@ -201,22 +208,21 @@ fun GearDetailScreen(
                     onLoginRequired = onLoginRequired,
                     onCheckout = { showOrderFlow = true },
                     onFreePickup = {
-                        viewModel.handleFreePickup { msg ->
-                            scope.launch { snackbarHostState.showSnackbar(msg) }
-                        }
+                        showAddConfirm = true
                     }
                 )
             }
         }
 
         if (showOrderFlow && gear != null) {
-            OrderFlowDialog(
+            AppPopups.OrderPurchase(
+                show = showOrderFlow,
                 book = gear!!.toBook(),
                 user = localUser,
                 onDismiss = { showOrderFlow = false },
                 onEditProfile = { showOrderFlow = false; onNavigateToProfile() },
-                onComplete = { 
-                    viewModel.handlePurchaseComplete(quantity) { msg ->
+                onComplete = { finalPrice, orderRef -> 
+                    viewModel.handlePurchaseComplete(context, quantity, finalPrice, orderRef) { msg ->
                         showOrderFlow = false
                         scope.launch { snackbarHostState.showSnackbar(msg) }
                     }
@@ -231,16 +237,27 @@ fun GearDetailScreen(
             )
         }
 
-        // SIMILAR PRODUCT QUICK VIEW
-        quickViewGear?.let { sGear ->
-            QuickViewDialog(
-                book = sGear.toBook(),
-                onDismiss = { quickViewGear = null },
-                onReadMore = { id ->
-                    quickViewGear = null
-                    navController.navigate("bookDetails/$id")
+        AppPopups.AddToLibraryConfirmation(
+            show = showAddConfirm,
+            itemTitle = gear?.title ?: "",
+            category = AppConstants.CAT_GEAR,
+            onDismiss = { showAddConfirm = false },
+            onConfirm = {
+                showAddConfirm = false
+                isProcessingAddition = true
+                scope.launch {
+                    delay(2000)
+                    viewModel.handleFreePickup(context) { msg ->
+                        isProcessingAddition = false
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                    }
                 }
-            )
-        }
+            }
+        )
+
+        AppPopups.AddingToLibraryLoading(
+            show = isProcessingAddition,
+            category = AppConstants.CAT_GEAR
+        )
     }
 }

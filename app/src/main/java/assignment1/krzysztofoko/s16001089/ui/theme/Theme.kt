@@ -31,13 +31,13 @@ private val LightColorScheme = lightColorScheme(
     tertiary = BlueTertiary,
     background = LightBg,
     surface = Color.White,
-    surfaceVariant = Color(0xFFF2F0F7),
+    surfaceVariant = LightSurfaceVariant,
     onPrimary = Color.White,
     onSecondary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    outline = Color(0xFF79747E),
-    outlineVariant = Color(0xFFCAC4D0)
+    onBackground = LightOnBackground,
+    onSurface = LightOnBackground,
+    outline = LightOutline,
+    outlineVariant = LightOutlineVariant
 )
 
 @Composable

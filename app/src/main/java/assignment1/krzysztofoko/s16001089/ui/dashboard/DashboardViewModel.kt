@@ -4,9 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
+import assignment1.krzysztofoko.s16001089.utils.OrderUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.Locale
+import java.util.*
 
 /**
  * Enhanced DashboardViewModel following professional MVVM patterns.
@@ -30,11 +31,21 @@ class DashboardViewModel(
     private val _bookToRemove = MutableStateFlow<Book?>(null)
     val bookToRemove: StateFlow<Book?> = _bookToRemove.asStateFlow()
 
+    private val _selectedCollectionFilter = MutableStateFlow("All")
+    val selectedCollectionFilter: StateFlow<String> = _selectedCollectionFilter.asStateFlow()
+
     val localUser: StateFlow<UserLocal?> = if (userId.isNotEmpty()) {
         userDao.getUserFlow(userId)
     } else {
         flowOf(null)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // Wallet transaction history
+    val walletHistory: StateFlow<List<WalletTransaction>> = if (userId.isNotEmpty()) {
+        userDao.getWalletHistory(userId)
+    } else {
+        flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Main data stream from the unified repository
     val allBooks: StateFlow<List<Book>> = repository.getAllCombinedData(userId)
@@ -71,6 +82,16 @@ class DashboardViewModel(
 
     val ownedBooks: StateFlow<List<Book>> = combine(allBooks, userDao.getPurchaseIds(userId)) { books, ids ->
         ids.mapNotNull { id -> books.find { it.id == id } }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val filteredOwnedBooks: StateFlow<List<Book>> = combine(ownedBooks, _selectedCollectionFilter) { books, filter ->
+        when (filter) {
+            "Books" -> books.filter { it.mainCategory == AppConstants.CAT_BOOKS && !it.isAudioBook }
+            "Audiobooks" -> books.filter { it.isAudioBook }
+            "Gear" -> books.filter { it.mainCategory == AppConstants.CAT_GEAR }
+            "Courses" -> books.filter { it.mainCategory == AppConstants.CAT_COURSES }
+            else -> books
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val suggestions: StateFlow<List<Book>> = combine(allBooks, _searchQuery) { books, query ->
@@ -111,11 +132,52 @@ class DashboardViewModel(
         _bookToRemove.value = book
     }
 
+    fun setCollectionFilter(filter: String) {
+        _selectedCollectionFilter.value = filter
+    }
+
     fun topUp(amount: Double, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             localUser.value?.let { user ->
                 val formattedAmount = String.format(Locale.US, "%.2f", amount)
+                val currentMethod = user.selectedPaymentMethod ?: "External Method"
+                val orderRef = OrderUtils.generateOrderReference()
+                val invoiceNum = OrderUtils.generateInvoiceNumber()
+                
+                // 1. Update user balance
                 userDao.upsertUser(user.copy(balance = user.balance + amount))
+                
+                // 2. Record wallet transaction
+                userDao.addWalletTransaction(WalletTransaction(
+                    id = UUID.randomUUID().toString(),
+                    userId = userId,
+                    type = "TOP_UP",
+                    amount = amount,
+                    paymentMethod = currentMethod,
+                    description = "Wallet Top Up",
+                    orderReference = orderRef,
+                    productId = AppConstants.ID_TOPUP // Unique identifier for top-ups
+                ))
+
+                // 3. Create Invoice for Top-Up
+                userDao.addInvoice(Invoice(
+                    invoiceNumber = invoiceNum,
+                    userId = userId,
+                    productId = AppConstants.ID_TOPUP,
+                    itemTitle = "Wallet Credit Top-Up",
+                    itemCategory = AppConstants.CAT_FINANCE,
+                    itemVariant = "Balance Increase",
+                    pricePaid = amount,
+                    discountApplied = 0.0,
+                    quantity = 1,
+                    purchasedAt = System.currentTimeMillis(),
+                    paymentMethod = currentMethod,
+                    orderReference = orderRef,
+                    billingName = user.name,
+                    billingEmail = user.email,
+                    billingAddress = user.address
+                ))
+                
                 onComplete("£$formattedAmount ${AppConstants.MSG_WALLET_TOPUP_SUCCESS}")
             }
         }
