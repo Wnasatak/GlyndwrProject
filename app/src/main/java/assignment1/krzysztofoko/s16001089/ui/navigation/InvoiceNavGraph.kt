@@ -2,7 +2,9 @@ package assignment1.krzysztofoko.s16001089.ui.navigation
 
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.components.InvoiceCreatingScreen
@@ -11,55 +13,46 @@ import assignment1.krzysztofoko.s16001089.ui.info.InvoiceScreen
 /**
  * Navigation graph dedicated to the Invoicing feature.
  * 
- * This module handles the multi-step process of checking for an existing invoice,
- * creating a new one if necessary (simulated generation), and displaying the final
- * digital receipt. It supports both standard products (Books, Gear, Courses) 
- * and special technical IDs like Wallet Top-Ups.
+ * Updated to support deep-linking via order references, ensuring that
+ * users view the specific receipt for each transaction.
  */
 fun NavGraphBuilder.invoiceNavGraph(
-    navController: NavController,       // Main navigation controller
-    allBooks: List<Book>,               // Master list of products to resolve item details
-    currentUserDisplayName: String,     // Name of the current user for billing display
-    isDarkTheme: Boolean,               // Global theme state
-    onToggleTheme: () -> Unit           // Theme toggle callback
+    navController: NavController,
+    allBooks: List<Book>,
+    currentUserDisplayName: String,
+    isDarkTheme: Boolean,
+    onToggleTheme: () -> Unit
 ) {
     /**
      * ROUTE: Invoice Creating
-     * This intermediate screen handles the "generation" logic.
-     * It ensures a record exists in the database before the user views the receipt.
+     * Now accepts an optional 'ref' query parameter.
      */
-    composable("${AppConstants.ROUTE_INVOICE_CREATING}/{bookId}") { backStackEntry ->
-        // Extract the unique identifier for the product
+    composable(
+        route = "${AppConstants.ROUTE_INVOICE_CREATING}/{bookId}?ref={ref}",
+        arguments = listOf(
+            navArgument("bookId") { type = NavType.StringType },
+            navArgument("ref") { type = NavType.StringType; nullable = true; defaultValue = null }
+        )
+    ) { backStackEntry ->
         val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
+        val orderRef = backStackEntry.arguments?.getString("ref")
         
-        /**
-         * Product Resolution Logic:
-         * 1. Check if the ID matches a special system transaction (Top-Up).
-         * 2. Otherwise, find the matching item in the global product catalog.
-         */
         val selectedBook = if (bookId == AppConstants.ID_TOPUP) {
-            Book(
-                id = AppConstants.ID_TOPUP, 
-                title = "Wallet Top-Up", 
-                mainCategory = AppConstants.CAT_FINANCE,
-                category = "Finance"
-            )
+            Book(id = AppConstants.ID_TOPUP, title = "Wallet Top-Up", mainCategory = AppConstants.CAT_FINANCE, category = "Finance")
         } else {
             allBooks.find { it.id == bookId }
         }
 
         selectedBook?.let { book ->
-            // Display the creation/syncing screen
             InvoiceCreatingScreen(
                 book = book,
                 onCreationComplete = {
-                    /**
-                     * Navigation Transition:
-                     * Once the invoice is ready in the DB, move to the final viewer.
-                     * 'popUpTo' with 'inclusive = true' removes the creating screen 
-                     * from the backstack so users don't go back to the "loading" state.
-                     */
-                    navController.navigate("${AppConstants.ROUTE_INVOICE}/$bookId") {
+                    // Carry over the reference to the final viewer
+                    val finalRoute = if (orderRef != null) "${AppConstants.ROUTE_INVOICE}/$bookId?ref=$orderRef"
+                                     else "${AppConstants.ROUTE_INVOICE}/$bookId"
+                    
+                    navController.navigate(finalRoute) {
+                        // Pop the 'creating' screen so back navigation goes to the Dashboard/History
                         popUpTo("${AppConstants.ROUTE_INVOICE_CREATING}/$bookId") { inclusive = true }
                     }
                 },
@@ -72,31 +65,32 @@ fun NavGraphBuilder.invoiceNavGraph(
 
     /**
      * ROUTE: Final Invoice Viewer
-     * Displays the official receipt with branding and a download option.
+     * Now accepts an optional 'ref' query parameter to lookup unique transactions.
      */
-    composable("${AppConstants.ROUTE_INVOICE}/{bookId}") { backStackEntry ->
+    composable(
+        route = "${AppConstants.ROUTE_INVOICE}/{bookId}?ref={ref}",
+        arguments = listOf(
+            navArgument("bookId") { type = NavType.StringType },
+            navArgument("ref") { type = NavType.StringType; nullable = true; defaultValue = null }
+        )
+    ) { backStackEntry ->
         val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
+        val orderRef = backStackEntry.arguments?.getString("ref")
         
-        // Resolve product details again for the final display
         val selectedBook = if (bookId == AppConstants.ID_TOPUP) {
-            Book(
-                id = AppConstants.ID_TOPUP, 
-                title = "Wallet Top-Up", 
-                mainCategory = AppConstants.CAT_FINANCE,
-                category = "Finance"
-            )
+            Book(id = AppConstants.ID_TOPUP, title = "Wallet Top-Up", mainCategory = AppConstants.CAT_FINANCE, category = "Finance")
         } else {
             allBooks.find { it.id == bookId }
         }
 
         selectedBook?.let { book ->
-            // Display the high-fidelity invoice screen
             InvoiceScreen(
                 book = book,
                 userName = currentUserDisplayName,
                 onBack = { navController.popBackStack() },
                 isDarkTheme = isDarkTheme,
-                onToggleTheme = onToggleTheme
+                onToggleTheme = onToggleTheme,
+                orderRef = orderRef // Pass the reference to force a specific record lookup
             )
         }
     }

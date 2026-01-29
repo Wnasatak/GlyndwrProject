@@ -189,9 +189,11 @@ fun AppNavigation(
                         mainVm.showWalletHistory = false
                         navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") 
                     },
-                    onViewInvoice = { id ->
+                    onViewInvoice = { id, ref ->
                         mainVm.showWalletHistory = false
-                        navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/$id")
+                        val route = if (ref != null) "${AppConstants.ROUTE_INVOICE_CREATING}/$id?ref=$ref"
+                                    else "${AppConstants.ROUTE_INVOICE_CREATING}/$id"
+                        navController.navigate(route)
                     },
                     onDismiss = { mainVm.showWalletHistory = false }
                 )

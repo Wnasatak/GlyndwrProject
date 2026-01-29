@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -125,11 +126,30 @@ fun ReviewSection(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             ) {
-                Column(modifier = Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.RateReview, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp), 
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.RateReview, 
+                        contentDescription = null, 
+                        modifier = Modifier.size(48.dp), 
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    )
                     Spacer(Modifier.height(16.dp))
-                    Text("No reviews yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("Be the first to share your experience!", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    Text(
+                        text = "No reviews yet", 
+                        style = MaterialTheme.typography.titleMedium, 
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "Be the first to share your experience!", 
+                        style = MaterialTheme.typography.bodyMedium, 
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         } else {

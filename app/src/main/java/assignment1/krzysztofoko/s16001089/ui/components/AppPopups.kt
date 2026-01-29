@@ -128,6 +128,28 @@ object AppPopups {
         }
     }
 
+    /**
+     * Generic authentication loading popup used for Google Sign-In and 2FA triggers.
+     */
+    @Composable
+    fun AuthLoading(show: Boolean, message: String = "Securing your session...") {
+        if (!show) return
+        Dialog(onDismissRequest = {}, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
+            Surface(modifier = Modifier.size(200.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
+                Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "authLoading")
+                    val rotation by infiniteTransition.animateFloat(initialValue = 0f, targetValue = 360f, animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Restart), label = "rotation")
+                    Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(modifier = Modifier.size(80.dp).rotate(rotation), color = MaterialTheme.colorScheme.primary, strokeWidth = 4.dp, trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f), strokeCap = StrokeCap.Round)
+                        Icon(Icons.Default.Security, null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(message, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
+                }
+            }
+        }
+    }
+
     @Composable
     fun LogoutConfirmation(onDismiss: () -> Unit, onConfirm: () -> Unit) {
         AlertDialog(onDismissRequest = onDismiss, title = { Text(AppConstants.TITLE_LOG_OFF, fontWeight = FontWeight.Bold) }, text = { Text(AppConstants.MSG_LOG_OFF_DESC) }, confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(AppConstants.BTN_LOG_OUT, fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) } })
@@ -161,18 +183,116 @@ object AppPopups {
     }
 
     @Composable
-    fun AuthSuccess(show: Boolean, onDismiss: () -> Unit) {
+    fun AuthSuccess(show: Boolean, isDarkTheme: Boolean, onDismiss: () -> Unit) {
         if (show) {
-            var timeLeft by remember { mutableIntStateOf(10) }
-            LaunchedEffect(Unit) { while (timeLeft > 0) { delay(1000); timeLeft-- }; onDismiss() }
+            val totalTime = 10000 // 10 seconds in ms
+            var timeLeftMs by remember { mutableIntStateOf(totalTime) }
+            
+            LaunchedEffect(Unit) {
+                val start = System.currentTimeMillis()
+                while (timeLeftMs > 0) {
+                    val elapsed = (System.currentTimeMillis() - start).toInt()
+                    timeLeftMs = (totalTime - elapsed).coerceAtLeast(0)
+                    delay(50)
+                }
+                onDismiss()
+            }
+
             Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    Column(modifier = Modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(120.dp), tint = Color(0xFF4CAF50))
-                        Text(AppConstants.TITLE_IDENTITY_VERIFIED, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold)
-                        Text(AppConstants.MSG_IDENTITY_VERIFIED_DESC, textAlign = TextAlign.Center)
-                        Text("${AppConstants.TEXT_REDIRECTING} $timeLeft ${AppConstants.TEXT_SECONDS}", modifier = Modifier.padding(top = 12.dp))
-                        Spacer(Modifier.height(48.dp)); Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) { Text(AppConstants.BTN_CONTINUE_HOME) }
+                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+                        // Dynamic Animated Background
+                        HorizontalWavyBackground(
+                            isDarkTheme = isDarkTheme,
+                            wave1HeightFactor = 0.3f,
+                            wave2HeightFactor = 0.4f,
+                            wave1Amplitude = 120f,
+                            wave2Amplitude = 80f
+                        )
+
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            // Circular Countdown Visual
+                            Box(contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    progress = { timeLeftMs.toFloat() / totalTime.toFloat() },
+                                    modifier = Modifier.size(160.dp),
+                                    color = Color(0xFF4CAF50),
+                                    strokeWidth = 8.dp,
+                                    trackColor = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                                    strokeCap = StrokeCap.Round
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(100.dp),
+                                    tint = Color(0xFF4CAF50)
+                                )
+                            }
+                            
+                            Spacer(Modifier.height(40.dp))
+                            
+                            Text(
+                                text = AppConstants.TITLE_IDENTITY_VERIFIED,
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            
+                            Spacer(Modifier.height(12.dp))
+                            
+                            Text(
+                                text = AppConstants.MSG_IDENTITY_VERIFIED_DESC,
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            )
+                            
+                            Spacer(Modifier.height(24.dp))
+                            
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.3f else 0.6f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${AppConstants.TEXT_REDIRECTING} ",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = "${(timeLeftMs / 1000) + 1}",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = " ${AppConstants.TEXT_SECONDS}",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(64.dp))
+                            
+                            Button(
+                                onClick = onDismiss,
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                                shape = RoundedCornerShape(16.dp),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+                            ) {
+                                Text(AppConstants.BTN_CONTINUE_HOME, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                            }
+                        }
                     }
                 }
             }

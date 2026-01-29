@@ -325,8 +325,18 @@ interface UserDao {
     @Query("SELECT * FROM invoices WHERE invoiceNumber = :invoiceNumber")
     suspend fun getInvoiceByNumber(invoiceNumber: String): Invoice?
 
-    @Query("SELECT * FROM invoices WHERE productId = :productId AND userId = :userId LIMIT 1")
+    /**
+     * Consolidate Lookup Logic:
+     * We try to match by reference first if provided, otherwise fallback to the most recent record.
+     */
+    @Query("SELECT * FROM invoices WHERE userId = :userId AND (orderReference = :orderRef OR :orderRef IS NULL) AND productId = :productId ORDER BY purchasedAt DESC LIMIT 1")
+    suspend fun getInvoiceRecord(userId: String, productId: String, orderRef: String?): Invoice?
+
+    @Query("SELECT * FROM invoices WHERE productId = :productId AND userId = :userId ORDER BY purchasedAt DESC LIMIT 1")
     suspend fun getInvoiceForProduct(userId: String, productId: String): Invoice?
+
+    @Query("SELECT * FROM invoices WHERE userId = :userId AND orderReference = :orderRef LIMIT 1")
+    suspend fun getInvoiceByReference(userId: String, orderRef: String): Invoice?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addWalletTransaction(transaction: WalletTransaction)

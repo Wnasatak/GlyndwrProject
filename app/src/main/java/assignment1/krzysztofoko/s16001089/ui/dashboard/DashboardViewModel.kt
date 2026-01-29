@@ -178,6 +178,7 @@ class DashboardViewModel(
      * 1. Updates the student's balance in the 'users_local' table.
      * 2. Logs a new 'TOP_UP' transaction in 'wallet_history'.
      * 3. Generates a formal invoice record specifically for the financial top-up.
+     * 4. Dispatches a system notification to the user's inbox.
      */
     fun topUp(amount: Double, onComplete: (String) -> Unit) {
         viewModelScope.launch {
@@ -186,6 +187,7 @@ class DashboardViewModel(
                 val currentMethod = user.selectedPaymentMethod ?: "External Method"
                 val orderRef = OrderUtils.generateOrderReference()
                 val invoiceNum = OrderUtils.generateInvoiceNumber()
+                val timestamp = System.currentTimeMillis()
                 
                 // 1. Update persistent balance
                 userDao.upsertUser(user.copy(balance = user.balance + amount))
@@ -196,6 +198,7 @@ class DashboardViewModel(
                     userId = userId,
                     type = "TOP_UP",
                     amount = amount,
+                    timestamp = timestamp,
                     paymentMethod = currentMethod,
                     description = "Wallet Top Up",
                     orderReference = orderRef,
@@ -213,12 +216,23 @@ class DashboardViewModel(
                     pricePaid = amount,
                     discountApplied = 0.0,
                     quantity = 1,
-                    purchasedAt = System.currentTimeMillis(),
+                    purchasedAt = timestamp,
                     paymentMethod = currentMethod,
                     orderReference = orderRef,
                     billingName = user.name,
                     billingEmail = user.email,
                     billingAddress = user.address
+                ))
+
+                // 4. Send Notification
+                userDao.addNotification(NotificationLocal(
+                    id = UUID.randomUUID().toString(),
+                    userId = userId,
+                    productId = AppConstants.ID_TOPUP,
+                    title = "Wallet Top-Up Successful",
+                    message = "Successfully added £$formattedAmount to your university wallet. Reference: $orderRef",
+                    timestamp = timestamp,
+                    type = "FINANCE"
                 ))
                 
                 onComplete("£$formattedAmount ${AppConstants.MSG_WALLET_TOPUP_SUCCESS}")

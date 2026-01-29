@@ -209,7 +209,7 @@ fun DashboardHeader(
 fun WalletHistorySheet(
     transactions: List<WalletTransaction>,
     onNavigateToProduct: (String) -> Unit,
-    onViewInvoice: (String) -> Unit,
+    onViewInvoice: (String, String?) -> Unit, // Updated to accept optional order reference
     onDismiss: () -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
@@ -322,7 +322,8 @@ fun WalletHistorySheet(
                                                 text = { Text("View Invoice") },
                                                 onClick = {
                                                     showItemMenu = false
-                                                    onViewInvoice(tx.productId)
+                                                    // Pass both productId and orderReference to ensure uniqueness
+                                                    onViewInvoice(tx.productId, tx.orderReference)
                                                     onDismiss()
                                                 },
                                                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }
