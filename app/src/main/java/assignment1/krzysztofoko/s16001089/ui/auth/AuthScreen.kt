@@ -39,26 +39,11 @@ import kotlinx.coroutines.launch
 /**
  * The primary entry point for User Authentication, supporting Login, Registration, 
  * Email Verification, Password Reset, and Two-Factor Authentication (2FA).
- *
- * This screen manages a complex state machine driven by [AuthViewModel]. It features:
- * 1. **Visual Effects**: Uses [HorizontalWavyBackground] and [rememberGlowAnimation] for a modern UI.
- * 2. **Authentication Flows**:
- *    - Standard Email/Password login and registration.
- *    - Google One Tap Sign-In integration.
- *    - Firebase Email Verification.
- *    - Custom SMTP-based 2FA (Identity Verification).
- * 3. **Theming**: Supports dynamic Dark/Light mode transitions.
- *
- * @param onAuthSuccess Callback triggered when the user successfully logs in and clears all verification steps.
- * @param onBack Callback for navigating back to the previous screen.
- * @param isDarkTheme Boolean state representing current system/app theme.
- * @param onToggleTheme Callback to switch between Dark and Light themes.
- * @param snackbarHostState State used to display transient feedback messages (e.g., "Code sent").
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
-    onAuthSuccess: () -> Unit,
+    onAuthSuccess: (isAdmin: Boolean) -> Unit,
     onBack: () -> Unit,
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit,
@@ -74,13 +59,16 @@ fun AuthScreen(
     val glowScale = glowAnim.first
     val glowAlpha = glowAnim.second
 
-    // Automatic navigation upon successful auth after a short delay (for showing the success popup)
+    // Detect if the pending user has admin privileges
+    val isAdmin = viewModel.pendingAuthResult?.second?.role == "admin"
+
+    // Automatic navigation upon successful auth after a short delay
     LaunchedEffect(viewModel.showSuccessPopup) {
         if (viewModel.showSuccessPopup) {
-            delay(10000) // Allow user to see the success animation
+            delay(10000)
             if (viewModel.showSuccessPopup) {
                 viewModel.showSuccessPopup = false
-                onAuthSuccess()
+                onAuthSuccess(isAdmin)
             }
         }
     }
@@ -95,7 +83,6 @@ fun AuthScreen(
             val idToken = account.idToken ?: throw IllegalStateException("ID Token missing.")
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             
-            // Delegate Firebase credential handling to the ViewModel
             viewModel.handleGoogleSignIn(credential, idToken, context) { email ->
                 scope.launch { snackbarHostState.showSnackbar("Verification code sent to $email") }
             }
@@ -109,13 +96,11 @@ fun AuthScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Aesthetic animated background
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                // Hide TopBar during final success state for a cleaner transition
                 if (!viewModel.showSuccessPopup && !viewModel.isAuthFinalized) {
                     CenterAlignedTopAppBar(
                         windowInsets = WindowInsets(0, 0, 0, 0),
@@ -133,10 +118,9 @@ fun AuthScreen(
                         },
                         navigationIcon = {
                             IconButton(onClick = {
-                                // Smart back navigation based on current auth state
                                 if (viewModel.isTwoFactorStep) { 
                                     viewModel.isTwoFactorStep = false
-                                    viewModel.signOut() // Cancel 2FA and logout
+                                    viewModel.signOut()
                                 } else if (viewModel.isResettingPassword) {
                                     viewModel.isResettingPassword = false
                                 } else onBack()
@@ -180,9 +164,7 @@ fun AuthScreen(
                     ) {
                         Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             
-                            // BRANCH 1: Two-Factor Authentication Input
                             if (viewModel.isTwoFactorStep) {
-                                // Inner loading is handled by the full-screen AuthLoading popup now
                                 Icon(Icons.Default.VpnKey, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(24.dp))
                                 Text(AppConstants.TITLE_SECURITY_VERIFICATION, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
@@ -210,7 +192,6 @@ fun AuthScreen(
                                 TextButton(onClick = { viewModel.trigger2FA(context, viewModel.email) { scope.launch { snackbarHostState.showSnackbar("New code sent") } } }) { Text(AppConstants.BTN_RESEND_CODE) }
                             } 
                             
-                            // BRANCH 2: Firebase Email Verification Instruction
                             else if (viewModel.isVerifyingEmail) {
                                 Icon(Icons.Default.MarkEmailRead, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(24.dp))
@@ -220,7 +201,6 @@ fun AuthScreen(
                                 Spacer(modifier = Modifier.height(32.dp))
                                 Button(onClick = {
                                     viewModel.isLoading = true
-                                    // Refresh user state to check if email has been verified
                                     com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.reload()?.addOnCompleteListener {
                                         if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.isEmailVerified == true) {
                                             viewModel.trigger2FA(context, viewModel.email) {
@@ -235,7 +215,6 @@ fun AuthScreen(
                                 TextButton(onClick = { viewModel.signOut(); viewModel.isVerifyingEmail = false }) { Text(AppConstants.BTN_BACK_TO_LOGIN) }
                             } 
                             
-                            // BRANCH 3: Password Reset Form
                             else if (viewModel.isResettingPassword) {
                                 Icon(Icons.Default.LockReset, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(24.dp))
@@ -247,13 +226,12 @@ fun AuthScreen(
                                 TextButton(onClick = { viewModel.isResettingPassword = false; viewModel.error = null }) { Text(AppConstants.BTN_RETURN_TO_LOGIN) }
                             } 
                             
-                            // BRANCH 4: Main Login / Sign-Up Form
                             else {
                                 AuthLogo(isLogin = viewModel.isLogin, glowScale = glowScale, glowAlpha = glowAlpha)
 
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                Text(text = if (viewModel.isLogin) AppConstants.TITLE_WELCOME_BACK else AppConstants.TITLE_STUDENT_REGISTRATION, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                                Text(text = if (viewModel.isLogin) AppConstants.TITLE_WELCOME_BACK else AppConstants.TITLE_MEMBER_REGISTRATION, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                                 Spacer(modifier = Modifier.height(32.dp))
                                 
                                 if (!viewModel.isLogin) {
@@ -264,7 +242,6 @@ fun AuthScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
                                 OutlinedTextField(value = viewModel.password, onValueChange = { viewModel.password = it; viewModel.error = null }, label = { Text("Password") }, visualTransformation = if (viewModel.passwordVisible) VisualTransformation.None else PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), trailingIcon = { IconButton(onClick = { viewModel.passwordVisible = !viewModel.passwordVisible }) { Icon(if (viewModel.passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null) } }, shape = RoundedCornerShape(12.dp))
                                 
-                                // Show "Forgot Password" link only after several failed login attempts
                                 if (viewModel.isLogin && viewModel.loginAttempts >= 3) {
                                     TextButton(onClick = { viewModel.isResettingPassword = true; viewModel.error = null }) {
                                         Text("Forgot Password?", color = MaterialTheme.colorScheme.error)
@@ -279,11 +256,10 @@ fun AuthScreen(
                                         viewModel.handleSignUp()
                                     }
                                 }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(12.dp)) {
-                                    if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White) else Text(if (viewModel.isLogin) AppConstants.BTN_SIGN_IN else AppConstants.BTN_CREATE_ACCOUNT)
+                                    Text(if (viewModel.isLogin) AppConstants.BTN_SIGN_IN else AppConstants.BTN_CREATE_ACCOUNT)
                                 }
 
                                 Spacer(modifier = Modifier.height(16.dp))
-                                // Google Authentication Entry Point
                                 OutlinedButton(
                                     onClick = {
                                         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).requestIdToken(context.getString(R.string.default_web_client_id)).requestEmail().build()
@@ -294,10 +270,9 @@ fun AuthScreen(
                                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                                 ) { Icon(Icons.Default.AccountCircle, null); Spacer(Modifier.width(12.dp)); Text(if (viewModel.isLogin) AppConstants.BTN_GOOGLE_LOGIN else AppConstants.BTN_GOOGLE_SIGNUP) }
 
-                                TextButton(onClick = { viewModel.isLogin = !viewModel.isLogin; viewModel.error = null; viewModel.loginAttempts = 0 }) { Text(if (viewModel.isLogin) "New student? Register" else "Have an account? Sign In") }
+                                TextButton(onClick = { viewModel.isLogin = !viewModel.isLogin; viewModel.error = null; viewModel.loginAttempts = 0 }) { Text(if (viewModel.isLogin) "New member? Register" else "Have an account? Sign In") }
                             }
 
-                            // Error Display
                             AnimatedVisibility(visible = viewModel.error != null) {
                                 Card(modifier = Modifier.padding(top = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f))) {
                                     Text(text = viewModel.error ?: "", modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -310,25 +285,20 @@ fun AuthScreen(
             }
         }
 
-        // --- Overlays & Popups ---
-
-        // Global loading overlay for auth transitions (Google Sign-In, 2FA Trigger)
         AppPopups.AuthLoading(show = viewModel.isLoading)
 
-        // Helper popup during demo/development to show the generated 2FA code (since SMTP might be slow/limited)
         AppPopups.AuthDemoCode(
             show = viewModel.showDemoPopup,
             code = viewModel.generated2FACode,
             onDismiss = { viewModel.showDemoPopup = false }
         )
         
-        // Final celebration popup after successful login/registration
         AppPopups.AuthSuccess(
             show = viewModel.showSuccessPopup,
             isDarkTheme = isDarkTheme,
             onDismiss = { 
                 viewModel.showSuccessPopup = false
-                onAuthSuccess() 
+                onAuthSuccess(isAdmin) 
             }
         )
     }

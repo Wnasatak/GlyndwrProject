@@ -50,7 +50,8 @@ fun OrderFlowDialog(
     val basePrice = if (book.mainCategory == AppConstants.CAT_COURSES && selectedPlanIndex == 1) book.modulePrice else book.price
     val finalPrice = basePrice * 0.9
     
-    var currentPaymentMethod by remember { 
+    // Fixed: Explicit type for currentPaymentMethod to resolve inference error at line 53
+    var currentPaymentMethod: String by remember { 
         mutableStateOf(if (initialBalance >= finalPrice) AppConstants.METHOD_UNIVERSITY_ACCOUNT else AppConstants.METHOD_PAYPAL) 
     }
     var useWalletBalance by remember { mutableStateOf(true) }
@@ -62,7 +63,8 @@ fun OrderFlowDialog(
     val userBalance = user?.balance ?: 0.0
     val isBalanceInsufficient = userBalance < finalPrice
 
-    val amountFromWallet = remember(currentPaymentMethod, useWalletBalance, userBalance, finalPrice) {
+    // Fixed: Explicit type for remember to resolve inference error
+    val amountFromWallet: Double = remember(currentPaymentMethod, useWalletBalance, userBalance, finalPrice) {
         if (currentPaymentMethod == AppConstants.METHOD_UNIVERSITY_ACCOUNT) {
             if (userBalance >= finalPrice) finalPrice else userBalance
         } else if (useWalletBalance) {
@@ -112,8 +114,10 @@ fun OrderFlowDialog(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
+                
+                // Fixed: Explicit progress Float to avoid inference issues with newer Material3 API versions
                 LinearProgressIndicator(
-                    progress = { step / 3f },
+                    progress = step / 3f,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp)
@@ -209,7 +213,6 @@ fun OrderFlowDialog(
                                         billingAddress = user?.address
                                     ))
 
-                                    // Record wallet transaction history WITH productId linkage
                                     db.userDao().addWalletTransaction(WalletTransaction(
                                         id = UUID.randomUUID().toString(),
                                         userId = user?.id ?: "",
@@ -221,7 +224,6 @@ fun OrderFlowDialog(
                                         productId = book.id
                                     ))
 
-                                    // Determine dynamic notification title based on category
                                     val notificationTitle = when (book.mainCategory) {
                                         AppConstants.CAT_BOOKS -> AppConstants.NOTIF_TITLE_BOOK_PURCHASED
                                         AppConstants.CAT_AUDIOBOOKS -> AppConstants.NOTIF_TITLE_AUDIOBOOK_PURCHASED
@@ -230,7 +232,6 @@ fun OrderFlowDialog(
                                         else -> AppConstants.NOTIF_TITLE_PRODUCT_PURCHASED
                                     }
 
-                                    // Trigger notification - CATEGORY SPECIFIC
                                     db.userDao().addNotification(NotificationLocal(
                                         id = UUID.randomUUID().toString(),
                                         userId = user?.id ?: "",
@@ -444,7 +445,6 @@ fun Step3Payment(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                 )
                 
-                // For University Account, the "Final" amount is actually what's taken from the wallet
                 val displayAmount = if (currentMethod == AppConstants.METHOD_UNIVERSITY_ACCOUNT) amountFromWallet else amountToPayExternal
                 
                 DetailRow(
@@ -484,14 +484,14 @@ fun DetailRow(label: String, value: String, isTotal: Boolean = false) {
         Text(
             text = label, 
             modifier = Modifier.weight(1f),
-            style = if(isTotal) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodySmall, 
+            style = if(isTotal) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium, 
             fontWeight = if (isTotal) FontWeight.ExtraBold else FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
         Text(
             text = value, 
-            style = if(isTotal) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodySmall, 
+            style = if(isTotal) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium, 
             fontWeight = if (isTotal) FontWeight.Black else FontWeight.Normal, 
             color = if (isTotal) MaterialTheme.colorScheme.primary else Color.Unspecified,
             textAlign = TextAlign.End,

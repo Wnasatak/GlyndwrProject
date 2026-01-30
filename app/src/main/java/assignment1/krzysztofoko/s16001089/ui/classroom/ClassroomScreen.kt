@@ -16,7 +16,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
@@ -42,7 +41,12 @@ fun ClassroomScreen(
     val grades by viewModel.grades.collectAsState()
     val activeSession by viewModel.activeSession.collectAsState()
 
-    val tabs = listOf(AppConstants.TAB_MODULES, AppConstants.TAB_ASSIGNMENTS, AppConstants.TAB_PERFORMANCE)
+    // Explicitly typing the list to avoid inference errors if constants are temporarily unresolved
+    val tabs: List<String> = listOf(
+        AppConstants.TAB_MODULES, 
+        AppConstants.TAB_ASSIGNMENTS, 
+        AppConstants.TAB_PERFORMANCE
+    )
 
     Box(modifier = Modifier.fillMaxSize()) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
@@ -168,6 +172,7 @@ fun ClassroomEmptyState(message: String) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.School, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
             Spacer(Modifier.height(16.dp))
+            @Suppress("DEPRECATION")
             Text(message, color = Color.Gray, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 32.dp))
         }
     }

@@ -27,17 +27,19 @@ fun NavGraphBuilder.authNavGraph(
      */
     composable(AppConstants.ROUTE_AUTH) {
         AuthScreen(
-            onAuthSuccess = {
+            onAuthSuccess = { isAdmin ->
                 /**
                  * POST-AUTH REDIRECTION:
-                 * Once the user is fully verified (Firebase + local DB + 2FA),
-                 * we redirect to the primary Home discovery screen.
+                 * Once the user is fully verified, we check their role.
+                 * Administrators are redirected to the Admin Panel, 
+                 * while students go to the Home discovery screen.
                  * 
                  * 'popUpTo' with 'inclusive = true' clears the entire auth stack
                  * from memory, ensuring the user cannot navigate back to the 
                  * login screen using the system back button after entering the app.
                  */
-                navController.navigate(AppConstants.ROUTE_HOME) {
+                val targetRoute = if (isAdmin) AppConstants.ROUTE_ADMIN_PANEL else AppConstants.ROUTE_HOME
+                navController.navigate(targetRoute) {
                     popUpTo(navController.graph.startDestinationId) { inclusive = true }
                 }
             },

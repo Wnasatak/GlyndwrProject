@@ -12,19 +12,11 @@ import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.utils.EmailUtils
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import kotlinx.coroutines.launch
 
 /**
  * ViewModel responsible for managing the authentication state and business logic.
- * 
- * It handles interactions with Firebase Authentication, Google Sign-In, and the local Room database.
- * The ViewModel manages a multi-step authentication process:
- * 1. Initial Login/Sign-up (Firebase)
- * 2. Email Verification (Firebase)
- * 3. Two-Factor Authentication (SMTP via EmailUtils)
- * 4. Local User Profile creation/sync (Room)
- *
- * @property db The [AppDatabase] instance used for persisting user profile information locally.
  */
 class AuthViewModel(private val db: AppDatabase) : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
@@ -54,20 +46,8 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
     
     // --- Security & Session ---
     var loginAttempts by mutableIntStateOf(0)
-    /**
-     * Holds temporary user data after Firebase success but before 2FA completion.
-     * The first part of the Pair is the ID Token (if Google), second is the Local User object.
-     */
     var pendingAuthResult by mutableStateOf<Pair<String, UserLocal?>?>(null)
 
-    /**
-     * Generates a 6-digit random code and attempts to send it to the user's email via SMTP.
-     * If successful, it moves the UI to the 2FA input step.
-     *
-     * @param context Android context for retrieving resources/strings.
-     * @param userEmail The recipient's email address.
-     * @param onCodeSent Callback invoked after the email is successfully dispatched.
-     */
     fun trigger2FA(context: Context, userEmail: String, onCodeSent: (String) -> Unit) {
         isLoading = true
         val code = (100000..999999).random().toString()
@@ -78,7 +58,7 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                 val success = EmailUtils.send2FACode(context, userEmail, code)
                 if (success) {
                     isTwoFactorStep = true
-                    showDemoPopup = true // Show the code in a popup for demo purposes (convenience)
+                    showDemoPopup = true
                     onCodeSent(userEmail)
                 } else {
                     error = "Failed to send verification code."
@@ -91,10 +71,6 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
         }
     }
 
-    /**
-     * Completes the authentication process by persisting the [UserLocal] data into the
-     * local Room database and triggering the success UI.
-     */
     fun finalizeAuth() {
         isLoading = true
         viewModelScope.launch {
@@ -113,16 +89,6 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
         }
     }
 
-    /**
-     * Handles traditional Email/Password Sign-In.
-     * - Validates input.
-     * - Authenticates with Firebase.
-     * - Checks if email is verified; if not, triggers Firebase verification email.
-     * - If verified, prepares [UserLocal] and triggers the 2FA step.
-     *
-     * @param context Android context for 2FA trigger.
-     * @param onCodeSent Callback for UI feedback.
-     */
     fun handleSignIn(context: Context, onCodeSent: (String) -> Unit) {
         val trimmedEmail = email.trim()
         if (trimmedEmail.isEmpty() || password.isEmpty()) {
@@ -137,12 +103,21 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                 if (user?.isEmailVerified == true) {
                     viewModelScope.launch {
                         val existing = db.userDao().getUserById(user.uid)
-                        val userData = existing ?: UserLocal(
+                        
+                        // FIX: Explicitly ensure the admin email gets the admin role, 
+                        // even if they were previously a student in the DB.
+                        val updatedRole = if (user.email == "prokocomp@gmail.com") "admin" else (existing?.role ?: "user")
+                        
+                        val userData = UserLocal(
                             id = user.uid,
-                            name = user.displayName ?: "Student",
+                            name = existing?.name ?: user.displayName ?: "User",
                             email = user.email ?: trimmedEmail,
-                            balance = 1000.0,
-                            role = "student"
+                            balance = existing?.balance ?: 0.0,
+                            role = updatedRole,
+                            photoUrl = existing?.photoUrl ?: user.photoUrl?.toString(),
+                            address = existing?.address,
+                            phoneNumber = existing?.phoneNumber,
+                            selectedPaymentMethod = existing?.selectedPaymentMethod
                         )
                         pendingAuthResult = "" to userData
                         trigger2FA(context, trimmedEmail, onCodeSent)
@@ -160,12 +135,6 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
             }
     }
 
-    /**
-     * Handles User Registration.
-     * - Creates a new Firebase account.
-     * - Prepares a new [UserLocal] profile with a default balance.
-     * - Sends a Firebase verification email and moves to verification UI.
-     */
     fun handleSignUp() {
         val trimmedEmail = email.trim()
         if (trimmedEmail.isEmpty() || password.isEmpty() || firstName.isEmpty()) {
@@ -181,8 +150,8 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                         id = user.uid,
                         name = firstName,
                         email = trimmedEmail,
-                        balance = 1000.0,
-                        role = "student"
+                        balance = 0.0,
+                        role = if (trimmedEmail == "prokocomp@gmail.com") "admin" else "user"
                     )
                     pendingAuthResult = "" to userData
                     user.sendEmailVerification()
@@ -190,23 +159,16 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                     isLoading = false
                 }
             }
-            .addOnFailureListener {
+            .addOnFailureListener { e ->
                 isLoading = false
-                error = it.localizedMessage
+                if (e is FirebaseAuthUserCollisionException) {
+                    error = "This email is already registered. Please sign in instead."
+                } else {
+                    error = e.localizedMessage
+                }
             }
     }
 
-    /**
-     * Handles authentication via Google credentials.
-     * - Signs in to Firebase with the provided [AuthCredential].
-     * - Synchronizes or creates the local user profile from Google profile data.
-     * - Triggers 2FA even for Google users for consistent security.
-     *
-     * @param credential Firebase AuthCredential obtained from Google Sign-In.
-     * @param idToken The Google ID Token.
-     * @param context Android context for 2FA trigger.
-     * @param onCodeSent Callback for UI feedback.
-     */
     fun handleGoogleSignIn(credential: AuthCredential, idToken: String, context: Context, onCodeSent: (String) -> Unit) {
         isLoading = true
         auth.signInWithCredential(credential)
@@ -214,21 +176,21 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                 val user = res.user!!
                 viewModelScope.launch {
                     val existing = db.userDao().getUserById(user.uid)
-                    val userData = if (existing == null) {
-                        UserLocal(
-                            id = user.uid,
-                            name = user.displayName ?: "Student",
-                            email = user.email ?: "",
-                            photoUrl = user.photoUrl?.toString(),
-                            balance = 1000.0,
-                            role = "student"
-                        )
-                    } else {
-                        existing.copy(
-                            name = user.displayName ?: existing.name,
-                            photoUrl = user.photoUrl?.toString() ?: existing.photoUrl
-                        )
-                    }
+                    
+                    // FIX: Ensure admin role for existing Google accounts too
+                    val updatedRole = if (user.email == "prokocomp@gmail.com") "admin" else (existing?.role ?: "user")
+
+                    val userData = UserLocal(
+                        id = user.uid,
+                        name = existing?.name ?: user.displayName ?: "User",
+                        email = user.email ?: "",
+                        photoUrl = existing?.photoUrl ?: user.photoUrl?.toString(),
+                        balance = existing?.balance ?: 0.0,
+                        role = updatedRole,
+                        address = existing?.address,
+                        phoneNumber = existing?.phoneNumber,
+                        selectedPaymentMethod = existing?.selectedPaymentMethod
+                    )
                     pendingAuthResult = idToken to userData
                     trigger2FA(context, user.email ?: "", onCodeSent)
                 }
@@ -239,9 +201,6 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
             }
     }
 
-    /**
-     * Triggers a Firebase password reset email to the current email address.
-     */
     fun resetPassword() {
         if (email.trim().isEmpty()) {
             error = "Email is required for password reset."
@@ -259,9 +218,6 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
             }
     }
     
-    /**
-     * Signs the user out of the Firebase session.
-     */
     fun signOut() {
         auth.signOut()
     }

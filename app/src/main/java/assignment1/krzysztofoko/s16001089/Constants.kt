@@ -3,10 +3,11 @@ package assignment1.krzysztofoko.s16001089
 import assignment1.krzysztofoko.s16001089.data.Book
 
 /**
- * Global constants used throughout the application.
- * Centralizes UI strings, navigation routes, and configuration values.
+ * Global Constants for the Glyndŵr Project.
+ * Centralizes strings and configuration to ensure consistency across the UI and logic.
  */
 object AppConstants {
+    // --- Application Branding ---
     const val VERSION_NAME = "0.8.652 Under Development"
     const val INSTITUTION = "Wrexham Glyndŵr University"
     const val DEVELOPER_NAME = "Krzysztof Oko"
@@ -14,7 +15,7 @@ object AppConstants {
     const val PROJECT_INFO = "Assignment 1 - CONL709 Mobile App Development"
     const val APP_NAME = "Glyndŵr Store"
 
-    // Unified Categories for filtering products
+    // --- Unified Categories ---
     const val CAT_COURSES = "University Courses"
     const val CAT_GEAR = "University Gear"
     const val CAT_BOOKS = "Books"
@@ -31,7 +32,7 @@ object AppConstants {
         CAT_COURSES to listOf("All Departments", "Science", "Business", "Technology")
     )
 
-    // Common Status Labels
+    // --- Common Status Labels ---
     const val LABEL_ENROLLED = "Enrolled"
     const val LABEL_PICKED_UP = "Picked Up"
     const val LABEL_PURCHASED = "Purchased"
@@ -39,19 +40,23 @@ object AppConstants {
     const val LABEL_FREE = "FREE"
     const val LABEL_PAID = "Paid"
     const val LABEL_NEW = "NEW"
+    const val LABEL_MY_COURSES = "MY COURSES"
     
-    // Auth & Profile Labels
-    const val TITLE_SIGN_IN_REQUIRED = "Sign In Required"
-    const val TITLE_ENROLLMENT_LOCKED = "Enrollment Locked"
+    // --- UI Strings: Titles ---
+    const val TITLE_MEMBER_LOGIN = "Member Login"
+    const val TITLE_REGISTRATION = "Registration"
+    const val TITLE_WELCOME_BACK = "Welcome Back"
+    const val TITLE_MEMBER_REGISTRATION = "Member Registration"
     const val TITLE_IDENTITY_VERIFICATION = "Identity Verification"
     const val TITLE_EMAIL_VERIFICATION = "Email Verification"
     const val TITLE_RESET_PASSWORD = "Reset Password"
-    const val TITLE_MEMBER_LOGIN = "Member Login"
-    const val TITLE_REGISTRATION = "Registration"
-    const val TITLE_SECURITY_VERIFICATION = "Security Verification"
     const val TITLE_CHECK_INBOX = "Check your Inbox"
     const val TITLE_ACCOUNT_RECOVERY = "Account Recovery"
-    const val TITLE_WELCOME_BACK = "Welcome Back"
+    const val TITLE_SECURITY_VERIFICATION = "Security Verification"
+    const val TITLE_DISCOVER_LIBRARY = "Discover Your Library"
+    const val TITLE_SIGN_IN_REQUIRED = "Sign In Required"
+    const val TITLE_ENROLLMENT_LOCKED = "Enrollment Locked"
+    const val TITLE_IDENTITY_VERIFIED = "Identity Verified!"
     const val TITLE_STUDENT_REGISTRATION = "Student Registration"
     const val TITLE_PROFILE_SETTINGS = "Profile Settings"
     const val TITLE_ADMIN_HUB = "Admin Hub"
@@ -73,7 +78,6 @@ object AppConstants {
     const val TITLE_LATEST_UPDATES = "Latest Updates"
     const val TITLE_WELCOME_STORE = "Welcome to Glyndŵr Store!"
     const val TITLE_NOTIFICATIONS = "Notifications"
-    const val TITLE_IDENTITY_VERIFIED = "Identity Verified!"
     const val TITLE_SIGNED_OUT = "Signed Out"
     const val TITLE_DELETE_REVIEW = "Delete Review"
     const val TITLE_SAVE_CHANGES = "Save Changes"
@@ -86,18 +90,40 @@ object AppConstants {
     const val TITLE_ADD_TO_LIBRARY = "Add to Library"
     const val TITLE_COURSE_ENROLLMENT = "Course Enrollment"
     const val TITLE_ITEM_RESERVATION = "Item Reservation"
+    const val TITLE_OFFICIAL_INVOICE = "Official Invoice"
+    const val TITLE_ISSUED_TO = "ISSUED TO"
+    const val TITLE_INVOICE_NO = "INVOICE NO"
+    const val TITLE_PURCHASED_ITEM = "PURCHASED ITEM"
+    const val TITLE_BILL_TO = "BILL TO"
+    const val TITLE_DESCRIPTION = "Description"
+    const val TITLE_AMOUNT = "Amount"
+    const val TITLE_MY_APPLICATIONS = "My Applications"
+    const val TITLE_BOOK_DETAILS = "Item Details"
+    const val TITLE_AUDIO_DETAILS = "Audiobook Details"
+    const val TITLE_COURSE_DETAILS = "Course Details"
+    const val TITLE_GEAR_DETAILS = "Gear Details"
+    const val TITLE_CLASSROOM = "Classroom"
+    const val TITLE_SIMILAR_PRODUCTS = "Similar Products"
+    const val TITLE_ORDER_REVIEW = "Order Review"
+    const val TITLE_BILLING_INFO = "Billing Info"
+    const val TITLE_PAYMENT = "Payment"
+    const val TITLE_PROCESSING = "Processing"
+    const val TITLE_CONFIRMATION_DETAILS = "Confirmation Details"
+    const val TITLE_PAYMENT_PLAN = "Select Payment Plan"
 
-    const val BTN_SIGN_IN_REGISTER = "Sign in / Register"
-    const val BTN_SIGN_IN_ENROLL = "Sign in to Enroll"
-    const val BTN_SIGN_IN_SHOP = "Sign In to Shop"
+    // --- UI Strings: Buttons ---
     const val BTN_SIGN_IN = "Sign In"
     const val BTN_CREATE_ACCOUNT = "Create Account"
     const val BTN_GOOGLE_LOGIN = "Google Login"
     const val BTN_GOOGLE_SIGNUP = "Google Sign up"
+    const val BTN_VERIFY_IDENTITY = "Verify Identity"
+    const val BTN_RESEND_CODE = "Resend Code"
+    const val BTN_VERIFICATION_DONE = "Verification Done"
+    const val BTN_BACK_TO_LOGIN = "Back to Login"
+    const val BTN_SEND_RESET_LINK = "Send Reset Link"
+    const val BTN_RETURN_TO_LOGIN = "Return to Login"
     const val BTN_LOG_OUT = "Sign Off"
     const val BTN_SAVE_PROFILE = "Save General Profile"
-
-    // Action Buttons
     const val BTN_READ_NOW = "Read Now"
     const val BTN_LISTEN_NOW = "Listen Now"
     const val BTN_ENTER_CLASSROOM = "Enter Classroom"
@@ -109,12 +135,6 @@ object AppConstants {
     const val BTN_PICKUP_FREE = "Pick it up for FREE"
     const val BTN_VIEW_INVOICE = "View Invoice"
     const val BTN_PICKUP_INFO = "Where to pickup?"
-    const val BTN_VERIFY_IDENTITY = "Verify Identity"
-    const val BTN_RESEND_CODE = "Resend Code"
-    const val BTN_VERIFICATION_DONE = "Verification Done"
-    const val BTN_BACK_TO_LOGIN = "Back to Login"
-    const val BTN_SEND_RESET_LINK = "Send Reset Link"
-    const val BTN_RETURN_TO_LOGIN = "Return to Login"
     const val BTN_DOWNLOAD_PDF = "Download PDF Invoice"
     const val BTN_GO_BACK = "Go Back"
     const val BTN_CLOSE = "Close"
@@ -138,20 +158,15 @@ object AppConstants {
     const val BTN_CONTINUE_HOME = "Continue to Home"
     const val BTN_TOP_UP = "Top Up"
     const val BTN_EXPLORE_STORE = "Explore Store"
+    const val BTN_SIGN_IN_REGISTER = "Sign in / Register"
+    const val BTN_SIGN_IN_ENROLL = "Sign in to Enroll"
+    const val BTN_SIGN_IN_SHOP = "Sign In to Shop"
     
-    // Item Details Strings
-    const val TITLE_BOOK_DETAILS = "Item Details"
-    const val TITLE_AUDIO_DETAILS = "Audiobook Details"
-    const val TITLE_COURSE_DETAILS = "Course Details"
-    const val TITLE_GEAR_DETAILS = "Gear Details"
-    const val TITLE_CLASSROOM = "Classroom"
-    const val TITLE_SIMILAR_PRODUCTS = "Similar Products"
-
+    // --- Text Content & Sections ---
     const val SECTION_ABOUT_ITEM = "About this item"
     const val SECTION_ABOUT_AUDIO = "About this audiobook"
     const val SECTION_DESCRIPTION_COURSE = "Course Description"
     const val SECTION_DESCRIPTION_GEAR = "Description"
-
     const val TEXT_BY = "by"
     const val TEXT_NARRATED_BY = "Narrated by"
     const val TEXT_DEPARTMENT = "Department"
@@ -173,31 +188,36 @@ object AppConstants {
     const val TEXT_ACCOUNT_BALANCE = "Account Balance"
     const val TEXT_ACCOUNT_BALANCE_TOPUP = "Top up your balance"
     const val TEXT_ADMIN_CONTROLS = "Admin Controls: Manage Catalog & Users"
-    const val LABEL_MY_COURSES = "MY COURSES"
-    
-    // Classroom Tabs
+    const val TEXT_DIGITAL_AUDIO = "Digital Audio"
+    const val TEXT_HARDCOPY = "Hardcopy"
+
+    // --- Classroom Tabs ---
     const val TAB_MODULES = "Modules"
     const val TAB_ASSIGNMENTS = "Assignments"
     const val TAB_PERFORMANCE = "Performance"
     
-    // Invoicing & PDF Constants
-    const val TITLE_OFFICIAL_INVOICE = "Official Invoice"
-    const val TITLE_BILL_TO = "BILL TO"
-    const val TITLE_ISSUED_TO = "ISSUED TO"
-    const val TITLE_INVOICE_NO = "INVOICE NO"
-    const val TITLE_PURCHASED_ITEM = "PURCHASED ITEM"
-    const val TITLE_DESCRIPTION = "Description"
-    const val TITLE_AMOUNT = "Amount"
-    
+    // --- Invoicing & Labels ---
     const val LABEL_SUBTOTAL = "Subtotal"
     const val LABEL_STUDENT_DISCOUNT_VAL = "Student Discount"
     const val LABEL_TOTAL_PAID = "Total Paid"
     const val LABEL_PAID_VIA = "Paid via"
     const val LABEL_REFERENCE = "Reference"
     const val LABEL_WALLET_BALANCE_APPLIED = "Wallet Balance Applied"
+    const val LABEL_WALLET_USAGE = "Wallet usage"
     const val LABEL_STORE_TAGLINE = "Official University Store"
     const val LABEL_COMPUTER_GENERATED = "This is an official computer-generated document."
+    const val LABEL_FULL_ACCESS = "Full Access"
+    const val LABEL_MODULE_ACCESS = "Module 1 Access"
+    const val LABEL_FULL_COURSE = "Full Course"
+    const val LABEL_INSTALLMENT = "Installment"
+    const val LABEL_PRICE = "Price"
+    const val LABEL_TOTAL_AMOUNT = "Total Amount"
+    const val LABEL_FULL_NAME = "Full Name"
+    const val LABEL_ORDER_TOTAL = "Order Total"
+    const val LABEL_FINAL = "Final"
+    const val LABEL_BALANCE = "Balance"
     
+    // --- System & Error Messages ---
     const val MSG_INVOICE_NOT_FOUND = "Invoice record not found."
     const val MSG_THANK_YOU_STORE = "Thank you for supporting our university store!"
     const val MSG_THANK_YOU_ACADEMIC = "Thank you for your academic purchase!"
@@ -205,15 +225,8 @@ object AppConstants {
     const val MSG_INVOICE_SAVED = "Invoice saved to Downloads"
     const val MSG_PDF_ERROR = "Error saving PDF"
     const val MSG_WALLET_TOPUP_SUCCESS = "added to your wallet!"
-
-    const val TEXT_DIGITAL_AUDIO = "Digital Audio"
-    const val TEXT_HARDCOPY = "Hardcopy"
-
-    // Splash sync messages
     const val MSG_SYNC_DATABASE = "Synchronising with database..."
     const val MSG_SYNC_COMPLETE = "Database synchronized! ✓"
-
-    // Error/Empty State Messages
     const val MSG_ITEM_NOT_FOUND = "Item details not available."
     const val MSG_AUDIOBOOK_NOT_FOUND = "Audiobook not found."
     const val MSG_COURSE_NOT_FOUND = "Course details not found."
@@ -224,8 +237,6 @@ object AppConstants {
     const val MSG_EMPTY_NOTIFICATIONS = "Your notifications inbox is currently empty. Check back later for order updates and news!"
     const val MSG_LIBRARY_EMPTY = "Your library is empty"
     const val MSG_GET_ITEMS_PROMPT = "Get books, courses or gear to see them here."
-
-    // Messages
     const val MSG_PURCHASE_SUCCESS = "Purchase successful! Item added to your library."
     const val MSG_ENROLL_SUCCESS = "Enrollment successful!"
     const val MSG_ENROLL_FREE_SUCCESS = "You have successfully enrolled in your free course!"
@@ -249,7 +260,7 @@ object AppConstants {
     const val MSG_AVATAR_UPDATE_SUCCESS = "Avatar updated!"
     const val MSG_AVATAR_UPDATE_FAILED = "Error saving image"
     const val MSG_NO_ADDRESS_YET = "No address added yet"
-    const val MSG_IDENTITY_VERIFIED_DESC = "Your security check was successful.\nYou are now fully logged in to the Glyndwr University portal."
+    const val MSG_IDENTITY_VERIFIED_DESC = "Your security check was successful.\\nYou are now fully logged in to the Glyndwr University portal."
     const val MSG_SIGNED_OUT_DESC = "You have been securely signed out. This message will close in"
     const val MSG_REMOVE_LIBRARY_DESC = "Are you sure you want to remove this item from your library? You can always add it back later if it's still available."
     const val MSG_DELETE_REVIEW_DESC = "Are you sure you want to permanently delete your review? This action cannot be undone."
@@ -258,7 +269,7 @@ object AppConstants {
     const val MSG_DEMO_MODE_DESC = "For this demonstration, your code is provided below, but please also check your email! 😊"
     const val MSG_PAID_COURSE_LIMIT = "You can only be enrolled in one paid course at a time."
 
-    // Roadmap Items
+    // --- Roadmap Items ---
     const val ROADMAP_AI_TITLE = "AI-POWERED RECOMMENDATIONS"
     const val ROADMAP_AI_DESC = "Personalized item suggestions based on your viewing and purchase history using advanced machine learning models."
     const val ROADMAP_TRACKING_TITLE = "REAL-TIME TRACKING"
@@ -270,7 +281,7 @@ object AppConstants {
     const val ROADMAP_PAYMENTS_TITLE = "EXTERNAL PAYMENTS"
     const val ROADMAP_PAYMENTS_DESC = "Integration with major regional banks and crypto-wallets to provide more flexibility in payment options beyond the University Account."
 
-    // Version Info Items
+    // --- Version Info Items ---
     const val VER_READER_TITLE = "ENHANCED PDF READER"
     const val VER_READER_DESC = "Introduced a high-performance PDF renderer with pinch-to-zoom, night mode, sepia mode, and full-screen reading capabilities."
     const val VER_FINAL_DEMO_TITLE = "VERSION 1.0.0 (FINAL DEMO)"
@@ -284,7 +295,7 @@ object AppConstants {
     const val VER_CATALOG_TITLE = "EXPANDED CATALOG"
     const val VER_CATALOG_DESC = "The store now includes University Courses, official Glyndŵr Gear, and Audio Books with student discounts automatically applied."
 
-    // Notification Titles
+    // --- Notification Metadata ---
     const val NOTIF_TITLE_BOOK_PICKED_UP = "Book Picked Up"
     const val NOTIF_TITLE_AUDIOBOOK_PICKED_UP = "Audiobook Picked Up"
     const val NOTIF_TITLE_COURSE_ENROLLED = "Course Enrollment Confirmed"
@@ -292,28 +303,10 @@ object AppConstants {
     const val NOTIF_TITLE_BOOK_PURCHASED = "Book Purchased"
     const val NOTIF_TITLE_AUDIOBOOK_PURCHASED = "Audiobook Purchased"
     const val NOTIF_TITLE_PRODUCT_PURCHASED = "Product Purchased"
+    const val NOTIF_TYPE_PURCHASE = "PURCHASE"
+    const val NOTIF_TYPE_PICKUP = "PICKUP"
 
-    // Payment Flow Labels
-    const val TITLE_ORDER_REVIEW = "Order Review"
-    const val TITLE_BILLING_INFO = "Billing Info"
-    const val TITLE_PAYMENT = "Payment"
-    const val TITLE_PROCESSING = "Processing"
-    const val TITLE_CONFIRMATION_DETAILS = "Confirmation Details"
-    const val TITLE_PAYMENT_PLAN = "Select Payment Plan"
-    
-    const val LABEL_FULL_ACCESS = "Full Access"
-    const val LABEL_MODULE_ACCESS = "Module 1 Access"
-    const val LABEL_FULL_COURSE = "Full Course"
-    const val LABEL_INSTALLMENT = "Installment"
-    const val LABEL_PRICE = "Price"
-    const val LABEL_TOTAL_AMOUNT = "Total Amount"
-    const val LABEL_FULL_NAME = "Full Name"
-    const val LABEL_WALLET_USAGE = "Wallet usage"
-    const val LABEL_ORDER_TOTAL = "Order Total"
-    const val LABEL_FINAL = "Final"
-    const val LABEL_BALANCE = "Balance"
-
-    // Payment Methods
+    // --- Payment Methods ---
     const val METHOD_FREE_LIBRARY = "Free Library"
     const val METHOD_FREE_ENROLLMENT = "Free Enrollment"
     const val METHOD_FREE_PICKUP = "Free Pickup"
@@ -322,14 +315,10 @@ object AppConstants {
     const val METHOD_GOOGLE_PAY = "Google Pay"
     const val METHOD_CREDIT_CARD = "Credit Card"
 
-    // Notification Types
-    const val NOTIF_TYPE_PURCHASE = "PURCHASE"
-    const val NOTIF_TYPE_PICKUP = "PICKUP"
-
-    // Menu Items
+    // --- Menu Items ---
     const val MENU_REMOVE_FROM_LIBRARY = "Remove from Library"
 
-    // Routes
+    // --- Navigation Routes ---
     const val ROUTE_SPLASH = "splash"
     const val ROUTE_HOME = "home"
     const val ROUTE_AUTH = "auth"
@@ -348,15 +337,18 @@ object AppConstants {
     const val ROUTE_INVOICE_CREATING = "invoiceCreating"
     const val ROUTE_INVOICE = "invoice"
     const val ROUTE_LATEST = "latest"
+    const val ROUTE_MY_APPLICATIONS = "my_applications"
+    const val ROUTE_ADMIN_USER_DETAILS = "admin_user_details"
+    const val ROUTE_COURSE_ENROLLMENT = "course_enrollment"
 
-    // Filter Labels
+    // --- Filter Labels ---
     const val FILTER_ALL = "All"
     const val FILTER_BOOKS = "Books"
     const val FILTER_AUDIOBOOKS = "Audiobooks"
     const val FILTER_GEAR = "Gear"
     const val FILTER_COURSES = "Courses"
 
-    // Technical IDs
+    // --- Technical IDs ---
     const val ID_TOPUP = "TOPUP"
 
     /**

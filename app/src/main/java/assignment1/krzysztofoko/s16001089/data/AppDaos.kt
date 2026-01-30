@@ -13,8 +13,14 @@ interface BookDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(books: List<Book>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertBook(book: Book)
+
     @Query("SELECT * FROM books WHERE id = :id")
     suspend fun getBookById(id: String): Book?
+
+    @Query("DELETE FROM books WHERE id = :id")
+    suspend fun deleteBook(id: String)
 
     @Query("DELETE FROM books")
     suspend fun deleteAll()
@@ -28,8 +34,14 @@ interface AudioBookDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(audioBooks: List<AudioBook>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAudioBook(audioBook: AudioBook)
+
     @Query("SELECT * FROM audiobooks WHERE id = :id")
     suspend fun getAudioBookById(id: String): AudioBook?
+
+    @Query("DELETE FROM audiobooks WHERE id = :id")
+    suspend fun deleteAudioBook(id: String)
 
     @Query("DELETE FROM audiobooks")
     suspend fun deleteAll()
@@ -43,8 +55,14 @@ interface CourseDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(courses: List<Course>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCourse(course: Course)
+
     @Query("SELECT * FROM courses WHERE id = :id")
     suspend fun getCourseById(id: String): Course?
+
+    @Query("DELETE FROM courses WHERE id = :id")
+    suspend fun deleteCourse(id: String)
 
     @Query("DELETE FROM courses")
     suspend fun deleteAll()
@@ -61,11 +79,17 @@ interface GearDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(gear: List<Gear>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertGear(gear: Gear)
+
     @Query("SELECT * FROM gear WHERE id = :id")
     suspend fun getGearById(id: String): Gear?
 
     @Query("UPDATE gear SET stockCount = CASE WHEN stockCount >= :quantity THEN stockCount - :quantity ELSE 0 END WHERE id = :id")
     suspend fun reduceStock(id: String, quantity: Int)
+
+    @Query("DELETE FROM gear WHERE id = :id")
+    suspend fun deleteGear(id: String)
 
     @Query("DELETE FROM gear")
     suspend fun deleteAll()
@@ -191,6 +215,28 @@ data class WalletTransaction(
     val purchaseId: String? = null
 )
 
+@Entity(tableName = "course_enrollment_details")
+data class CourseEnrollmentDetails(
+    @PrimaryKey val id: String, // userId_courseId
+    val userId: String,
+    val courseId: String,
+    val lastQualification: String,
+    val institution: String,
+    val graduationYear: String,
+    val englishProficiencyLevel: String,
+    val dateOfBirth: String,
+    val nationality: String,
+    val gender: String,
+    val emergencyContactName: String,
+    val emergencyContactPhone: String,
+    val motivationalText: String,
+    val cvFileName: String? = null,
+    val portfolioUrl: String? = null,
+    val specialSupportRequirements: String? = null,
+    val status: String = "PENDING_REVIEW", 
+    val submittedAt: Long = System.currentTimeMillis()
+)
+
 @Dao
 interface UserDao {
     @Query("SELECT * FROM users_local WHERE id = :id")
@@ -199,11 +245,65 @@ interface UserDao {
     @Query("SELECT * FROM users_local WHERE id = :id")
     suspend fun getUserById(id: String): UserLocal?
 
+    @Query("SELECT * FROM users_local ORDER BY name ASC")
+    fun getAllUsersFlow(): Flow<List<UserLocal>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertUser(user: UserLocal)
 
+    @Query("DELETE FROM users_local WHERE id = :userId")
+    suspend fun deleteUserOnly(userId: String)
+
+    @Transaction
+    suspend fun deleteFullUserAccount(userId: String) {
+        deleteWishlistForUser(userId)
+        deletePurchasesForUser(userId)
+        deleteNotificationsForUser(userId)
+        deleteSearchHistoryForUser(userId)
+        deleteCourseInstallmentsForUser(userId)
+        deleteHistoryForUser(userId)
+        deleteReviewsForUser(userId)
+        deleteReviewInteractionsForUser(userId)
+        deleteWalletHistoryForUser(userId)
+        deleteEnrollmentsForUser(userId)
+        deleteUserOnly(userId)
+    }
+
+    @Query("DELETE FROM wishlist WHERE userId = :userId")
+    suspend fun deleteWishlistForUser(userId: String)
+
+    @Query("DELETE FROM purchases WHERE userId = :userId")
+    suspend fun deletePurchasesForUser(userId: String)
+
+    @Query("DELETE FROM notifications WHERE userId = :userId")
+    suspend fun deleteNotificationsForUser(userId: String)
+
+    @Query("DELETE FROM search_history WHERE userId = :userId")
+    suspend fun deleteSearchHistoryForUser(userId: String)
+
+    @Query("DELETE FROM course_installments WHERE userId = :userId")
+    suspend fun deleteCourseInstallmentsForUser(userId: String)
+
+    @Query("DELETE FROM history WHERE userId = :userId")
+    suspend fun deleteHistoryForUser(userId: String)
+
+    @Query("DELETE FROM reviews WHERE userId = :userId")
+    suspend fun deleteReviewsForUser(userId: String)
+
+    @Query("DELETE FROM review_interactions WHERE userId = :userId")
+    suspend fun deleteReviewInteractionsForUser(userId: String)
+
+    @Query("DELETE FROM wallet_history WHERE userId = :userId")
+    suspend fun deleteWalletHistoryForUser(userId: String)
+
+    @Query("DELETE FROM course_enrollment_details WHERE userId = :userId")
+    suspend fun deleteEnrollmentsForUser(userId: String)
+
     @Query("SELECT productId FROM wishlist WHERE userId = :userId ORDER BY addedAt DESC")
     fun getWishlistIds(userId: String): Flow<List<String>>
+
+    @Query("SELECT * FROM wishlist WHERE userId = :userId ORDER BY addedAt DESC")
+    fun getWishlistItems(userId: String): Flow<List<WishlistItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addToWishlist(item: WishlistItem)
@@ -214,7 +314,7 @@ interface UserDao {
     @Query("SELECT productId FROM purchases WHERE userId = :userId ORDER BY purchasedAt DESC")
     fun getPurchaseIds(userId: String): Flow<List<String>>
 
-    @Query("SELECT * FROM purchases WHERE userId = :userId")
+    @Query("SELECT * FROM purchases WHERE userId = :userId ORDER BY purchasedAt DESC")
     fun getAllPurchasesFlow(userId: String): Flow<List<PurchaseItem>>
 
     @Query("SELECT * FROM purchases WHERE userId = :userId AND productId = :productId LIMIT 1")
@@ -259,6 +359,9 @@ interface UserDao {
     @Query("SELECT * FROM course_installments WHERE userId = :userId AND courseId = :courseId")
     suspend fun getCourseInstallment(userId: String, courseId: String): CourseInstallment?
 
+    @Query("SELECT * FROM course_installments WHERE userId = :userId")
+    fun getCourseInstallmentsForUser(userId: String): Flow<List<CourseInstallment>>
+
     @Query("SELECT productId FROM history WHERE userId = :userId ORDER BY viewedAt DESC LIMIT 5")
     fun getHistoryIds(userId: String): Flow<List<String>>
 
@@ -267,6 +370,9 @@ interface UserDao {
 
     @Query("SELECT DISTINCT productId FROM reviews WHERE userId = :userId ORDER BY timestamp DESC")
     fun getCommentedProductIds(userId: String): Flow<List<String>>
+
+    @Query("SELECT * FROM reviews WHERE userId = :userId ORDER BY timestamp DESC")
+    fun getReviewsForUser(userId: String): Flow<List<ReviewLocal>>
 
     @Query("SELECT * FROM reviews WHERE productId = :productId ORDER BY timestamp ASC")
     fun getReviewsForProduct(productId: String): Flow<List<ReviewLocal>>
@@ -343,4 +449,19 @@ interface UserDao {
 
     @Query("SELECT * FROM wallet_history WHERE userId = :userId ORDER BY timestamp DESC")
     fun getWalletHistory(userId: String): Flow<List<WalletTransaction>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addEnrollmentDetails(details: CourseEnrollmentDetails)
+
+    @Query("SELECT * FROM course_enrollment_details WHERE userId = :userId AND courseId = :courseId LIMIT 1")
+    suspend fun getEnrollmentDetails(userId: String, courseId: String): CourseEnrollmentDetails?
+
+    @Query("SELECT * FROM course_enrollment_details WHERE userId = :userId AND courseId = :courseId LIMIT 1")
+    fun getEnrollmentDetailsFlow(userId: String, courseId: String): Flow<CourseEnrollmentDetails?>
+
+    @Query("SELECT * FROM course_enrollment_details ORDER BY submittedAt DESC")
+    fun getAllEnrollmentsFlow(): Flow<List<CourseEnrollmentDetails>>
+
+    @Query("UPDATE course_enrollment_details SET status = :status WHERE id = :id")
+    suspend fun updateEnrollmentStatus(id: String, status: String)
 }

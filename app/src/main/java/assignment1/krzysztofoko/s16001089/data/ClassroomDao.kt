@@ -33,6 +33,9 @@ interface ClassroomDao {
     @Query("SELECT * FROM grades WHERE userId = :userId AND courseId = :courseId")
     fun getGradesForCourse(userId: String, courseId: String): Flow<List<Grade>>
 
+    @Query("SELECT * FROM grades WHERE userId = :userId")
+    fun getAllGradesForUser(userId: String): Flow<List<Grade>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGrades(grades: List<Grade>)
 

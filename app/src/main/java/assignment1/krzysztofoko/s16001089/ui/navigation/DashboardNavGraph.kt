@@ -12,33 +12,25 @@ import assignment1.krzysztofoko.s16001089.ui.dashboard.DashboardScreen
 import assignment1.krzysztofoko.s16001089.ui.profile.ProfileScreen
 import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationScreen
 import assignment1.krzysztofoko.s16001089.ui.classroom.ClassroomScreen
+import assignment1.krzysztofoko.s16001089.ui.admin.AdminPanelScreen
+import assignment1.krzysztofoko.s16001089.ui.admin.AdminUserDetailsScreen
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Navigation graph module for the User Dashboard and associated member features.
- * 
- * This graph coordinates the screens available to authenticated users, including 
- * their personal collection (Dashboard), profile settings, notifications inbox, 
- * and the academic classroom environment.
  */
 fun NavGraphBuilder.dashboardNavGraph(
-    navController: NavController,           // Global navigation controller for transitions
-    currentUserFlow: StateFlow<FirebaseUser?>, // Flow representing the current user session
-    allBooks: List<Book>,                   // Global product catalog for resolving item data
-    isDarkTheme: Boolean,                   // State of the global app theme
-    onToggleTheme: () -> Unit,              // Callback to switch between Dark/Light modes
-    onPlayAudio: (Book) -> Unit,            // Handler for global audio playback requests
-    isAudioPlaying: Boolean,                // Current playback status of the audio engine
-    currentPlayingBookId: String?,          // ID of the book currently being played
-    onLogoutClick: () -> Unit               // Handler for the global logout sequence
+    navController: NavController,           
+    currentUserFlow: StateFlow<FirebaseUser?>, 
+    allBooks: List<Book>,                   
+    isDarkTheme: Boolean,                   
+    onToggleTheme: () -> Unit,              
+    onPlayAudio: (Book) -> Unit,            
+    isAudioPlaying: Boolean,                
+    currentPlayingBookId: String?,          
+    onLogoutClick: () -> Unit               
 ) {
-    /**
-     * ROUTE: Dashboard Screen
-     * 
-     * The central hub for member activity. Displays owned items, wallet balance,
-     * and recent history. Integrates with the invoicing system for paid purchases.
-     */
     composable(AppConstants.ROUTE_DASHBOARD) { 
         DashboardScreen(
             navController = navController, 
@@ -47,7 +39,6 @@ fun NavGraphBuilder.dashboardNavGraph(
             onLogout = onLogoutClick,
             isDarkTheme = isDarkTheme, 
             onToggleTheme = onToggleTheme, 
-            // Navigates to the invoice creation flow for a specific purchase
             onViewInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/${it.id}") },
             onPlayAudio = onPlayAudio, 
             currentPlayingBookId = currentPlayingBookId, 
@@ -55,12 +46,6 @@ fun NavGraphBuilder.dashboardNavGraph(
         )
     }
 
-    /**
-     * ROUTE: Profile Screen
-     * 
-     * Handles personal data management, avatar uploads, and payment method settings.
-     * Synchronizes local and cloud user profiles.
-     */
     composable(AppConstants.ROUTE_PROFILE) { 
         ProfileScreen(
             navController = navController, 
@@ -70,37 +55,64 @@ fun NavGraphBuilder.dashboardNavGraph(
         ) 
     }
 
-    /**
-     * ROUTE: Notifications Screen
-     * 
-     * Provides a chronological history of alerts and confirmations.
-     * Allows users to jump directly to specific products or their invoices.
-     */
     composable(AppConstants.ROUTE_NOTIFICATIONS) {
+        val currentUser by currentUserFlow.collectAsState()
+        // Determine role to handle the back navigation target
+        // Note: For full role accuracy, we'd ideally check localUser role from DB,
+        // but checking the admin email is a consistent fallback in this project.
+        val isAdmin = currentUser?.email == "prokocomp@gmail.com"
+
         NotificationScreen(
-            // Logic to navigate to details of the item mentioned in the alert
             onNavigateToItem = { navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$it") },
-            // Logic to navigate directly to the financial record of the purchase
             onNavigateToInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE}/$it") },
-            onBack = { navController.popBackStack() }, 
+            onBack = { 
+                if (isAdmin) {
+                    navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) {
+                        popUpTo(AppConstants.ROUTE_ADMIN_PANEL) { inclusive = true }
+                    }
+                } else {
+                    navController.popBackStack() 
+                }
+            }, 
             isDarkTheme = isDarkTheme
         )
     }
 
-    /**
-     * ROUTE: Classroom Screen
-     * 
-     * The learning interface for enrolled courses. Uses a mandatory 'courseId'
-     * parameter to load specific academic modules, assignments, and grades.
-     */
     composable("${AppConstants.ROUTE_CLASSROOM}/{courseId}") { backStackEntry ->
-        // Extract the unique identifier for the specific course
         val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
         ClassroomScreen(
             courseId = courseId,
             onBack = { navController.popBackStack() },
             isDarkTheme = isDarkTheme,
             onToggleTheme = onToggleTheme
+        )
+    }
+
+    /**
+     * ROUTE: Admin Panel
+     */
+    composable(AppConstants.ROUTE_ADMIN_PANEL) {
+        AdminPanelScreen(
+            onBack = { navController.popBackStack() },
+            onNavigateToUserDetails = { userId ->
+                navController.navigate("${AppConstants.ROUTE_ADMIN_USER_DETAILS}/$userId")
+            },
+            isDarkTheme = isDarkTheme,
+            onToggleTheme = onToggleTheme
+        )
+    }
+
+    /**
+     * ROUTE: Admin User Details
+     */
+    composable("${AppConstants.ROUTE_ADMIN_USER_DETAILS}/{userId}") { backStackEntry ->
+        val userId = backStackEntry.arguments?.getString("userId") ?: ""
+        AdminUserDetailsScreen(
+            userId = userId,
+            onBack = { navController.popBackStack() },
+            navController = navController,
+            isDarkTheme = isDarkTheme,
+            onToggleTheme = onToggleTheme 
         )
     }
 }

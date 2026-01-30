@@ -1,9 +1,7 @@
 package assignment1.krzysztofoko.s16001089.ui.components
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -100,6 +98,7 @@ fun HomeTopBar(
 fun HomeBookItem(
     book: Book,
     isLoggedIn: Boolean,
+    userRole: String?, // Added userRole to determine discount eligibility
     isLiked: Boolean,
     isPurchased: Boolean,
     isAudioPlaying: Boolean,
@@ -146,7 +145,7 @@ fun HomeBookItem(
                         isLoggedIn = isLoggedIn
                     )
                 } else {
-                    HomePriceLabel(book = book, isLoggedIn = isLoggedIn)
+                    HomePriceLabel(book = book, isLoggedIn = isLoggedIn, userRole = userRole)
                 }
             }
         }
@@ -208,10 +207,12 @@ private fun HomePurchasedLabel(
 }
 
 @Composable
-private fun HomePriceLabel(book: Book, isLoggedIn: Boolean) {
+private fun HomePriceLabel(book: Book, isLoggedIn: Boolean, userRole: String?) {
+    val isStudent = userRole?.equals("student", ignoreCase = true) == true
+    
     if (book.price == 0.0) {
         Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = Color(0xFF4CAF50))
-    } else if (isLoggedIn) {
+    } else if (isLoggedIn && isStudent) { // Discount only for students
         val discountPrice = "£" + String.format(Locale.US, "%.2f", book.price * 0.9)
         Text(
             text = "£" + String.format(Locale.US, "%.2f", book.price),
@@ -274,7 +275,7 @@ fun PromotionBanner(onRegisterClick: () -> Unit) {
         Box(modifier = Modifier.background(Brush.linearGradient(colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary))).padding(24.dp)) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(AppConstants.APP_NAME, style = MaterialTheme.typography.headlineSmall, color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Exclusive 10% student discount applied locally.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f))
+                Text("Exclusive 10% student discount applied for enrolled students.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f))
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(onClick = onRegisterClick, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = MaterialTheme.colorScheme.primary), shape = RoundedCornerShape(12.dp)) { Text("Get Started", fontWeight = FontWeight.Bold) }
             }
@@ -283,7 +284,10 @@ fun PromotionBanner(onRegisterClick: () -> Unit) {
 }
 
 @Composable
-fun MemberWelcomeBanner() {
+fun MemberWelcomeBanner(role: String) {
+    val isStudent = role.equals("student", ignoreCase = true)
+    val displayRole = role.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+    
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
@@ -294,8 +298,12 @@ fun MemberWelcomeBanner() {
             Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text(text = "Logged in as Student", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text(text = "10% discount activated! Enjoy your perks ✨", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                Text(text = "Logged in as $displayRole", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                if (isStudent) {
+                    Text(text = "10% discount activated! Enjoy your perks ✨", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                } else {
+                    Text(text = "Enroll in a course to unlock student perks!", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                }
             }
         }
     }

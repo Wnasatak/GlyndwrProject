@@ -11,6 +11,7 @@ import assignment1.krzysztofoko.s16001089.ui.details.pdf.PdfReaderScreen
 import assignment1.krzysztofoko.s16001089.ui.details.audiobook.AudioBookDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.details.book.BookDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.details.course.CourseDetailScreen
+import assignment1.krzysztofoko.s16001089.ui.details.course.CourseEnrollmentScreen
 import assignment1.krzysztofoko.s16001089.ui.details.gear.GearDetailScreen
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.StateFlow
@@ -65,7 +66,8 @@ fun NavGraphBuilder.storeNavGraph(
                     onToggleTheme = onToggleTheme,
                     onNavigateToProfile = { navController.navigate(AppConstants.ROUTE_PROFILE) },
                     onViewInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/$it") },
-                    onEnterClassroom = { navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$it") }
+                    onEnterClassroom = { navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$it") },
+                    onStartEnrollment = { navController.navigate("${AppConstants.ROUTE_COURSE_ENROLLMENT}/$it") }
                 )
             }
             else -> {
@@ -83,6 +85,21 @@ fun NavGraphBuilder.storeNavGraph(
                 )
             }
         }
+    }
+
+    composable("${AppConstants.ROUTE_COURSE_ENROLLMENT}/{courseId}") { backStackEntry ->
+        val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
+        CourseEnrollmentScreen(
+            courseId = courseId,
+            onBack = { navController.popBackStack() },
+            onEnrollmentSuccess = {
+                navController.navigate(AppConstants.ROUTE_DASHBOARD) {
+                    popUpTo("${AppConstants.ROUTE_BOOK_DETAILS}/$courseId") { inclusive = true }
+                }
+            },
+            isDarkTheme = isDarkTheme,
+            onToggleTheme = onToggleTheme
+        )
     }
 
     composable("${AppConstants.ROUTE_PDF_READER}/{bookId}") { backStackEntry -> 

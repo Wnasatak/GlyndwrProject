@@ -16,30 +16,24 @@ import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.navigation.*
 import assignment1.krzysztofoko.s16001089.ui.splash.SplashScreen
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.details.course.MyApplicationsScreen
 
 /**
  * Root Navigation Controller for the Glyndŵr Project.
- * 
- * This component acts as the central hub for the app's UI architecture. It initializes
- * the global navigation controller, the main application ViewModel, and coordinates
- * the transition between different feature modules (Auth, Home, Store, Dashboard, etc.).
  */
 @Composable
 fun AppNavigation(
-    isDarkTheme: Boolean,           // Current global theme state (Dark/Light)
-    onToggleTheme: () -> Unit,      // Callback to flip the theme state
-    externalPlayer: Player? = null  // The Media3 player instance provided by MainActivity
+    isDarkTheme: Boolean,           
+    onToggleTheme: () -> Unit,      
+    externalPlayer: Player? = null  
 ) {
-    // Standard Context and Database handles
     val context = LocalContext.current
     val navController = rememberNavController()
     val db = AppDatabase.getDatabase(context)
     val repository = remember { BookRepository(db) }
     
-    // Global ViewModel initialization with its specific factory for dependency injection
     val mainVm: MainViewModel = viewModel(factory = MainViewModelFactory(repository, db))
 
-    // UI State observation: collects global data flows into Compose state
     val currentUser by mainVm.currentUser.collectAsState()
     val localUser by mainVm.localUser.collectAsState()
     val allBooks by mainVm.allBooks.collectAsState()
@@ -48,14 +42,9 @@ fun AppNavigation(
     val unreadCount by mainVm.unreadNotificationsCount.collectAsState()
     val walletHistory by mainVm.walletHistory.collectAsState()
 
-    // Navigation State: tracks which screen is currently visible to the user
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    /**
-     * Player State Sync: Listens to the Media3 player's internal events.
-     * Updates the global ViewModel state whenever playback starts or stops.
-     */
     LaunchedEffect(externalPlayer) {
         externalPlayer?.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -64,36 +53,33 @@ fun AppNavigation(
         })
     }
 
-    /**
-     * Auto-Minimize Logic: Automatically shrinks the audio player bar
-     * when the user navigates away from the specific item detail screen.
-     */
     LaunchedEffect(currentRoute) {
         if (currentRoute != "${AppConstants.ROUTE_BOOK_DETAILS}/{bookId}" && mainVm.showPlayer) {
             mainVm.isPlayerMinimized = true
         }
     }
 
-    /**
-     * TopLevelScaffold: The master layout wrapper.
-     * Handles the adaptive Bottom Navigation bar and top-level interactions
-     * (Dashboard, Wallet, Notifications, Logout) that persist across screens.
-     */
+    // Updated TopLevelScaffold call with new application and theme parameters
     TopLevelScaffold(
         currentUser = currentUser,
         localUser = localUser,
         currentRoute = currentRoute,
         unreadCount = unreadCount,
-        onDashboardClick = { navController.navigate(AppConstants.ROUTE_DASHBOARD) },
+        onDashboardClick = { 
+            val target = if (localUser?.role == "admin") AppConstants.ROUTE_ADMIN_PANEL 
+                         else AppConstants.ROUTE_DASHBOARD
+            navController.navigate(target) 
+        },
+        onHomeClick = { navController.navigate(AppConstants.ROUTE_HOME) },
+        onProfileClick = { navController.navigate(AppConstants.ROUTE_PROFILE) },
         onWalletClick = { mainVm.showWalletHistory = true },
         onNotificationsClick = { navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) },
-        onLogoutClick = { mainVm.showLogoutConfirm = true }
+        onMyApplicationsClick = { navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) },
+        onLogoutClick = { mainVm.showLogoutConfirm = true },
+        onToggleTheme = onToggleTheme,
+        isDarkTheme = isDarkTheme
     ) { paddingValues ->
         
-        /**
-         * Global Popups: Centrally managed dialogs for logout confirmations 
-         * and success messages.
-         */
         AppNavigationPopups(
             showLogoutConfirm = mainVm.showLogoutConfirm,
             showSignedOutPopup = mainVm.showSignedOutPopup,
@@ -102,30 +88,25 @@ fun AppNavigation(
             onSignedOutDismiss = { mainVm.showSignedOutPopup = false }
         )
 
-        // Main Content Area
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            /**
-             * NavHost: Defines the routing table for the application.
-             * Organizes screens into specialized 'Feature Graphs' for better maintainability.
-             */
             NavHost(
                 navController = navController, 
                 startDestination = AppConstants.ROUTE_SPLASH, 
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Initial loading screen
                 composable(AppConstants.ROUTE_SPLASH) { 
                     SplashScreen(
                         isLoadingData = isDataLoading, 
                         onTimeout = { 
-                            navController.navigate(AppConstants.ROUTE_HOME) { 
+                            val targetRoute = if (localUser?.role == "admin") AppConstants.ROUTE_ADMIN_PANEL 
+                                               else AppConstants.ROUTE_HOME
+                            navController.navigate(targetRoute) { 
                                 popUpTo(AppConstants.ROUTE_SPLASH) { inclusive = true } 
                             } 
                         }
                     ) 
                 }
 
-                // Primary discovery screen
                 homeNavGraph(
                     navController = navController,
                     currentUserFlow = mainVm.currentUser,
@@ -139,10 +120,8 @@ fun AppNavigation(
                     isAudioPlaying = mainVm.isAudioPlaying 
                 )
 
-                // Login, Registration, and 2FA modules
                 authNavGraph(navController, isDarkTheme, onToggleTheme)
                 
-                // Detailed product views (Books, Gear, Courses)
                 storeNavGraph(
                     navController = navController,
                     currentUserFlow = mainVm.currentUser,
@@ -152,7 +131,6 @@ fun AppNavigation(
                     onPlayAudio = { mainVm.onPlayAudio(it, externalPlayer) }
                 )
 
-                // User collection, statistics, and administrative controls
                 dashboardNavGraph(
                     navController = navController,
                     currentUserFlow = mainVm.currentUser,
@@ -165,10 +143,8 @@ fun AppNavigation(
                     onLogoutClick = { mainVm.showLogoutConfirm = true }
                 )
 
-                // Static info screens (About, Developer info, What's New)
                 infoNavGraph(navController, isDarkTheme, onToggleTheme)
 
-                // Financial receipt and PDF generation module
                 invoiceNavGraph(
                     navController = navController,
                     allBooks = allBooks,
@@ -176,12 +152,27 @@ fun AppNavigation(
                     isDarkTheme = isDarkTheme,
                     onToggleTheme = onToggleTheme
                 )
+
+                composable(AppConstants.ROUTE_MY_APPLICATIONS) {
+                    MyApplicationsScreen(
+                        onBack = { 
+                            if (localUser?.role == "admin") {
+                                navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) {
+                                    popUpTo(AppConstants.ROUTE_ADMIN_PANEL) { inclusive = true }
+                                }
+                            } else {
+                                navController.popBackStack()
+                            }
+                        },
+                        onNavigateToCourse = { id -> 
+                            navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id")
+                        },
+                        isDarkTheme = isDarkTheme,
+                        onToggleTheme = onToggleTheme
+                    )
+                }
             }
 
-            /**
-             * Overlay: Wallet History.
-             * Displays as a bottom sheet over any current screen when triggered.
-             */
             if (mainVm.showWalletHistory) {
                 WalletHistorySheet(
                     transactions = walletHistory,
@@ -199,11 +190,6 @@ fun AppNavigation(
                 )
             }
 
-            /**
-             * Persistent Overlay: Audio Player.
-             * Stays visible across the app while media is playing, allowing for 
-             * background listening and global control.
-             */
             GlobalAudioPlayerOverlay(
                 showPlayer = mainVm.showPlayer,
                 currentBook = mainVm.currentPlayingBook,

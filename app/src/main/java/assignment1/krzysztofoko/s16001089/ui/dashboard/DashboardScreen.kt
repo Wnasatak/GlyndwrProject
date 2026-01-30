@@ -39,7 +39,6 @@ import kotlin.math.abs
 
 /**
  * Main User Dashboard Screen.
- * Provides access to the user's collection, wallet, recent activity, and classroom modules.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +53,6 @@ fun DashboardScreen(
     onPlayAudio: (Book) -> Unit,
     currentPlayingBookId: String?,
     isAudioPlaying: Boolean,
-    // Initialize ViewModel using a factory to inject the Repository and DAO
     viewModel: DashboardViewModel = viewModel(factory = DashboardViewModelFactory(
         repository = BookRepository(AppDatabase.getDatabase(LocalContext.current)),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
@@ -64,16 +62,17 @@ fun DashboardScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // UI State observation from ViewModel
     val localUser by viewModel.localUser.collectAsState()
     val wishlistBooks by viewModel.wishlistBooks.collectAsState()
     val lastViewedBooks by viewModel.lastViewedBooks.collectAsState()
     val commentedBooks by viewModel.commentedBooks.collectAsState()
     val filteredOwnedBooks by viewModel.filteredOwnedBooks.collectAsState()
+    val purchasedIds by viewModel.purchasedIds.collectAsState()
     val selectedFilter by viewModel.selectedCollectionFilter.collectAsState()
     val walletHistory by viewModel.walletHistory.collectAsState()
+    val applicationCount by viewModel.applicationCount.collectAsState()
+    val applicationsMap by viewModel.applicationsMap.collectAsState()
     
-    // Search and Interaction states
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearchVisible by viewModel.isSearchVisible.collectAsState()
     val showPaymentPopup by viewModel.showPaymentPopup.collectAsState()
@@ -83,12 +82,10 @@ fun DashboardScreen(
 
     val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
 
-    // Local UI states for dialogs and menus
     var selectedBookForPickup by remember { mutableStateOf<Book?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     var showWalletHistory by remember { mutableStateOf(false) }
 
-    // List of filter chips for the user's library
     val filterOptions = listOf(
         AppConstants.FILTER_ALL,
         AppConstants.FILTER_BOOKS,
@@ -97,12 +94,10 @@ fun DashboardScreen(
         AppConstants.FILTER_COURSES
     )
     
-    // Setup for the infinite horizontal scrolling filter bar
     val infiniteCount = Int.MAX_VALUE
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % filterOptions.size)
     val filterListState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
 
-    // Root container handling clicks to dismiss search overlay
     Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) viewModel.setSearchVisible(false) }) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
         
@@ -112,7 +107,6 @@ fun DashboardScreen(
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    // Title changes based on user role (Admin/Faculty/Student)
                     title = { Text(text = when(localUser?.role) { "admin" -> AppConstants.TITLE_ADMIN_HUB; "teacher" -> AppConstants.TITLE_FACULTY; else -> AppConstants.TITLE_STUDENT_HUB }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) } },
                     actions = {
@@ -124,15 +118,26 @@ fun DashboardScreen(
                         }
                         Box {
                             IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, AppConstants.TITLE_MORE_OPTIONS) }
-                            // Global dashboard menu
                             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                                val hasCourses = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES }
+                                if (applicationCount > 0) {
+                                    DropdownMenuItem(
+                                        text = { Text(AppConstants.TITLE_MY_APPLICATIONS) },
+                                        onClick = { 
+                                            showMenu = false
+                                            navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) 
+                                        },
+                                        leadingIcon = { Icon(Icons.Default.Assignment, null) }
+                                    )
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                }
+                                
+                                val hasCourses = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && purchasedIds.contains(it.id) }
                                 if (hasCourses) {
                                     DropdownMenuItem(
                                         text = { Text(AppConstants.TITLE_CLASSROOM) },
                                         onClick = { 
                                             showMenu = false
-                                            val firstCourseId = filteredOwnedBooks.first { it.mainCategory == AppConstants.CAT_COURSES }.id
+                                            val firstCourseId = filteredOwnedBooks.first { it.mainCategory == AppConstants.CAT_COURSES && purchasedIds.contains(it.id) }.id
                                             navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$firstCourseId")
                                         },
                                         leadingIcon = { Icon(Icons.Default.School, null) }
@@ -153,12 +158,35 @@ fun DashboardScreen(
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                    // Header with profile summary and wallet balance
                     item { DashboardHeader(name = localUser?.name ?: AppConstants.TEXT_STUDENT, photoUrl = localUser?.photoUrl, role = localUser?.role ?: "student", balance = localUser?.balance ?: 0.0, onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) }, onViewHistory = { showWalletHistory = true }) }
                     
-                    // QUICK ACCESS: My Courses Section
-                    val enrolledPaidCourse = filteredOwnedBooks.find { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 }
-                    val enrolledFreeCourses = filteredOwnedBooks.filter { it.mainCategory == AppConstants.CAT_COURSES && it.price <= 0.0 }
+                    if (applicationCount > 0) {
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .clickable { navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) },
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Assignment, null, tint = MaterialTheme.colorScheme.secondary)
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(AppConstants.TITLE_MY_APPLICATIONS, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                        Text("Track your enrollment status", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.secondary)
+                                }
+                            }
+                        }
+                    }
+
+                    // Only show courses that are fully enrolled (purchased)
+                    val enrolledPaidCourse = filteredOwnedBooks.find { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
+                    val enrolledFreeCourses = filteredOwnedBooks.filter { it.mainCategory == AppConstants.CAT_COURSES && it.price <= 0.0 && purchasedIds.contains(it.id) }
 
                     if (enrolledPaidCourse != null || enrolledFreeCourses.isNotEmpty()) {
                         item { SectionHeader(AppConstants.LABEL_MY_COURSES) }
@@ -170,10 +198,8 @@ fun DashboardScreen(
                         }
                     }
 
-                    // Admin Shortcut
                     if (localUser?.role == "admin") { item { AdminQuickActions { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) } } }
                     
-                    // History and Favorites Sections
                     item { SectionHeader(AppConstants.TITLE_CONTINUE_READING) }
                     if (lastViewedBooks.isNotEmpty()) { item { GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item { EmptySectionPlaceholder(AppConstants.MSG_NO_RECENTLY_VIEWED) } }
                     
@@ -183,7 +209,6 @@ fun DashboardScreen(
                     item { SectionHeader(AppConstants.TITLE_RECENTLY_LIKED) }
                     if (wishlistBooks.isNotEmpty()) { item { GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item { EmptySectionPlaceholder(AppConstants.MSG_FAVORITES_EMPTY) } }
                     
-                    // MAIN COLLECTION: User's owned items with Category Filter
                     item { 
                         SectionHeader(AppConstants.TITLE_YOUR_COLLECTION)
                         LazyRow(state = filterListState, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -207,7 +232,6 @@ fun DashboardScreen(
                         }
                     }
 
-                    // Display filtered collection items
                     if (filteredOwnedBooks.isEmpty()) { 
                         item { EmptyLibraryPlaceholder(onBrowse = { 
                             val targetCategory = if (selectedFilter == AppConstants.FILTER_ALL) AppConstants.CAT_ALL else AppConstants.mapFilterToCategory(selectedFilter)
@@ -216,6 +240,12 @@ fun DashboardScreen(
                     } else {
                         items(filteredOwnedBooks) { book ->
                             var showItemMenu by remember { mutableStateOf(false) }
+                            val appStatus = applicationsMap[book.id]
+                            val isPending = appStatus == "PENDING_REVIEW"
+                            val isApproved = appStatus == "APPROVED"
+                            val isRejected = appStatus == "REJECTED"
+                            val isFullyOwned = purchasedIds.contains(book.id)
+                            
                             BookItemCard(
                                 book = book,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -225,18 +255,32 @@ fun DashboardScreen(
                                     Box {
                                         IconButton(onClick = { viewModel.setSearchVisible(false); showItemMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = AppConstants.TITLE_OPTIONS, modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
                                         DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
-                                            if (book.mainCategory == AppConstants.CAT_COURSES) { DropdownMenuItem(text = { Text(AppConstants.BTN_ENTER_CLASSROOM) }, onClick = { showItemMenu = false; navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${book.id}") }, leadingIcon = { Icon(Icons.Default.School, null) }) }
-                                            if (book.price > 0.0) { DropdownMenuItem(text = { Text(AppConstants.BTN_VIEW_INVOICE) }, onClick = { showItemMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
+                                            if (book.mainCategory == AppConstants.CAT_COURSES && !isPending && !isRejected) { DropdownMenuItem(text = { Text(if (isApproved && !isFullyOwned) "Complete Enrollment" else AppConstants.BTN_ENTER_CLASSROOM) }, onClick = { showItemMenu = false; if (isApproved && !isFullyOwned) navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") else navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${book.id}") }, leadingIcon = { Icon(Icons.Default.School, null) }) }
+                                            
+                                            // Only show View Invoice if the item is fully purchased
+                                            if (book.price > 0.0 && isFullyOwned) { DropdownMenuItem(text = { Text(AppConstants.BTN_VIEW_INVOICE) }, onClick = { showItemMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
+                                            
                                             if (book.mainCategory == AppConstants.CAT_GEAR) { DropdownMenuItem(text = { Text(AppConstants.BTN_PICKUP_INFO) }, onClick = { showItemMenu = false; selectedBookForPickup = book }, leadingIcon = { Icon(Icons.Default.Info, null) }) }
-                                            if (book.mainCategory != AppConstants.CAT_GEAR && book.price <= 0.0) { DropdownMenuItem(text = { Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, color = MaterialTheme.colorScheme.error) }, onClick = { showItemMenu = false; viewModel.setBookToRemove(book) }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }) }
+                                            if (book.mainCategory != AppConstants.CAT_GEAR && book.price <= 0.0 && !isPending) { DropdownMenuItem(text = { Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, color = MaterialTheme.colorScheme.error) }, onClick = { showItemMenu = false; viewModel.setBookToRemove(book) }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }) }
                                         }
                                     }
                                 },
                                 bottomContent = {
                                     Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                        val label = AppConstants.getItemStatusLabel(book)
-                                        Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
-                                            Text(text = label, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                                        val label = when {
+                                            isPending -> "REVIEWING"
+                                            isApproved && !isFullyOwned -> "APPROVED"
+                                            isRejected -> "DECLINED"
+                                            else -> AppConstants.getItemStatusLabel(book)
+                                        }
+                                        val color = when {
+                                            isPending -> Color(0xFFFBC02D)
+                                            isApproved && !isFullyOwned -> Color(0xFF4CAF50)
+                                            isRejected -> Color(0xFFF44336)
+                                            else -> MaterialTheme.colorScheme.primary
+                                        }
+                                        Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, color.copy(alpha = 0.3f))) {
+                                            Text(text = label, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.ExtraBold)
                                         }
                                     }
                                 }
@@ -257,7 +301,6 @@ fun DashboardScreen(
                 transactions = walletHistory, 
                 onNavigateToProduct = { id -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") }, 
                 onViewInvoice = { id, ref -> 
-                    // Append the unique reference as a query parameter if it exists
                     val route = if (ref != null) "${AppConstants.ROUTE_INVOICE_CREATING}/$id?ref=$ref" 
                                 else "${AppConstants.ROUTE_INVOICE_CREATING}/$id"
                     navController.navigate(route) 
@@ -271,9 +314,6 @@ fun DashboardScreen(
     }
 }
 
-/**
- * Factory class to create instances of DashboardViewModel with required dependencies.
- */
 class DashboardViewModelFactory(
     private val repository: BookRepository,
     private val userDao: UserDao,
