@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
+import assignment1.krzysztofoko.s16001089.data.SystemLog
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.utils.EmailUtils
 import com.google.firebase.auth.AuthCredential
@@ -48,6 +49,20 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
     var loginAttempts by mutableIntStateOf(0)
     var pendingAuthResult by mutableStateOf<Pair<String, UserLocal?>?>(null)
 
+    private fun addLog(userId: String, userName: String, action: String, details: String, role: String = "user") {
+        viewModelScope.launch {
+            val type = if (role == "admin") "ADMIN" else "USER"
+            db.auditDao().insertLog(SystemLog(
+                userId = userId,
+                userName = userName,
+                action = action,
+                targetId = "AUTH",
+                details = details,
+                logType = type
+            ))
+        }
+    }
+
     fun trigger2FA(context: Context, userEmail: String, onCodeSent: (String) -> Unit) {
         isLoading = true
         val code = (100000..999999).random().toString()
@@ -76,7 +91,11 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
         viewModelScope.launch {
             try {
                 pendingAuthResult?.let { (_, localUser) ->
-                    localUser?.let { db.userDao().upsertUser(it) }
+                    localUser?.let { 
+                        db.userDao().upsertUser(it)
+                        val action = if (it.role == "admin") "ADMIN_LOGIN" else "USER_LOGIN"
+                        addLog(it.id, it.name, action, "Successful authentication and session start.", it.role)
+                    }
                     isAuthFinalized = true
                     showSuccessPopup = true
                     isTwoFactorStep = false
@@ -103,9 +122,6 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                 if (user?.isEmailVerified == true) {
                     viewModelScope.launch {
                         val existing = db.userDao().getUserById(user.uid)
-                        
-                        // FIX: Explicitly ensure the admin email gets the admin role, 
-                        // even if they were previously a student in the DB.
                         val updatedRole = if (user.email == "prokocomp@gmail.com") "admin" else (existing?.role ?: "user")
                         
                         val userData = UserLocal(
@@ -154,6 +170,7 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                         role = if (trimmedEmail == "prokocomp@gmail.com") "admin" else "user"
                     )
                     pendingAuthResult = "" to userData
+                    addLog(user.uid, firstName, "USER_SIGN_UP", "New user registered: $trimmedEmail", userData.role)
                     user.sendEmailVerification()
                     isVerifyingEmail = true
                     isLoading = false
@@ -176,8 +193,6 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                 val user = res.user!!
                 viewModelScope.launch {
                     val existing = db.userDao().getUserById(user.uid)
-                    
-                    // FIX: Ensure admin role for existing Google accounts too
                     val updatedRole = if (user.email == "prokocomp@gmail.com") "admin" else (existing?.role ?: "user")
 
                     val userData = UserLocal(
@@ -218,7 +233,12 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
             }
     }
     
-    fun signOut() {
+    fun signOut(localUser: UserLocal?) {
+        val uid = localUser?.id ?: auth.currentUser?.uid ?: "unknown"
+        val name = localUser?.name ?: auth.currentUser?.displayName ?: "User"
+        val role = localUser?.role ?: "user"
+        val action = if (role == "admin") "ADMIN_LOGOUT" else "USER_LOGOUT"
+        addLog(uid, name, action, "User signed out from the session.", role)
         auth.signOut()
     }
 }

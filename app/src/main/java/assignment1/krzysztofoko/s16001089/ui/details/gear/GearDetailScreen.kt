@@ -48,6 +48,7 @@ fun GearDetailScreen(
     viewModel: GearViewModel = viewModel(factory = GearViewModelFactory(
         gearDao = AppDatabase.getDatabase(LocalContext.current).gearDao(),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
+        auditDao = AppDatabase.getDatabase(LocalContext.current).auditDao(),
         gearId = gearId,
         userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     ))
@@ -168,7 +169,7 @@ fun GearDetailScreen(
 
                                     Spacer(modifier = Modifier.height(32.dp))
                                     Text(text = AppConstants.SECTION_DESCRIPTION_GEAR, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(Modifier.height(8.dp))
                                     Text(text = currentGear.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
                                     
                                     Spacer(modifier = Modifier.height(32.dp))
@@ -177,7 +178,7 @@ fun GearDetailScreen(
                                     if (similarGear.isNotEmpty()) {
                                         Spacer(modifier = Modifier.height(40.dp))
                                         Text(text = AppConstants.TITLE_SIMILAR_PRODUCTS, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Spacer(Modifier.height(16.dp))
                                         UniversalProductSlider(products = similarGear.map { it.toBook() }, onProductClick = { selectedBook -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${selectedBook.id}") })
                                     }
 

@@ -6,12 +6,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.data.ReviewLocal
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminUserDetailsViewModel
@@ -25,6 +27,7 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
     var editingReview by remember { mutableStateOf<ReviewLocal?>(null) }
     var reviewToDelete by remember { mutableStateOf<ReviewLocal?>(null) }
     var editedCommentText by remember { mutableStateOf("") }
+    var showAdminWarning by remember { mutableStateOf(false) }
 
     if (reviews.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
@@ -108,8 +111,7 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
             },
             confirmButton = {
                 Button(onClick = {
-                    viewModel.updateReview(editingReview!!.copy(comment = editedCommentText))
-                    editingReview = null
+                    showAdminWarning = true
                 }) {
                     Text("Save")
                 }
@@ -117,6 +119,38 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
             dismissButton = {
                 TextButton(onClick = { editingReview = null }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Admin Warning Popup for Editing Comments
+    if (showAdminWarning && editingReview != null) {
+        AlertDialog(
+            onDismissRequest = { showAdminWarning = false },
+            icon = { Icon(Icons.Default.Warning, null, tint = Color(0xFFFBC02D), modifier = Modifier.size(32.dp)) },
+            title = { Text("Policy Warning", fontWeight = FontWeight.Black) },
+            text = { 
+                Text(
+                    "You are modifying a comment submitted by another user. Editing student feedback may impact data integrity. Are you sure this change is necessary?",
+                    textAlign = TextAlign.Center
+                ) 
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.updateReview(editingReview!!.copy(comment = editedCommentText))
+                        editingReview = null
+                        showAdminWarning = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Confirm Edit")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAdminWarning = false }) {
+                    Text("Review Again")
                 }
             }
         )

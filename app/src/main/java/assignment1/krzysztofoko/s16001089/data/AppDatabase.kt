@@ -15,9 +15,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SearchHistoryItem::class, CourseInstallment::class, ModuleContent::class, 
         Assignment::class, AssignmentSubmission::class, Grade::class, LiveSession::class, 
         ClassroomMessage::class, TutorProfile::class, WalletTransaction::class,
-        CourseEnrollmentDetails::class
+        CourseEnrollmentDetails::class, SystemLog::class
     ], 
-    version = 17, 
+    version = 20, 
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,13 +27,15 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun gearDao(): GearDao
     abstract fun userDao(): UserDao
     abstract fun classroomDao(): ClassroomDao
+    abstract fun auditDao(): AuditDao
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        // --- Historical Migrations ---
         private val MIGRATION_1_2 = object : Migration(1, 2) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE gear ADD COLUMN sizes TEXT NOT NULL DEFAULT 'M'"); db.execSQL("ALTER TABLE gear ADD COLUMN colors TEXT NOT NULL DEFAULT 'Default'"); db.execSQL("ALTER TABLE gear ADD COLUMN stockCount INTEGER NOT NULL DEFAULT 10"); db.execSQL("ALTER TABLE gear ADD COLUMN brand TEXT NOT NULL DEFAULT 'Wrexham University'"); db.execSQL("ALTER TABLE gear ADD COLUMN isAvailable INTEGER NOT NULL DEFAULT 1") } }
-        private val MIGRATION_2_3 = object : Migration(2, 3) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE gear ADD COLUMN material TEXT NOT NULL DEFAULT 'Mixed Fibers'"); db.execSQL("ALTER TABLE gear ADD COLUMN sku TEXT NOT NULL DEFAULT 'WREX-GEAR-000'"); db.execSQL("ALTER TABLE gear ADD COLUMN originalPrice REAL NOT NULL DEFAULT 0.0'"); db.execSQL("ALTER TABLE gear ADD COLUMN isFeatured INTEGER NOT NULL DEFAULT 0"); db.execSQL("ALTER TABLE gear ADD COLUMN productTags TEXT NOT NULL DEFAULT ''") } }
+        private val MIGRATION_2_3 = object : Migration(2, 3) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE gear ADD COLUMN material TEXT NOT NULL DEFAULT 'Mixed Fibers'"); db.execSQL("ALTER TABLE gear ADD COLUMN sku TEXT NOT NULL DEFAULT 'WREX-GEAR-000'"); db.execSQL("ALTER TABLE gear ADD COLUMN originalPrice REAL NOT NULL DEFAULT 0.0"); db.execSQL("ALTER TABLE gear ADD COLUMN isFeatured INTEGER NOT NULL DEFAULT 0"); db.execSQL("ALTER TABLE gear ADD COLUMN productTags TEXT NOT NULL DEFAULT ''") } }
         private val MIGRATION_3_4 = object : Migration(3, 4) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE gear ADD COLUMN secondaryImageUrl TEXT DEFAULT NULL") } }
         private val MIGRATION_4_5 = object : Migration(4, 5) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE purchases ADD COLUMN orderConfirmation TEXT DEFAULT NULL") } }
         private val MIGRATION_5_6 = object : Migration(5, 6) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE IF NOT EXISTS `invoices` (`invoiceNumber` TEXT NOT NULL, `userId` TEXT NOT NULL, `productId` TEXT NOT NULL, `itemTitle` TEXT NOT NULL, `itemCategory` TEXT NOT NULL, `pricePaid` REAL NOT NULL, `quantity` INTEGER NOT NULL, `purchasedAt` INTEGER NOT NULL, `paymentMethod` TEXT NOT NULL, `billingName` TEXT NOT NULL, `billingEmail` TEXT NOT NULL, `billingAddress` TEXT, PRIMARY KEY(`invoiceNumber`))") } }
@@ -47,12 +49,10 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_13_14 = object : Migration(13, 14) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE IF NOT EXISTS `wallet_history` (`id` TEXT NOT NULL, `userId` TEXT NOT NULL, `type` TEXT NOT NULL, `amount` REAL NOT NULL, `timestamp` INTEGER NOT NULL, `paymentMethod` TEXT NOT NULL, `description` TEXT NOT NULL, `orderReference` TEXT, PRIMARY KEY(`id`))") } }
         private val MIGRATION_14_15 = object : Migration(14, 15) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE wallet_history ADD COLUMN productId TEXT DEFAULT NULL") } }
         private val MIGRATION_15_16 = object : Migration(15, 16) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE wallet_history ADD COLUMN purchaseId TEXT DEFAULT NULL") } }
-        
-        private val MIGRATION_16_17 = object : Migration(16, 17) { 
-            override fun migrate(db: SupportSQLiteDatabase) { 
-                db.execSQL("CREATE TABLE IF NOT EXISTS `course_enrollment_details` (`id` TEXT NOT NULL, `userId` TEXT NOT NULL, `courseId` TEXT NOT NULL, `lastQualification` TEXT NOT NULL, `institution` TEXT NOT NULL, `graduationYear` TEXT NOT NULL, `englishProficiencyLevel` TEXT NOT NULL, `dateOfBirth` TEXT NOT NULL, `nationality` TEXT NOT NULL, `gender` TEXT NOT NULL, `emergencyContactName` TEXT NOT NULL, `emergencyContactPhone` TEXT NOT NULL, `motivationalText` TEXT NOT NULL, `cvFileName` TEXT, `portfolioUrl` TEXT, `specialSupportRequirements` TEXT, `status` TEXT NOT NULL, `submittedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))") 
-            } 
-        }
+        private val MIGRATION_16_17 = object : Migration(16, 17) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE IF NOT EXISTS `course_enrollment_details` (`id` TEXT NOT NULL, `userId` TEXT NOT NULL, `courseId` TEXT NOT NULL, `lastQualification` TEXT NOT NULL, `institution` TEXT NOT NULL, `graduationYear` TEXT NOT NULL, `englishProficiencyLevel` TEXT NOT NULL, `dateOfBirth` TEXT NOT NULL, `nationality` TEXT NOT NULL, `gender` TEXT NOT NULL, `emergencyContactName` TEXT NOT NULL, `emergencyContactPhone` TEXT NOT NULL, `motivationalText` TEXT NOT NULL, `cvFileName` TEXT, `portfolioUrl` TEXT, `specialSupportRequirements` TEXT, `status` TEXT NOT NULL, `submittedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))") } }
+        private val MIGRATION_17_18 = object : Migration(17, 18) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE IF NOT EXISTS `system_logs` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `userId` TEXT NOT NULL, `userName` TEXT NOT NULL, `action` TEXT NOT NULL, `targetId` TEXT NOT NULL, `details` TEXT NOT NULL, `logType` TEXT NOT NULL, `timestamp` INTEGER NOT NULL)") } }
+        private val MIGRATION_18_19 = object : Migration(18, 19) { override fun migrate(db: SupportSQLiteDatabase) { /* Version adjustment */ } }
+        private val MIGRATION_19_20 = object : Migration(19, 20) { override fun migrate(db: SupportSQLiteDatabase) { /* Backup restoration adjustment */ } }
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -66,7 +66,8 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, 
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, 
                     MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-                    MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17
+                    MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
+                    MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20
                 )
                 .fallbackToDestructiveMigration()
                 .build()

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import assignment1.krzysztofoko.s16001089.data.*
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -11,9 +12,11 @@ class AdminUserDetailsViewModel(
     private val userId: String,
     private val userDao: UserDao,
     private val classroomDao: ClassroomDao,
+    private val auditDao: AuditDao,
     private val bookRepository: BookRepository
 ) : ViewModel() {
 
+    private val auth = FirebaseAuth.getInstance()
     private val _user = MutableStateFlow<UserLocal?>(null)
     val user = _user.asStateFlow()
 
@@ -65,17 +68,38 @@ class AdminUserDetailsViewModel(
         }
     }
 
+    private fun addLog(action: String, targetId: String, details: String) {
+        viewModelScope.launch {
+            val adminUser = auth.currentUser
+            auditDao.insertLog(SystemLog(
+                userId = adminUser?.uid ?: "unknown",
+                userName = adminUser?.displayName ?: "Admin",
+                action = action,
+                targetId = targetId,
+                details = details,
+                logType = "ADMIN"
+            ))
+        }
+    }
+
     fun updateUser(updated: UserLocal) {
-        viewModelScope.launch { userDao.upsertUser(updated) }
+        viewModelScope.launch {
+            userDao.upsertUser(updated)
+            addLog("EDITED", updated.id, "Admin updated details for student: ${updated.email}")
+        }
     }
 
     fun deleteComment(reviewId: Int) {
-        viewModelScope.launch { userDao.deleteReview(reviewId) }
+        viewModelScope.launch {
+            userDao.deleteReview(reviewId)
+            addLog("REMOVED", reviewId.toString(), "Admin deleted a comment (Review ID: $reviewId)")
+        }
     }
 
     fun updateReview(review: ReviewLocal) {
         viewModelScope.launch {
             userDao.addReview(review)
+            addLog("EDITED", review.reviewId.toString(), "Admin edited a comment for student (Review ID: ${review.reviewId})")
         }
     }
 }
@@ -90,6 +114,7 @@ class AdminUserDetailsViewModelFactory(
             userId, 
             db.userDao(), 
             db.classroomDao(), 
+            db.auditDao(),
             BookRepository(db)
         ) as T
     }

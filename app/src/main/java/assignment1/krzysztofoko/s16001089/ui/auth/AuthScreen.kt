@@ -4,9 +4,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -16,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -120,7 +123,7 @@ fun AuthScreen(
                             IconButton(onClick = {
                                 if (viewModel.isTwoFactorStep) { 
                                     viewModel.isTwoFactorStep = false
-                                    viewModel.signOut()
+                                    viewModel.signOut(viewModel.pendingAuthResult?.second)
                                 } else if (viewModel.isResettingPassword) {
                                     viewModel.isResettingPassword = false
                                 } else onBack()
@@ -198,7 +201,7 @@ fun AuthScreen(
                                 Text(AppConstants.TITLE_CHECK_INBOX, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                                 Text("We've sent a verification link to:", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
                                 Text(viewModel.email, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                Spacer(modifier = Modifier.height(32.dp))
+                                Spacer(Modifier.height(32.dp))
                                 Button(onClick = {
                                     viewModel.isLoading = true
                                     com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.reload()?.addOnCompleteListener {
@@ -212,93 +215,172 @@ fun AuthScreen(
                                         }
                                     }
                                 }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) { Text(AppConstants.BTN_VERIFICATION_DONE) }
-                                TextButton(onClick = { viewModel.signOut(); viewModel.isVerifyingEmail = false }) { Text(AppConstants.BTN_BACK_TO_LOGIN) }
+                                TextButton(onClick = { viewModel.signOut(viewModel.pendingAuthResult?.second); viewModel.isVerifyingEmail = false }) { Text(AppConstants.BTN_BACK_TO_LOGIN) }
                             } 
                             
                             else if (viewModel.isResettingPassword) {
                                 Icon(Icons.Default.LockReset, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(24.dp))
-                                Text(AppConstants.TITLE_ACCOUNT_RECOVERY, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                OutlinedTextField(value = viewModel.email, onValueChange = { viewModel.email = it; viewModel.error = null }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(12.dp))
-                                Spacer(modifier = Modifier.height(24.dp))
-                                Button(onClick = { viewModel.resetPassword() }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) { Text(AppConstants.BTN_SEND_RESET_LINK) }
-                                TextButton(onClick = { viewModel.isResettingPassword = false; viewModel.error = null }) { Text(AppConstants.BTN_RETURN_TO_LOGIN) }
-                            } 
-                            
-                            else {
-                                AuthLogo(isLogin = viewModel.isLogin, glowScale = glowScale, glowAlpha = glowAlpha)
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                Text(text = if (viewModel.isLogin) AppConstants.TITLE_WELCOME_BACK else AppConstants.TITLE_MEMBER_REGISTRATION, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-                                Spacer(modifier = Modifier.height(32.dp))
+                                Text(AppConstants.TITLE_RESET_PASSWORD, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                                Text("Enter your email to receive a password reset link.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp, bottom = 24.dp))
                                 
-                                if (!viewModel.isLogin) {
-                                    OutlinedTextField(value = viewModel.firstName, onValueChange = { viewModel.firstName = it; viewModel.error = null }, label = { Text("First Name") }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(12.dp))
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                }
-                                OutlinedTextField(value = viewModel.email, onValueChange = { viewModel.email = it; viewModel.error = null }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(12.dp))
-                                Spacer(modifier = Modifier.height(16.dp))
-                                OutlinedTextField(value = viewModel.password, onValueChange = { viewModel.password = it; viewModel.error = null }, label = { Text("Password") }, visualTransformation = if (viewModel.passwordVisible) VisualTransformation.None else PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), trailingIcon = { IconButton(onClick = { viewModel.passwordVisible = !viewModel.passwordVisible }) { Icon(if (viewModel.passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null) } }, shape = RoundedCornerShape(12.dp))
-                                
-                                if (viewModel.isLogin && viewModel.loginAttempts >= 3) {
-                                    TextButton(onClick = { viewModel.isResettingPassword = true; viewModel.error = null }) {
-                                        Text("Forgot Password?", color = MaterialTheme.colorScheme.error)
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(24.dp))
-                                Button(onClick = {
-                                    if (viewModel.isLogin) {
-                                        viewModel.handleSignIn(context) { scope.launch { snackbarHostState.showSnackbar("Verification code sent") } }
-                                    } else {
-                                        viewModel.handleSignUp()
-                                    }
-                                }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(12.dp)) {
-                                    Text(if (viewModel.isLogin) AppConstants.BTN_SIGN_IN else AppConstants.BTN_CREATE_ACCOUNT)
-                                }
-
-                                Spacer(modifier = Modifier.height(16.dp))
-                                OutlinedButton(
-                                    onClick = {
-                                        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).requestIdToken(context.getString(R.string.default_web_client_id)).requestEmail().build()
-                                        googleSignInLauncher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
-                                    },
-                                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                                OutlinedTextField(
+                                    value = viewModel.email, 
+                                    onValueChange = { viewModel.email = it }, 
+                                    label = { Text("University Email") }, 
+                                    modifier = Modifier.fillMaxWidth(), 
                                     shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                                ) { Icon(Icons.Default.AccountCircle, null); Spacer(Modifier.width(12.dp)); Text(if (viewModel.isLogin) AppConstants.BTN_GOOGLE_LOGIN else AppConstants.BTN_GOOGLE_SIGNUP) }
-
-                                TextButton(onClick = { viewModel.isLogin = !viewModel.isLogin; viewModel.error = null; viewModel.loginAttempts = 0 }) { Text(if (viewModel.isLogin) "New member? Register" else "Have an account? Sign In") }
+                                    leadingIcon = { Icon(Icons.Default.Email, null) }
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Button(onClick = { viewModel.resetPassword() }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) {
+                                    Text(AppConstants.BTN_SEND_RESET_LINK)
+                                }
+                                TextButton(onClick = { viewModel.isResettingPassword = false }) { Text(AppConstants.BTN_RETURN_TO_LOGIN) }
                             }
 
-                            AnimatedVisibility(visible = viewModel.error != null) {
-                                Card(modifier = Modifier.padding(top = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f))) {
-                                    Text(text = viewModel.error ?: "", modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            else {
+                                // Default Login/Signup State
+                                AuthLogo(
+                                    isLogin = viewModel.isLogin,
+                                    glowScale = glowScale,
+                                    glowAlpha = glowAlpha
+                                )
+                                
+                                Spacer(modifier = Modifier.height(32.dp))
+                                
+                                Text(
+                                    text = if (viewModel.isLogin) AppConstants.TITLE_WELCOME_BACK else AppConstants.TITLE_MEMBER_REGISTRATION, 
+                                    style = MaterialTheme.typography.headlineMedium, 
+                                    fontWeight = FontWeight.Black
+                                )
+                                
+                                Spacer(modifier = Modifier.height(32.dp))
+
+                                if (!viewModel.isLogin) {
+                                    OutlinedTextField(
+                                        value = viewModel.firstName, 
+                                        onValueChange = { viewModel.firstName = it }, 
+                                        label = { Text("Full Name") }, 
+                                        modifier = Modifier.fillMaxWidth(), 
+                                        shape = RoundedCornerShape(12.dp),
+                                        leadingIcon = { Icon(Icons.Default.Person, null) }
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                }
+
+                                OutlinedTextField(
+                                    value = viewModel.email, 
+                                    onValueChange = { viewModel.email = it }, 
+                                    label = { Text("University Email") }, 
+                                    modifier = Modifier.fillMaxWidth(), 
+                                    shape = RoundedCornerShape(12.dp),
+                                    leadingIcon = { Icon(Icons.Default.Email, null) }
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                OutlinedTextField(
+                                    value = viewModel.password, 
+                                    onValueChange = { viewModel.password = it }, 
+                                    label = { Text("Password") }, 
+                                    modifier = Modifier.fillMaxWidth(), 
+                                    shape = RoundedCornerShape(12.dp),
+                                    visualTransformation = if (viewModel.passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                    leadingIcon = { Icon(Icons.Default.Lock, null) },
+                                    trailingIcon = {
+                                        IconButton(onClick = { viewModel.passwordVisible = !viewModel.passwordVisible }) {
+                                            Icon(if (viewModel.passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, null)
+                                        }
+                                    }
+                                )
+
+                                if (viewModel.isLogin) {
+                                    TextButton(
+                                        onClick = { viewModel.isResettingPassword = true },
+                                        modifier = Modifier.align(Alignment.End)
+                                    ) { Text("Forgot Password?", style = MaterialTheme.typography.labelMedium) }
+                                }
+
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                Button(
+                                    onClick = { 
+                                        if (viewModel.isLogin) viewModel.handleSignIn(context) { email ->
+                                            scope.launch { snackbarHostState.showSnackbar("Verification code sent to $email") }
+                                        } 
+                                        else viewModel.handleSignUp() 
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                                ) {
+                                    if (viewModel.isLoading) {
+                                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                                    } else {
+                                        Text(if (viewModel.isLogin) AppConstants.BTN_SIGN_IN else AppConstants.BTN_CREATE_ACCOUNT, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(if (viewModel.isLogin) "New to Glyndŵr?" else "Already a member?", style = MaterialTheme.typography.bodyMedium)
+                                    TextButton(onClick = { viewModel.isLogin = !viewModel.isLogin }) {
+                                        Text(if (viewModel.isLogin) "Register Now" else "Login instead", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), thickness = 0.5.dp)
+
+                                OutlinedButton(
+                                    onClick = { 
+                                        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                            .requestIdToken(context.getString(R.string.default_web_client_id))
+                                            .requestEmail()
+                                            .build()
+                                        val googleSignInClient = GoogleSignIn.getClient(context, gso)
+                                        googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                ) {
+                                    Icon(Icons.Default.CloudCircle, null, modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(if (viewModel.isLogin) AppConstants.BTN_GOOGLE_LOGIN else AppConstants.BTN_GOOGLE_SIGNUP)
                                 }
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(40.dp))
+                    
+                    if (viewModel.error != null) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.padding(top = 24.dp).fillMaxWidth()
+                        ) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Error, null, tint = MaterialTheme.colorScheme.error)
+                                Spacer(Modifier.width(12.dp))
+                                Text(viewModel.error!!, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(48.dp))
                 }
             }
         }
 
-        AppPopups.AuthLoading(show = viewModel.isLoading)
-
-        AppPopups.AuthDemoCode(
-            show = viewModel.showDemoPopup,
-            code = viewModel.generated2FACode,
-            onDismiss = { viewModel.showDemoPopup = false }
-        )
+        // Authentication Popups
+        AppPopups.AuthDemoCode(show = viewModel.showDemoPopup, code = viewModel.generated2FACode, onDismiss = { viewModel.showDemoPopup = false })
         
         AppPopups.AuthSuccess(
-            show = viewModel.showSuccessPopup,
+            show = viewModel.showSuccessPopup, 
             isDarkTheme = isDarkTheme,
             onDismiss = { 
                 viewModel.showSuccessPopup = false
-                onAuthSuccess(isAdmin) 
+                onAuthSuccess(isAdmin)
             }
         )
     }

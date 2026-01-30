@@ -13,6 +13,7 @@ data class HomeUiState(
     val filteredBooks: List<Book> = emptyList(),
     val wishlistIds: Set<String> = emptySet(),
     val purchasedIds: Set<String> = emptySet(),
+    val applicationsMap: Map<String, String> = emptyMap(), // Added applications mapping
     val selectedMainCategory: String = AppConstants.CAT_ALL,
     val selectedSubCategory: String = "All Genres",
     val searchQuery: String = "",
@@ -24,5 +25,5 @@ data class HomeUiState(
     val bookToRemove: Book? = null,
     val walletHistory: List<WalletTransaction> = emptyList(),
     val showWalletHistory: Boolean = false,
-    val localUser: UserLocal? = null // Added localUser to state
+    val localUser: UserLocal? = null
 )

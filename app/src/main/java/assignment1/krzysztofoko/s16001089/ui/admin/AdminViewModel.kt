@@ -3,21 +3,32 @@ package assignment1.krzysztofoko.s16001089.ui.admin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import assignment1.krzysztofoko.s16001089.data.*
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
  * ViewModel for the Admin Hub.
- * Manages the review process for academic course applications, user accounts, and the product catalog.
  */
 class AdminViewModel(
     private val userDao: UserDao,
     private val courseDao: CourseDao,
     private val bookDao: BookDao,
     private val audioBookDao: AudioBookDao,
-    private val gearDao: GearDao
+    private val gearDao: GearDao,
+    private val auditDao: AuditDao
 ) : ViewModel() {
+
+    private val auth = FirebaseAuth.getInstance()
+
+    // --- Navigation State ---
+    private val _currentSection = MutableStateFlow(AdminSection.DASHBOARD)
+    val currentSection: StateFlow<AdminSection> = _currentSection.asStateFlow()
+
+    fun setSection(section: AdminSection) {
+        _currentSection.value = section
+    }
 
     // --- Course Applications ---
     val applications: StateFlow<List<AdminApplicationItem>> = flow {
@@ -41,16 +52,35 @@ class AdminViewModel(
     val allCourses: Flow<List<Course>> = courseDao.getAllCourses()
     val allGear: Flow<List<Gear>> = gearDao.getAllGear()
 
+    // --- System Logs ---
+    val adminLogs: Flow<List<SystemLog>> = auditDao.getAdminLogs()
+    val userLogs: Flow<List<SystemLog>> = auditDao.getUserLogs()
+
+    private fun addLog(action: String, targetId: String, details: String, type: String) {
+        viewModelScope.launch {
+            val user = auth.currentUser
+            auditDao.insertLog(SystemLog(
+                userId = user?.uid ?: "unknown",
+                userName = user?.displayName ?: "Unknown",
+                action = action,
+                targetId = targetId,
+                details = details,
+                logType = type
+            ))
+        }
+    }
+
     // --- Actions: Applications ---
     fun approveApplication(appId: String, studentId: String, courseTitle: String) {
         viewModelScope.launch {
             userDao.updateEnrollmentStatus(appId, "APPROVED")
+            addLog("APPROVED", appId, "Approved enrollment for $courseTitle", "ADMIN")
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
                 userId = studentId,
                 productId = appId.split("_").last(),
                 title = "Application Approved!",
-                message = "Your application for '$courseTitle' has been approved. You can now complete your enrollment.",
+                message = "Your application for '$courseTitle' has been approved.",
                 timestamp = System.currentTimeMillis(),
                 type = "GENERAL"
             ))
@@ -60,70 +90,96 @@ class AdminViewModel(
     fun rejectApplication(appId: String, studentId: String, courseTitle: String) {
         viewModelScope.launch {
             userDao.updateEnrollmentStatus(appId, "REJECTED")
-            userDao.addNotification(NotificationLocal(
-                id = UUID.randomUUID().toString(),
-                userId = studentId,
-                productId = appId.split("_").last(),
-                title = "Application Update",
-                message = "Unfortunately, your application for '$courseTitle' was not successful at this time.",
-                timestamp = System.currentTimeMillis(),
-                type = "GENERAL"
-            ))
+            addLog("REJECTED", appId, "Rejected enrollment for $courseTitle", "ADMIN")
         }
     }
 
     // --- Actions: User Management ---
-    fun updateUserRole(userId: String, newRole: String) {
-        viewModelScope.launch {
-            userDao.getUserById(userId)?.let { user ->
-                userDao.upsertUser(user.copy(role = newRole))
-            }
-        }
-    }
-
     fun saveUser(user: UserLocal) {
         viewModelScope.launch {
+            val existing = userDao.getUserById(user.id)
             userDao.upsertUser(user)
+            val action = if (existing == null) "CREATED" else "EDITED"
+            addLog(action, user.id, "$action user account: ${user.email}", "ADMIN")
         }
     }
 
     fun deleteUser(userId: String) {
         viewModelScope.launch {
             userDao.deleteFullUserAccount(userId)
+            addLog("DELETED", userId, "Permanently removed user account", "ADMIN")
         }
     }
 
     // --- Actions: Catalog Management ---
     fun saveBook(book: Book) {
-        viewModelScope.launch { bookDao.upsertBook(book) }
+        viewModelScope.launch { 
+            val existing = bookDao.getBookById(book.id)
+            bookDao.upsertBook(book)
+            val action = if (existing == null) "CREATED" else "EDITED"
+            addLog(action, book.id, "$action book: ${book.title}", "ADMIN")
+        }
     }
 
     fun deleteBook(id: String) {
-        viewModelScope.launch { bookDao.deleteBook(id) }
+        viewModelScope.launch { 
+            bookDao.deleteBook(id) 
+            addLog("DELETED", id, "Removed book from catalog", "ADMIN")
+        }
     }
 
     fun saveAudioBook(audioBook: AudioBook) {
-        viewModelScope.launch { audioBookDao.upsertAudioBook(audioBook) }
+        viewModelScope.launch { 
+            val existing = audioBookDao.getAudioBookById(audioBook.id)
+            audioBookDao.upsertAudioBook(audioBook)
+            val action = if (existing == null) "CREATED" else "EDITED"
+            addLog(action, audioBook.id, "$action audiobook: ${audioBook.title}", "ADMIN")
+        }
     }
 
     fun deleteAudioBook(id: String) {
-        viewModelScope.launch { audioBookDao.deleteAudioBook(id) }
+        viewModelScope.launch { 
+            audioBookDao.deleteAudioBook(id) 
+            addLog("DELETED", id, "Removed audiobook from catalog", "ADMIN")
+        }
     }
 
     fun saveCourse(course: Course) {
-        viewModelScope.launch { courseDao.upsertCourse(course) }
+        viewModelScope.launch { 
+            val existing = courseDao.getCourseById(course.id)
+            courseDao.upsertCourse(course) 
+            val action = if (existing == null) "CREATED" else "EDITED"
+            addLog(action, course.id, "$action course: ${course.title}", "ADMIN")
+        }
     }
 
     fun deleteCourse(id: String) {
-        viewModelScope.launch { deleteCourse(id) }
+        viewModelScope.launch { 
+            courseDao.deleteCourse(id) 
+            addLog("DELETED", id, "Removed course from catalog", "ADMIN")
+        }
     }
 
     fun saveGear(gear: Gear) {
-        viewModelScope.launch { gearDao.upsertGear(gear) }
+        viewModelScope.launch { 
+            val existing = gearDao.getGearById(gear.id)
+            gearDao.upsertGear(gear) 
+            val action = if (existing == null) "CREATED" else "EDITED"
+            addLog(action, gear.id, "$action gear: ${gear.title}", "ADMIN")
+        }
     }
 
     fun deleteGear(id: String) {
-        viewModelScope.launch { gearDao.deleteGear(id) }
+        viewModelScope.launch { 
+            gearDao.deleteGear(id) 
+            addLog("DELETED", id, "Removed gear item from catalog", "ADMIN")
+        }
+    }
+
+    fun clearLogs() {
+        viewModelScope.launch {
+            auditDao.clearAllLogs()
+        }
     }
 }
 
@@ -142,7 +198,8 @@ class AdminViewModelFactory(
             db.courseDao(),
             db.bookDao(),
             db.audioBookDao(),
-            db.gearDao()
+            db.gearDao(),
+            db.auditDao()
         ) as T
     }
 }

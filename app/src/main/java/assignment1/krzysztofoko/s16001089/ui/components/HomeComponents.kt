@@ -98,7 +98,8 @@ fun HomeTopBar(
 fun HomeBookItem(
     book: Book,
     isLoggedIn: Boolean,
-    userRole: String?, // Added userRole to determine discount eligibility
+    isPendingReview: Boolean = false, // Added isPendingReview parameter
+    userRole: String?, 
     isLiked: Boolean,
     isPurchased: Boolean,
     isAudioPlaying: Boolean,
@@ -137,7 +138,21 @@ fun HomeBookItem(
         bottomContent = {
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (isPurchased) {
+                if (isPendingReview) { // Show REVIEWING badge if pending
+                    Surface(
+                        color = Color(0xFFFBC02D).copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFFBC02D).copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = "REVIEWING",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color(0xFFFBC02D),
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                } else if (isPurchased) {
                     HomePurchasedLabel(
                         book = book,
                         onInvoiceClick = onInvoiceClick,

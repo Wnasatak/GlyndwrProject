@@ -41,6 +41,7 @@ fun ProfileScreen(
     onToggleTheme: () -> Unit,        // Callback to toggle dark/light mode
     viewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
+        auditDao = AppDatabase.getDatabase(LocalContext.current).auditDao(),
         userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     ))
 ) {
@@ -256,7 +257,7 @@ fun ProfileScreen(
             onDismiss = { showEmailPopup = false },
             onSuccess = { _ -> 
                 // Logout and return to Auth screen after email change for security
-                auth.signOut()
+                viewModel.signOut(localUser)
                 navController.navigate(AppConstants.ROUTE_AUTH) { popUpTo(0) } 
             }
         )

@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
  */
 class HomeViewModel(
     private val repository: BookRepository, 
-    private val userDao: UserDao,           
+    private val userDao: UserDao,
+    private val auditDao: AuditDao,
     private val userId: String,              
     initialCategory: String? = null          
 ) : ViewModel() {
@@ -35,7 +36,8 @@ class HomeViewModel(
         if (userId.isNotEmpty()) userDao.getRecentSearches(userId) else flowOf(emptyList<String>()),
         if (userId.isNotEmpty()) userDao.getWalletHistory(userId) else flowOf(emptyList<WalletTransaction>()),
         _filterSettings,
-        if (userId.isNotEmpty()) userDao.getUserFlow(userId) else flowOf(null) // Added user details
+        if (userId.isNotEmpty()) userDao.getUserFlow(userId) else flowOf(null),
+        if (userId.isNotEmpty()) userDao.getAllEnrollmentsFlow() else flowOf(emptyList()) // Fetch enrollments
     ) { array ->
         @Suppress("UNCHECKED_CAST")
         val books = array[0] as List<Book>?
@@ -51,8 +53,11 @@ class HomeViewModel(
         val filters = array[5] as FilterSettings
         @Suppress("UNCHECKED_CAST")
         val localUser = array[6] as UserLocal?
+        @Suppress("UNCHECKED_CAST")
+        val enrollments = array[7] as List<CourseEnrollmentDetails>
 
         val allBooks = books ?: emptyList()
+        val appMap = enrollments.filter { it.userId == userId }.associate { it.courseId to it.status }
         
         val filtered = allBooks.filter { book ->
             val matchMain = when (filters.mainCategory) {
@@ -79,6 +84,7 @@ class HomeViewModel(
             filteredBooks = filtered,
             wishlistIds = wishlist.toSet(),
             purchasedIds = purchased.toSet(),
+            applicationsMap = appMap, // Pass mapping to state
             selectedMainCategory = filters.mainCategory,
             selectedSubCategory = filters.subCategory,
             searchQuery = filters.searchQuery,
@@ -90,9 +96,23 @@ class HomeViewModel(
             bookToRemove = filters.bookToRemove,
             walletHistory = wallet,
             showWalletHistory = filters.showWalletHistory,
-            localUser = localUser // Pass local user to state
+            localUser = localUser
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState(isLoading = true))
+
+    private fun addLog(action: String, targetId: String, details: String) {
+        viewModelScope.launch {
+            val userName = uiState.value.localUser?.name ?: "User"
+            auditDao.insertLog(SystemLog(
+                userId = userId,
+                userName = userName,
+                action = action,
+                targetId = targetId,
+                details = details,
+                logType = "USER"
+            ))
+        }
+    }
 
     fun selectMainCategory(category: String) {
         _filterSettings.update { 
@@ -117,6 +137,7 @@ class HomeViewModel(
         if (query.isBlank() || userId.isEmpty()) return
         viewModelScope.launch {
             userDao.addSearchQuery(SearchHistoryItem(userId = userId, query = query.trim()))
+            addLog("SEARCH", "none", "User searched for: $query")
         }
     }
 
@@ -124,6 +145,7 @@ class HomeViewModel(
         if (userId.isEmpty()) return
         viewModelScope.launch {
             userDao.clearSearchHistory(userId)
+            addLog("CLEAR_HISTORY", "none", "User cleared their search history.")
         }
     }
 
@@ -148,10 +170,12 @@ class HomeViewModel(
         viewModelScope.launch {
             if (isLiked) {
                 userDao.removeFromWishlist(userId, book.id)
+                addLog("WISHLIST_REMOVE", book.id, "Removed from favorites: ${book.title}")
                 onComplete(AppConstants.MSG_REMOVED_FAVORITES)
             } else {
                 userDao.addToHistory(HistoryItem(userId, book.id))
                 userDao.addToWishlist(WishlistItem(userId, book.id))
+                addLog("WISHLIST_ADD", book.id, "Added to favorites: ${book.title}")
                 onComplete(AppConstants.MSG_ADDED_FAVORITES)
             }
         }
@@ -160,6 +184,7 @@ class HomeViewModel(
     fun removePurchase(book: Book, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             userDao.deletePurchase(userId, book.id)
+            addLog("LIBRARY_REMOVE", book.id, "Removed from library: ${book.title}")
             onComplete(AppConstants.MSG_REMOVED_LIBRARY)
         }
     }
@@ -181,13 +206,14 @@ private data class FilterSettings(
 class HomeViewModelFactory(
     private val repository: BookRepository,
     private val userDao: UserDao,
+    private val auditDao: AuditDao,
     private val userId: String,
     private val initialCategory: String? = null
 ) : androidx.lifecycle.ViewModelProvider.Factory {
     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return HomeViewModel(repository, userDao, userId, initialCategory) as T
+            return HomeViewModel(repository, userDao, auditDao, userId, initialCategory) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

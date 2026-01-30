@@ -18,6 +18,7 @@ import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 /**
@@ -41,6 +42,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(factory = HomeViewModelFactory(
         repository = BookRepository(AppDatabase.getDatabase(LocalContext.current)),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
+        auditDao = AppDatabase.getDatabase(LocalContext.current).auditDao(),
         userId = userId,
         initialCategory = initialCategory 
     ))
@@ -145,10 +147,14 @@ fun HomeScreen(
                             item { HomeEmptyState { viewModel.setSearchVisible(false) } }
                         } else {
                             items(uiState.filteredBooks) { book ->
+                                val appStatus = uiState.applicationsMap[book.id]
+                                val isPending = appStatus == "PENDING_REVIEW"
+
                                 HomeBookItem(
                                     book = book,
                                     isLoggedIn = isLoggedIn,
-                                    userRole = uiState.localUser?.role, // Pass user role
+                                    isPendingReview = isPending,
+                                    userRole = uiState.localUser?.role,
                                     isLiked = uiState.wishlistIds.contains(book.id),
                                     isPurchased = uiState.purchasedIds.contains(book.id),
                                     isAudioPlaying = isAudioPlaying && currentPlayingBookId == book.id,

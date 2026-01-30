@@ -28,10 +28,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.AppConstants
-import assignment1.krzysztofoko.s16001089.data.AppDatabase
-import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.data.BookRepository
-import assignment1.krzysztofoko.s16001089.data.UserDao
+import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
@@ -56,6 +53,8 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = viewModel(factory = DashboardViewModelFactory(
         repository = BookRepository(AppDatabase.getDatabase(LocalContext.current)),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
+        classroomDao = AppDatabase.getDatabase(LocalContext.current).classroomDao(),
+        auditDao = AppDatabase.getDatabase(LocalContext.current).auditDao(),
         userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     ))
 ) {
@@ -78,7 +77,7 @@ fun DashboardScreen(
     val showPaymentPopup by viewModel.showPaymentPopup.collectAsState()
     val bookToRemove by viewModel.bookToRemove.collectAsState()
     val suggestions by viewModel.suggestions.collectAsState()
-    val recentSearches by viewModel.recentSearches.collectAsState()
+    val searchHistory by viewModel.searchHistory.collectAsState()
 
     val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
 
@@ -220,7 +219,7 @@ fun DashboardScreen(
                                     val visibleItemsInfo = layoutInfo.visibleItemsInfo
                                     val itemInfo = visibleItemsInfo.find { it.index == index }
                                     if (itemInfo != null) {
-                                        val center = layoutInfo.viewportEndOffset / 2
+                                        val center = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset) / 2
                                         val itemCenter = itemInfo.offset + (itemInfo.size / 2)
                                         val dist = abs(center - itemCenter).toFloat()
                                         val normDist = (dist / center).coerceIn(0f, 1f)
@@ -252,16 +251,15 @@ fun DashboardScreen(
                                 onClick = { viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") },
                                 imageOverlay = { if (book.isAudioBook) { Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) { SpinningAudioButton(isPlaying = isAudioPlaying && currentPlayingBookId == book.id, onToggle = { onPlayAudio(book) }, size = 40) } } },
                                 topEndContent = {
-                                    Box {
-                                        IconButton(onClick = { viewModel.setSearchVisible(false); showItemMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = AppConstants.TITLE_OPTIONS, modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
-                                        DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
-                                            if (book.mainCategory == AppConstants.CAT_COURSES && !isPending && !isRejected) { DropdownMenuItem(text = { Text(if (isApproved && !isFullyOwned) "Complete Enrollment" else AppConstants.BTN_ENTER_CLASSROOM) }, onClick = { showItemMenu = false; if (isApproved && !isFullyOwned) navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") else navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${book.id}") }, leadingIcon = { Icon(Icons.Default.School, null) }) }
-                                            
-                                            // Only show View Invoice if the item is fully purchased
-                                            if (book.price > 0.0 && isFullyOwned) { DropdownMenuItem(text = { Text(AppConstants.BTN_VIEW_INVOICE) }, onClick = { showItemMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
-                                            
-                                            if (book.mainCategory == AppConstants.CAT_GEAR) { DropdownMenuItem(text = { Text(AppConstants.BTN_PICKUP_INFO) }, onClick = { showItemMenu = false; selectedBookForPickup = book }, leadingIcon = { Icon(Icons.Default.Info, null) }) }
-                                            if (book.mainCategory != AppConstants.CAT_GEAR && book.price <= 0.0 && !isPending) { DropdownMenuItem(text = { Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, color = MaterialTheme.colorScheme.error) }, onClick = { showItemMenu = false; viewModel.setBookToRemove(book) }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }) }
+                                    if (!isPending) {
+                                        Box {
+                                            IconButton(onClick = { viewModel.setSearchVisible(false); showItemMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = AppConstants.TITLE_OPTIONS, modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
+                                            DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
+                                                if (book.mainCategory == AppConstants.CAT_COURSES && !isRejected) { DropdownMenuItem(text = { Text(if (isApproved && !isFullyOwned) "Complete Enrollment" else AppConstants.BTN_ENTER_CLASSROOM) }, onClick = { showItemMenu = false; if (isApproved && !isFullyOwned) navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") else navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${book.id}") }, leadingIcon = { Icon(Icons.Default.School, null) }) }
+                                                if (book.price > 0.0 && isFullyOwned) { DropdownMenuItem(text = { Text(AppConstants.BTN_VIEW_INVOICE) }, onClick = { showItemMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
+                                                if (book.mainCategory == AppConstants.CAT_GEAR) { DropdownMenuItem(text = { Text(AppConstants.BTN_PICKUP_INFO) }, onClick = { showItemMenu = false; selectedBookForPickup = book }, leadingIcon = { Icon(Icons.Default.Info, null) }) }
+                                                if (book.mainCategory != AppConstants.CAT_GEAR && book.price <= 0.0) { DropdownMenuItem(text = { Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, color = MaterialTheme.colorScheme.error) }, onClick = { showItemMenu = false; viewModel.setBookToRemove(book) }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }) }
+                                            }
                                         }
                                     }
                                 },
@@ -291,7 +289,7 @@ fun DashboardScreen(
                 }
                 
                 // Overlay Search Section
-                HomeSearchSection(isSearchVisible = isSearchVisible, searchQuery = searchQuery, recentSearches = recentSearches, onQueryChange = { viewModel.updateSearchQuery(it) }, onClearHistory = { viewModel.clearRecentSearches() }, onCloseClick = { viewModel.setSearchVisible(false) }, suggestions = suggestions, onSuggestionClick = { book -> viewModel.saveSearchQuery(book.title); viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") }, modifier = Modifier.padding(top = paddingValues.calculateTopPadding()).zIndex(10f))
+                HomeSearchSection(isSearchVisible = isSearchVisible, searchQuery = searchQuery, recentSearches = searchHistory, onQueryChange = { viewModel.updateSearchQuery(it) }, onClearHistory = { viewModel.clearRecentSearches() }, onCloseClick = { viewModel.setSearchVisible(false) }, suggestions = suggestions, onSuggestionClick = { book -> viewModel.saveSearchQuery(book.title); viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") }, modifier = Modifier.padding(top = paddingValues.calculateTopPadding()).zIndex(10f))
             }
         }
         
@@ -317,12 +315,14 @@ fun DashboardScreen(
 class DashboardViewModelFactory(
     private val repository: BookRepository,
     private val userDao: UserDao,
+    private val classroomDao: ClassroomDao,
+    private val auditDao: AuditDao,
     private val userId: String
 ) : androidx.lifecycle.ViewModelProvider.Factory {
     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return DashboardViewModel(repository, userDao, userId) as T
+            return DashboardViewModel(repository, userDao, classroomDao, auditDao, userId) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

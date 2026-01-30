@@ -5,21 +5,26 @@ import androidx.lifecycle.viewModelScope
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.utils.OrderUtils
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
 
 /**
- * ViewModel for the User Dashboard.
+ * Enhanced ViewModel for the User Dashboard.
+ * Manages comprehensive student activity including library, history, invoices, and academic progress.
  */
 class DashboardViewModel(
     private val repository: BookRepository, 
-    private val userDao: UserDao,           
+    private val userDao: UserDao,
+    private val classroomDao: ClassroomDao,
+    private val auditDao: AuditDao,
     private val userId: String              
 ) : ViewModel() {
 
-    // --- Observable UI State Flows ---
-    
+    private val auth = FirebaseAuth.getInstance()
+
+    // --- Navigation & UI State ---
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -29,14 +34,13 @@ class DashboardViewModel(
     private val _showPaymentPopup = MutableStateFlow(false)
     val showPaymentPopup: StateFlow<Boolean> = _showPaymentPopup.asStateFlow()
 
-    // Holds a reference to a book targeted for library removal
     private val _bookToRemove = MutableStateFlow<Book?>(null)
     val bookToRemove: StateFlow<Book?> = _bookToRemove.asStateFlow()
 
-    // Current category filter for the 'Your Collection' section
     private val _selectedCollectionFilter = MutableStateFlow("All")
     val selectedCollectionFilter: StateFlow<String> = _selectedCollectionFilter.asStateFlow()
 
+    // --- User Profile & Finance ---
     val localUser: StateFlow<UserLocal?> = if (userId.isNotEmpty()) {
         userDao.getUserFlow(userId)
     } else {
@@ -49,24 +53,44 @@ class DashboardViewModel(
         flowOf(emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val allBooks: StateFlow<List<Book>> = repository.getAllCombinedData(userId)
-        .map { it ?: emptyList() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val recentSearches: StateFlow<List<String>> = if (userId.isNotEmpty()) {
-        userDao.getRecentSearches(userId)
+    val invoices: StateFlow<List<Invoice>> = if (userId.isNotEmpty()) {
+        userDao.getInvoicesForUser(userId)
     } else {
         flowOf(emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val unreadNotificationsCount: StateFlow<Int> = if (userId.isNotEmpty()) {
-        userDao.getNotificationsForUser(userId).map { list ->
-            list.count { !it.isRead }
-        }
-    } else {
-        flowOf(0)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    // --- Catalog & Library ---
+    val allBooks: StateFlow<List<Book>> = repository.getAllCombinedData(userId)
+        .map { it ?: emptyList() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val purchasedIds: StateFlow<Set<String>> = if (userId.isNotEmpty()) {
+        userDao.getPurchaseIds(userId).map { it.toSet() }
+    } else {
+        flowOf(emptySet())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    val filteredOwnedBooks: StateFlow<List<Book>> = combine(
+        allBooks, 
+        userDao.getPurchaseIds(userId),
+        userDao.getAllEnrollmentsFlow(),
+        _selectedCollectionFilter
+    ) { books, purchasedIds, enrollments, filter ->
+        val userEnrollments = enrollments.filter { it.userId == userId }
+        val owned = books.filter { book ->
+            purchasedIds.contains(book.id) || userEnrollments.any { it.courseId == book.id }
+        }
+        
+        when (filter) {
+            "Books" -> owned.filter { it.mainCategory == AppConstants.CAT_BOOKS && !it.isAudioBook }
+            "Audiobooks" -> owned.filter { it.isAudioBook }
+            "Gear" -> owned.filter { it.mainCategory == AppConstants.CAT_GEAR }
+            "Courses" -> owned.filter { it.mainCategory == AppConstants.CAT_COURSES }
+            else -> owned
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // --- Activity & Engagement ---
     val wishlistBooks: StateFlow<List<Book>> = combine(allBooks, userDao.getWishlistIds(userId)) { books, ids ->
         ids.mapNotNull { id -> books.find { it.id == id } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -79,47 +103,39 @@ class DashboardViewModel(
         ids.mapNotNull { id -> books.find { it.id == id } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /**
-     * Purchased IDs Flow:
-     * Exposes the set of product IDs the user has actually paid for or fully enrolled in.
-     */
-    val purchasedIds: StateFlow<Set<String>> = if (userId.isNotEmpty()) {
-        userDao.getPurchaseIds(userId).map { it.toSet() }
+    val userReviews: StateFlow<List<ReviewLocal>> = if (userId.isNotEmpty()) {
+        userDao.getReviewsForUser(userId)
     } else {
-        flowOf(emptySet())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
-
-    /**
-     * Core Library Collection:
-     * Combined list of owned items AND active applications.
-     */
-    val ownedBooks: StateFlow<List<Book>> = combine(
-        allBooks, 
-        userDao.getPurchaseIds(userId),
-        userDao.getAllEnrollmentsFlow()
-    ) { books, purchasedIds, enrollments ->
-        val userEnrollments = enrollments.filter { it.userId == userId }
-        
-        books.filter { book ->
-            purchasedIds.contains(book.id) || 
-            userEnrollments.any { it.courseId == book.id }
-        }
+        flowOf(emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val filteredOwnedBooks: StateFlow<List<Book>> = combine(ownedBooks, _selectedCollectionFilter) { books, filter ->
-        when (filter) {
-            "Books" -> books.filter { it.mainCategory == AppConstants.CAT_BOOKS && !it.isAudioBook }
-            "Audiobooks" -> books.filter { it.isAudioBook }
-            "Gear" -> books.filter { it.mainCategory == AppConstants.CAT_GEAR }
-            "Courses" -> books.filter { it.mainCategory == AppConstants.CAT_COURSES }
-            else -> books
-        }
+    val searchHistory: StateFlow<List<String>> = if (userId.isNotEmpty()) {
+        userDao.getRecentSearches(userId)
+    } else {
+        flowOf(emptyList())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /**
-     * User Applications Map:
-     * Provides a quick lookup for application status by courseId.
-     */
+    // --- Academic Status ---
+    val courseInstallments: StateFlow<List<CourseInstallment>> = if (userId.isNotEmpty()) {
+        userDao.getCourseInstallmentsForUser(userId)
+    } else {
+        flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val userGrades: StateFlow<List<Grade>> = if (userId.isNotEmpty()) {
+        classroomDao.getAllGradesForUser(userId)
+    } else {
+        flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val unreadNotificationsCount: StateFlow<Int> = if (userId.isNotEmpty()) {
+        userDao.getNotificationsForUser(userId).map { list ->
+            list.count { !it.isRead }
+        }
+    } else {
+        flowOf(0)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     val applicationsMap: StateFlow<Map<String, String>> = if (userId.isNotEmpty()) {
         userDao.getAllEnrollmentsFlow().map { list ->
             list.filter { it.userId == userId }.associate { it.courseId to it.status }
@@ -128,11 +144,6 @@ class DashboardViewModel(
         flowOf(emptyMap())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    /**
-     * Application Count Flow:
-     * Tracks if the user has any applications that are NOT YET PAID/ENROLLED.
-     * Once a course is purchased, it is no longer considered an active "Application" in this context.
-     */
     val applicationCount: StateFlow<Int> = combine(
         userDao.getAllEnrollmentsFlow(),
         purchasedIds
@@ -147,6 +158,21 @@ class DashboardViewModel(
         }.take(5)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // --- Logging Helper ---
+    private fun addLog(action: String, targetId: String, details: String) {
+        viewModelScope.launch {
+            val user = auth.currentUser
+            auditDao.insertLog(SystemLog(
+                userId = userId,
+                userName = user?.displayName ?: "Student",
+                action = action,
+                targetId = targetId,
+                details = details,
+                logType = "USER"
+            ))
+        }
+    }
+
     // --- State Handlers ---
 
     fun updateSearchQuery(query: String) { _searchQuery.value = query }
@@ -155,12 +181,16 @@ class DashboardViewModel(
         if (query.isBlank() || userId.isEmpty()) return
         viewModelScope.launch {
             userDao.addSearchQuery(SearchHistoryItem(userId = userId, query = query.trim()))
+            addLog("SEARCH", "none", "Searched for: $query")
         }
     }
 
     fun clearRecentSearches() {
         if (userId.isEmpty()) return
-        viewModelScope.launch { userDao.clearSearchHistory(userId) }
+        viewModelScope.launch { 
+            userDao.clearSearchHistory(userId)
+            addLog("CLEAR_HISTORY", "none", "Cleared search history")
+        }
     }
 
     fun setSearchVisible(visible: Boolean) {
@@ -223,6 +253,7 @@ class DashboardViewModel(
                     type = "FINANCE"
                 ))
                 
+                addLog("WALLET_TOPUP", AppConstants.ID_TOPUP, "Topped up wallet by £$formattedAmount")
                 onComplete("£$formattedAmount ${AppConstants.MSG_WALLET_TOPUP_SUCCESS}")
             }
         }
@@ -231,7 +262,15 @@ class DashboardViewModel(
     fun removePurchase(book: Book, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             userDao.deletePurchase(userId, book.id)
+            addLog("REMOVE_FROM_LIBRARY", book.id, "Removed ${book.title} from library")
             onComplete(AppConstants.MSG_REMOVED_LIBRARY)
+        }
+    }
+
+    fun deleteReview(reviewId: Int) {
+        viewModelScope.launch {
+            userDao.deleteReview(reviewId)
+            addLog("DELETE_REVIEW", reviewId.toString(), "User deleted their own review")
         }
     }
 }
