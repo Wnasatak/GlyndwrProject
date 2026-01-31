@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
+import assignment1.krzysztofoko.s16001089.data.SystemLog
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminSection
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
@@ -41,6 +42,7 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
     val currentUser = FirebaseAuth.getInstance().currentUser
 
     var showProjectDetailsPopup by remember { mutableStateOf(false) }
+    var showBroadcastDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -124,7 +126,7 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.1f))
                     AdminActionButton(Icons.Default.Security, "System Logs") { viewModel.setSection(AdminSection.LOGS) }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.1f))
-                    AdminActionButton(Icons.Default.Mail, "Broadcast Announcement") {}
+                    AdminActionButton(Icons.Default.Mail, "Broadcast Announcement") { showBroadcastDialog = true }
                 }
             }
         }
@@ -147,6 +149,17 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
                 }
             },
             confirmButton = { Button(onClick = { showProjectDetailsPopup = false }) { Text("Close") } }
+        )
+    }
+
+    // Broadcast Announcement Dialog
+    if (showBroadcastDialog) {
+        BroadcastAnnouncementDialog(
+            onDismiss = { showBroadcastDialog = false },
+            onSend = { title, message ->
+                viewModel.sendBroadcast(title, message)
+                showBroadcastDialog = false
+            }
         )
     }
 }

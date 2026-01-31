@@ -38,6 +38,8 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
 
     var adminFilter by remember { mutableStateOf("ALL") }
     var userFilter by remember { mutableStateOf("ALL") }
+    var idSearchQuery by remember { mutableStateOf("") }
+    var isSearchVisible by remember { mutableStateOf(false) }
 
     var selectedLogForDetail by remember { mutableStateOf<SystemLog?>(null) }
 
@@ -51,39 +53,82 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
                 Tab(
                     selected = selectedTab == index,
                     onClick = { selectedTab = index },
-                    text = { Text(title, fontWeight = FontWeight.Bold) }
+                    text = { Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                 )
             }
         }
 
-        // Sub-filter Row
-        if (selectedTab == 0) {
-            AdminFilterRow(selectedFilter = adminFilter, onFilterChange = { adminFilter = it })
-        } else {
-            UserFilterRow(selectedFilter = userFilter, onFilterChange = { userFilter = it })
+        // Action Row with Search Toggle and Sub-filters
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (!isSearchVisible) {
+                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { isSearchVisible = true },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(Icons.Default.Search, "Show Search", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    if (selectedTab == 0) {
+                        AdminFilterRowSmall(selectedFilter = adminFilter, onFilterChange = { adminFilter = it })
+                    } else {
+                        UserFilterRowSmall(selectedFilter = userFilter, onFilterChange = { userFilter = it })
+                    }
+                }
+            } else {
+                OutlinedTextField(
+                    value = idSearchQuery,
+                    onValueChange = { idSearchQuery = it },
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+                    placeholder = { Text("Search ID or Name...", fontSize = 16.sp) },
+                    leadingIcon = { Icon(Icons.Default.Fingerprint, null, modifier = Modifier.size(24.dp)) },
+                    trailingIcon = {
+                        IconButton(onClick = { 
+                            isSearchVisible = false
+                            idSearchQuery = "" 
+                        }) { Icon(Icons.Default.Close, null, modifier = Modifier.size(24.dp)) }
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                    )
+                )
+            }
         }
 
         val baseLogs = if (selectedTab == 0) adminLogs else userLogs
         val activeFilter = if (selectedTab == 0) adminFilter else userFilter
         
         val filteredLogs = baseLogs.filter { log ->
-            if (activeFilter == "ALL") true
-            else if (activeFilter == "LOGINS") log.action.contains("LOGIN") || log.action.contains("SIGN_UP")
-            else if (activeFilter == "ADDED") log.action.contains("CREATED") || log.action.contains("POSTED") || log.action.contains("ADD")
-            else if (activeFilter == "EDITED") log.action.contains("EDITED") || log.action.contains("UPDATED")
-            else if (activeFilter == "REMOVED") log.action.contains("DELETED") || log.action.contains("REMOVE") || log.action.contains("CLEAR")
-            else true
+            val matchesCategory = if (activeFilter == "ALL") true
+                else if (activeFilter == "LOGINS") log.action.contains("LOGIN") || log.action.contains("SIGN_UP")
+                else if (activeFilter == "ADDED") log.action.contains("CREATED") || log.action.contains("POSTED") || log.action.contains("ADD")
+                else if (activeFilter == "EDITED") log.action.contains("EDITED") || log.action.contains("UPDATED")
+                else if (activeFilter == "REMOVED") log.action.contains("DELETED") || log.action.contains("REMOVE") || log.action.contains("CLEAR")
+                else true
+
+            val matchesSearch = if (idSearchQuery.isEmpty()) true
+                else log.userId.contains(idSearchQuery, ignoreCase = true) || 
+                     log.userName.contains(idSearchQuery, ignoreCase = true) ||
+                     log.targetId.contains(idSearchQuery, ignoreCase = true)
+
+            matchesCategory && matchesSearch
         }
 
         if (filteredLogs.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No logs found for this filter.", color = Color.Gray)
+                Text("No matching logs.", color = Color.Gray, fontSize = 16.sp)
             }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(bottom = 32.dp, start = 16.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(filteredLogs) { log ->
                     LogItemCard(log, onClick = { selectedLogForDetail = log })
@@ -101,7 +146,7 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
 }
 
 @Composable
-fun AdminFilterRow(selectedFilter: String, onFilterChange: (String) -> Unit) {
+fun AdminFilterRowSmall(selectedFilter: String, onFilterChange: (String) -> Unit) {
     val filters = listOf(
         "ALL" to Icons.Default.FilterList,
         "LOGINS" to Icons.Default.Login,
@@ -111,18 +156,17 @@ fun AdminFilterRow(selectedFilter: String, onFilterChange: (String) -> Unit) {
     )
     
     LazyRow(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(filters) { (id, icon) ->
-            FilterPill(id = id, label = id.capitalize(), icon = icon, isSelected = selectedFilter == id) { onFilterChange(id) }
+            FilterPillSmall(id = id, icon = icon, isSelected = selectedFilter == id) { onFilterChange(id) }
         }
     }
 }
 
 @Composable
-fun UserFilterRow(selectedFilter: String, onFilterChange: (String) -> Unit) {
+fun UserFilterRowSmall(selectedFilter: String, onFilterChange: (String) -> Unit) {
     val filters = listOf(
         "ALL" to Icons.Default.FilterList,
         "LOGINS" to Icons.Default.Login,
@@ -131,31 +175,32 @@ fun UserFilterRow(selectedFilter: String, onFilterChange: (String) -> Unit) {
     )
     
     LazyRow(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(filters) { (id, icon) ->
-            FilterPill(id = id, label = id.capitalize(), icon = icon, isSelected = selectedFilter == id) { onFilterChange(id) }
+            FilterPillSmall(id = id, icon = icon, isSelected = selectedFilter == id) { onFilterChange(id) }
         }
     }
 }
 
 @Composable
-fun FilterPill(id: String, label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
+fun FilterPillSmall(id: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.clip(RoundedCornerShape(20.dp)).clickable { onClick() },
+        modifier = Modifier.clip(CircleShape).clickable { onClick() },
         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-        shape = RoundedCornerShape(20.dp),
+        shape = CircleShape,
         border = if (isSelected) null else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f))
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = if (isSelected) Color.White else Color.Gray)
-            Spacer(Modifier.width(6.dp))
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = if (isSelected) Color.White else Color.Gray, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+            Icon(imageVector = icon, contentDescription = id, modifier = Modifier.size(18.dp), tint = if (isSelected) Color.White else Color.Gray)
+            if (isSelected) {
+                Spacer(Modifier.width(6.dp))
+                Text(text = id.capitalize(), style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
@@ -184,19 +229,19 @@ fun LogItemCard(log: SystemLog, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
         )
     ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(48.dp),
                 shape = CircleShape,
                 color = color.copy(alpha = 0.1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = color)
+                    Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = color)
                 }
             }
             
@@ -206,7 +251,7 @@ fun LogItemCard(log: SystemLog, onClick: () -> Unit) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
                         text = log.action.replace("_", " "),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Black,
                         color = color
                     )
@@ -216,8 +261,8 @@ fun LogItemCard(log: SystemLog, onClick: () -> Unit) {
                         color = Color.Gray
                     )
                 }
-                Spacer(Modifier.height(4.dp))
-                Text(text = log.details, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                Spacer(Modifier.height(6.dp))
+                Text(text = log.details, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Text(
                     text = "By: ${log.userName}",
                     style = MaterialTheme.typography.labelSmall,
@@ -253,25 +298,25 @@ fun LogDetailPopup(log: SystemLog, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(imageVector = icon, contentDescription = null, tint = color)
-                Spacer(Modifier.width(12.dp))
+                Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(32.dp))
+                Spacer(Modifier.width(16.dp))
                 Text("Activity Log Detail", fontWeight = FontWeight.Black)
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 Column {
                     Text("ACTION TYPE", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                     Surface(
                         color = color.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.padding(top = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.padding(top = 6.dp),
                         border = BorderStroke(1.dp, color.copy(alpha = 0.3f))
                     ) {
                         Text(
                             text = log.action.replace("_", " "),
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Black,
                             color = color
                         )
@@ -280,30 +325,30 @@ fun LogDetailPopup(log: SystemLog, onDismiss: () -> Unit) {
 
                 Column {
                     Text("FULL DESCRIPTION", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
-                    Text(text = log.details, style = MaterialTheme.typography.bodyLarge)
+                    Text(text = log.details, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp)
                 }
 
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("INITIATOR", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
-                        Text(text = log.userName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text(text = log.userName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(text = "ID: ${log.userId}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                     }
                     Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                         Text("TARGET ID", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
-                        Text(text = log.targetId, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text(text = log.targetId, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 Column {
                     Text("EVENT TIMESTAMP", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
-                    Text(text = sdf.format(Date(log.timestamp)), style = MaterialTheme.typography.bodyMedium)
+                    Text(text = sdf.format(Date(log.timestamp)), style = MaterialTheme.typography.bodyLarge)
                 }
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss, shape = RoundedCornerShape(12.dp)) {
-                Text("Close")
+            Button(onClick = onDismiss, shape = RoundedCornerShape(16.dp), modifier = Modifier.height(48.dp).fillMaxWidth(0.4f)) {
+                Text("Close", fontWeight = FontWeight.Bold)
             }
         }
     )

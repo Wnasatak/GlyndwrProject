@@ -56,6 +56,15 @@ class AdminViewModel(
     val adminLogs: Flow<List<SystemLog>> = auditDao.getAdminLogs()
     val userLogs: Flow<List<SystemLog>> = auditDao.getUserLogs()
 
+    init {
+        // --- AUTOMATED MAINTENANCE ---
+        viewModelScope.launch {
+            auditDao.performLogMaintenance()
+            // Record that maintenance happened
+            addLog("MAINTENANCE", "SYSTEM", "Automated log cleanup performed. Database optimized to 100 entries per category.", "ADMIN")
+        }
+    }
+
     private fun addLog(action: String, targetId: String, details: String, type: String) {
         viewModelScope.launch {
             val user = auth.currentUser
@@ -173,6 +182,25 @@ class AdminViewModel(
         viewModelScope.launch { 
             gearDao.deleteGear(id) 
             addLog("DELETED", id, "Removed gear item from catalog", "ADMIN")
+        }
+    }
+
+    // --- Actions: Broadcast ---
+    fun sendBroadcast(title: String, message: String) {
+        viewModelScope.launch {
+            val allUserIds = allUsers.value.map { it.id }
+            allUserIds.forEach { uid ->
+                userDao.addNotification(NotificationLocal(
+                    id = UUID.randomUUID().toString(),
+                    userId = uid,
+                    productId = "BROADCAST",
+                    title = title,
+                    message = message,
+                    timestamp = System.currentTimeMillis(),
+                    type = "ANNOUNCEMENT"
+                ))
+            }
+            addLog("BROADCAST", "ALL_USERS", "Sent announcement: $title", "ADMIN")
         }
     }
 

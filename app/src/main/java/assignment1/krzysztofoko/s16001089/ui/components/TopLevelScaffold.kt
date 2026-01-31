@@ -1,6 +1,10 @@
 package assignment1.krzysztofoko.s16001089.ui.components
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -14,8 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import com.google.firebase.auth.FirebaseUser
@@ -44,6 +51,18 @@ fun TopLevelScaffold(
 ) {
     var showMoreMenu by remember { mutableStateOf(false) }
     val isAdmin = localUser?.role == "admin"
+
+    // Animation for the ringing bell
+    val infiniteTransition = rememberInfiniteTransition(label = "bellRing")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = -15f,
+        targetValue = 15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(250, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "rotation"
+    )
 
     Scaffold(
         topBar = {
@@ -77,10 +96,7 @@ fun TopLevelScaffold(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .clickable { 
-                                    // Admins go to Admin Hub, students go to Dashboard
-                                    onDashboardClick() 
-                                }
+                                .clickable { onDashboardClick() }
                                 .padding(4.dp)
                         ) {
                             UserAvatar(
@@ -98,7 +114,6 @@ fun TopLevelScaffold(
                         
                         // Actions Section (Right)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Only show Wallet for Students
                             if (!isAdmin) {
                                 Surface(
                                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
@@ -109,125 +124,87 @@ fun TopLevelScaffold(
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            Icons.Default.AccountBalanceWallet,
-                                            null,
-                                            modifier = Modifier.size(16.dp),
-                                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
+                                        Icon(Icons.Default.AccountBalanceWallet, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                                         Spacer(Modifier.width(6.dp))
                                         val balanceText = String.format(Locale.US, "%.2f", localUser?.balance ?: 0.0)
-                                        Text(
-                                            text = "£$balanceText",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
+                                        Text(text = "£$balanceText", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                     }
                                 }
                                 Spacer(Modifier.width(8.dp))
                             }
 
-                            // Show Store and Profile icons ONLY for Admin
                             if (isAdmin) {
-                                // Store Icon (Home)
                                 IconButton(onClick = onHomeClick, modifier = Modifier.size(32.dp)) {
-                                    Icon(
-                                        Icons.Default.Storefront,
-                                        "Store",
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(22.dp)
-                                    )
+                                    Icon(Icons.Default.Storefront, "Store", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(22.dp))
                                 }
-
                                 Spacer(Modifier.width(4.dp))
-
-                                // Profile Icon
                                 IconButton(onClick = onProfileClick, modifier = Modifier.size(32.dp)) {
-                                    Icon(
-                                        Icons.Default.Person,
-                                        "Profile",
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(22.dp)
-                                    )
+                                    Icon(Icons.Default.Person, "Profile", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(22.dp))
                                 }
-
                                 Spacer(Modifier.width(4.dp))
                             }
 
-                            // Notification Bell
+                            // Notification Bell with High-Visibility Badge
                             Box(contentAlignment = Alignment.TopEnd) {
-                                IconButton(onClick = onNotificationsClick, modifier = Modifier.size(32.dp)) {
+                                val bellColor = if (unreadCount > 0 && isDarkTheme) Color(0xFFFFEB3B) 
+                                                else if (unreadCount > 0) Color(0xFFFBC02D)
+                                                else MaterialTheme.colorScheme.onPrimaryContainer
+                                
+                                IconButton(onClick = onNotificationsClick, modifier = Modifier.size(36.dp)) {
                                     Icon(
-                                        Icons.Default.Notifications,
-                                        "Notifications",
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(22.dp)
+                                        imageVector = if (unreadCount > 0) Icons.Default.NotificationsActive else Icons.Default.Notifications,
+                                        contentDescription = "Notifications",
+                                        tint = bellColor,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .graphicsLayer {
+                                                if (unreadCount > 0) {
+                                                    rotationZ = rotation
+                                                }
+                                            }
                                     )
                                 }
                                 if (unreadCount > 0) {
                                     Surface(
-                                        color = MaterialTheme.colorScheme.error,
+                                        color = Color(0xFFE53935), // High-intensity professional red
                                         shape = CircleShape,
-                                        modifier = Modifier.padding(top = 2.dp, end = 2.dp).size(8.dp),
-                                        border = BorderStroke(1.dp, Color.White)
-                                    ) {}
+                                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primaryContainer),
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .offset(x = 4.dp, y = (-4).dp)
+                                            .align(Alignment.TopEnd)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = if (unreadCount > 9) "!" else unreadCount.toString(),
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    lineHeight = 9.sp
+                                                ),
+                                                color = Color.White,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
                                 }
                             }
 
                             Spacer(Modifier.width(4.dp))
                             
-                            // Navbar 3 Dots Menu
                             Box {
                                 IconButton(onClick = { showMoreMenu = true }, modifier = Modifier.size(32.dp)) {
-                                    Icon(
-                                        Icons.Default.MoreVert,
-                                        "More",
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(22.dp)
-                                    )
+                                    Icon(Icons.Default.MoreVert, "More", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(22.dp))
                                 }
-                                DropdownMenu(
-                                    expanded = showMoreMenu,
-                                    onDismissRequest = { showMoreMenu = false }
-                                ) {
+                                DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
                                     if (!isAdmin) {
-                                        DropdownMenuItem(
-                                            text = { Text(AppConstants.TITLE_MY_APPLICATIONS) },
-                                            onClick = { 
-                                                showMoreMenu = false
-                                                onMyApplicationsClick() 
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.Assignment, null) }
-                                        )
+                                        DropdownMenuItem(text = { Text(AppConstants.TITLE_MY_APPLICATIONS) }, onClick = { showMoreMenu = false; onMyApplicationsClick() }, leadingIcon = { Icon(Icons.Default.Assignment, null) })
                                     } else {
-                                        DropdownMenuItem(
-                                            text = { Text("Admin Hub") },
-                                            onClick = { 
-                                                showMoreMenu = false
-                                                onDashboardClick() 
-                                            },
-                                            leadingIcon = { Icon(Icons.Default.AdminPanelSettings, null) }
-                                        )
+                                        DropdownMenuItem(text = { Text("Admin Hub") }, onClick = { showMoreMenu = false; onDashboardClick() }, leadingIcon = { Icon(Icons.Default.AdminPanelSettings, null) })
                                     }
-
-                                    DropdownMenuItem(
-                                        text = { Text(if (isDarkTheme) "Light Mode" else "Dark Mode") },
-                                        onClick = { 
-                                            showMoreMenu = false
-                                            onToggleTheme() 
-                                        },
-                                        leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
-                                    )
+                                    DropdownMenuItem(text = { Text(if (isDarkTheme) "Light Mode" else "Dark Mode") }, onClick = { showMoreMenu = false; onToggleTheme() }, leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) })
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                                    DropdownMenuItem(
-                                        text = { Text(AppConstants.BTN_LOG_OUT, color = MaterialTheme.colorScheme.error) },
-                                        onClick = { 
-                                            showMoreMenu = false
-                                            onLogoutClick() 
-                                        },
-                                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) }
-                                    )
+                                    DropdownMenuItem(text = { Text(AppConstants.BTN_LOG_OUT, color = MaterialTheme.colorScheme.error) }, onClick = { showMoreMenu = false; onLogoutClick() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) })
                                 }
                             }
                         }
@@ -238,3 +215,5 @@ fun TopLevelScaffold(
         content = content
     )
 }
+
+private fun String.capitalizeWord(): String = this.lowercase().replaceFirstChar { it.uppercase() }
