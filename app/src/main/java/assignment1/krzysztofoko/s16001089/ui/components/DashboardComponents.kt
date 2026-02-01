@@ -409,6 +409,26 @@ fun AdminQuickActions(onClick: () -> Unit) {
 }
 
 @Composable
+fun TutorQuickActions(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.secondary)
+            Spacer(Modifier.width(12.dp))
+            Text(AppConstants.TEXT_TUTOR_CONTROLS, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+            Spacer(Modifier.weight(1f))
+            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.secondary)
+        }
+    }
+}
+
+@Composable
 fun SectionHeader(title: String) {
     Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp), color = MaterialTheme.colorScheme.primary)
 }

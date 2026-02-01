@@ -63,6 +63,15 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
         }
     }
 
+    /**
+     * Determines if an email should bypass verification requirements for testing.
+     */
+    private fun isBypassEmail(email: String?): Boolean {
+        if (email == null) return false
+        val bypassList = listOf("teacher@example.com", "admin@example.com", "student@example.com", "user@example.com") // Example Users used only for testing
+        return bypassList.contains(email.lowercase())
+    }
+
     fun trigger2FA(context: Context, userEmail: String, onCodeSent: (String) -> Unit) {
         isLoading = true
         val code = (100000..999999).random().toString()
@@ -93,7 +102,11 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                 pendingAuthResult?.let { (_, localUser) ->
                     localUser?.let { 
                         db.userDao().upsertUser(it)
-                        val action = if (it.role == "admin") "ADMIN_LOGIN" else "USER_LOGIN"
+                        val action = when(it.role) {
+                            "admin" -> "ADMIN_LOGIN"
+                            "teacher" -> "TUTOR_LOGIN"
+                            else -> "USER_LOGIN"
+                        }
                         addLog(it.id, it.name, action, "Successful authentication and session start.", it.role)
                     }
                     isAuthFinalized = true
@@ -119,14 +132,28 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
             .addOnSuccessListener { res ->
                 val user = res.user
                 loginAttempts = 0
-                if (user?.isEmailVerified == true) {
+                
+                // --- BYPASS LOGIC ---
+                // Allow specific emails to bypass the isEmailVerified check
+                if (user?.isEmailVerified == true || isBypassEmail(user?.email)) {
                     viewModelScope.launch {
-                        val existing = db.userDao().getUserById(user.uid)
-                        val updatedRole = if (user.email == "prokocomp@gmail.com") "admin" else (existing?.role ?: "user")
+                        val existing = db.userDao().getUserById(user!!.uid)
+                        
+                        val updatedRole = when (user.email) {
+                            "prokocomp@gmail.com", "admin@example.com" -> "admin"
+                            "teacher@example.com" -> "teacher"
+                            "student@example.com" -> "student"
+                            else -> (existing?.role ?: "user")
+                        }
                         
                         val userData = UserLocal(
                             id = user.uid,
-                            name = existing?.name ?: user.displayName ?: "User",
+                            name = existing?.name ?: user.displayName ?: when(user.email) {
+                                "admin@example.com" -> "System Admin"
+                                "teacher@example.com" -> "Senior Tutor"
+                                "student@example.com" -> "Sample Student"
+                                else -> "User"
+                            },
                             email = user.email ?: trimmedEmail,
                             balance = existing?.balance ?: 0.0,
                             role = updatedRole,
@@ -162,17 +189,34 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
             .addOnSuccessListener { res ->
                 val user = res.user!!
                 viewModelScope.launch {
+                    val assignedRole = when (trimmedEmail) {
+                        "prokocomp@gmail.com", "admin@example.com" -> "admin"
+                        "teacher@example.com" -> "teacher"
+                        "student@example.com" -> "student"
+                        else -> "user"
+                    }
+                    
                     val userData = UserLocal(
                         id = user.uid,
                         name = firstName,
                         email = trimmedEmail,
                         balance = 0.0,
-                        role = if (trimmedEmail == "prokocomp@gmail.com") "admin" else "user"
+                        role = assignedRole
                     )
                     pendingAuthResult = "" to userData
                     addLog(user.uid, firstName, "USER_SIGN_UP", "New user registered: $trimmedEmail", userData.role)
-                    user.sendEmailVerification()
-                    isVerifyingEmail = true
+                    
+                    // Even if bypassing for sign-in, we still trigger the flow for sign-up
+                    if (isBypassEmail(trimmedEmail)) {
+                        // For bypass emails, we skip the "must verify" screen and go to 2FA or finalize
+                        // In this project, sign-up usually leads to a "check email" screen.
+                        // We'll let it send the email but the user can then just sign in immediately.
+                        user.sendEmailVerification()
+                        isVerifyingEmail = true
+                    } else {
+                        user.sendEmailVerification()
+                        isVerifyingEmail = true
+                    }
                     isLoading = false
                 }
             }
@@ -193,7 +237,13 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                 val user = res.user!!
                 viewModelScope.launch {
                     val existing = db.userDao().getUserById(user.uid)
-                    val updatedRole = if (user.email == "prokocomp@gmail.com") "admin" else (existing?.role ?: "user")
+                    
+                    val updatedRole = when (user.email) {
+                        "prokocomp@gmail.com", "admin@example.com" -> "admin"
+                        "teacher@example.com" -> "teacher"
+                        "student@example.com" -> "student"
+                        else -> (existing?.role ?: "user")
+                    }
 
                     val userData = UserLocal(
                         id = user.uid,
@@ -237,7 +287,11 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
         val uid = localUser?.id ?: auth.currentUser?.uid ?: "unknown"
         val name = localUser?.name ?: auth.currentUser?.displayName ?: "User"
         val role = localUser?.role ?: "user"
-        val action = if (role == "admin") "ADMIN_LOGOUT" else "USER_LOGOUT"
+        val action = when(role) {
+            "admin" -> "ADMIN_LOGOUT"
+            "teacher" -> "TUTOR_LOGOUT"
+            else -> "USER_LOGOUT"
+        }
         addLog(uid, name, action, "User signed out from the session.", role)
         auth.signOut()
     }

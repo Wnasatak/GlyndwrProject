@@ -97,6 +97,9 @@ fun DashboardScreen(
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % filterOptions.size)
     val filterListState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
 
+    val isTutor = localUser?.role == "teacher" || localUser?.role == "tutor"
+    val isAdmin = localUser?.role == "admin"
+
     Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) viewModel.setSearchVisible(false) }) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
         
@@ -106,7 +109,7 @@ fun DashboardScreen(
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text(text = when(localUser?.role) { "admin" -> AppConstants.TITLE_ADMIN_HUB; "teacher" -> AppConstants.TITLE_FACULTY; else -> AppConstants.TITLE_STUDENT_HUB }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black) },
+                    title = { Text(text = when { isAdmin -> AppConstants.TITLE_ADMIN_HUB; isTutor -> AppConstants.TITLE_TUTOR_HUB; else -> AppConstants.TITLE_STUDENT_HUB }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) } },
                     actions = {
                         TopBarSearchAction(isSearchVisible = isSearchVisible) { viewModel.setSearchVisible(true) }
@@ -145,7 +148,8 @@ fun DashboardScreen(
                                 }
                                 DropdownMenuItem(text = { Text(if (isDarkTheme) AppConstants.TITLE_LIGHT_MODE else AppConstants.TITLE_DARK_MODE) }, onClick = { showMenu = false; onToggleTheme() }, leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) })
                                 DropdownMenuItem(text = { Text(AppConstants.TITLE_PROFILE_SETTINGS) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_PROFILE) }, leadingIcon = { Icon(Icons.Default.Settings, null) })
-                                if (localUser?.role == "admin") { DropdownMenuItem(text = { Text(AppConstants.TITLE_ADMIN_PANEL) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) }, leadingIcon = { Icon(Icons.Default.AdminPanelSettings, null) }) }
+                                if (isAdmin) { DropdownMenuItem(text = { Text(AppConstants.TITLE_ADMIN_PANEL) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) }, leadingIcon = { Icon(Icons.Default.AdminPanelSettings, null) }) }
+                                if (isTutor) { DropdownMenuItem(text = { Text(AppConstants.TITLE_TUTOR_PANEL) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) }, leadingIcon = { Icon(Icons.Default.School, null) }) }
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 DropdownMenuItem(text = { Text(AppConstants.BTN_LOG_OUT, color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; onLogout() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) })
                             }
@@ -197,7 +201,8 @@ fun DashboardScreen(
                         }
                     }
 
-                    if (localUser?.role == "admin") { item { AdminQuickActions { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) } } }
+                    if (isAdmin) { item { AdminQuickActions { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) } } }
+                    if (isTutor) { item { TutorQuickActions { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) } } }
                     
                     item { SectionHeader(AppConstants.TITLE_CONTINUE_READING) }
                     if (lastViewedBooks.isNotEmpty()) { item { GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item { EmptySectionPlaceholder(AppConstants.MSG_NO_RECENTLY_VIEWED) } }

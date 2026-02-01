@@ -14,6 +14,7 @@ import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationScreen
 import assignment1.krzysztofoko.s16001089.ui.classroom.ClassroomScreen
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminPanelScreen
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminUserDetailsScreen
+import assignment1.krzysztofoko.s16001089.ui.tutor.TutorPanelScreen
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.StateFlow
 
@@ -58,8 +59,6 @@ fun NavGraphBuilder.dashboardNavGraph(
     composable(AppConstants.ROUTE_NOTIFICATIONS) {
         val currentUser by currentUserFlow.collectAsState()
         // Determine role to handle the back navigation target
-        // Note: For full role accuracy, we'd ideally check localUser role from DB,
-        // but checking the admin email is a consistent fallback in this project.
         val isAdmin = currentUser?.email == "prokocomp@gmail.com"
 
         NotificationScreen(
@@ -113,6 +112,17 @@ fun NavGraphBuilder.dashboardNavGraph(
             navController = navController,
             isDarkTheme = isDarkTheme,
             onToggleTheme = onToggleTheme 
+        )
+    }
+
+    /**
+     * ROUTE: Tutor Panel
+     */
+    composable(AppConstants.ROUTE_TUTOR_PANEL) {
+        TutorPanelScreen(
+            onBack = { navController.popBackStack() },
+            isDarkTheme = isDarkTheme,
+            onToggleTheme = onToggleTheme
         )
     }
 }

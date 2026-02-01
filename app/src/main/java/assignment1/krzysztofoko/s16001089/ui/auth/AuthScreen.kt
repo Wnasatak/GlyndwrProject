@@ -46,7 +46,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
-    onAuthSuccess: (isAdmin: Boolean) -> Unit,
+    onAuthSuccess: (role: String) -> Unit,
     onBack: () -> Unit,
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit,
@@ -62,8 +62,8 @@ fun AuthScreen(
     val glowScale = glowAnim.first
     val glowAlpha = glowAnim.second
 
-    // Detect if the pending user has admin privileges
-    val isAdmin = viewModel.pendingAuthResult?.second?.role == "admin"
+    // Detect user role for targeted redirection
+    val userRole = viewModel.pendingAuthResult?.second?.role ?: "user"
 
     // Automatic navigation upon successful auth after a short delay
     LaunchedEffect(viewModel.showSuccessPopup) {
@@ -71,7 +71,7 @@ fun AuthScreen(
             delay(10000)
             if (viewModel.showSuccessPopup) {
                 viewModel.showSuccessPopup = false
-                onAuthSuccess(isAdmin)
+                onAuthSuccess(userRole)
             }
         }
     }
@@ -380,7 +380,7 @@ fun AuthScreen(
             isDarkTheme = isDarkTheme,
             onDismiss = { 
                 viewModel.showSuccessPopup = false
-                onAuthSuccess(isAdmin)
+                onAuthSuccess(userRole)
             }
         )
     }
