@@ -70,6 +70,7 @@ data class ClassroomMessage(
 data class TutorProfile(
     @PrimaryKey val id: String,
     val name: String,
+    val title: String? = null, // Added title field
     val email: String,
     val photoUrl: String?,
     val department: String,

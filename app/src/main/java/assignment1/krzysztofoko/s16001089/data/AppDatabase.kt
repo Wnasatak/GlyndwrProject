@@ -15,9 +15,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SearchHistoryItem::class, CourseInstallment::class, ModuleContent::class, 
         Assignment::class, AssignmentSubmission::class, Grade::class, LiveSession::class, 
         ClassroomMessage::class, TutorProfile::class, WalletTransaction::class,
-        CourseEnrollmentDetails::class, SystemLog::class
+        CourseEnrollmentDetails::class, SystemLog::class, AssignedCourse::class
     ], 
-    version = 20, 
+    version = 22, 
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,10 +28,24 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun classroomDao(): ClassroomDao
     abstract fun auditDao(): AuditDao
+    abstract fun assignedCourseDao(): AssignedCourseDao
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        private val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE users_local ADD COLUMN title TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE tutor_profiles ADD COLUMN title TEXT DEFAULT NULL")
+            }
+        }
+
+        private val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `assigned_courses` (`tutorId` TEXT NOT NULL, `courseId` TEXT NOT NULL, `assignedAt` INTEGER NOT NULL, PRIMARY KEY(`tutorId`, `courseId`))")
+            }
+        }
 
         // --- Historical Migrations ---
         private val MIGRATION_1_2 = object : Migration(1, 2) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE gear ADD COLUMN sizes TEXT NOT NULL DEFAULT 'M'"); db.execSQL("ALTER TABLE gear ADD COLUMN colors TEXT NOT NULL DEFAULT 'Default'"); db.execSQL("ALTER TABLE gear ADD COLUMN stockCount INTEGER NOT NULL DEFAULT 10"); db.execSQL("ALTER TABLE gear ADD COLUMN brand TEXT NOT NULL DEFAULT 'Wrexham University'"); db.execSQL("ALTER TABLE gear ADD COLUMN isAvailable INTEGER NOT NULL DEFAULT 1") } }
@@ -67,7 +81,8 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, 
                     MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
                     MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
-                    MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20
+                    MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
+                    MIGRATION_21_22
                 )
                 .fallbackToDestructiveMigration()
                 .build()

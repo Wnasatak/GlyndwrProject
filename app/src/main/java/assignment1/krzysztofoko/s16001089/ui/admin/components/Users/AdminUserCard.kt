@@ -43,7 +43,14 @@ fun AdminUserCard(user: UserLocal, onClick: () -> Unit, onDelete: () -> Unit) {
             }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(user.name.ifEmpty { "New User" }, fontWeight = FontWeight.Bold)
+                val displayName = buildString {
+                    if (!user.title.isNullOrEmpty()) {
+                        append(user.title)
+                        append(" ")
+                    }
+                    append(user.name.ifEmpty { "New User" })
+                }
+                Text(displayName, fontWeight = FontWeight.Bold)
                 Text(user.email, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Role: ${user.role}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)

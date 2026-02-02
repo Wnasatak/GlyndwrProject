@@ -60,6 +60,9 @@ interface ClassroomDao {
     @Query("SELECT * FROM tutor_profiles WHERE id = :tutorId")
     suspend fun getTutorProfile(tutorId: String): TutorProfile?
 
+    @Query("SELECT * FROM tutor_profiles WHERE id = :tutorId")
+    fun getTutorProfileFlow(tutorId: String): Flow<TutorProfile?>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertTutorProfile(tutor: TutorProfile)
 }

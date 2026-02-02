@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AudioBook
 import assignment1.krzysztofoko.s16001089.data.Book
+import assignment1.krzysztofoko.s16001089.data.toBook
 import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import assignment1.krzysztofoko.s16001089.ui.components.formatAssetUrl
@@ -47,10 +48,15 @@ fun TutorDashboardTab(
     onPlayAudio: (Book) -> Unit
 ) {
     val currentUser by viewModel.currentUserLocal.collectAsState()
-    val tutorCourses by viewModel.tutorCourses.collectAsState()
-    val allStudents by viewModel.allStudents.collectAsState()
+    val assignedCourses by viewModel.assignedCourses.collectAsState()
+    val allUsers by viewModel.allUsers.collectAsState()
     val pendingApps by viewModel.pendingApplications.collectAsState()
     
+    // Filter for student statistics
+    val studentCount = remember(allUsers) {
+        allUsers.filter { it.role == "student" || it.role == "user" }.size
+    }
+
     val books by viewModel.allBooks.collectAsState()
     val audioBooks by viewModel.allAudioBooks.collectAsState()
     val purchasedIds by viewModel.purchasedIds.collectAsState()
@@ -73,35 +79,57 @@ fun TutorDashboardTab(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            val firstName = currentUser?.name?.split(" ")?.firstOrNull() ?: "Tutor"
-            
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    UserAvatar(
-                        photoUrl = currentUser?.photoUrl,
-                        modifier = Modifier.size(52.dp)
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = AppConstants.TITLE_WELCOME_BACK,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    // Profile Button in top right
+                    IconButton(
+                        onClick = { viewModel.setSection(TutorSection.TEACHER_DETAIL) },
+                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.AccountBox, 
+                            contentDescription = "View Profile",
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                         )
-                        Text(
-                            text = firstName,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Black
+                    }
+
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        UserAvatar(
+                            photoUrl = currentUser?.photoUrl,
+                            modifier = Modifier.size(52.dp)
                         )
+                        Spacer(Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = AppConstants.TITLE_WELCOME_BACK,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            val displayGreeting = buildString {
+                                if (!currentUser?.title.isNullOrEmpty()) {
+                                    append(currentUser?.title)
+                                    append(" ")
+                                }
+                                val firstName = currentUser?.name?.split(" ")?.firstOrNull() ?: "Tutor"
+                                append(firstName)
+                            }
+                            
+                            Text(
+                                text = displayGreeting,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
                     }
                 }
             }
@@ -114,8 +142,8 @@ fun TutorDashboardTab(
             ) {
                 TutorStatCard(
                     modifier = Modifier.weight(1f),
-                    title = "My Courses",
-                    value = tutorCourses.size.toString(),
+                    title = "Assigned Classes",
+                    value = assignedCourses.size.toString(),
                     icon = Icons.Default.School,
                     color = MaterialTheme.colorScheme.primary,
                     onClick = { viewModel.setSection(TutorSection.MY_COURSES) }
@@ -123,7 +151,7 @@ fun TutorDashboardTab(
                 TutorStatCard(
                     modifier = Modifier.weight(1f),
                     title = "Students",
-                    value = allStudents.size.toString(),
+                    value = studentCount.toString(),
                     icon = Icons.Default.People,
                     color = MaterialTheme.colorScheme.secondary,
                     onClick = { viewModel.setSection(TutorSection.STUDENTS) }

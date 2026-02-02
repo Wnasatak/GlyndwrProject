@@ -5,6 +5,28 @@ import kotlinx.coroutines.flow.Flow
 
 const val LOCAL_USER_ID = "local_student_001"
 
+@Entity(tableName = "assigned_courses", primaryKeys = ["tutorId", "courseId"])
+data class AssignedCourse(
+    val tutorId: String,
+    val courseId: String,
+    val assignedAt: Long = System.currentTimeMillis()
+)
+
+@Dao
+interface AssignedCourseDao {
+    @Query("SELECT * FROM assigned_courses WHERE tutorId = :tutorId")
+    fun getAssignedCoursesForTutor(tutorId: String): Flow<List<AssignedCourse>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun assignCourse(assignedCourse: AssignedCourse)
+
+    @Query("DELETE FROM assigned_courses WHERE tutorId = :tutorId AND courseId = :courseId")
+    suspend fun unassignCourse(tutorId: String, courseId: String)
+    
+    @Query("DELETE FROM assigned_courses")
+    suspend fun deleteAll()
+}
+
 @Dao
 interface BookDao {
     @Query("SELECT * FROM books")
@@ -101,6 +123,7 @@ data class UserLocal(
     val name: String,
     val email: String,
     val photoUrl: String? = null,
+    val title: String? = null, // Added title field
     val address: String? = null,
     val phoneNumber: String? = null,
     val selectedPaymentMethod: String? = null,

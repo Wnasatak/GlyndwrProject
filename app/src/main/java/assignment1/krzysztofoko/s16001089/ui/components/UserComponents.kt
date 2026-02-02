@@ -142,6 +142,8 @@ fun ProfileHeader(
 
 @Composable
 fun PersonalInfoSection(
+    title: String,
+    onTitleChange: (String) -> Unit,
     firstName: String,
     onFirstNameChange: (String) -> Unit,
     surname: String,
@@ -159,6 +161,16 @@ fun PersonalInfoSection(
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.height(16.dp))
+        
+        OutlinedTextField(
+            value = title,
+            onValueChange = onTitleChange,
+            label = { Text("Title (e.g. Prof, Dr, Mr, Ms)") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(
                 value = firstName,

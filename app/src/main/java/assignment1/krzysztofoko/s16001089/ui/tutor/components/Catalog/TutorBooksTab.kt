@@ -37,25 +37,13 @@ fun TutorBooksTab(viewModel: TutorViewModel) {
     var bookToConfirmAdd by remember { mutableStateOf<Book?>(null) }
     var bookToConfirmRemove by remember { mutableStateOf<Book?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { viewModel.setSection(TutorSection.DASHBOARD) }) {
-                Icon(Icons.Default.ArrowBack, null)
-            }
-            Text("Explore All Books", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        }
-
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(vertical = 16.dp),
             placeholder = { Text("Search books...") },
             leadingIcon = { Icon(Icons.Default.Search, null) },
             shape = MaterialTheme.shapes.medium
@@ -66,7 +54,7 @@ fun TutorBooksTab(viewModel: TutorViewModel) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

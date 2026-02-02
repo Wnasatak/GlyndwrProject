@@ -25,6 +25,7 @@ fun UserEditDialog(
     onSave: (UserLocal) -> Unit
 ) {
     var name by remember { mutableStateOf(user.name) }
+    var title by remember { mutableStateOf(user.title ?: "") }
     var email by remember { mutableStateOf(user.email) }
     var address by remember { mutableStateOf(user.address ?: "") }
     var photoUrl by remember { mutableStateOf(user.photoUrl ?: "") }
@@ -57,6 +58,7 @@ fun UserEditDialog(
                     }
                 }
 
+                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title (e.g. Prof, Dr)") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Full Name") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email Address") }, modifier = Modifier.fillMaxWidth(), enabled = isNew)
                 OutlinedTextField(value = role, onValueChange = { role = it }, label = { Text("Role (admin/student)") }, modifier = Modifier.fillMaxWidth())
@@ -72,6 +74,7 @@ fun UserEditDialog(
                 onClick = {
                     onSave(user.copy(
                         name = name,
+                        title = title.ifEmpty { null },
                         email = email,
                         role = role,
                         balance = balance.toDoubleOrNull() ?: user.balance,

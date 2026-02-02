@@ -142,6 +142,8 @@ fun ProfileScreen(
                     Column(modifier = Modifier.padding(24.dp)) {
                         // Section for Name, Phone, and Email
                         PersonalInfoSection(
+                            title = viewModel.title,
+                            onTitleChange = { viewModel.title = it },
                             firstName = viewModel.firstName,
                             onFirstNameChange = { viewModel.firstName = it },
                             surname = viewModel.surname,

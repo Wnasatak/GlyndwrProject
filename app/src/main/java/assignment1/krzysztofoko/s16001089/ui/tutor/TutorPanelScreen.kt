@@ -1,15 +1,24 @@
 package assignment1.krzysztofoko.s16001089.ui.tutor
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -21,6 +30,7 @@ import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.toBook
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
+import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import assignment1.krzysztofoko.s16001089.ui.details.pdf.PdfReaderScreen
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorDashboardTab
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Courses.TutorCoursesTab
@@ -30,7 +40,9 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.components.Messages.TutorChat
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Library.TutorLibraryTab
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Catalog.TutorBooksTab
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Catalog.TutorAudioBooksTab
+import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorDetailScreen
 import com.google.firebase.auth.FirebaseAuth
+import coil.compose.AsyncImage
 
 /**
  * The Central Dashboard for Tutors.
@@ -58,6 +70,7 @@ fun TutorPanelScreen(
     val currentSection by viewModel.currentSection.collectAsState()
     val activeBook by viewModel.activeBook.collectAsState()
     val activeAudioBook by viewModel.activeAudioBook.collectAsState()
+    val selectedStudent by viewModel.selectedStudent.collectAsState()
     
     val isChatOpen = currentSection == TutorSection.CHAT
     val isReaderOpen = currentSection == TutorSection.READ_BOOK
@@ -71,23 +84,129 @@ fun TutorPanelScreen(
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                if (!isReaderOpen && !isChatOpen && currentSection != TutorSection.LISTEN_AUDIOBOOK) {
+                if (!isReaderOpen && currentSection != TutorSection.LISTEN_AUDIOBOOK) {
                     TopAppBar(
                         windowInsets = WindowInsets(0, 0, 0, 0),
                         title = { 
-                            Text(
-                                text = when(currentSection) {
-                                    TutorSection.LIBRARY -> "Resource Library"
-                                    TutorSection.BOOKS -> "Digital Books"
-                                    TutorSection.AUDIOBOOKS -> "Audio Books"
-                                    else -> AppConstants.TITLE_TUTOR_PANEL
-                                }, 
-                                fontWeight = FontWeight.Black, 
-                                style = MaterialTheme.typography.titleLarge
-                            ) 
+                            if (isChatOpen && selectedStudent != null) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    UserAvatar(
+                                        photoUrl = selectedStudent?.photoUrl,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = selectedStudent?.name ?: "User",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            
+                                            val roleText = (selectedStudent?.role ?: "user").uppercase()
+                                            val tagColor = when(roleText) {
+                                                "ADMIN", "TUTOR" -> MaterialTheme.colorScheme.errorContainer
+                                                else -> MaterialTheme.colorScheme.primaryContainer
+                                            }
+                                            val onTagColor = when(roleText) {
+                                                "ADMIN", "TUTOR" -> MaterialTheme.colorScheme.onErrorContainer
+                                                else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                            }
+
+                                            Surface(
+                                                color = tagColor,
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = roleText,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = onTagColor,
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = "Online",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color(0xFF4CAF50)
+                                        )
+                                    }
+                                }
+                            } else {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Animated pulsing logo effect
+                                    val infiniteTransition = rememberInfiniteTransition(label = "logoPulse")
+                                    val logoScale by infiniteTransition.animateFloat(
+                                        initialValue = 0.85f,
+                                        targetValue = 1.15f,
+                                        animationSpec = infiniteRepeatable(
+                                            animation = tween(1500, easing = FastOutSlowInEasing),
+                                            repeatMode = RepeatMode.Reverse
+                                        ),
+                                        label = "logoScale"
+                                    )
+
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(42.dp)
+                                                .scale(logoScale)
+                                                .background(
+                                                    Brush.radialGradient(
+                                                        listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), Color.Transparent)
+                                                    ),
+                                                    CircleShape
+                                                )
+                                        )
+                                        Surface(
+                                            modifier = Modifier.size(32.dp),
+                                            shape = CircleShape,
+                                            color = Color.White,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                                        ) {
+                                            AsyncImage(
+                                                model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
+                                                contentDescription = "University Logo",
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        }
+                                    }
+                                    
+                                    val sectionTitle = when(currentSection) {
+                                        TutorSection.LIBRARY -> "Library"
+                                        TutorSection.BOOKS -> "Explore Books"
+                                        TutorSection.AUDIOBOOKS -> "Explore Audiobooks"
+                                        TutorSection.MESSAGES -> "Messages"
+                                        TutorSection.STUDENTS -> "Student Directory"
+                                        TutorSection.MY_COURSES -> "My Classes"
+                                        TutorSection.DASHBOARD -> "Teacher Dashboard"
+                                        TutorSection.TEACHER_DETAIL -> "Teacher Profile"
+                                        else -> ""
+                                    }
+                                    if (sectionTitle.isNotEmpty()) {
+                                        Text(
+                                            text = " • $sectionTitle",
+                                            fontWeight = FontWeight.Black,
+                                            style = MaterialTheme.typography.titleLarge
+                                        )
+                                    }
+                                }
+                            }
                         },
                         navigationIcon = {
-                            if (currentSection != TutorSection.DASHBOARD && 
+                            if (isChatOpen) {
+                                IconButton(onClick = { viewModel.setSection(TutorSection.MESSAGES) }) {
+                                    Icon(Icons.Default.ArrowBack, "Back to Messages")
+                                }
+                            } else if (currentSection == TutorSection.TEACHER_DETAIL) {
+                                IconButton(onClick = { viewModel.setSection(TutorSection.DASHBOARD) }) {
+                                    Icon(Icons.Default.ArrowBack, "Back to Dashboard")
+                                }
+                            } else if (currentSection != TutorSection.DASHBOARD && 
                                      currentSection != TutorSection.MY_COURSES && 
                                      currentSection != TutorSection.LIBRARY && 
                                      currentSection != TutorSection.STUDENTS && 
@@ -98,58 +217,67 @@ fun TutorPanelScreen(
                             }
                         },
                         actions = {
-                            // Integrated Mini Audio Controls in Navbar
-                            if (currentPlayingBookId != null) {
-                                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                    IconButton(onClick = {
-                                        if (isAudioPlaying) externalPlayer?.pause() else externalPlayer?.play()
-                                    }) {
-                                        Icon(
-                                            imageVector = if (isAudioPlaying) Icons.Default.PauseCircleFilled else Icons.Default.PlayCircleFilled,
-                                            contentDescription = "Toggle Audio",
-                                            tint = MaterialTheme.colorScheme.primary
+                            if (!isChatOpen) {
+                                if (currentPlayingBookId != null) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(onClick = {
+                                            if (isAudioPlaying) externalPlayer?.pause() else externalPlayer?.play()
+                                        }) {
+                                            Icon(
+                                                imageVector = if (isAudioPlaying) Icons.Default.PauseCircleFilled else Icons.Default.PlayCircleFilled,
+                                                contentDescription = "Toggle Audio",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        IconButton(onClick = onStopPlayer) {
+                                            Icon(Icons.Default.Close, "Stop", modifier = Modifier.size(20.dp))
+                                        }
+                                        VerticalDivider(modifier = Modifier.height(24.dp).padding(horizontal = 4.dp))
+                                    }
+                                }
+
+                                Box {
+                                    IconButton(onClick = { showMenu = true }) {
+                                        Icon(Icons.Default.MoreVert, AppConstants.TITLE_MORE_OPTIONS)
+                                    }
+                                    DropdownMenu(
+                                        expanded = showMenu,
+                                        onDismissRequest = { showMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Teacher Profile") },
+                                            onClick = {
+                                                showMenu = false
+                                                viewModel.setSection(TutorSection.TEACHER_DETAIL)
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.AccountBox, null) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(AppConstants.TITLE_PROFILE_SETTINGS) },
+                                            onClick = {
+                                                showMenu = false
+                                                onNavigateToProfile()
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.Settings, null) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(if (isDarkTheme) AppConstants.TITLE_LIGHT_MODE else AppConstants.TITLE_DARK_MODE) },
+                                            onClick = {
+                                                showMenu = false
+                                                onToggleTheme()
+                                            },
+                                            leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
+                                        )
+                                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                        DropdownMenuItem(
+                                            text = { Text(AppConstants.BTN_LOG_OUT, color = MaterialTheme.colorScheme.error) },
+                                            onClick = {
+                                                showMenu = false
+                                                onLogout()
+                                            },
+                                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) }
                                         )
                                     }
-                                    IconButton(onClick = onStopPlayer) {
-                                        Icon(Icons.Default.Close, "Stop", modifier = Modifier.size(20.dp))
-                                    }
-                                    VerticalDivider(modifier = Modifier.height(24.dp).padding(horizontal = 4.dp))
-                                }
-                            }
-
-                            Box {
-                                IconButton(onClick = { showMenu = true }) {
-                                    Icon(Icons.Default.MoreVert, AppConstants.TITLE_MORE_OPTIONS)
-                                }
-                                DropdownMenu(
-                                    expanded = showMenu,
-                                    onDismissRequest = { showMenu = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text(AppConstants.TITLE_PROFILE_SETTINGS) },
-                                        onClick = {
-                                            showMenu = false
-                                            onNavigateToProfile()
-                                        },
-                                        leadingIcon = { Icon(Icons.Default.Settings, null) }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text(if (isDarkTheme) AppConstants.TITLE_LIGHT_MODE else AppConstants.TITLE_DARK_MODE) },
-                                        onClick = {
-                                            showMenu = false
-                                            onToggleTheme()
-                                        },
-                                        leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
-                                    )
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                                    DropdownMenuItem(
-                                        text = { Text(AppConstants.BTN_LOG_OUT, color = MaterialTheme.colorScheme.error) },
-                                        onClick = {
-                                            showMenu = false
-                                            onLogout()
-                                        },
-                                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) }
-                                    )
                                 }
                             }
                         },
@@ -158,11 +286,11 @@ fun TutorPanelScreen(
                 }
             },
             bottomBar = {
-                // Hide bottom navigation when chat or specialized sub-sections are open
-                val hideBottomBar = isChatOpen || currentSection == TutorSection.BOOKS || 
-                                   currentSection == TutorSection.AUDIOBOOKS || 
-                                   currentSection == TutorSection.READ_BOOK || 
-                                   currentSection == TutorSection.LISTEN_AUDIOBOOK
+                val hideBottomBar = isChatOpen || currentSection == TutorSection.BOOKS ||
+                        currentSection == TutorSection.AUDIOBOOKS ||
+                        currentSection == TutorSection.READ_BOOK ||
+                        currentSection == TutorSection.LISTEN_AUDIOBOOK ||
+                        currentSection == TutorSection.TEACHER_DETAIL
                 
                 if (!hideBottomBar) {
                     NavigationBar(
@@ -180,7 +308,7 @@ fun TutorPanelScreen(
                             selected = currentSection == TutorSection.MY_COURSES,
                             onClick = { viewModel.setSection(TutorSection.MY_COURSES) },
                             icon = Icons.Default.School,
-                            label = "Courses"
+                            label = "Classes"
                         )
                         TutorNavButton(
                             selected = currentSection == TutorSection.LIBRARY,
@@ -204,14 +332,19 @@ fun TutorPanelScreen(
                 }
             }
         ) { padding ->
-            val contentPadding = if (isReaderOpen) PaddingValues(0.dp) else padding
+            val topPadding = padding.calculateTopPadding()
+            val bottomPadding = padding.calculateBottomPadding()
             
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = contentPadding.calculateTopPadding(), bottom = contentPadding.calculateBottomPadding())
+                    .padding(top = if (isReaderOpen) 0.dp else topPadding)
             ) {
-                Box(modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(bottom = if (isChatOpen) 0.dp else bottomPadding)
+                ) {
                     AnimatedContent(
                         targetState = currentSection,
                         transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -226,6 +359,7 @@ fun TutorPanelScreen(
                             TutorSection.LIBRARY -> TutorLibraryTab(viewModel, onPlayAudio)
                             TutorSection.BOOKS -> TutorBooksTab(viewModel)
                             TutorSection.AUDIOBOOKS -> TutorAudioBooksTab(viewModel, onPlayAudio)
+                            TutorSection.TEACHER_DETAIL -> TutorDetailScreen(viewModel)
                             TutorSection.READ_BOOK -> {
                                 activeBook?.let { book ->
                                     PdfReaderScreen(
@@ -237,7 +371,6 @@ fun TutorPanelScreen(
                                 }
                             }
                             TutorSection.LISTEN_AUDIOBOOK -> {
-                                // Transition immediately to global player and return to library
                                 LaunchedEffect(Unit) {
                                     activeAudioBook?.let { ab ->
                                         onPlayAudio(ab.toBook())

@@ -91,7 +91,7 @@ fun HomeScreen(
                                 navController.navigate(AppConstants.ROUTE_AUTH) 
                             } 
                         } else {
-                            MemberWelcomeBanner(role = uiState.localUser?.role ?: "user") 
+                            MemberWelcomeBanner(user = uiState.localUser) 
                         }
                     }
 

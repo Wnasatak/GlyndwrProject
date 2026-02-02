@@ -99,7 +99,14 @@ fun AdminUserDetailsScreen(
                                     )
                                     Spacer(Modifier.width(12.dp))
                                     Column {
-                                        Text(user?.name ?: "User Details", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                                        val displayName = buildString {
+                                            if (!user?.title.isNullOrEmpty()) {
+                                                append(user?.title)
+                                                append(" ")
+                                            }
+                                            append(user?.name ?: "User Details")
+                                        }
+                                        Text(displayName, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
                                         Text(user?.email ?: "", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     }
                                 }

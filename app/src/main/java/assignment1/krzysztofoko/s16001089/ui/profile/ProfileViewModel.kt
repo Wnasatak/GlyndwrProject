@@ -36,6 +36,7 @@ class ProfileViewModel(
 
     var isUploading by mutableStateOf(false)
     
+    var title by mutableStateOf("")
     var firstName by mutableStateOf("")
     var surname by mutableStateOf("")
     var phoneNumber by mutableStateOf("")
@@ -58,6 +59,7 @@ class ProfileViewModel(
 
     fun initFields(user: UserLocal) {
         if (firstName.isEmpty() && surname.isEmpty()) {
+            title = user.title ?: ""
             val names = user.name.split(" ")
             firstName = names.getOrNull(0) ?: ""
             surname = names.getOrNull(1) ?: ""
@@ -77,6 +79,7 @@ class ProfileViewModel(
                     localUser.value?.let { u ->
                         userDao.upsertUser(u.copy(
                             name = fullName,
+                            title = title.ifEmpty { null },
                             address = selectedAddress,
                             phoneNumber = phoneNumber,
                             selectedPaymentMethod = selectedPaymentMethod

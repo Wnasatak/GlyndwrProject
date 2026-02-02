@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-enum class TutorSection { DASHBOARD, MY_COURSES, STUDENTS, MESSAGES, CHAT, LIBRARY, BOOKS, AUDIOBOOKS, READ_BOOK, LISTEN_AUDIOBOOK }
+enum class TutorSection { DASHBOARD, MY_COURSES, STUDENTS, MESSAGES, CHAT, LIBRARY, BOOKS, AUDIOBOOKS, READ_BOOK, LISTEN_AUDIOBOOK, TEACHER_DETAIL }
 
 data class ConversationPreview(
     val student: UserLocal,
@@ -26,6 +26,7 @@ class TutorViewModel(
     private val auditDao: AuditDao,
     private val bookDao: BookDao,
     private val audioBookDao: AudioBookDao,
+    private val assignedCourseDao: AssignedCourseDao,
     val tutorId: String
 ) : ViewModel() {
 
@@ -66,11 +67,24 @@ class TutorViewModel(
     val currentUserLocal: StateFlow<UserLocal?> = userDao.getUserFlow(tutorId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val tutorCourses: StateFlow<List<Course>> = courseDao.getAllCourses()
+    val tutorProfile: StateFlow<TutorProfile?> = classroomDao.getTutorProfileFlow(tutorId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val allCourses: StateFlow<List<Course>> = courseDao.getAllCourses()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val allStudents: StateFlow<List<UserLocal>> = userDao.getAllUsersFlow()
-        .map { users -> users.filter { it.role == "student" || it.role == "user" } }
+    val assignedCourses: StateFlow<List<Course>> = combine(
+        courseDao.getAllCourses(),
+        assignedCourseDao.getAssignedCoursesForTutor(tutorId)
+    ) { courses, assignments ->
+        val assignedIds = assignments.map { it.courseId }.toSet()
+        courses.filter { assignedIds.contains(it.id) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allUsers: StateFlow<List<UserLocal>> = userDao.getAllUsersFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allEnrollments: StateFlow<List<CourseEnrollmentDetails>> = userDao.getAllEnrollmentsFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val pendingApplications: StateFlow<Int> = userDao.getAllEnrollmentsFlow()
@@ -96,6 +110,44 @@ class TutorViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- Actions ---
+
+    fun assignCourseToSelf(courseId: String) {
+        viewModelScope.launch {
+            assignedCourseDao.assignCourse(AssignedCourse(tutorId, courseId))
+            addLog("ASSIGN_COURSE_TO_SELF", courseId, "Tutor assigned themselves to course $courseId")
+        }
+    }
+
+    fun unassignCourseFromSelf(courseId: String) {
+        viewModelScope.launch {
+            assignedCourseDao.unassignCourse(tutorId, courseId)
+            addLog("UNASSIGN_COURSE_FROM_SELF", courseId, "Tutor unassigned themselves from course $courseId")
+        }
+    }
+
+    fun updateTutorProfile(bio: String, department: String, officeHours: String, title: String? = null) {
+        viewModelScope.launch {
+            val current = currentUserLocal.value ?: return@launch
+            val profile = TutorProfile(
+                id = tutorId,
+                name = current.name,
+                title = title ?: current.title,
+                email = current.email,
+                photoUrl = current.photoUrl,
+                department = department,
+                officeHours = officeHours,
+                bio = bio
+            )
+            classroomDao.upsertTutorProfile(profile)
+            
+            // Also update the main user record title if changed
+            if (title != null && title != current.title) {
+                userDao.upsertUser(current.copy(title = title))
+            }
+            
+            addLog("UPDATE_TUTOR_PROFILE", tutorId, "Tutor updated professional profile details")
+        }
+    }
 
     fun addToLibrary(productId: String, category: String) {
         viewModelScope.launch {
@@ -206,6 +258,7 @@ class TutorViewModelFactory(
                 db.auditDao(),
                 db.bookDao(),
                 db.audioBookDao(),
+                db.assignedCourseDao(),
                 tutorId
             ) as T
         }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,9 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
@@ -42,33 +45,8 @@ fun TutorChatTab(
         }
     }
 
-    // Modern vertical layout without conflicting scaffolds
     Column(modifier = Modifier.fillMaxSize()) {
-        // Chat Header
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            tonalElevation = 2.dp,
-            shadowElevation = 4.dp
-        ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AsyncImage(
-                    model = student?.photoUrl,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp).clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(student?.name ?: "Student", fontWeight = FontWeight.Bold)
-                    Text("Online", style = MaterialTheme.typography.labelSmall, color = Color(0xFF4CAF50))
-                }
-            }
-        }
-
-        // Messages List - weight(1f) ensures it fills the gap and pushes input bar to bottom
+        // Messages List
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             state = listState,
@@ -84,8 +62,8 @@ fun TutorChatTab(
                     Surface(
                         color = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(
-                            topStart = 16.dp, topEnd = 16.dp, 
-                            bottomStart = if (isMe) 16.dp else 4.dp, 
+                            topStart = 16.dp, topEnd = 16.dp,
+                            bottomStart = if (isMe) 16.dp else 4.dp,
                             bottomEnd = if (isMe) 4.dp else 16.dp
                         ),
                         modifier = Modifier.widthIn(max = 280.dp)
@@ -104,19 +82,17 @@ fun TutorChatTab(
             }
         }
 
-        // Input Bar - Modern Edge-to-Edge alignment
+        // Input Bar
         Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding() // Space for bottom system bars
-                .imePadding(), // Space for keyboard
+            modifier = Modifier.fillMaxWidth(),
             tonalElevation = 8.dp,
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
         ) {
             Row(
                 modifier = Modifier
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.ime)
+                    .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
@@ -128,7 +104,7 @@ fun TutorChatTab(
                 )
                 Spacer(Modifier.width(8.dp))
                 IconButton(
-                    onClick = { 
+                    onClick = {
                         if (messageText.isNotBlank()) {
                             viewModel.sendMessage(messageText)
                             messageText = ""

@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
+import assignment1.krzysztofoko.s16001089.data.UserLocal
 import coil.compose.AsyncImage
 import java.util.Locale
 import kotlin.math.abs
@@ -299,10 +300,19 @@ fun PromotionBanner(onRegisterClick: () -> Unit) {
 }
 
 @Composable
-fun MemberWelcomeBanner(role: String) {
+fun MemberWelcomeBanner(user: UserLocal?) {
+    val role = user?.role ?: "user"
     val isStudent = role.equals("student", ignoreCase = true)
     val displayRole = role.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
     
+    val displayName = buildString {
+        if (!user?.title.isNullOrEmpty()) {
+            append(user?.title)
+            append(" ")
+        }
+        append(user?.name ?: displayRole)
+    }
+
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
@@ -313,11 +323,11 @@ fun MemberWelcomeBanner(role: String) {
             Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text(text = "Logged in as $displayRole", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(text = "Welcome, $displayName", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 if (isStudent) {
                     Text(text = "10% discount activated! Enjoy your perks ✨", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
                 } else {
-                    Text(text = "Enroll in a course to unlock student perks!", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                    Text(text = "Logged in as $displayRole. Access your management dashboard!", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
                 }
             }
         }
