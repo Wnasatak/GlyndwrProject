@@ -50,6 +50,9 @@ interface ClassroomDao {
     @Query("SELECT * FROM classroom_messages WHERE courseId = :courseId AND ((senderId = :userId AND receiverId = :tutorId) OR (senderId = :tutorId AND receiverId = :userId)) ORDER BY timestamp ASC")
     fun getChatHistory(courseId: String, userId: String, tutorId: String): Flow<List<ClassroomMessage>>
 
+    @Query("SELECT * FROM classroom_messages WHERE senderId = :userId OR receiverId = :userId ORDER BY timestamp DESC")
+    fun getAllMessagesForUser(userId: String): Flow<List<ClassroomMessage>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun sendMessage(message: ClassroomMessage)
 

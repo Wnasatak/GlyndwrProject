@@ -15,6 +15,7 @@ import assignment1.krzysztofoko.s16001089.ui.classroom.ClassroomScreen
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminPanelScreen
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminUserDetailsScreen
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorPanelScreen
+import assignment1.krzysztofoko.s16001089.ui.messages.MessagesScreen
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.StateFlow
 
@@ -77,6 +78,13 @@ fun NavGraphBuilder.dashboardNavGraph(
         )
     }
 
+    composable(AppConstants.ROUTE_MESSAGES) {
+        MessagesScreen(
+            onBack = { navController.popBackStack() },
+            isDarkTheme = isDarkTheme
+        )
+    }
+
     composable("${AppConstants.ROUTE_CLASSROOM}/{courseId}") { backStackEntry ->
         val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
         ClassroomScreen(
@@ -121,8 +129,12 @@ fun NavGraphBuilder.dashboardNavGraph(
     composable(AppConstants.ROUTE_TUTOR_PANEL) {
         TutorPanelScreen(
             onBack = { navController.popBackStack() },
+            onNavigateToStore = { navController.navigate(AppConstants.ROUTE_HOME) },
+            onNavigateToProfile = { navController.navigate(AppConstants.ROUTE_PROFILE) },
+            onLogout = onLogoutClick,
             isDarkTheme = isDarkTheme,
-            onToggleTheme = onToggleTheme
+            onToggleTheme = onToggleTheme,
+            onPlayAudio = onPlayAudio
         )
     }
 }

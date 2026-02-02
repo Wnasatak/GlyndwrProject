@@ -41,6 +41,9 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
     val approvedApps = applications.count { it.details.status == "APPROVED" }
     val currentUser = FirebaseAuth.getInstance().currentUser
 
+    // Get the local user object to get the real name from the DB if displayName is missing
+    val localAdmin = users.find { it.email == currentUser?.email }
+
     var showProjectDetailsPopup by remember { mutableStateOf(false) }
     var showBroadcastDialog by remember { mutableStateOf(false) }
 
@@ -65,7 +68,7 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
                     Spacer(Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Welcome Back,", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                        Text(currentUser?.displayName ?: "Administrator", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                        Text(localAdmin?.name ?: currentUser?.displayName ?: "Administrator", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                         Surface(
                             color = MaterialTheme.colorScheme.primary,
                             shape = RoundedCornerShape(8.dp),

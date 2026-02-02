@@ -129,6 +129,28 @@ object AppPopups {
     }
 
     /**
+     * Animated loading popup shown while removing an item from the library.
+     */
+    @Composable
+    fun RemovingFromLibraryLoading(show: Boolean) {
+        if (!show) return
+        Dialog(onDismissRequest = {}, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
+            Surface(modifier = Modifier.size(200.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
+                Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "removing")
+                    val rotation by infiniteTransition.animateFloat(initialValue = 0f, targetValue = 360f, animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Restart), label = "rotation")
+                    Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(modifier = Modifier.size(80.dp).rotate(rotation), color = MaterialTheme.colorScheme.error, strokeWidth = 4.dp, trackColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f), strokeCap = StrokeCap.Round)
+                        Icon(Icons.Default.DeleteOutline, null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text("Removing from library...", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+
+    /**
      * Generic authentication loading popup used for Google Sign-In and 2FA triggers.
      */
     @Composable

@@ -51,6 +51,8 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val uiState by viewModel.uiState.collectAsState()
 
+    val isAdminOrTutor = uiState.localUser?.role == "admin" || uiState.localUser?.role == "teacher" || uiState.localUser?.role == "tutor"
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -124,7 +126,7 @@ fun HomeScreen(
                     
                     item { 
                         MainCategoryFilterBar(
-                            categories = AppConstants.MainCategories, 
+                            categories = if (isAdminOrTutor) AppConstants.MainCategories.filter { it != AppConstants.CAT_COURSES } else AppConstants.MainCategories, 
                             selectedCategory = uiState.selectedMainCategory
                         ) { viewModel.selectMainCategory(it) } 
                     }

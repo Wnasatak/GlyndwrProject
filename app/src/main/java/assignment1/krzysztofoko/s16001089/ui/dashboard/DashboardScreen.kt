@@ -146,6 +146,18 @@ fun DashboardScreen(
                                     )
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 }
+
+                                // Updated Messages for Students to navigate to correct route
+                                DropdownMenuItem(
+                                    text = { Text(AppConstants.TITLE_MESSAGES) },
+                                    onClick = {
+                                        showMenu = false
+                                        navController.navigate(AppConstants.ROUTE_MESSAGES)
+                                    },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }
+                                )
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
                                 DropdownMenuItem(text = { Text(if (isDarkTheme) AppConstants.TITLE_LIGHT_MODE else AppConstants.TITLE_DARK_MODE) }, onClick = { showMenu = false; onToggleTheme() }, leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) })
                                 DropdownMenuItem(text = { Text(AppConstants.TITLE_PROFILE_SETTINGS) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_PROFILE) }, leadingIcon = { Icon(Icons.Default.Settings, null) })
                                 if (isAdmin) { DropdownMenuItem(text = { Text(AppConstants.TITLE_ADMIN_PANEL) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) }, leadingIcon = { Icon(Icons.Default.AdminPanelSettings, null) }) }

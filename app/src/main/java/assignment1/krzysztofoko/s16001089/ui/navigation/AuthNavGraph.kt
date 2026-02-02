@@ -33,12 +33,12 @@ fun NavGraphBuilder.authNavGraph(
                  * Once the user is fully verified, we check their role.
                  * Redirects to the appropriate starting point:
                  * - Admin -> Admin Panel
-                 * - Teacher -> Tutor Panel
+                 * - Teacher/Tutor -> Tutor Panel
                  * - Others -> Home Discovery
                  */
                 val targetRoute = when (role) {
                     "admin" -> AppConstants.ROUTE_ADMIN_PANEL
-                    "teacher" -> AppConstants.ROUTE_TUTOR_PANEL
+                    "teacher", "tutor" -> AppConstants.ROUTE_TUTOR_PANEL
                     else -> AppConstants.ROUTE_HOME
                 }
                 

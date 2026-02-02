@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -64,7 +65,7 @@ fun NotificationScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val notifications by viewModel.notifications.collectAsState()
-    val dismissingIds = remember { mutableStateListOf<String>() }
+    val dismissingIds = remember { mutableStateOf<List<String>>(emptyList()) }
     val unreadCount = notifications.count { !it.isRead }
     
     var selectedNotification by remember { mutableStateOf<NotificationLocal?>(null) }
@@ -98,8 +99,9 @@ fun NotificationScreen(
                         if (notifications.isNotEmpty()) {
                             IconButton(onClick = { 
                                 scope.launch {
-                                    notifications.map { it.id }.forEach { id -> if (!dismissingIds.contains(id)) { dismissingIds.add(id); delay(30) } }
-                                    delay(400); viewModel.clearAll(); dismissingIds.clear()
+                                    val ids = notifications.map { it.id }
+                                    dismissingIds.value = ids
+                                    delay(400); viewModel.clearAll(); dismissingIds.value = emptyList()
                                 }
                             }) { Icon(Icons.Default.DeleteSweep, AppConstants.BTN_CLEAR_ALL, tint = MaterialTheme.colorScheme.error) }
                         }
@@ -113,8 +115,8 @@ fun NotificationScreen(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     items(notifications, key = { it.id }) { notification ->
-                        val isVisible = !dismissingIds.contains(notification.id)
-                        LaunchedEffect(isVisible) { if (!isVisible) { delay(300); viewModel.deleteNotification(notification.id); dismissingIds.remove(notification.id) } }
+                        val isVisible = !dismissingIds.value.contains(notification.id)
+                        LaunchedEffect(isVisible) { if (!isVisible) { delay(300); viewModel.deleteNotification(notification.id) } }
 
                         AnimatedVisibility(
                             visible = isVisible,
@@ -122,9 +124,9 @@ fun NotificationScreen(
                             exit = slideOutHorizontally(targetOffsetX = { -it }) + shrinkVertically() + fadeOut(),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            NotificationItem(notification = notification, isDarkTheme = isDarkTheme, viewModel = viewModel, onDelete = { dismissingIds.add(notification.id) }, onClick = { 
+                            NotificationItem(notification = notification, isDarkTheme = isDarkTheme, viewModel = viewModel, onDelete = { dismissingIds.value = dismissingIds.value + notification.id }, onClick = { 
                                     scope.launch {
-                                        relatedBook = if (notification.type == "ANNOUNCEMENT") null else viewModel.getRelatedBook(notification.productId)
+                                        relatedBook = if (notification.type == "ANNOUNCEMENT" || notification.type == "MESSAGE") null else viewModel.getRelatedBook(notification.productId)
                                         selectedNotification = notification
                                         showSheet = true
                                         viewModel.markAsRead(notification.id)
@@ -140,6 +142,7 @@ fun NotificationScreen(
         if (showSheet && selectedNotification != null) {
             val isTopUp = selectedNotification!!.productId == AppConstants.ID_TOPUP
             val isAnnouncement = selectedNotification!!.type == "ANNOUNCEMENT"
+            val isMessage = selectedNotification!!.type == "MESSAGE"
             
             ModalBottomSheet(
                 onDismissRequest = { showSheet = false },
@@ -153,18 +156,19 @@ fun NotificationScreen(
                         modifier = Modifier
                             .size(80.dp)
                             .background(
-                                brush = if (isAnnouncement) Brush.radialGradient(listOf(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), Color.Transparent))
+                                brush = if (isAnnouncement || isMessage) Brush.radialGradient(listOf(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), Color.Transparent))
                                         else Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), Color.Transparent)),
                                 shape = CircleShape
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
-                            modifier = Modifier.size(56.dp).background(if (isAnnouncement) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary, CircleShape),
+                            modifier = Modifier.size(56.dp).background(if (isAnnouncement || isMessage) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = when {
+                                    isMessage -> Icons.AutoMirrored.Filled.Chat
                                     isAnnouncement -> Icons.Default.Campaign
                                     isTopUp -> Icons.Default.AccountBalanceWallet
                                     selectedNotification!!.type == AppConstants.NOTIF_TYPE_PURCHASE -> Icons.Default.ShoppingBag
@@ -199,7 +203,7 @@ fun NotificationScreen(
                     
                     Spacer(modifier = Modifier.height(32.dp))
                     
-                    if (!isAnnouncement) {
+                    if (!isAnnouncement && !isMessage) {
                         Button(onClick = { showSheet = false; if (isTopUp) onNavigateToInvoice(selectedNotification!!.productId) else onNavigateToItem(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                             Icon(imageVector = if (isTopUp) Icons.AutoMirrored.Filled.ReceiptLong else Icons.Default.OpenInNew, contentDescription = null)
                             Spacer(Modifier.width(12.dp)); Text(text = if (isTopUp) AppConstants.BTN_VIEW_INVOICE else AppConstants.BTN_VIEW_PRODUCT_DETAILS, fontWeight = FontWeight.Bold)
@@ -207,14 +211,14 @@ fun NotificationScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                     
-                    if (!isTopUp && !isAnnouncement && relatedBook != null && relatedBook!!.price > 0) {
+                    if (!isTopUp && !isAnnouncement && !isMessage && relatedBook != null && relatedBook!!.price > 0) {
                         OutlinedButton(onClick = { showSheet = false; onNavigateToInvoice(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                             Icon(Icons.AutoMirrored.Filled.ReceiptLong, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_VIEW_INVOICE, fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                     
-                    if (relatedBook != null && relatedBook!!.price <= 0 && relatedBook!!.mainCategory != AppConstants.CAT_GEAR && !isTopUp && !isAnnouncement) {
+                    if (relatedBook != null && relatedBook!!.price <= 0 && relatedBook!!.mainCategory != AppConstants.CAT_GEAR && !isTopUp && !isAnnouncement && !isMessage) {
                         OutlinedButton(onClick = { showSheet = false; showRemoveConfirm = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))) {
                             Icon(Icons.Default.DeleteOutline, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, fontWeight = FontWeight.Bold)
                         }
@@ -222,7 +226,7 @@ fun NotificationScreen(
                     }
 
                     OutlinedButton(
-                        onClick = { dismissingIds.add(selectedNotification!!.id); showSheet = false }, 
+                        onClick = { dismissingIds.value = dismissingIds.value + selectedNotification!!.id; showSheet = false }, 
                         modifier = Modifier.fillMaxWidth().height(56.dp), 
                         shape = RoundedCornerShape(16.dp), 
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), 
@@ -252,13 +256,15 @@ fun NotificationItem(
     val sdf = remember { SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()) }
     val timeStr = sdf.format(Date(notification.timestamp))
     val isAnnouncement = notification.type == "ANNOUNCEMENT"
+    val isMessage = notification.type == "MESSAGE"
     
     var relatedItem by remember { mutableStateOf<Book?>(null) }
     LaunchedEffect(notification.productId) {
-        if (!isAnnouncement) relatedItem = viewModel.getRelatedBook(notification.productId)
+        if (!isAnnouncement && !isMessage) relatedItem = viewModel.getRelatedBook(notification.productId)
     }
 
     val (categoryIcon, categoryColor) = when {
+        isMessage -> Icons.AutoMirrored.Filled.Chat to MaterialTheme.colorScheme.secondary
         isAnnouncement -> Icons.Default.Campaign to MaterialTheme.colorScheme.secondary
         notification.productId == AppConstants.ID_TOPUP -> Icons.Default.AccountBalanceWallet to CatCoursesTeal
         relatedItem?.mainCategory == AppConstants.CAT_BOOKS -> Icons.Default.MenuBook to CatBooksBlue
@@ -275,18 +281,24 @@ fun NotificationItem(
     val baseColor = if (isDarkTheme) Color(0xFF1E1E1E) else Color.White
     val accentColor = if (isDarkTheme) Color(0xFF311B92).copy(alpha = 0.3f) else Color(0xFFF3E5F5).copy(alpha = 0.8f)
     val announceColor = if (isDarkTheme) Color(0xFF1B5E20).copy(alpha = 0.4f) else Color(0xFFE8F5E9).copy(alpha = 0.9f)
+    val messageColor = if (isDarkTheme) Color(0xFF0D47A1).copy(alpha = 0.4f) else Color(0xFFE3F2FD).copy(alpha = 0.9f)
     
-    val cardColor = if (isAnnouncement) announceColor 
-                    else if (notification.isRead) baseColor.copy(alpha = 0.8f) 
-                    else accentColor
+    val cardColor = when {
+        isAnnouncement -> announceColor
+        isMessage -> messageColor
+        notification.isRead -> baseColor.copy(alpha = 0.8f)
+        else -> accentColor
+    }
                     
-    val borderColor = if (isAnnouncement) categoryColor.copy(alpha = if (notification.isRead) 0.3f else 0.8f)
-                      else if (!notification.isRead) categoryColor.copy(alpha = 0.6f) 
-                      else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+    val borderColor = when {
+        (isAnnouncement || isMessage) -> categoryColor.copy(alpha = if (notification.isRead) 0.3f else 0.8f)
+        !notification.isRead -> categoryColor.copy(alpha = 0.6f)
+        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+    }
 
-    // Pulsing animation for unread announcements
+    // Pulsing animation for unread announcements/messages
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by if (isAnnouncement && !notification.isRead) {
+    val pulseScale by if ((isAnnouncement || isMessage) && !notification.isRead) {
         infiniteTransition.animateFloat(
             initialValue = 1f,
             targetValue = 1.15f,
@@ -302,19 +314,19 @@ fun NotificationItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
             .background(
-                brush = if (isAnnouncement && !notification.isRead) {
+                brush = if ((isAnnouncement || isMessage) && !notification.isRead) {
                     Brush.verticalGradient(listOf(categoryColor.copy(alpha = 0.15f), cardColor))
                 } else {
                     Brush.verticalGradient(listOf(cardColor, cardColor))
                 }
             )
-            .border(if (isAnnouncement && !notification.isRead) 2.dp else 1.dp, borderColor, RoundedCornerShape(24.dp))
+            .border(if ((isAnnouncement || isMessage) && !notification.isRead) 2.dp else 1.dp, borderColor, RoundedCornerShape(24.dp))
             .clickable { onClick() }
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(60.dp), contentAlignment = Alignment.Center) {
-                val imagePath = if (isAnnouncement || notification.productId == AppConstants.ID_TOPUP) "file:///android_asset/images/media/GlyndwrUniversity.jpg"
+                val imagePath = if (isAnnouncement || isMessage || notification.productId == AppConstants.ID_TOPUP) "file:///android_asset/images/media/GlyndwrUniversity.jpg"
                                 else formatAssetUrl(relatedItem?.imageUrl ?: "images/media/GlyndwrUniversity.jpg")
                 
                 AsyncImage(
@@ -348,7 +360,7 @@ fun NotificationItem(
                             text = notification.title, 
                             style = MaterialTheme.typography.titleMedium, 
                             fontWeight = if (notification.isRead) FontWeight.Bold else FontWeight.Black, 
-                            color = if (isAnnouncement && !notification.isRead) categoryColor else MaterialTheme.colorScheme.onSurface, 
+                            color = if ((isAnnouncement || isMessage) && !notification.isRead) categoryColor else MaterialTheme.colorScheme.onSurface, 
                             maxLines = 1, 
                             overflow = TextOverflow.Ellipsis
                         )

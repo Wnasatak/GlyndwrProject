@@ -73,6 +73,7 @@ fun TopLevelScaffold(
                 currentRoute != AppConstants.ROUTE_DASHBOARD && 
                 currentRoute != AppConstants.ROUTE_PROFILE && 
                 currentRoute != AppConstants.ROUTE_NOTIFICATIONS &&
+                currentRoute != AppConstants.ROUTE_TUTOR_PANEL &&
                 !currentRoute.contains(AppConstants.ROUTE_PDF_READER) && 
                 !currentRoute.contains(AppConstants.ROUTE_INVOICE) && 
                 !currentRoute.contains(AppConstants.ROUTE_INVOICE_CREATING)) {

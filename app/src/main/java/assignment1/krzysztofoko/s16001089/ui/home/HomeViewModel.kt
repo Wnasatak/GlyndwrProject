@@ -59,7 +59,12 @@ class HomeViewModel(
         val allBooks = books ?: emptyList()
         val appMap = enrollments.filter { it.userId == userId }.associate { it.courseId to it.status }
         
+        val isAdminOrTutor = localUser?.role == "admin" || localUser?.role == "teacher" || localUser?.role == "tutor"
+
         val filtered = allBooks.filter { book ->
+            // University Courses are not available for Tutors and Admins
+            if (isAdminOrTutor && book.mainCategory == AppConstants.CAT_COURSES) return@filter false
+
             val matchMain = when (filters.mainCategory) {
                 AppConstants.CAT_ALL -> true
                 AppConstants.CAT_FREE -> book.price == 0.0 
@@ -76,6 +81,9 @@ class HomeViewModel(
 
         val suggestions = if (filters.searchQuery.length < 2) emptyList()
         else allBooks.filter { 
+            val isCourse = it.mainCategory == AppConstants.CAT_COURSES
+            if (isAdminOrTutor && isCourse) return@filter false
+            
             it.title.contains(filters.searchQuery, ignoreCase = true) || it.author.contains(filters.searchQuery, ignoreCase = true)
         }.take(5)
 

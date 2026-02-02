@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import assignment1.krzysztofoko.s16001089.data.Book
 
@@ -45,14 +46,16 @@ fun GlobalAudioPlayerOverlay(
             modifier = Modifier.fillMaxSize()
         ) {
             Box(contentAlignment = Alignment.BottomCenter) {
-                AudioPlayerComponent(
-                    book = currentBook,
-                    isMinimized = isMinimized,
-                    onToggleMinimize = onToggleMinimize,
-                    onClose = onClose,
-                    isDarkTheme = isDarkTheme,
-                    player = externalPlayer
-                )
+                Box(modifier = Modifier.padding(bottom = if (isMinimized) 80.dp else 0.dp)) {
+                    AudioPlayerComponent(
+                        book = currentBook,
+                        isMinimized = isMinimized,
+                        onToggleMinimize = onToggleMinimize,
+                        onClose = onClose,
+                        isDarkTheme = isDarkTheme,
+                        player = externalPlayer
+                    )
+                }
             }
         }
     }

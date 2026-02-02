@@ -66,8 +66,11 @@ fun AppNavigation(
         currentRoute = currentRoute,
         unreadCount = unreadCount,
         onDashboardClick = { 
-            val target = if (localUser?.role == "admin") AppConstants.ROUTE_ADMIN_PANEL 
-                         else AppConstants.ROUTE_DASHBOARD
+            val target = when (localUser?.role) {
+                "admin" -> AppConstants.ROUTE_ADMIN_PANEL
+                "teacher", "tutor" -> AppConstants.ROUTE_TUTOR_PANEL
+                else -> AppConstants.ROUTE_DASHBOARD
+            }
             navController.navigate(target) 
         },
         onHomeClick = { navController.navigate(AppConstants.ROUTE_HOME) },
@@ -98,8 +101,11 @@ fun AppNavigation(
                     SplashScreen(
                         isLoadingData = isDataLoading, 
                         onTimeout = { 
-                            val targetRoute = if (localUser?.role == "admin") AppConstants.ROUTE_ADMIN_PANEL 
-                                               else AppConstants.ROUTE_HOME
+                            val targetRoute = when (localUser?.role) {
+                                "admin" -> AppConstants.ROUTE_ADMIN_PANEL
+                                "teacher", "tutor" -> AppConstants.ROUTE_TUTOR_PANEL
+                                else -> AppConstants.ROUTE_HOME
+                            }
                             navController.navigate(targetRoute) { 
                                 popUpTo(AppConstants.ROUTE_SPLASH) { inclusive = true } 
                             } 
@@ -156,12 +162,18 @@ fun AppNavigation(
                 composable(AppConstants.ROUTE_MY_APPLICATIONS) {
                     MyApplicationsScreen(
                         onBack = { 
-                            if (localUser?.role == "admin") {
-                                navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) {
-                                    popUpTo(AppConstants.ROUTE_ADMIN_PANEL) { inclusive = true }
+                            when (localUser?.role) {
+                                "admin" -> {
+                                    navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) {
+                                        popUpTo(AppConstants.ROUTE_ADMIN_PANEL) { inclusive = true }
+                                    }
                                 }
-                            } else {
-                                navController.popBackStack()
+                                "teacher", "tutor" -> {
+                                    navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) {
+                                        popUpTo(AppConstants.ROUTE_TUTOR_PANEL) { inclusive = true }
+                                    }
+                                }
+                                else -> navController.popBackStack()
                             }
                         },
                         onNavigateToCourse = { id -> 

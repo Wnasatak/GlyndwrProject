@@ -5,7 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import coil.compose.AsyncImage
 
@@ -65,8 +66,8 @@ fun TutorStudentsTab(
                             Text(student.name, fontWeight = FontWeight.Bold)
                             Text(student.email, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                         }
-                        IconButton(onClick = { /* TODO: Navigate to chat */ }) {
-                            Icon(Icons.Default.Chat, null, tint = MaterialTheme.colorScheme.primary)
+                        IconButton(onClick = { viewModel.setSection(TutorSection.CHAT, student) }) {
+                            Icon(Icons.AutoMirrored.Filled.Chat, null, tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
