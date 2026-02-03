@@ -1,6 +1,8 @@
 package assignment1.krzysztofoko.s16001089.ui.messages
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
@@ -46,24 +49,55 @@ fun MessagesScreen(
 ) {
     val selectedUser by viewModel.selectedConversationUser.collectAsState()
     val conversations by viewModel.recentConversations.collectAsState()
+    val allUsers by viewModel.allUsers.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
     val messages by viewModel.chatMessages.collectAsState()
     
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val sdf = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
-    Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)) {
+    Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // Manual TopAppBar to avoid Scaffold inset conflicts
             CenterAlignedTopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(end = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start
+                    ) {
                         if (selectedUser != null) {
-                            UserAvatar(photoUrl = selectedUser?.photoUrl, modifier = Modifier.size(32.dp))
+                            UserAvatar(photoUrl = selectedUser?.photoUrl, modifier = Modifier.size(36.dp))
                             Spacer(Modifier.width(12.dp))
+                            Column(verticalArrangement = Arrangement.Center) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    val displayName = buildString {
+                                        if (!selectedUser?.title.isNullOrEmpty()) {
+                                            append(selectedUser?.title)
+                                            append(" ")
+                                        }
+                                        append(selectedUser?.name ?: "")
+                                    }
+                                    Text(text = displayName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                    Spacer(Modifier.width(8.dp))
+                                    RoleTag(role = selectedUser?.role)
+                                }
+                                val sharedCourse by viewModel.getSharedCourse(selectedUser?.id ?: "").collectAsState(initial = "")
+                                if (sharedCourse.isNotEmpty()) {
+                                    Text(
+                                        text = sharedCourse, 
+                                        style = MaterialTheme.typography.labelSmall, 
+                                        color = Color.Gray, 
+                                        fontSize = 9.sp,
+                                        modifier = Modifier.offset(y = (-3).dp) // Moved closer to title
+                                    )
+                                }
+                            }
+                        } else {
+                            Text(text = AppConstants.TITLE_MESSAGES, fontWeight = FontWeight.Black)
                         }
-                        Text(text = selectedUser?.name ?: AppConstants.TITLE_MESSAGES, fontWeight = FontWeight.Black)
                     }
                 },
                 navigationIcon = {
@@ -78,7 +112,16 @@ fun MessagesScreen(
             Box(modifier = Modifier.weight(1f)) {
                 AnimatedContent(targetState = selectedUser, label = "ChatTransition") { targetUser ->
                     if (targetUser == null) {
-                        ConversationList(conversations = conversations, onConversationClick = { viewModel.selectConversation(it) }, sdf = sdf)
+                        ConversationListView(
+                            conversations = conversations, 
+                            allUsers = allUsers,
+                            searchQuery = searchQuery,
+                            onSearchChange = { viewModel.updateSearchQuery(it) },
+                            onUserClick = { viewModel.selectConversation(it) }, 
+                            sdf = sdf,
+                            currentUserId = currentUserId,
+                            viewModel = viewModel
+                        )
                     } else {
                         ChatInterface(messages = messages, currentUserId = currentUserId, sdf = sdf)
                     }
@@ -87,11 +130,32 @@ fun MessagesScreen(
             
             if (selectedUser != null) {
                 Surface(
-                    modifier = Modifier.fillMaxWidth().navigationBarsPadding().imePadding(),
+                    modifier = Modifier.fillMaxWidth(),
                     tonalElevation = 8.dp,
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                 ) {
-                    MessageInputBar(onSendMessage = { viewModel.sendMessage(it) })
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .windowInsetsPadding(WindowInsets.ime)
+                            .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        var messageText by remember { mutableStateOf("") }
+                        OutlinedTextField(
+                            value = messageText,
+                            onValueChange = { messageText = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("Type a message...") },
+                            shape = RoundedCornerShape(24.dp),
+                            colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(
+                            onClick = { if (messageText.isNotBlank()) { viewModel.sendMessage(messageText); messageText = "" } },
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White)
+                        ) { Icon(Icons.AutoMirrored.Filled.Send, null) }
+                    }
                 }
             }
         }
@@ -99,64 +163,196 @@ fun MessagesScreen(
 }
 
 @Composable
-fun MessageInputBar(onSendMessage: (String) -> Unit) {
-    var messageText by remember { mutableStateOf("") }
-    Row(
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp).fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        OutlinedTextField(
-            value = messageText,
-            onValueChange = { messageText = it },
-            modifier = Modifier.weight(1f),
-            placeholder = { Text("Type a message...") },
-            shape = RoundedCornerShape(24.dp),
-            colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-        )
-        Spacer(Modifier.width(8.dp))
-        IconButton(
-            onClick = { if (messageText.isNotBlank()) { onSendMessage(messageText); messageText = "" } },
-            colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White)
-        ) { Icon(Icons.AutoMirrored.Filled.Send, null) }
-    }
-}
-
-@Composable
-fun ConversationList(conversations: List<ConversationPreview>, onConversationClick: (UserLocal) -> Unit, sdf: SimpleDateFormat) {
-    if (conversations.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.AutoMirrored.Filled.Chat, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
-                Spacer(Modifier.height(16.dp))
-                Text("No messages yet", color = Color.Gray)
-            }
+fun ConversationListView(
+    conversations: List<ConversationPreview>,
+    allUsers: List<UserLocal>,
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    onUserClick: (UserLocal) -> Unit,
+    sdf: SimpleDateFormat,
+    currentUserId: String,
+    viewModel: MessagesViewModel
+) {
+    val searchResults = remember(conversations, allUsers, searchQuery) {
+        if (searchQuery.isEmpty()) {
+            conversations.map { ConversationItemType.Existing(it) }
+        } else {
+            val results = mutableListOf<ConversationItemType>()
+            
+            conversations.filter { 
+                it.otherUser.name.contains(searchQuery, ignoreCase = true) || 
+                it.lastMessage.message.contains(searchQuery, ignoreCase = true) 
+            }.forEach { results.add(ConversationItemType.Existing(it)) }
+            
+            val existingIds = conversations.map { it.otherUser.id }.toSet()
+            allUsers.filter { 
+                it.id != currentUserId && 
+                !existingIds.contains(it.id) && 
+                (it.role == "teacher" || it.role == "tutor" || it.role == "admin") &&
+                it.name.contains(searchQuery, ignoreCase = true)
+            }.forEach { results.add(ConversationItemType.NewUser(it)) }
+            
+            results
         }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().navigationBarsPadding(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(conversations) { conv ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable { onConversationClick(conv.otherUser) },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-                ) {
-                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        UserAvatar(photoUrl = conv.otherUser.photoUrl, modifier = Modifier.size(50.dp))
-                        Spacer(Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(conv.otherUser.name, fontWeight = FontWeight.Bold)
-                                Text(sdf.format(Date(conv.lastMessage.timestamp)), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                            }
-                            Text(conv.lastMessage.message, style = MaterialTheme.typography.bodySmall, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchChange,
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            placeholder = { Text("Search Teachers & Admins") },
+            leadingIcon = { Icon(Icons.Default.Search, null) },
+            trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { onSearchChange("") }) { Icon(Icons.Default.Close, null) } },
+            shape = RoundedCornerShape(16.dp),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                focusedContainerColor = MaterialTheme.colorScheme.surface
+            )
+        )
+
+        if (searchResults.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.AutoMirrored.Filled.Chat, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
+                    Spacer(Modifier.height(16.dp))
+                    Text("No results found", color = Color.Gray)
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(searchResults) { item ->
+                    when (item) {
+                        is ConversationItemType.Existing -> {
+                            val sharedCourse by viewModel.getSharedCourse(item.preview.otherUser.id).collectAsState(initial = "")
+                            ExistingConversationCard(conv = item.preview, course = sharedCourse, onClick = { onUserClick(item.preview.otherUser) }, sdf = sdf)
+                        }
+                        is ConversationItemType.NewUser -> {
+                            val sharedCourse by viewModel.getSharedCourse(item.user.id).collectAsState(initial = "")
+                            NewUserCard(user = item.user, course = sharedCourse, onClick = { onUserClick(item.user) })
                         }
                     }
                 }
             }
         }
+    }
+}
+
+sealed class ConversationItemType {
+    data class Existing(val preview: ConversationPreview) : ConversationItemType()
+    data class NewUser(val user: UserLocal) : ConversationItemType()
+}
+
+@Composable
+fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick: () -> Unit, sdf: SimpleDateFormat) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            UserAvatar(photoUrl = conv.otherUser.photoUrl, modifier = Modifier.size(50.dp))
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val displayName = buildString {
+                            if (!conv.otherUser.title.isNullOrEmpty()) {
+                                append(conv.otherUser.title)
+                                append(" ")
+                            }
+                            append(conv.otherUser.name)
+                        }
+                        Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Spacer(Modifier.width(8.dp))
+                        RoleTag(role = conv.otherUser.role)
+                    }
+                    Text(sdf.format(Date(conv.lastMessage.timestamp)), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                }
+                if (course.isNotEmpty()) {
+                    Text(text = course, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Text(
+                    text = conv.lastMessage.message, 
+                    style = MaterialTheme.typography.bodySmall, 
+                    color = if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) MaterialTheme.colorScheme.primary else Color.Gray, 
+                    maxLines = 1, 
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun NewUserCard(user: UserLocal, course: String, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            UserAvatar(photoUrl = user.photoUrl, modifier = Modifier.size(50.dp))
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val displayName = buildString {
+                        if (!user.title.isNullOrEmpty()) {
+                            append(user.title)
+                            append(" ")
+                        }
+                        append(user.name)
+                    }
+                    Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(Modifier.width(8.dp))
+                    RoleTag(role = user.role)
+                }
+                if (course.isNotEmpty()) {
+                    Text(text = course, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Text("Start a new conversation...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            }
+            Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+@Composable
+fun RoleTag(role: String?) {
+    val roleText = when (role?.lowercase()) {
+        "admin" -> "ADMIN"
+        "teacher", "tutor" -> "TEACHER"
+        "student" -> "STUDENT"
+        else -> role?.uppercase() ?: "USER"
+    }
+    
+    val tagColor = when (roleText) {
+        "ADMIN" -> Color(0xFFE53935)
+        "TEACHER" -> Color(0xFF1E88E5)
+        "STUDENT" -> Color(0xFF43A047)
+        else -> Color.Gray
+    }
+
+    Surface(
+        color = tagColor.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(4.dp),
+        border = BorderStroke(0.5.dp, tagColor.copy(alpha = 0.5f))
+    ) {
+        Text(
+            text = roleText,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = tagColor,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black
+        )
     }
 }
 

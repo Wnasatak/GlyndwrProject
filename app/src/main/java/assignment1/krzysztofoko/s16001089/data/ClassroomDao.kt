@@ -99,6 +99,9 @@ interface ClassroomDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun sendMessage(message: ClassroomMessage)
 
+    @Query("UPDATE classroom_messages SET isRead = 1 WHERE receiverId = :userId AND senderId = :senderId AND isRead = 0")
+    suspend fun markMessagesAsRead(userId: String, senderId: String)
+
     // Tutor Profile
     @Query("SELECT * FROM tutor_profiles WHERE id = :tutorId")
     suspend fun getTutorProfile(tutorId: String): TutorProfile?

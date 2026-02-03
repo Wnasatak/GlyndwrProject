@@ -8,7 +8,7 @@ import assignment1.krzysztofoko.s16001089.data.Book
  */
 object AppConstants {
     // --- Application Branding ---
-    const val VERSION_NAME = "0.9.317 Under Development"
+    const val VERSION_NAME = "0.11.770 Under Development"
     const val INSTITUTION = "Wrexham Glyndŵr University"
     const val DEVELOPER_NAME = "Krzysztof Oko"
     const val STUDENT_ID = "S16001089"
@@ -61,10 +61,10 @@ object AppConstants {
     const val TITLE_PROFILE_SETTINGS = "Profile Settings"
     const val TITLE_ADMIN_HUB = "Admin Hub"
     const val TITLE_TUTOR_HUB = "Tutor Hub"
-    const val TITLE_FACULTY = "Faculty"
+    const val TITLE_FACULTY = "Teacher"
     const val TITLE_STUDENT_HUB = "Student Hub"
     const val TITLE_LIGHT_MODE = "Light Mode"
-    const val TITLE_DARK_MODE = "DarkMode"
+    const val TITLE_DARK_MODE = "Dark Mode"
     const val TITLE_ADMIN_PANEL = "Admin Panel"
     const val TITLE_TUTOR_PANEL = "Tutor Panel"
     const val TITLE_CONTINUE_READING = "Continue Reading"

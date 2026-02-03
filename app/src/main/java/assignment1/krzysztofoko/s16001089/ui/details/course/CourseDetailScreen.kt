@@ -183,6 +183,18 @@ fun CourseDetailScreen(
                                                     }
                                                 }
                                             }
+                                        } else if (currentCourse.price > 0 && enrolledPaidCourseTitle != null) {
+                                            // Enforce single paid enrollment policy
+                                            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f))) {
+                                                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
+                                                    Spacer(Modifier.width(16.dp))
+                                                    Column {
+                                                        Text(text = "Already Enrolled", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                                        Text(text = "You are currently enrolled in: '$enrolledPaidCourseTitle'. You can only be enrolled in one paid course at a time.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                                    }
+                                                }
+                                            }
                                         } else {
                                             // PHASE-BASED ENROLLMENT UI
                                             when (applicationDetails?.status) {
@@ -231,17 +243,20 @@ fun CourseDetailScreen(
                                                     }
                                                 }
                                                 else -> {
-                                                    // No application yet
-                                                    if (currentCourse.price > 0 && enrolledPaidCourseTitle != null) {
-                                                        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f))) {
-                                                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                                Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
-                                                                Spacer(Modifier.width(16.dp))
-                                                                Column {
-                                                                    Text(text = "Already Enrolled", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                                                                    Text(text = "You are currently enrolled in: '$enrolledPaidCourseTitle'. You can only be enrolled in one paid course at a time.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                                                }
-                                                            }
+                                                    if (currentCourse.price == 0.0) {
+                                                        // Instant Free Enrollment Button
+                                                        Button(
+                                                            onClick = { 
+                                                                viewModel.finalizeEnrollment { 
+                                                                    scope.launch { snackbarHostState.showSnackbar("Successfully Enrolled!") }
+                                                                } 
+                                                            }, 
+                                                            modifier = Modifier.fillMaxWidth().height(56.dp), 
+                                                            shape = RoundedCornerShape(16.dp)
+                                                        ) {
+                                                            Icon(Icons.Default.School, null)
+                                                            Spacer(Modifier.width(12.dp))
+                                                            Text("Enroll Now", fontWeight = FontWeight.Bold)
                                                         }
                                                     } else {
                                                         Button(onClick = { onStartEnrollment(currentCourse.id) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {

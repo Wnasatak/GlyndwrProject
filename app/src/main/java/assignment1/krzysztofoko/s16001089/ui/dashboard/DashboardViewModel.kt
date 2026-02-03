@@ -136,6 +136,20 @@ class DashboardViewModel(
         flowOf(0)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    val hasMessages: StateFlow<Boolean> = if (userId.isNotEmpty()) {
+        classroomDao.getAllMessagesForUser(userId).map { it.isNotEmpty() }
+    } else {
+        flowOf(false)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val unreadMessagesCount: StateFlow<Int> = if (userId.isNotEmpty()) {
+        classroomDao.getAllMessagesForUser(userId).map { list ->
+            list.count { it.receiverId == userId && !it.isRead }
+        }
+    } else {
+        flowOf(0)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     val applicationsMap: StateFlow<Map<String, String>> = if (userId.isNotEmpty()) {
         userDao.getAllEnrollmentsFlow().map { list ->
             list.filter { it.userId == userId }.associate { it.courseId to it.status }

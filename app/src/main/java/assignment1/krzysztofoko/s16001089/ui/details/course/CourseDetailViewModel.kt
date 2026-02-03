@@ -13,17 +13,17 @@ import java.util.*
 
 /**
  * ViewModel for the Course Details screen and Enrollment Application.
- * 
+ *
  * Manages the multi-step enrollment process:
  * 1. Application Submission (Pending Review)
  * 2. Admin Approval (Status changes to Approved)
  * 3. User Payment/Final Enrollment (Status changes to Enrolled)
  */
 class CourseDetailViewModel(
-    private val courseDao: CourseDao,        
-    private val userDao: UserDao,            
-    private val courseId: String,            
-    val userId: String               
+    private val courseDao: CourseDao,
+    private val userDao: UserDao,
+    private val courseId: String,
+    val userId: String
 ) : ViewModel() {
 
     private val _course = MutableStateFlow<Course?>(null)
@@ -59,7 +59,8 @@ class CourseDetailViewModel(
 
     val enrolledPaidCourseTitle: StateFlow<String?> = if (userId.isNotEmpty()) {
         userDao.getAllPurchasesFlow(userId).map { purchases ->
-            val paidCoursePurchase = purchases.find { it.mainCategory == AppConstants.CAT_COURSES && it.totalPricePaid > 0.0 }
+            val paidCoursePurchase =
+                purchases.find { it.mainCategory == AppConstants.CAT_COURSES && it.totalPricePaid > 0.0 }
             if (paidCoursePurchase != null) {
                 courseDao.getCourseById(paidCoursePurchase.productId)?.title
             } else null
@@ -117,20 +118,22 @@ class CourseDetailViewModel(
     ) {
         viewModelScope.launch {
             val currentCourse = _course.value ?: return@launch
-            
+
             // Store Application Details
             userDao.addEnrollmentDetails(details)
 
             // Create Notification
-            userDao.addNotification(NotificationLocal(
-                id = UUID.randomUUID().toString(),
-                userId = userId,
-                productId = courseId,
-                title = "Application Submitted",
-                message = "Your application for '${currentCourse.title}' is now under review by university staff.",
-                timestamp = System.currentTimeMillis(),
-                type = "GENERAL"
-            ))
+            userDao.addNotification(
+                NotificationLocal(
+                    id = UUID.randomUUID().toString(),
+                    userId = userId,
+                    productId = courseId,
+                    title = "Application Submitted",
+                    message = "Your application for '${currentCourse.title}' is now under review by university staff.",
+                    timestamp = System.currentTimeMillis(),
+                    type = "GENERAL"
+                )
+            )
 
             onComplete()
         }
@@ -152,16 +155,18 @@ class CourseDetailViewModel(
             val effectiveOrderRef = orderRef ?: OrderUtils.generateOrderReference()
 
             // 1. Create the final Purchase/Enrollment record
-            userDao.addPurchase(PurchaseItem(
-                purchaseId = UUID.randomUUID().toString(),
-                userId = userId,
-                productId = courseId,
-                mainCategory = currentCourse.mainCategory,
-                purchasedAt = System.currentTimeMillis(),
-                paymentMethod = if (isPaid) AppConstants.METHOD_UNIVERSITY_ACCOUNT else AppConstants.METHOD_FREE_ENROLLMENT,
-                totalPricePaid = finalPrice,
-                orderConfirmation = effectiveOrderRef
-            ))
+            userDao.addPurchase(
+                PurchaseItem(
+                    purchaseId = UUID.randomUUID().toString(),
+                    userId = userId,
+                    productId = courseId,
+                    mainCategory = currentCourse.mainCategory,
+                    purchasedAt = System.currentTimeMillis(),
+                    paymentMethod = if (isPaid) AppConstants.METHOD_UNIVERSITY_ACCOUNT else AppConstants.METHOD_FREE_ENROLLMENT,
+                    totalPricePaid = finalPrice,
+                    orderConfirmation = effectiveOrderRef
+                )
+            )
 
             // 2. Officially promote user role to "student"
             if (user != null && user.role != "admin") {
@@ -169,17 +174,19 @@ class CourseDetailViewModel(
             }
 
             // 3. Update application status if needed (optional, purchase existence usually implies ENROLLED)
-            
+
             // 4. Send Confirmation Notification
-            userDao.addNotification(NotificationLocal(
-                id = UUID.randomUUID().toString(),
-                userId = userId,
-                productId = courseId,
-                title = AppConstants.NOTIF_TITLE_COURSE_ENROLLED,
-                message = "Welcome to the course! You are now fully enrolled in '${currentCourse.title}'.",
-                timestamp = System.currentTimeMillis(),
-                type = "PURCHASE"
-            ))
+            userDao.addNotification(
+                NotificationLocal(
+                    id = UUID.randomUUID().toString(),
+                    userId = userId,
+                    productId = courseId,
+                    title = AppConstants.NOTIF_TITLE_COURSE_ENROLLED,
+                    message = "Welcome to the course! You are now fully enrolled in '${currentCourse.title}'.",
+                    timestamp = System.currentTimeMillis(),
+                    type = "PURCHASE"
+                )
+            )
 
             onComplete()
         }

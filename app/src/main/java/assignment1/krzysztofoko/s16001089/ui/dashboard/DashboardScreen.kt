@@ -1,5 +1,7 @@
 package assignment1.krzysztofoko.s16001089.ui.dashboard
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,10 +22,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -32,6 +38,7 @@ import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.abs
 
 /**
@@ -80,10 +87,24 @@ fun DashboardScreen(
     val searchHistory by viewModel.searchHistory.collectAsState()
 
     val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
+    val hasMessages by viewModel.hasMessages.collectAsState()
+    val unreadMessagesCount by viewModel.unreadMessagesCount.collectAsState()
 
     var selectedBookForPickup by remember { mutableStateOf<Book?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     var showWalletHistory by remember { mutableStateOf(false) }
+
+    // Animation for the ringing bell
+    val infiniteTransition = rememberInfiniteTransition(label = "bellRing")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = -15f,
+        targetValue = 15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(250, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "rotation"
+    )
 
     val filterOptions = listOf(
         AppConstants.FILTER_ALL,
@@ -100,6 +121,10 @@ fun DashboardScreen(
     val isTutor = localUser?.role == "teacher" || localUser?.role == "tutor"
     val isAdmin = localUser?.role == "admin"
 
+    // Logic to determine if applications should be shown
+    val hasActiveEnrolledCourse = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && purchasedIds.contains(it.id) }
+    val showApplications = applicationCount > 0 && !hasActiveEnrolledCourse
+
     Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) viewModel.setSearchVisible(false) }) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
         
@@ -109,19 +134,117 @@ fun DashboardScreen(
             topBar = {
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text(text = when { isAdmin -> AppConstants.TITLE_ADMIN_HUB; isTutor -> AppConstants.TITLE_TUTOR_HUB; else -> AppConstants.TITLE_STUDENT_HUB }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black) },
+                    title = { 
+                        Text(
+                            text = when { 
+                                isAdmin -> AppConstants.TITLE_ADMIN_HUB 
+                                isTutor -> AppConstants.TITLE_TUTOR_HUB 
+                                else -> AppConstants.TITLE_STUDENT_HUB 
+                            }, 
+                            style = MaterialTheme.typography.titleSmall, 
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        ) 
+                    },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) } },
                     actions = {
                         TopBarSearchAction(isSearchVisible = isSearchVisible) { viewModel.setSearchVisible(true) }
                         IconButton(onClick = { navController.navigate(AppConstants.ROUTE_HOME) }) { Icon(Icons.Default.Storefront, AppConstants.TITLE_STORE) }
-                        Box(contentAlignment = Alignment.TopEnd) {
-                            IconButton(onClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) }) { Icon(Icons.Default.Notifications, AppConstants.TITLE_NOTIFICATIONS) }
-                            if (unreadCount > 0) { Surface(color = MaterialTheme.colorScheme.error, shape = CircleShape, modifier = Modifier.padding(6.dp).size(10.dp), border = BorderStroke(1.dp, Color.White)) {} }
+                        
+                        // Messages Icon Shortcut with Unread Badge
+                        if (hasMessages) {
+                            Box(contentAlignment = Alignment.TopEnd) {
+                                val chatColor = if (unreadMessagesCount > 0 && isDarkTheme) Color(0xFFFFEB3B) 
+                                                else if (unreadMessagesCount > 0) Color(0xFFFBC02D)
+                                                else MaterialTheme.colorScheme.onSurface
+
+                                IconButton(onClick = { navController.navigate(AppConstants.ROUTE_MESSAGES) }, modifier = Modifier.size(36.dp)) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Chat, 
+                                        contentDescription = AppConstants.TITLE_MESSAGES, 
+                                        tint = chatColor,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                                if (unreadMessagesCount > 0) {
+                                    Surface(
+                                        color = Color(0xFFE53935),
+                                        shape = CircleShape,
+                                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.surface),
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .offset(x = 4.dp, y = (-2).dp) // Aligned with notification
+                                            .align(Alignment.TopEnd)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = if (unreadMessagesCount > 9) "!" else unreadMessagesCount.toString(),
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    lineHeight = 9.sp
+                                                ),
+                                                color = Color.White,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
+
+                        // Branded Notification Bell
+                        Box(contentAlignment = Alignment.TopEnd) {
+                            val bellColor = if (unreadCount > 0 && isDarkTheme) Color(0xFFFFEB3B) 
+                                            else if (unreadCount > 0) Color(0xFFFBC02D)
+                                            else MaterialTheme.colorScheme.onSurface
+                            
+                            IconButton(onClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) }, modifier = Modifier.size(36.dp)) {
+                                Icon(
+                                    imageVector = if (unreadCount > 0) Icons.Default.NotificationsActive else Icons.Default.Notifications,
+                                    contentDescription = AppConstants.TITLE_NOTIFICATIONS,
+                                    tint = bellColor,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .graphicsLayer {
+                                            if (unreadCount > 0) {
+                                                rotationZ = rotation
+                                            }
+                                        }
+                                )
+                            }
+                            if (unreadCount > 0) {
+                                Surface(
+                                    color = Color(0xFFE53935),
+                                    shape = CircleShape,
+                                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.surface),
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .offset(x = 4.dp, y = (-2).dp) // Matches messaging badge
+                                        .align(Alignment.TopEnd)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = if (unreadCount > 9) "!" else unreadCount.toString(),
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Black,
+                                                lineHeight = 9.sp
+                                            ),
+                                            color = Color.White,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         Box {
                             IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, AppConstants.TITLE_MORE_OPTIONS) }
                             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                                if (applicationCount > 0) {
+                                if (showApplications) {
                                     DropdownMenuItem(
                                         text = { Text(AppConstants.TITLE_MY_APPLICATIONS) },
                                         onClick = { 
@@ -132,7 +255,7 @@ fun DashboardScreen(
                                     )
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 }
-                                
+
                                 val hasCourses = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && purchasedIds.contains(it.id) }
                                 if (hasCourses) {
                                     DropdownMenuItem(
@@ -147,7 +270,6 @@ fun DashboardScreen(
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 }
 
-                                // Updated Messages for Students to navigate to correct route
                                 DropdownMenuItem(
                                     text = { Text(AppConstants.TITLE_MESSAGES) },
                                     onClick = {
@@ -174,8 +296,8 @@ fun DashboardScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                     item { DashboardHeader(name = localUser?.name ?: AppConstants.TEXT_STUDENT, photoUrl = localUser?.photoUrl, role = localUser?.role ?: "student", balance = localUser?.balance ?: 0.0, onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) }, onViewHistory = { showWalletHistory = true }) }
-                    
-                    if (applicationCount > 0) {
+
+                    if (showApplications) {
                         item {
                             Card(
                                 modifier = Modifier
@@ -217,7 +339,7 @@ fun DashboardScreen(
                     if (isTutor) { item { TutorQuickActions { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) } } }
                     
                     item { SectionHeader(AppConstants.TITLE_CONTINUE_READING) }
-                    if (lastViewedBooks.isNotEmpty()) { item { GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item { EmptySectionPlaceholder(AppConstants.MSG_NO_RECENTLY_VIEWED) } }
+                    if (lastViewedBooks.isNotEmpty()) { item { GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item { EmptySectionPlaceholder(AppConstants.MSG_NO_RECENT_REVIEWS) } } // Corrected placeholder
                     
                     item { SectionHeader(AppConstants.TITLE_RECENT_ACTIVITY) }
                     if (commentedBooks.isNotEmpty()) { item { GrowingLazyRow(commentedBooks, icon = Icons.AutoMirrored.Filled.Comment) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item { EmptySectionPlaceholder(AppConstants.MSG_NO_RECENT_REVIEWS) } }
@@ -272,10 +394,10 @@ fun DashboardScreen(
                                         Box {
                                             IconButton(onClick = { viewModel.setSearchVisible(false); showItemMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = AppConstants.TITLE_OPTIONS, modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
                                             DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
-                                                if (book.mainCategory == AppConstants.CAT_COURSES && !isRejected) { DropdownMenuItem(text = { Text(if (isApproved && !isFullyOwned) "Complete Enrollment" else AppConstants.BTN_ENTER_CLASSROOM) }, onClick = { showItemMenu = false; if (isApproved && !isFullyOwned) navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") else navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${book.id}") }, leadingIcon = { Icon(Icons.Default.School, null) }) }
-                                                if (book.price > 0.0 && isFullyOwned) { DropdownMenuItem(text = { Text(AppConstants.BTN_VIEW_INVOICE) }, onClick = { showItemMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
-                                                if (book.mainCategory == AppConstants.CAT_GEAR) { DropdownMenuItem(text = { Text(AppConstants.BTN_PICKUP_INFO) }, onClick = { showItemMenu = false; selectedBookForPickup = book }, leadingIcon = { Icon(Icons.Default.Info, null) }) }
-                                                if (book.mainCategory != AppConstants.CAT_GEAR && book.price <= 0.0) { DropdownMenuItem(text = { Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, color = MaterialTheme.colorScheme.error) }, onClick = { showItemMenu = false; viewModel.setBookToRemove(book) }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }) }
+                                                if (book.mainCategory == AppConstants.CAT_COURSES && !isRejected) { DropdownMenuItem(text = { Text(if (isApproved && !isFullyOwned) "Complete Enrollment" else AppConstants.BTN_ENTER_CLASSROOM) }, onClick = { showMenu = false; if (isApproved && !isFullyOwned) navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") else navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${book.id}") }, leadingIcon = { Icon(Icons.Default.School, null) }) }
+                                                if (book.price > 0.0 && isFullyOwned) { DropdownMenuItem(text = { Text(AppConstants.BTN_VIEW_INVOICE) }, onClick = { showMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
+                                                if (book.mainCategory == AppConstants.CAT_GEAR) { DropdownMenuItem(text = { Text(AppConstants.BTN_PICKUP_INFO) }, onClick = { showMenu = false; selectedBookForPickup = book }, leadingIcon = { Icon(Icons.Default.Info, null) }) }
+                                                if (book.mainCategory != AppConstants.CAT_GEAR && book.price <= 0.0) { DropdownMenuItem(text = { Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; viewModel.setBookToRemove(book) }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }) }
                                             }
                                         }
                                     }
