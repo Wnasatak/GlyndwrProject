@@ -18,6 +18,7 @@ data class ModuleContent(
 data class Assignment(
     @PrimaryKey val id: String,
     val courseId: String,
+    val moduleId: String, // Added moduleId to link assignments to modules
     val title: String,
     val description: String,
     val dueDate: Long,
@@ -42,6 +43,14 @@ data class Grade(
     val score: Double,
     val feedback: String?,
     val gradedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "attendance", primaryKeys = ["userId", "courseId", "date"])
+data class Attendance(
+    val userId: String,
+    val courseId: String,
+    val date: Long, // timestamp for the day (midnight)
+    val isPresent: Boolean = false
 )
 
 @Entity(tableName = "live_sessions")
@@ -70,7 +79,7 @@ data class ClassroomMessage(
 data class TutorProfile(
     @PrimaryKey val id: String,
     val name: String,
-    val title: String? = null, // Added title field
+    val title: String? = null,
     val email: String,
     val photoUrl: String?,
     val department: String,

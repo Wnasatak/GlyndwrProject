@@ -32,6 +32,12 @@ import assignment1.krzysztofoko.s16001089.data.toBook
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import assignment1.krzysztofoko.s16001089.ui.details.pdf.PdfReaderScreen
+import assignment1.krzysztofoko.s16001089.ui.tutor.components.Courses.TutorCourseDetailScreen
+import assignment1.krzysztofoko.s16001089.ui.tutor.components.Courses.Assignments.TutorCourseAssignmentsTab
+import assignment1.krzysztofoko.s16001089.ui.tutor.components.Courses.Modules.TutorCourseModulesTab
+import assignment1.krzysztofoko.s16001089.ui.tutor.components.Courses.Students.TutorClassStudentsTab
+import assignment1.krzysztofoko.s16001089.ui.tutor.components.Courses.Grades.TutorCourseGradesTab
+import assignment1.krzysztofoko.s16001089.ui.tutor.components.Courses.Live.TutorCourseLiveTab
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorDashboardTab
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Courses.TutorCoursesTab
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Students.TutorStudentsTab
@@ -71,6 +77,7 @@ fun TutorPanelScreen(
     val activeBook by viewModel.activeBook.collectAsState()
     val activeAudioBook by viewModel.activeAudioBook.collectAsState()
     val selectedStudent by viewModel.selectedStudent.collectAsState()
+    val selectedCourse by viewModel.selectedCourse.collectAsState()
     
     val isChatOpen = currentSection == TutorSection.CHAT
     val isReaderOpen = currentSection == TutorSection.READ_BOOK
@@ -183,6 +190,12 @@ fun TutorPanelScreen(
                                         TutorSection.MESSAGES -> "Messages"
                                         TutorSection.STUDENTS -> "Student Directory"
                                         TutorSection.MY_COURSES -> "My Classes"
+                                        TutorSection.SELECTED_COURSE -> selectedCourse?.title ?: "Class Details"
+                                        TutorSection.COURSE_STUDENTS -> "Class Students"
+                                        TutorSection.COURSE_MODULES -> "Class Modules"
+                                        TutorSection.COURSE_ASSIGNMENTS -> "Assignments"
+                                        TutorSection.COURSE_GRADES -> "Grades"
+                                        TutorSection.COURSE_LIVE -> "Live Stream"
                                         TutorSection.DASHBOARD -> "Teacher Dashboard"
                                         TutorSection.TEACHER_DETAIL -> "Teacher Profile"
                                         else -> ""
@@ -201,6 +214,18 @@ fun TutorPanelScreen(
                             if (isChatOpen) {
                                 IconButton(onClick = { viewModel.setSection(TutorSection.MESSAGES) }) {
                                     Icon(Icons.Default.ArrowBack, "Back to Messages")
+                                }
+                            } else if (currentSection == TutorSection.COURSE_STUDENTS || 
+                                     currentSection == TutorSection.COURSE_MODULES || 
+                                     currentSection == TutorSection.COURSE_ASSIGNMENTS || 
+                                     currentSection == TutorSection.COURSE_GRADES || 
+                                     currentSection == TutorSection.COURSE_LIVE) {
+                                IconButton(onClick = { viewModel.setSection(TutorSection.SELECTED_COURSE) }) {
+                                    Icon(Icons.Default.ArrowBack, "Back to Course Detail")
+                                }
+                            } else if (currentSection == TutorSection.SELECTED_COURSE) {
+                                IconButton(onClick = { viewModel.setSection(TutorSection.MY_COURSES) }) {
+                                    Icon(Icons.Default.ArrowBack, "Back to My Classes")
                                 }
                             } else if (currentSection == TutorSection.TEACHER_DETAIL) {
                                 IconButton(onClick = { viewModel.setSection(TutorSection.DASHBOARD) }) {
@@ -290,6 +315,12 @@ fun TutorPanelScreen(
                         currentSection == TutorSection.AUDIOBOOKS ||
                         currentSection == TutorSection.READ_BOOK ||
                         currentSection == TutorSection.LISTEN_AUDIOBOOK ||
+                        currentSection == TutorSection.SELECTED_COURSE ||
+                        currentSection == TutorSection.COURSE_STUDENTS ||
+                        currentSection == TutorSection.COURSE_MODULES ||
+                        currentSection == TutorSection.COURSE_ASSIGNMENTS ||
+                        currentSection == TutorSection.COURSE_GRADES ||
+                        currentSection == TutorSection.COURSE_LIVE ||
                         currentSection == TutorSection.TEACHER_DETAIL
                 
                 if (!hideBottomBar) {
@@ -353,6 +384,12 @@ fun TutorPanelScreen(
                         when (section) {
                             TutorSection.DASHBOARD -> TutorDashboardTab(viewModel, isDarkTheme, onPlayAudio)
                             TutorSection.MY_COURSES -> TutorCoursesTab(viewModel)
+                            TutorSection.SELECTED_COURSE -> TutorCourseDetailScreen(viewModel)
+                            TutorSection.COURSE_STUDENTS -> TutorClassStudentsTab(viewModel)
+                            TutorSection.COURSE_MODULES -> TutorCourseModulesTab(viewModel)
+                            TutorSection.COURSE_ASSIGNMENTS -> TutorCourseAssignmentsTab(viewModel)
+                            TutorSection.COURSE_GRADES -> TutorCourseGradesTab(viewModel)
+                            TutorSection.COURSE_LIVE -> TutorCourseLiveTab(viewModel)
                             TutorSection.STUDENTS -> TutorStudentsTab(viewModel)
                             TutorSection.MESSAGES -> TutorMessagesTab(viewModel)
                             TutorSection.CHAT -> TutorChatTab(viewModel)

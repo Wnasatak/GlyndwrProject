@@ -1,10 +1,12 @@
 package assignment1.krzysztofoko.s16001089.ui.tutor.components.Courses
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -50,27 +52,35 @@ fun TutorCoursesTab(
             ) {
                 items(assignedCourses) { course ->
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.selectCourse(course.id) },
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(course.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                            Text(course.department, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                            
-                            Spacer(Modifier.height(8.dp))
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Text(
-                                    text = "ASSIGNED TEACHER",
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    fontWeight = FontWeight.Bold
-                                )
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(course.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                Text(course.department, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                
+                                Spacer(Modifier.height(8.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "MANAGE CLASS",
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
+                            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
                         }
                     }
                 }

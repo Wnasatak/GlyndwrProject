@@ -7,9 +7,28 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import java.util.UUID
 
-enum class TutorSection { DASHBOARD, MY_COURSES, STUDENTS, MESSAGES, CHAT, LIBRARY, BOOKS, AUDIOBOOKS, READ_BOOK, LISTEN_AUDIOBOOK, TEACHER_DETAIL }
+enum class TutorSection { 
+    DASHBOARD, 
+    MY_COURSES, 
+    SELECTED_COURSE, 
+    COURSE_MODULES,
+    COURSE_STUDENTS,
+    COURSE_ASSIGNMENTS,
+    COURSE_GRADES,
+    COURSE_LIVE,
+    STUDENTS, 
+    MESSAGES, 
+    CHAT, 
+    LIBRARY, 
+    BOOKS, 
+    AUDIOBOOKS, 
+    READ_BOOK, 
+    LISTEN_AUDIOBOOK, 
+    TEACHER_DETAIL 
+}
 
 data class ConversationPreview(
     val student: UserLocal,
@@ -39,11 +58,22 @@ class TutorViewModel(
     private val _selectedStudent = MutableStateFlow<UserLocal?>(null)
     val selectedStudent: StateFlow<UserLocal?> = _selectedStudent.asStateFlow()
 
+    private val _selectedCourseId = MutableStateFlow<String?>(null)
+    val selectedCourseId: StateFlow<String?> = _selectedCourseId.asStateFlow()
+
     private val _activeBook = MutableStateFlow<Book?>(null)
     val activeBook: StateFlow<Book?> = _activeBook.asStateFlow()
 
     private val _activeAudioBook = MutableStateFlow<AudioBook?>(null)
     val activeAudioBook: StateFlow<AudioBook?> = _activeAudioBook.asStateFlow()
+
+    // Attendance Date State
+    private val _attendanceDate = MutableStateFlow(System.currentTimeMillis())
+    val attendanceDate: StateFlow<Long> = _attendanceDate.asStateFlow()
+
+    fun setAttendanceDate(date: Long) {
+        _attendanceDate.value = date
+    }
 
     fun setSection(section: TutorSection, student: UserLocal? = null) {
         _currentSection.value = section
@@ -52,9 +82,18 @@ class TutorViewModel(
         }
     }
 
+    fun selectCourse(courseId: String) {
+        _selectedCourseId.value = courseId
+        _currentSection.value = TutorSection.SELECTED_COURSE
+    }
+
     fun openBook(book: Book) {
         _activeBook.value = book
         _currentSection.value = TutorSection.READ_BOOK
+    }
+
+    fun findCourseById(courseId: String): Course? {
+        return allCourses.value.find { it.id == courseId }
     }
 
     fun openAudioBook(ab: AudioBook) {
@@ -80,6 +119,86 @@ class TutorViewModel(
         val assignedIds = assignments.map { it.courseId }.toSet()
         courses.filter { assignedIds.contains(it.id) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val selectedCourse: StateFlow<Course?> = _selectedCourseId
+        .flatMapLatest { id ->
+            if (id == null) flowOf<Course?>(null)
+            else flow { emit(courseDao.getCourseById(id)) }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val enrolledStudentsInSelectedCourse: StateFlow<List<UserLocal>> = combine(
+        _selectedCourseId,
+        userDao.getAllUsersFlow(),
+        userDao.getAllEnrollmentsFlow()
+    ) { courseId, users, enrollments ->
+        if (courseId == null) emptyList()
+        else {
+            val studentIds = enrollments
+                .filter { it.courseId == courseId && it.status == "APPROVED" }
+                .map { it.userId }
+                .toSet()
+            users.filter { it.id in studentIds }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val selectedCourseGrades: StateFlow<List<Grade>> = _selectedCourseId
+        .flatMapLatest { id ->
+            if (id == null) flowOf(emptyList())
+            else classroomDao.getAllGradesForCourse(id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val selectedCourseAssignments: StateFlow<List<Assignment>> = _selectedCourseId
+        .flatMapLatest { id ->
+            if (id == null) flowOf(emptyList())
+            else classroomDao.getAssignmentsForCourse(id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val selectedCourseModules: StateFlow<List<ModuleContent>> = _selectedCourseId
+        .flatMapLatest { id ->
+            if (id == null) flowOf(emptyList())
+            else classroomDao.getModulesForCourse(id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val allCourseAttendance: StateFlow<List<Attendance>> = _selectedCourseId
+        .flatMapLatest { id ->
+            if (id == null) flowOf(emptyList())
+            else classroomDao.getAllAttendanceForCourse(id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val selectedCourseAttendance: StateFlow<List<Attendance>> = combine(_selectedCourseId, _attendanceDate) { id, date ->
+        id to date
+    }.flatMapLatest { (id, date) ->
+        if (id == null) flowOf(emptyList())
+        else {
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = date
+            cal.set(Calendar.HOUR_OF_DAY, 0)
+            cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            classroomDao.getAttendanceForCourseAndDate(id, cal.timeInMillis)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val recordedAttendanceDates: StateFlow<List<Long>> = _selectedCourseId
+        .flatMapLatest { id ->
+            if (id == null) flowOf(emptyList())
+            else classroomDao.getRecordedAttendanceDates(id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val allUsers: StateFlow<List<UserLocal>> = userDao.getAllUsersFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -110,6 +229,74 @@ class TutorViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- Actions ---
+
+    fun toggleAttendance(userId: String, isPresent: Boolean) {
+        val courseId = _selectedCourseId.value ?: return
+        viewModelScope.launch {
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = _attendanceDate.value
+            cal.set(Calendar.HOUR_OF_DAY, 0)
+            cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            val today = cal.timeInMillis
+
+            classroomDao.upsertAttendance(
+                Attendance(
+                    userId = userId,
+                    courseId = courseId,
+                    date = today,
+                    isPresent = isPresent
+                )
+            )
+            addLog("MARK_ATTENDANCE", userId, "Marked student as ${if (isPresent) "Present" else "Absent"} for $courseId on $today")
+        }
+    }
+
+    fun upsertModule(module: ModuleContent) {
+        viewModelScope.launch {
+            classroomDao.upsertModule(module)
+            addLog("UPSERT_MODULE", module.id, "Tutor updated/created module ${module.title}")
+        }
+    }
+
+    fun deleteModule(moduleId: String) {
+        viewModelScope.launch {
+            classroomDao.deleteModule(moduleId)
+            addLog("DELETE_MODULE", moduleId, "Tutor deleted module $moduleId")
+        }
+    }
+
+    fun updateGrade(userId: String, assignmentId: String, score: Double, feedback: String) {
+        val courseId = _selectedCourseId.value ?: return
+        viewModelScope.launch {
+            val newGrade = Grade(
+                id = "grade_${userId}_${assignmentId}",
+                userId = userId,
+                courseId = courseId,
+                assignmentId = assignmentId,
+                score = score,
+                feedback = feedback,
+                gradedAt = System.currentTimeMillis()
+            )
+            classroomDao.upsertGrade(newGrade)
+            addLog("UPDATE_GRADE", userId, "Tutor updated grade for student $userId in assignment $assignmentId to $score%")
+        }
+    }
+
+    fun upsertAssignment(assignment: Assignment) {
+        viewModelScope.launch {
+            classroomDao.upsertAssignment(assignment)
+            addLog("UPSERT_ASSIGNMENT", assignment.id, "Tutor updated/created assignment ${assignment.title}")
+        }
+    }
+
+    fun deleteAssignment(assignmentId: String) {
+        viewModelScope.launch {
+            classroomDao.deleteAssignment(assignmentId)
+            addLog("DELETE_ASSIGNMENT", assignmentId, "Tutor deleted assignment $assignmentId")
+        }
+    }
 
     fun assignCourseToSelf(courseId: String) {
         viewModelScope.launch {

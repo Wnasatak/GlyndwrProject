@@ -12,15 +12,33 @@ interface ClassroomDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertModules(modules: List<ModuleContent>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertModule(module: ModuleContent)
+
+    @Query("DELETE FROM classroom_modules WHERE id = :moduleId")
+    suspend fun deleteModule(moduleId: String)
+
+    @Query("DELETE FROM classroom_modules")
+    suspend fun deleteAllModules()
+
     // Assignments
     @Query("SELECT * FROM assignments WHERE courseId = :courseId ORDER BY dueDate ASC")
     fun getAssignmentsForCourse(courseId: String): Flow<List<Assignment>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAssignment(assignment: Assignment)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAssignments(assignments: List<Assignment>)
 
     @Update
     suspend fun updateAssignment(assignment: Assignment)
+
+    @Query("DELETE FROM assignments WHERE id = :assignmentId")
+    suspend fun deleteAssignment(assignmentId: String)
+
+    @Query("DELETE FROM assignments")
+    suspend fun deleteAllAssignments()
 
     // Submissions
     @Query("SELECT * FROM assignment_submissions WHERE assignmentId = :assignmentId AND userId = :userId")
@@ -33,11 +51,36 @@ interface ClassroomDao {
     @Query("SELECT * FROM grades WHERE userId = :userId AND courseId = :courseId")
     fun getGradesForCourse(userId: String, courseId: String): Flow<List<Grade>>
 
+    @Query("SELECT * FROM grades WHERE courseId = :courseId")
+    fun getAllGradesForCourse(courseId: String): Flow<List<Grade>>
+
     @Query("SELECT * FROM grades WHERE userId = :userId")
     fun getAllGradesForUser(userId: String): Flow<List<Grade>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGrades(grades: List<Grade>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertGrade(grade: Grade)
+
+    @Query("DELETE FROM grades")
+    suspend fun deleteAllGrades()
+
+    // Attendance
+    @Query("SELECT * FROM attendance WHERE courseId = :courseId AND date = :date")
+    fun getAttendanceForCourseAndDate(courseId: String, date: Long): Flow<List<Attendance>>
+
+    @Query("SELECT * FROM attendance WHERE courseId = :courseId")
+    fun getAllAttendanceForCourse(courseId: String): Flow<List<Attendance>>
+
+    @Query("SELECT DISTINCT date FROM attendance WHERE courseId = :courseId")
+    fun getRecordedAttendanceDates(courseId: String): Flow<List<Long>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAttendance(attendance: Attendance)
+
+    @Query("DELETE FROM attendance")
+    suspend fun deleteAllAttendance()
 
     // Live Sessions
     @Query("SELECT * FROM live_sessions WHERE courseId = :courseId AND isActive = 1 LIMIT 1")
