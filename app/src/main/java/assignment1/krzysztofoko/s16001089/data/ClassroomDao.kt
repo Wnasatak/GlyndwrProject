@@ -25,6 +25,9 @@ interface ClassroomDao {
     @Query("SELECT * FROM assignments WHERE courseId = :courseId ORDER BY dueDate ASC")
     fun getAssignmentsForCourse(courseId: String): Flow<List<Assignment>>
 
+    @Query("SELECT * FROM assignments ORDER BY dueDate ASC")
+    fun getAllAssignments(): Flow<List<Assignment>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAssignment(assignment: Assignment)
 
@@ -89,11 +92,17 @@ interface ClassroomDao {
     @Query("SELECT * FROM live_sessions WHERE isActive = 1")
     fun getAllActiveSessions(): Flow<List<LiveSession>>
 
+    @Query("SELECT * FROM live_sessions WHERE courseId = :courseId AND isActive = 0 ORDER BY startTime DESC")
+    fun getPreviousSessionsForCourse(courseId: String): Flow<List<LiveSession>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLiveSessions(sessions: List<LiveSession>)
 
     @Query("UPDATE live_sessions SET isActive = :isActive WHERE id = :sessionId")
     suspend fun updateSessionStatus(sessionId: String, isActive: Boolean)
+
+    @Query("DELETE FROM live_sessions WHERE id = :sessionId")
+    suspend fun deleteSession(sessionId: String)
 
     // Messaging
     @Query("SELECT * FROM classroom_messages WHERE courseId = :courseId AND ((senderId = :userId AND receiverId = :tutorId) OR (senderId = :tutorId AND receiverId = :userId)) ORDER BY timestamp ASC")

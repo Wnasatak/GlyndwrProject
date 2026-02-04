@@ -50,11 +50,17 @@ fun TutorDashboardTab(
     val currentUser by viewModel.currentUserLocal.collectAsState()
     val assignedCourses by viewModel.assignedCourses.collectAsState()
     val allUsers by viewModel.allUsers.collectAsState()
+    val allEnrollments by viewModel.allEnrollments.collectAsState()
     val pendingApps by viewModel.pendingApplications.collectAsState()
     
-    // Filter for student statistics
-    val studentCount = remember(allUsers) {
-        allUsers.filter { it.role == "student" || it.role == "user" }.size
+    // Filter for student statistics - Only students in tutor's assigned courses (Approved or Enrolled)
+    val studentCount = remember(allEnrollments, assignedCourses) {
+        val myCourseIds = assignedCourses.map { it.id }.toSet()
+        allEnrollments
+            .filter { it.courseId in myCourseIds && (it.status == "APPROVED" || it.status == "ENROLLED") }
+            .map { it.userId }
+            .distinct()
+            .size
     }
 
     val books by viewModel.allBooks.collectAsState()
@@ -295,7 +301,7 @@ fun TutorDashboardTab(
                 title = "Create New Assignment",
                 description = "Post a new task for your students to complete.",
                 icon = Icons.Default.Assignment,
-                onClick = { /* TODO */ }
+                onClick = { viewModel.setSection(TutorSection.CREATE_ASSIGNMENT) }
             )
         }
 
@@ -304,7 +310,7 @@ fun TutorDashboardTab(
                 title = "Live Session",
                 description = "Start a new video stream for your active course.",
                 icon = Icons.Default.VideoCall,
-                onClick = { /* TODO */ }
+                onClick = { viewModel.setSection(TutorSection.START_LIVE_STREAM) }
             )
         }
         

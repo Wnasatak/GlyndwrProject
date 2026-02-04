@@ -40,40 +40,26 @@ fun TutorStudentsTab(
     val assignedCourses by viewModel.assignedCourses.collectAsState()
     var searchTxt by remember { mutableStateOf("") }
 
-    // Logic:
-    // 1. Get IDs of courses assigned to THIS tutor.
-    // 2. Find all student IDs enrolled in those courses.
-    // 3. Separate list into "My Students" and "Other Students" (if searching).
-    
     val myCourseIds = assignedCourses.map { it.id }.toSet()
-    val myStudentIds = remember(allEnrollments, myCourseIds) {
-        allEnrollments
-            .filter { it.courseId in myCourseIds && it.status == "APPROVED" }
+
+    // Get all students in the tutor's courses (Approved or Enrolled)
+    val myStudents = remember(allUsers, allEnrollments, myCourseIds) {
+        val myStudentIds = allEnrollments
+            .filter { it.courseId in myCourseIds && (it.status == "APPROVED" || it.status == "ENROLLED") }
             .map { it.userId }
             .toSet()
+        allUsers.filter { it.id in myStudentIds }
     }
 
-    val studentList = remember(allUsers, searchTxt, myStudentIds) {
-        val filtered = allUsers.filter { (it.role == "student" || it.role == "user") }
-        
-        if (searchTxt.isEmpty()) {
-            // Default view: ONLY my students
-            filtered.filter { it.id in myStudentIds }
+    val (myResults, otherResults) = remember(allUsers, myStudents, searchTxt) {
+        if (searchTxt.isBlank()) {
+            Pair(myStudents, emptyList())
         } else {
-            // Search view: Show matching students from everywhere
-            filtered.filter { 
-                it.name.contains(searchTxt, ignoreCase = true) || 
-                it.email.contains(searchTxt, ignoreCase = true) 
+            val searchResults = allUsers.filter {
+                (it.role == "student" || it.role == "user") &&
+                        (it.name.contains(searchTxt, ignoreCase = true) || it.email.contains(searchTxt, ignoreCase = true))
             }
-        }
-    }
-
-    // Split for visual separation if searching
-    val (myResults, otherResults) = remember(studentList, myStudentIds, searchTxt) {
-        if (searchTxt.isEmpty()) {
-            Pair(studentList, emptyList())
-        } else {
-            studentList.partition { it.id in myStudentIds }
+            searchResults.partition { it in myStudents }
         }
     }
 
@@ -82,13 +68,13 @@ fun TutorStudentsTab(
             value = searchTxt,
             onValueChange = { searchTxt = it },
             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            placeholder = { 
+            placeholder = {
                 Text(
                     text = "Search students across university...",
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
-                ) 
+                )
             },
             leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp)) },
             shape = MaterialTheme.shapes.medium,
@@ -106,7 +92,7 @@ fun TutorStudentsTab(
                     )
                 }
                 items(myResults) { student ->
-                    StudentItemCard(student, viewModel, allEnrollments, allCourses)
+                    StudentItemCard(student, viewModel, allEnrollments, allCourses, myCourseIds)
                 }
             }
 
@@ -119,11 +105,11 @@ fun TutorStudentsTab(
                     )
                 }
                 items(otherResults) { student ->
-                    StudentItemCard(student, viewModel, allEnrollments, allCourses)
+                    StudentItemCard(student, viewModel, allEnrollments, allCourses, myCourseIds)
                 }
             }
-            
-            if (studentList.isEmpty()) {
+
+            if (myResults.isEmpty() && otherResults.isEmpty()) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                         Text("No students found matching your search.", color = Color.Gray)
@@ -171,11 +157,13 @@ fun StudentItemCard(
     student: assignment1.krzysztofoko.s16001089.data.UserLocal,
     viewModel: TutorViewModel,
     allEnrollments: List<assignment1.krzysztofoko.s16001089.data.CourseEnrollmentDetails>,
-    allCourses: List<assignment1.krzysztofoko.s16001089.data.Course>
+    allCourses: List<assignment1.krzysztofoko.s16001089.data.Course>,
+    myCourseIds: Set<String>
 ) {
-    val studentCourses = remember(allEnrollments, allCourses) {
+    // Show all courses this student is enrolled in that belong to this tutor's assigned courses (Approved or Enrolled)
+    val displayCourses = remember(allEnrollments, allCourses, myCourseIds) {
         allEnrollments
-            .filter { it.userId == student.id && it.status == "APPROVED" }
+            .filter { it.userId == student.id && (it.status == "APPROVED" || it.status == "ENROLLED") && it.courseId in myCourseIds }
             .mapNotNull { enrollment -> allCourses.find { it.id == enrollment.courseId }?.title }
             .joinToString(", ")
     }
@@ -190,31 +178,48 @@ fun StudentItemCard(
         ) {
             UserAvatar(
                 photoUrl = student.photoUrl,
-                modifier = Modifier.size(50.dp)
+                modifier = Modifier.size(54.dp)
             )
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val displayName = buildString {
-                        if (!student.title.isNullOrEmpty()) {
-                            append(student.title)
-                            append(" ")
-                        }
-                        append(student.name)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!student.title.isNullOrEmpty()) {
+                        Text(
+                            text = student.title,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                    } else {
+                        Spacer(Modifier.width(1.dp))
                     }
-                    Text(displayName, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(8.dp))
                     RoleTag(student.role)
                 }
+
+                Text(
+                    text = student.name,
+                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
                 Text(student.email, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                
-                if (studentCourses.isNotEmpty()) {
+
+                if (displayCourses.isNotEmpty()) {
                     Text(
-                        text = studentCourses,
+                        text = displayCourses,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 2.dp),
-                        fontSize = 10.sp
+                        fontSize = 10.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 12.sp
                     )
                 }
             }

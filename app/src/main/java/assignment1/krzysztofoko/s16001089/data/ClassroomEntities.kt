@@ -22,7 +22,8 @@ data class Assignment(
     val title: String,
     val description: String,
     val dueDate: Long,
-    val status: String = "PENDING" // "PENDING", "SUBMITTED", "GRADED"
+    val status: String = "PENDING", // "PENDING", "SUBMITTED", "GRADED"
+    val allowedFileTypes: String = "PDF,DOCX,ZIP" // Comma separated allowed file types
 )
 
 @Entity(tableName = "assignment_submissions")
@@ -57,9 +58,13 @@ data class Attendance(
 data class LiveSession(
     @PrimaryKey val id: String,
     val courseId: String,
+    val moduleId: String = "",
+    val assignmentId: String? = null,
+    val title: String = "Live Broadcast",
     val tutorId: String,
     val tutorName: String,
     val startTime: Long,
+    val endTime: Long? = null,
     val streamUrl: String,
     val isActive: Boolean = false
 )

@@ -27,7 +27,9 @@ enum class TutorSection {
     AUDIOBOOKS, 
     READ_BOOK, 
     LISTEN_AUDIOBOOK, 
-    TEACHER_DETAIL 
+    TEACHER_DETAIL,
+    CREATE_ASSIGNMENT,
+    START_LIVE_STREAM
 }
 
 data class ConversationPreview(
@@ -61,6 +63,9 @@ class TutorViewModel(
     private val _selectedCourseId = MutableStateFlow<String?>(null)
     val selectedCourseId: StateFlow<String?> = _selectedCourseId.asStateFlow()
 
+    private val _selectedModuleId = MutableStateFlow<String?>(null)
+    val selectedModuleId: StateFlow<String?> = _selectedModuleId.asStateFlow()
+
     private val _activeBook = MutableStateFlow<Book?>(null)
     val activeBook: StateFlow<Book?> = _activeBook.asStateFlow()
 
@@ -69,6 +74,9 @@ class TutorViewModel(
 
     private val _isLive = MutableStateFlow(false)
     val isLive: StateFlow<Boolean> = _isLive.asStateFlow()
+
+    private val _isPaused = MutableStateFlow(false)
+    val isPaused: StateFlow<Boolean> = _isPaused.asStateFlow()
 
     // Attendance Date State
     private val _attendanceDate = MutableStateFlow(System.currentTimeMillis())
@@ -88,6 +96,14 @@ class TutorViewModel(
     fun selectCourse(courseId: String) {
         _selectedCourseId.value = courseId
         _currentSection.value = TutorSection.SELECTED_COURSE
+    }
+    
+    fun updateSelectedCourse(courseId: String?) {
+        _selectedCourseId.value = courseId
+    }
+
+    fun selectModule(moduleId: String?) {
+        _selectedModuleId.value = moduleId
     }
 
     fun openBook(book: Book) {
@@ -140,7 +156,7 @@ class TutorViewModel(
         if (courseId == null) emptyList()
         else {
             val studentIds = enrollments
-                .filter { it.courseId == courseId && it.status == "APPROVED" }
+                .filter { it.courseId == courseId && (it.status == "APPROVED" || it.status == "ENROLLED") }
                 .map { it.userId }
                 .toSet()
             users.filter { it.id in studentIds }
@@ -197,7 +213,7 @@ class TutorViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val recordedAttendanceDates: StateFlow<List<Long>> = _selectedCourseId
-        .flatMapLatest { id ->
+        .flatMapLatest<String?, List<Long>> { id ->
             if (id == null) flowOf(emptyList())
             else classroomDao.getRecordedAttendanceDates(id)
         }
@@ -230,6 +246,14 @@ class TutorViewModel(
     val libraryAudioBooks: StateFlow<List<AudioBook>> = combine(allAudioBooks, purchasedIds) { books, ids ->
         books.filter { ids.contains(it.id) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val previousBroadcasts: StateFlow<List<LiveSession>> = _selectedCourseId
+        .flatMapLatest<String?, List<LiveSession>> { id ->
+            if (id == null) flowOf(emptyList())
+            else classroomDao.getPreviousSessionsForCourse(id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- Actions ---
 
@@ -370,8 +394,10 @@ class TutorViewModel(
     
     fun toggleLiveStream(isLive: Boolean) {
         val courseId = _selectedCourseId.value ?: return
+        val moduleId = _selectedModuleId.value ?: ""
         viewModelScope.launch {
             _isLive.value = isLive
+            if (!isLive) _isPaused.value = false // Ensure it's not paused when ending
             
             // Robust name retrieval
             val profile = classroomDao.getTutorProfile(tutorId)
@@ -379,16 +405,31 @@ class TutorViewModel(
             val tutorName = profile?.name ?: userLocal?.name ?: "Tutor"
             
             val session = LiveSession(
-                id = "live_${courseId}", // Consistent ID
+                id = if (isLive) "live_${courseId}" else UUID.randomUUID().toString(),
                 courseId = courseId,
+                moduleId = moduleId,
+                title = if (isLive) "Live Broadcast" else "Archived Broadcast",
                 tutorId = tutorId,
                 tutorName = tutorName,
                 startTime = System.currentTimeMillis(),
+                endTime = if (!isLive) System.currentTimeMillis() else null,
                 streamUrl = "https://example.com/stream/${courseId}",
                 isActive = isLive
             )
             classroomDao.insertLiveSessions(listOf(session))
             addLog(if (isLive) "START_STREAM" else "END_STREAM", courseId, "Tutor ${if (isLive) "started" else "ended"} live broadcast for $courseId")
+        }
+    }
+
+    fun setLivePaused(paused: Boolean) {
+        _isPaused.value = paused
+        addLog("PAUSE_STREAM", _selectedCourseId.value ?: "unknown", "Tutor ${if (paused) "paused" else "resumed"} live broadcast")
+    }
+
+    fun deletePreviousBroadcast(sessionId: String) {
+        viewModelScope.launch {
+            classroomDao.deleteSession(sessionId)
+            addLog("DELETE_PREVIOUS_BROADCAST", sessionId, "Tutor deleted an archived broadcast")
         }
     }
 

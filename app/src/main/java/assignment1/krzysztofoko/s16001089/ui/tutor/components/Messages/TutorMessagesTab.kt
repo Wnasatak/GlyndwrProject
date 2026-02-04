@@ -1,11 +1,10 @@
 package assignment1.krzysztofoko.s16001089.ui.tutor.components.Messages
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
@@ -15,9 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,7 +26,6 @@ import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import assignment1.krzysztofoko.s16001089.ui.tutor.ConversationPreview
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
-import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -146,19 +142,24 @@ fun ConversationItem(
             UserAvatar(photoUrl = conversation.student.photoUrl, modifier = Modifier.size(50.dp))
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
+                // Row 1: Name and Role Tag
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = conversation.student.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Spacer(Modifier.width(8.dp))
-                        RoleTag(conversation.student.role)
-                    }
-                    Text(text = timeStr, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text(
+                        text = conversation.student.name, 
+                        fontWeight = FontWeight.Bold, 
+                        fontSize = 16.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    RoleTag(conversation.student.role)
                 }
                 
+                // Row 2: Courses (if any)
                 if (courses.isNotEmpty()) {
                     Text(
                         text = courses,
@@ -170,16 +171,31 @@ fun ConversationItem(
                     )
                 }
 
-                Text(
-                    text = conversation.lastMessage.message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                // Row 3: Message Content and Time (Inline)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = conversation.lastMessage.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = timeStr, 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = Color.Gray,
+                        fontSize = 10.sp
+                    )
+                }
             }
             Spacer(Modifier.width(8.dp))
-            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -203,7 +219,14 @@ fun NewConversationItem(
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = user.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(
+                        text = user.name, 
+                        fontWeight = FontWeight.Bold, 
+                        fontSize = 16.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
                     Spacer(Modifier.width(8.dp))
                     RoleTag(user.role)
                 }
@@ -226,7 +249,7 @@ fun NewConversationItem(
                 )
             }
             Spacer(Modifier.width(8.dp))
-            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -235,25 +258,23 @@ fun NewConversationItem(
 fun RoleTag(role: String?) {
     val roleText = (role ?: "user").uppercase()
     val tagColor = when(roleText) {
-        "ADMIN", "TUTOR" -> MaterialTheme.colorScheme.errorContainer
-        else -> MaterialTheme.colorScheme.primaryContainer
-    }
-    val onTagColor = when(roleText) {
-        "ADMIN", "TUTOR" -> MaterialTheme.colorScheme.onErrorContainer
-        else -> MaterialTheme.colorScheme.onPrimaryContainer
+        "ADMIN", "TUTOR" -> Color(0xFFE53935)
+        "STUDENT" -> Color(0xFF43A047)
+        else -> Color.Gray
     }
 
     Surface(
-        color = tagColor,
-        shape = RoundedCornerShape(4.dp)
+        color = tagColor.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(4.dp),
+        border = BorderStroke(0.5.dp, tagColor.copy(alpha = 0.5f))
     ) {
         Text(
             text = roleText,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
             style = MaterialTheme.typography.labelSmall,
-            color = onTagColor,
+            color = tagColor,
             fontSize = 8.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Black
         )
     }
 }

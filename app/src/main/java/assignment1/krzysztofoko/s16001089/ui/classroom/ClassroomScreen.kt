@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
@@ -87,25 +89,31 @@ fun ClassroomScreen(
                 }
             ) { padding ->
                 Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    // Removed Broadcast Alert Banner as requested
-
                     // Live Session Card
                     LiveBroadcastCard(
                         session = activeSession,
                         onJoinClick = { viewModel.enterLiveSession() }
                     )
 
-                    // Navigation Tabs
-                    PrimaryTabRow(
+                    // Navigation Tabs - Changed to ScrollableTabRow with minimal edge padding to ensure inline fit
+                    ScrollableTabRow(
                         selectedTabIndex = selectedTab,
                         containerColor = Color.Transparent,
+                        edgePadding = 12.dp,
                         divider = {}
                     ) {
                         tabs.forEachIndexed { index, title ->
                             Tab(
                                 selected = selectedTab == index,
                                 onClick = { viewModel.selectTab(index) },
-                                text = { Text(title, fontWeight = FontWeight.Bold) }
+                                text = { 
+                                    Text(
+                                        text = title, 
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 13.sp, // Slightly reduced to ensure single line
+                                        maxLines = 1
+                                    ) 
+                                }
                             )
                         }
                     }

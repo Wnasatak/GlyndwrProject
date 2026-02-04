@@ -9,19 +9,23 @@ import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AudioBook
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.toBook
 import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
 import assignment1.krzysztofoko.s16001089.ui.components.BookItemCard
+import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorResourceDetailDialog
 import kotlinx.coroutines.delay
@@ -115,6 +119,42 @@ fun TutorLibraryTab(
                     }
                 }
             }
+            
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Not found what you looking for?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = { 
+                            if (selectedTab == 0) {
+                                viewModel.setSection(TutorSection.BOOKS)
+                            } else {
+                                viewModel.setSection(TutorSection.AUDIOBOOKS)
+                            }
+                        },
+                        shape = MaterialTheme.shapes.medium,
+                        contentPadding = PaddingValues(horizontal = 24.dp)
+                    ) {
+                        Icon(Icons.Default.ShoppingCart, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (selectedTab == 0) "Explore More Books" else "Explore More Audiobooks",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }

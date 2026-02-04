@@ -23,38 +23,38 @@ import kotlinx.coroutines.flow.StateFlow
  * Navigation graph module for the User Dashboard and associated member features.
  */
 fun NavGraphBuilder.dashboardNavGraph(
-    navController: NavController,           
-    currentUserFlow: StateFlow<FirebaseUser?>, 
-    allBooks: List<Book>,                   
-    isDarkTheme: Boolean,                   
-    onToggleTheme: () -> Unit,              
-    onPlayAudio: (Book) -> Unit,            
-    isAudioPlaying: Boolean,                
-    currentPlayingBookId: String?,          
-    onLogoutClick: () -> Unit               
+    navController: NavController,
+    currentUserFlow: StateFlow<FirebaseUser?>,
+    allBooks: List<Book>,
+    isDarkTheme: Boolean,
+    onToggleTheme: () -> Unit,
+    onPlayAudio: (Book) -> Unit,
+    isAudioPlaying: Boolean,
+    currentPlayingBookId: String?,
+    onLogoutClick: () -> Unit
 ) {
-    composable(AppConstants.ROUTE_DASHBOARD) { 
+    composable(AppConstants.ROUTE_DASHBOARD) {
         DashboardScreen(
-            navController = navController, 
-            allBooks = allBooks, 
-            onBack = { navController.popBackStack() }, 
+            navController = navController,
+            allBooks = allBooks,
+            onBack = { navController.popBackStack() },
             onLogout = onLogoutClick,
-            isDarkTheme = isDarkTheme, 
-            onToggleTheme = onToggleTheme, 
+            isDarkTheme = isDarkTheme,
+            onToggleTheme = onToggleTheme,
             onViewInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/${it.id}") },
-            onPlayAudio = onPlayAudio, 
-            currentPlayingBookId = currentPlayingBookId, 
+            onPlayAudio = onPlayAudio,
+            currentPlayingBookId = currentPlayingBookId,
             isAudioPlaying = isAudioPlaying
         )
     }
 
-    composable(AppConstants.ROUTE_PROFILE) { 
+    composable(AppConstants.ROUTE_PROFILE) {
         ProfileScreen(
-            navController = navController, 
-            onLogout = onLogoutClick, 
-            isDarkTheme = isDarkTheme, 
+            navController = navController,
+            onLogout = onLogoutClick,
+            isDarkTheme = isDarkTheme,
             onToggleTheme = onToggleTheme
-        ) 
+        )
     }
 
     composable(AppConstants.ROUTE_NOTIFICATIONS) {
@@ -66,15 +66,15 @@ fun NavGraphBuilder.dashboardNavGraph(
             onNavigateToItem = { navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$it") },
             onNavigateToInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE}/$it") },
             onNavigateToMessages = { navController.navigate(AppConstants.ROUTE_MESSAGES) },
-            onBack = { 
+            onBack = {
                 if (isAdmin) {
                     navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) {
                         popUpTo(AppConstants.ROUTE_ADMIN_PANEL) { inclusive = true }
                     }
                 } else {
-                    navController.popBackStack() 
+                    navController.popBackStack()
                 }
-            }, 
+            },
             isDarkTheme = isDarkTheme
         )
     }
@@ -120,7 +120,7 @@ fun NavGraphBuilder.dashboardNavGraph(
             onBack = { navController.popBackStack() },
             navController = navController,
             isDarkTheme = isDarkTheme,
-            onToggleTheme = onToggleTheme 
+            onToggleTheme = onToggleTheme
         )
     }
 

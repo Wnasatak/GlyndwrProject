@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -201,7 +202,7 @@ fun ConversationListView(
             value = searchQuery,
             onValueChange = onSearchChange,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            placeholder = { Text("Search Teachers & Admins") },
+            placeholder = { Text("Search users or messages...") },
             leadingIcon = { Icon(Icons.Default.Search, null) },
             trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { onSearchChange("") }) { Icon(Icons.Default.Close, null) } },
             shape = RoundedCornerShape(16.dp),
@@ -260,7 +261,7 @@ fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick:
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         val displayName = buildString {
                             if (!conv.otherUser.title.isNullOrEmpty()) {
                                 append(conv.otherUser.title)
@@ -268,14 +269,14 @@ fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick:
                             }
                             append(conv.otherUser.name)
                         }
-                        Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Spacer(Modifier.width(8.dp))
                         RoleTag(role = conv.otherUser.role)
                     }
-                    Text(sdf.format(Date(conv.lastMessage.timestamp)), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text(sdf.format(Date(conv.lastMessage.timestamp)), style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(start = 8.dp))
                 }
                 if (course.isNotEmpty()) {
-                    Text(text = course, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = course, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Text(
                     text = conv.lastMessage.message, 
@@ -286,6 +287,8 @@ fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick:
                     fontWeight = if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) FontWeight.Bold else FontWeight.Normal
                 )
             }
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -310,12 +313,12 @@ fun NewUserCard(user: UserLocal, course: String, onClick: () -> Unit) {
                         }
                         append(user.name)
                     }
-                    Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.width(8.dp))
                     RoleTag(role = user.role)
                 }
                 if (course.isNotEmpty()) {
-                    Text(text = course, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = course, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Text("Start a new conversation...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             }
@@ -369,9 +372,23 @@ fun ChatInterface(messages: List<assignment1.krzysztofoko.s16001089.data.Classro
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMe) 16.dp else 4.dp, bottomEnd = if (isMe) 4.dp else 16.dp),
                     modifier = Modifier.widthIn(max = 280.dp)
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = msg.message, color = if (isMe) Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(text = sdf.format(Date(msg.timestamp)), style = MaterialTheme.typography.labelSmall, color = if (isMe) Color.White.copy(alpha = 0.7f) else Color.Gray, modifier = Modifier.align(Alignment.End))
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = msg.message, 
+                            color = if (isMe) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f, fill = false),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = sdf.format(Date(msg.timestamp)), 
+                            style = MaterialTheme.typography.labelSmall, 
+                            color = if (isMe) Color.White.copy(alpha = 0.7f) else Color.Gray,
+                            fontSize = 10.sp
+                        )
                     }
                 }
             }

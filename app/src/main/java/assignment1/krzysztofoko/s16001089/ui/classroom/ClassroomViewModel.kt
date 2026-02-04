@@ -24,8 +24,16 @@ class ClassroomViewModel(
     val modules: StateFlow<List<ModuleContent>> = classroomDao.getModulesForCourse(courseId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val assignments: StateFlow<List<Assignment>> = classroomDao.getAssignmentsForCourse(courseId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    // Combine course-level assignments and module-level assignments
+    val assignments: StateFlow<List<Assignment>> = combine(
+        classroomDao.getAssignmentsForCourse(courseId),
+        classroomDao.getAllAssignments(),
+        modules
+    ) { courseAssignments, allAssignments, currentModules ->
+        val moduleIds = currentModules.map { it.id }.toSet()
+        val combined = (courseAssignments + allAssignments.filter { it.moduleId in moduleIds }).distinctBy { it.id }
+        combined.sortedBy { it.dueDate }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val grades: StateFlow<List<Grade>> = classroomDao.getGradesForCourse(userId, courseId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

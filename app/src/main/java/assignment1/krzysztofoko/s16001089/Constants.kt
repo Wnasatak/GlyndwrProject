@@ -198,7 +198,7 @@ object AppConstants {
     // --- Classroom Tabs ---
     const val TAB_MODULES = "Modules"
     const val TAB_ASSIGNMENTS = "Assignments"
-    const val TAB_PERFORMANCE = "Performance"
+    const val TAB_PERFORMANCE = "Grades"
     
     // --- Invoicing & Labels ---
     const val LABEL_SUBTOTAL = "Subtotal"
@@ -264,7 +264,7 @@ object AppConstants {
     const val MSG_AVATAR_UPDATE_SUCCESS = "Avatar updated!"
     const val MSG_AVATAR_UPDATE_FAILED = "Error saving image"
     const val MSG_NO_ADDRESS_YET = "No address added yet"
-    const val MSG_IDENTITY_VERIFIED_DESC = "Your security check was successful.\\nYou are now fully logged in to the Glyndwr University portal."
+    const val MSG_IDENTITY_VERIFIED_DESC = "Your security check was successful.\\nY are now fully logged in to the Glyndwr University portal."
     const val MSG_SIGNED_OUT_DESC = "You have been securely signed out. This message will close in"
     const val MSG_REMOVE_LIBRARY_DESC = "Are you sure you want to remove this item from your library? You can always add it back later if it's still available."
     const val MSG_DELETE_REVIEW_DESC = "Are you sure you want to permanently delete your review? This action cannot be undone."
@@ -282,6 +282,7 @@ object AppConstants {
     const val ROADMAP_COMMUNITY_DESC = "Discussion forums for university courses where students can share notes, ask questions, and collaborate on projects."
     const val ROADMAP_OFFLINE_TITLE = "FULL OFFLINE MODE"
     const val ROADMAP_OFFLINE_DESC = "Enhanced offline capabilities allowing students to access all purchased courses and reading materials without any internet connection."
+    const val ROADMAP_OFFLINE_TITLE_2 = "OFFLINE MODE" // Added to avoid conflict
     const val ROADMAP_PAYMENTS_TITLE = "EXTERNAL PAYMENTS"
     const val ROADMAP_PAYMENTS_DESC = "Integration with major regional banks and crypto-wallets to provide more flexibility in payment options beyond the University Account."
 

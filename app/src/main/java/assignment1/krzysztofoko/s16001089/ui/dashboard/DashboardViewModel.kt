@@ -90,6 +90,10 @@ class DashboardViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // --- Live Sessions ---
+    val activeLiveSessions: StateFlow<List<LiveSession>> = classroomDao.getAllActiveSessions()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // --- Activity & Engagement ---
     val wishlistBooks: StateFlow<List<Book>> = combine(allBooks, userDao.getWishlistIds(userId)) { books, ids ->
         ids.mapNotNull { id -> books.find { it.id == id } }

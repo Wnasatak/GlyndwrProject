@@ -58,7 +58,7 @@ fun TutorCourseAssignmentsTab(
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
                 icon = { Icon(Icons.Default.Add, null) },
-                text = { Text("New Task", fontWeight = FontWeight.Bold) }
+                text = { Text("New Assignment", fontWeight = FontWeight.Bold) }
             )
         }
     ) { padding ->
@@ -202,16 +202,18 @@ fun AssignmentCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val dateFormat = SimpleDateFormat("EEE, MMM dd", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("EEE, MMM dd, HH:mm", Locale.getDefault())
     val dueDate = dateFormat.format(Date(assignment.dueDate))
     val isOverdue = assignment.dueDate < System.currentTimeMillis()
     
     val timeLeft = remember(assignment.dueDate) {
         val diff = assignment.dueDate - System.currentTimeMillis()
         val days = diff / (1000 * 60 * 60 * 24)
+        val hours = (diff / (1000 * 60 * 60)) % 24
         when {
             diff < 0 -> "Expired"
-            days == 0L -> "Due Today"
+            days == 0L && hours > 0 -> "$hours hours left"
+            days == 0L -> "Due soon"
             days == 1L -> "Due Tomorrow"
             else -> "$days days left"
         }
@@ -343,14 +345,21 @@ fun AssignmentEditDialog(
     var selectedModuleId by remember { mutableStateOf(assignment?.moduleId ?: modules.firstOrNull()?.id ?: "") }
     var dueDateMillis by remember { mutableStateOf(assignment?.dueDate ?: (System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) }
     
+    // File formats state
+    val initialFormats = assignment?.allowedFileTypes?.split(",")?.toSet() ?: setOf("PDF", "DOCX", "ZIP")
+    var allowPdf by remember { mutableStateOf("PDF" in initialFormats) }
+    var allowDocx by remember { mutableStateOf("DOCX" in initialFormats) }
+    var allowZip by remember { mutableStateOf("ZIP" in initialFormats) }
+
     var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = dueDateMillis,
-        selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                return utcTimeMillis >= System.currentTimeMillis() - 86400000 
-            }
-        }
+        initialSelectedDateMillis = dueDateMillis
+    )
+    val timePickerState = rememberTimePickerState(
+        initialHour = Calendar.getInstance().apply { timeInMillis = dueDateMillis }.get(Calendar.HOUR_OF_DAY),
+        initialMinute = Calendar.getInstance().apply { timeInMillis = dueDateMillis }.get(Calendar.MINUTE)
     )
 
     if (showDatePicker) {
@@ -358,15 +367,31 @@ fun AssignmentEditDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { dueDateMillis = it }
                     showDatePicker = false
-                }) { Text("Confirm") }
+                    showTimePicker = true
+                }) { Text("Next") }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
             }
         ) {
             DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showTimePicker) {
+        assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TimePickerDialog(
+            onDismissRequest = { showTimePicker = false },
+            onConfirm = {
+                val cal = Calendar.getInstance()
+                datePickerState.selectedDateMillis?.let { cal.timeInMillis = it }
+                cal.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                cal.set(Calendar.MINUTE, timePickerState.minute)
+                dueDateMillis = cal.timeInMillis
+                showTimePicker = false
+            }
+        ) {
+            TimePicker(state = timePickerState)
         }
     }
 
@@ -390,7 +415,7 @@ fun AssignmentEditDialog(
                     Spacer(Modifier.height(24.dp))
                     
                     Column(
-                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         OutlinedTextField(
@@ -453,6 +478,34 @@ fun AssignmentEditDialog(
                             }
                         }
 
+                        // File Formats
+                        Text(
+                            "Allowed Formats", 
+                            style = MaterialTheme.typography.labelLarge, 
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = allowPdf,
+                                onClick = { allowPdf = !allowPdf },
+                                label = { Text("PDF") },
+                                leadingIcon = if (allowPdf) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null
+                            )
+                            FilterChip(
+                                selected = allowDocx,
+                                onClick = { allowDocx = !allowDocx },
+                                label = { Text("DOCX") },
+                                leadingIcon = if (allowDocx) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null
+                            )
+                            FilterChip(
+                                selected = allowZip,
+                                onClick = { allowZip = !allowZip },
+                                label = { Text("ZIP") },
+                                leadingIcon = if (allowZip) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null
+                            )
+                        }
+
                         // Date Selection
                         Surface(
                             onClick = { showDatePicker = true },
@@ -468,12 +521,12 @@ fun AssignmentEditDialog(
                                 Column {
                                     Text("Deadline", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     Text(
-                                        SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault()).format(Date(dueDateMillis)),
+                                        SimpleDateFormat("MMMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(dueDateMillis)),
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
-                                Icon(Icons.Default.CalendarToday, null, tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Default.Schedule, null, tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
@@ -489,6 +542,11 @@ fun AssignmentEditDialog(
                         Spacer(Modifier.width(8.dp))
                         Button(
                             onClick = {
+                                val formats = mutableListOf<String>()
+                                if (allowPdf) formats.add("PDF")
+                                if (allowDocx) formats.add("DOCX")
+                                if (allowZip) formats.add("ZIP")
+                                
                                 onSave(Assignment(
                                     id = assignment?.id ?: UUID.randomUUID().toString(),
                                     courseId = courseId,
@@ -496,7 +554,8 @@ fun AssignmentEditDialog(
                                     title = title,
                                     description = description,
                                     dueDate = dueDateMillis,
-                                    status = assignment?.status ?: "PENDING"
+                                    status = assignment?.status ?: "PENDING",
+                                    allowedFileTypes = formats.joinToString(",")
                                 ))
                             },
                             enabled = title.isNotBlank() && selectedModuleId.isNotBlank(),
@@ -526,7 +585,7 @@ fun DeleteConfirmationDialog(title: String, onDismiss: () -> Unit, onConfirm: ()
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 shape = RoundedCornerShape(12.dp)
-            ) { Text("Delete Task") }
+            ) { Text("Delete Assignment") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Keep Assignment") }

@@ -68,13 +68,22 @@ fun TutorChatTab(
                         ),
                         modifier = Modifier.widthIn(max = 280.dp)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(text = msg.message, color = if (isMe) Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = msg.message, 
+                                color = if (isMe) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f, fill = false),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                             Text(
                                 text = sdf.format(Date(msg.timestamp)),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (isMe) Color.White.copy(alpha = 0.7f) else Color.Gray,
-                                modifier = Alignment.End.let { Modifier.align(it) }
+                                fontSize = 10.sp
                             )
                         }
                     }

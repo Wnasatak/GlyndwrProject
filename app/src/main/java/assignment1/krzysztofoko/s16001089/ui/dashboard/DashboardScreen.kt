@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,7 +36,6 @@ import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
-import java.util.Locale
 import kotlin.math.abs
 
 /**
@@ -78,7 +75,8 @@ fun DashboardScreen(
     val walletHistory by viewModel.walletHistory.collectAsState()
     val applicationCount by viewModel.applicationCount.collectAsState()
     val applicationsMap by viewModel.applicationsMap.collectAsState()
-    
+    val activeLiveSessions by viewModel.activeLiveSessions.collectAsState()
+
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearchVisible by viewModel.isSearchVisible.collectAsState()
     val showPaymentPopup by viewModel.showPaymentPopup.collectAsState()
@@ -122,7 +120,7 @@ fun DashboardScreen(
     val isAdmin = localUser?.role == "admin"
 
     // Logic to determine if applications should be shown
-    val hasActiveEnrolledCourse = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && purchasedIds.contains(it.id) }
+    val hasActiveEnrolledCourse = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
     val showApplications = applicationCount > 0 && !hasActiveEnrolledCourse
 
     Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) viewModel.setSearchVisible(false) }) {
@@ -251,7 +249,7 @@ fun DashboardScreen(
                                             showMenu = false
                                             navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) 
                                         },
-                                        leadingIcon = { Icon(Icons.Default.Assignment, null) }
+                                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Assignment, null) }
                                     )
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 }
@@ -262,8 +260,10 @@ fun DashboardScreen(
                                         text = { Text(AppConstants.TITLE_CLASSROOM) },
                                         onClick = { 
                                             showMenu = false
-                                            val firstCourseId = filteredOwnedBooks.first { it.mainCategory == AppConstants.CAT_COURSES && purchasedIds.contains(it.id) }.id
-                                            navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$firstCourseId")
+                                            val activeCourses = filteredOwnedBooks.filter { it.mainCategory == AppConstants.CAT_COURSES && purchasedIds.contains(it.id) }
+                                            if (activeCourses.isNotEmpty()) {
+                                                navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${activeCourses.first().id}")
+                                            }
                                         },
                                         leadingIcon = { Icon(Icons.Default.School, null) }
                                     )
@@ -308,7 +308,7 @@ fun DashboardScreen(
                                 shape = RoundedCornerShape(16.dp)
                             ) {
                                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Assignment, null, tint = MaterialTheme.colorScheme.secondary)
+                                    Icon(Icons.AutoMirrored.Filled.Assignment, null, tint = MaterialTheme.colorScheme.secondary)
                                     Spacer(Modifier.width(12.dp))
                                     Column {
                                         Text(AppConstants.TITLE_MY_APPLICATIONS, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
@@ -328,10 +328,12 @@ fun DashboardScreen(
                     if (enrolledPaidCourse != null || enrolledFreeCourses.isNotEmpty()) {
                         item { SectionHeader(AppConstants.LABEL_MY_COURSES) }
                         if (enrolledPaidCourse != null) {
-                            item { EnrolledCourseHeader(course = enrolledPaidCourse, onEnterClassroom = { navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$it") }) }
+                            val isLive = activeLiveSessions.any { it.courseId == enrolledPaidCourse.id }
+                            item { EnrolledCourseHeader(course = enrolledPaidCourse, isLive = isLive, onEnterClassroom = { courseId: String -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId") }) }
                         }
                         items(enrolledFreeCourses) { freeCourse ->
-                            FreeCourseHeader(course = freeCourse, onEnterClassroom = { navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$it") })
+                            val isLive = activeLiveSessions.any { it.courseId == freeCourse.id }
+                            FreeCourseHeader(course = freeCourse, isLive = isLive, onEnterClassroom = { courseId: String -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId") })
                         }
                     }
 
@@ -384,13 +386,20 @@ fun DashboardScreen(
                             val isRejected = appStatus == "REJECTED"
                             val isFullyOwned = purchasedIds.contains(book.id)
                             
+                            // Check if student is already enrolled in ANOTHER course
+                            val isAlreadyEnrolledInOther = book.mainCategory == AppConstants.CAT_COURSES && 
+                                                           book.price > 0.0 && 
+                                                           !isFullyOwned && 
+                                                           filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
+
                             BookItemCard(
                                 book = book,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 onClick = { viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") },
                                 imageOverlay = { if (book.isAudioBook) { Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) { SpinningAudioButton(isPlaying = isAudioPlaying && currentPlayingBookId == book.id, onToggle = { onPlayAudio(book) }, size = 40) } } },
                                 topEndContent = {
-                                    if (!isPending) {
+                                    // Remove 3 dots if user is already enrolled in another course and this one is just approved
+                                    if (!isPending && !isAlreadyEnrolledInOther) {
                                         Box {
                                             IconButton(onClick = { viewModel.setSearchVisible(false); showItemMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = AppConstants.TITLE_OPTIONS, modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
                                             DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
@@ -406,12 +415,14 @@ fun DashboardScreen(
                                     Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                                         val label = when {
                                             isPending -> "REVIEWING"
+                                            isAlreadyEnrolledInOther -> "ALREADY ENROLLED"
                                             isApproved && !isFullyOwned -> "APPROVED"
                                             isRejected -> "DECLINED"
                                             else -> AppConstants.getItemStatusLabel(book)
                                         }
                                         val color = when {
                                             isPending -> Color(0xFFFBC02D)
+                                            isAlreadyEnrolledInOther -> MaterialTheme.colorScheme.secondary
                                             isApproved && !isFullyOwned -> Color(0xFF4CAF50)
                                             isRejected -> Color(0xFFF44336)
                                             else -> MaterialTheme.colorScheme.primary

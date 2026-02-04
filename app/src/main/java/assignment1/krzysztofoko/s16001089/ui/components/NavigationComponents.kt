@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import assignment1.krzysztofoko.s16001089.data.Book
+import assignment1.krzysztofoko.s16001089.data.UserLocal
 
 @Composable
 fun GlobalAudioPlayerOverlay(
@@ -22,7 +23,8 @@ fun GlobalAudioPlayerOverlay(
     externalPlayer: Player?,
     onToggleMinimize: () -> Unit,
     onClose: () -> Unit,
-    onSetMinimized: (Boolean) -> Unit
+    onSetMinimized: (Boolean) -> Unit,
+    userRole: String? = null // Added userRole to handle different positions
 ) {
     if (showPlayer && currentBook != null) {
         // Background Dimming when maximized
@@ -46,7 +48,13 @@ fun GlobalAudioPlayerOverlay(
             modifier = Modifier.fillMaxSize()
         ) {
             Box(contentAlignment = Alignment.BottomCenter) {
-                Box(modifier = Modifier.padding(bottom = if (isMinimized) 80.dp else 0.dp)) {
+                // Different bottom padding based on role: 
+                // Tutors/Admins have bottom menu, so we keep the 80.dp offset.
+                // Students don't have it in the hub, so we use 0.dp.
+                val isManagementRole = userRole == "teacher" || userRole == "tutor" || userRole == "admin"
+                val bottomPadding = if (isMinimized && isManagementRole) 80.dp else 0.dp
+                
+                Box(modifier = Modifier.padding(bottom = bottomPadding)) {
                     AudioPlayerComponent(
                         book = currentBook,
                         isMinimized = isMinimized,

@@ -195,20 +195,70 @@ fun ReviewItem(
                         Text(text = review.comment, style = if (isReply) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 2.dp))
                         Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (!isOwner && (isLoggedIn || review.likes > 0)) {
-                                    Surface(color = if (userInteraction?.interactionType == "LIKE") MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.clickable(enabled = isLoggedIn) { if (currentLocalUser != null) { scope.launch { db.userDao().toggleInteraction(review.reviewId, currentLocalUser.id, currentLocalUser.name, "LIKE") } } }) {
-                                        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(imageVector = if (userInteraction?.interactionType == "LIKE") Icons.Default.ThumbUp else Icons.Default.ThumbUpOffAlt, contentDescription = "Like", modifier = Modifier.size(24.dp), tint = if (userInteraction?.interactionType == "LIKE") MaterialTheme.colorScheme.primary else Color.Gray)
-                                            if (review.likes > 0) { Text(text = " ${review.likes}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = if (userInteraction?.interactionType == "LIKE") MaterialTheme.colorScheme.primary else Color.Gray) }
+                                // Simple Like Thumb - DISABLED FOR OWNERS
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable(enabled = isLoggedIn && !isOwner) {
+                                        if (currentLocalUser != null) {
+                                            scope.launch { db.userDao().toggleInteraction(review.reviewId, currentLocalUser.id, currentLocalUser.name, "LIKE") }
                                         }
+                                    }.padding(end = 8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (userInteraction?.interactionType == "LIKE") Icons.Default.ThumbUp else Icons.Default.ThumbUpOffAlt,
+                                        contentDescription = "Like",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = if (userInteraction?.interactionType == "LIKE") MaterialTheme.colorScheme.primary else Color.Gray
+                                    )
+                                    if (review.likes > 0) {
+                                        Text(text = " ${review.likes}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = if (userInteraction?.interactionType == "LIKE") MaterialTheme.colorScheme.primary else Color.Gray)
                                     }
                                 }
-                                if (!isOwner && (isLoggedIn || review.dislikes > 0)) {
-                                    Spacer(Modifier.width(8.dp))
-                                    Surface(color = if (userInteraction?.interactionType == "DISLIKE") MaterialTheme.colorScheme.error.copy(alpha = 0.1f) else Color.Transparent, shape = RoundedCornerShape(12.dp), modifier = Modifier.clickable(enabled = isLoggedIn) { if (currentLocalUser != null) { scope.launch { db.userDao().toggleInteraction(review.reviewId, currentLocalUser.id, currentLocalUser.name, "DISLIKE") } } }) {
-                                        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(imageVector = if (userInteraction?.interactionType == "DISLIKE") Icons.Default.ThumbDown else Icons.Default.ThumbDownOffAlt, contentDescription = "Dislike", modifier = Modifier.size(24.dp), tint = if (userInteraction?.interactionType == "DISLIKE") MaterialTheme.colorScheme.error else Color.Gray)
-                                            if (review.dislikes > 0) { Text(text = " ${review.dislikes}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = if (userInteraction?.interactionType == "DISLIKE") MaterialTheme.colorScheme.error else Color.Gray) }
+
+                                // Simple Dislike Thumb - DISABLED FOR OWNERS
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable(enabled = isLoggedIn && !isOwner) {
+                                        if (currentLocalUser != null) {
+                                            scope.launch { db.userDao().toggleInteraction(review.reviewId, currentLocalUser.id, currentLocalUser.name, "DISLIKE") }
+                                        }
+                                    }.padding(end = 8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (userInteraction?.interactionType == "DISLIKE") Icons.Default.ThumbDown else Icons.Default.ThumbDownOffAlt,
+                                        contentDescription = "Dislike",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = if (userInteraction?.interactionType == "DISLIKE") MaterialTheme.colorScheme.error else Color.Gray
+                                    )
+                                    if (review.dislikes > 0) {
+                                        Text(text = " ${review.dislikes}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = if (userInteraction?.interactionType == "DISLIKE") MaterialTheme.colorScheme.error else Color.Gray)
+                                    }
+                                }
+
+                                // Separate Avatars Section (Facepile) on the right - CLICKABLE ONLY IF LOGGED IN
+                                if (interactions.isNotEmpty()) {
+                                    Spacer(Modifier.width(12.dp))
+                                    Row(
+                                        modifier = Modifier.clickable(enabled = isLoggedIn) { showInteractionsDialog = true },
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        interactions.take(3).forEachIndexed { i, inter ->
+                                            val uFlow = db.userDao().getUserFlow(inter.userId).collectAsState(initial = null)
+                                            UserAvatar(
+                                                photoUrl = uFlow.value?.photoUrl,
+                                                modifier = Modifier
+                                                    .size(20.dp)
+                                                    .offset(x = ((-6) * i).dp)
+                                                    .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape)
+                                            )
+                                        }
+                                        if (interactions.size > 3) {
+                                            Text(
+                                                text = "+${interactions.size - 3}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray,
+                                                modifier = Modifier.padding(start = 4.dp)
+                                            )
                                         }
                                     }
                                 }
@@ -235,6 +285,72 @@ fun ReviewItem(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    if (showInteractionsDialog) {
+        ReviewInteractionsDialog(
+            interactions = interactions,
+            db = db,
+            onDismiss = { showInteractionsDialog = false }
+        )
+    }
+}
+
+@Composable
+fun ReviewInteractionsDialog(
+    interactions: List<ReviewInteraction>,
+    db: AppDatabase,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = "Review Interactions",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(interactions) { interaction ->
+                        val userFlow = db.userDao().getUserFlow(interaction.userId).collectAsState(initial = null)
+                        val user = userFlow.value
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            UserAvatar(photoUrl = user?.photoUrl, modifier = Modifier.size(32.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = interaction.userName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = if (interaction.interactionType == "LIKE") "Liked this review" else "Disliked this review",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (interaction.interactionType == "LIKE") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                )
+                            }
+                            Icon(
+                                imageVector = if (interaction.interactionType == "LIKE") Icons.Default.ThumbUp else Icons.Default.ThumbDown,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (interaction.interactionType == "LIKE") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                    Text("Close", fontWeight = FontWeight.Bold)
                 }
             }
         }

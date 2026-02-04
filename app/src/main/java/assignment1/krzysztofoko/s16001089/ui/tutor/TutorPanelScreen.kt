@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -47,6 +48,7 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.components.Library.TutorLibra
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Catalog.TutorBooksTab
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Catalog.TutorAudioBooksTab
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorDetailScreen
+import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.CreateAssignmentScreen
 import com.google.firebase.auth.FirebaseAuth
 import coil.compose.AsyncImage
 
@@ -107,7 +109,9 @@ fun TutorPanelScreen(
                                             Text(
                                                 text = selectedStudent?.name ?: "User",
                                                 style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                             Spacer(Modifier.width(8.dp))
                                             
@@ -143,7 +147,10 @@ fun TutorPanelScreen(
                                     }
                                 }
                             } else {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
                                     // Animated pulsing logo effect
                                     val infiniteTransition = rememberInfiniteTransition(label = "logoPulse")
                                     val logoScale by infiniteTransition.animateFloat(
@@ -190,7 +197,7 @@ fun TutorPanelScreen(
                                         TutorSection.MESSAGES -> "Messages"
                                         TutorSection.STUDENTS -> "Student Directory"
                                         TutorSection.MY_COURSES -> "My Classes"
-                                        TutorSection.SELECTED_COURSE -> selectedCourse?.title ?: "Class Details"
+                                        TutorSection.SELECTED_COURSE -> "Course Management"
                                         TutorSection.COURSE_STUDENTS -> "Class Students"
                                         TutorSection.COURSE_MODULES -> "Class Modules"
                                         TutorSection.COURSE_ASSIGNMENTS -> "Assignments"
@@ -198,13 +205,18 @@ fun TutorPanelScreen(
                                         TutorSection.COURSE_LIVE -> "Live Stream"
                                         TutorSection.DASHBOARD -> "Teacher Dashboard"
                                         TutorSection.TEACHER_DETAIL -> "Teacher Profile"
+                                        TutorSection.CREATE_ASSIGNMENT -> "Create Assignment"
+                                        TutorSection.START_LIVE_STREAM -> "Start Live Stream"
                                         else -> ""
                                     }
                                     if (sectionTitle.isNotEmpty()) {
                                         Text(
                                             text = " • $sectionTitle",
                                             fontWeight = FontWeight.Black,
-                                            style = MaterialTheme.typography.titleLarge
+                                            style = MaterialTheme.typography.titleLarge,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
                                         )
                                     }
                                 }
@@ -228,6 +240,10 @@ fun TutorPanelScreen(
                                     Icon(Icons.Default.ArrowBack, "Back to My Classes")
                                 }
                             } else if (currentSection == TutorSection.TEACHER_DETAIL) {
+                                IconButton(onClick = { viewModel.setSection(TutorSection.DASHBOARD) }) {
+                                    Icon(Icons.Default.ArrowBack, "Back to Dashboard")
+                                }
+                            } else if (currentSection == TutorSection.CREATE_ASSIGNMENT || currentSection == TutorSection.START_LIVE_STREAM) {
                                 IconButton(onClick = { viewModel.setSection(TutorSection.DASHBOARD) }) {
                                     Icon(Icons.Default.ArrowBack, "Back to Dashboard")
                                 }
@@ -321,7 +337,9 @@ fun TutorPanelScreen(
                         currentSection == TutorSection.COURSE_ASSIGNMENTS ||
                         currentSection == TutorSection.COURSE_GRADES ||
                         currentSection == TutorSection.COURSE_LIVE ||
-                        currentSection == TutorSection.TEACHER_DETAIL
+                        currentSection == TutorSection.TEACHER_DETAIL ||
+                        currentSection == TutorSection.CREATE_ASSIGNMENT ||
+                        currentSection == TutorSection.START_LIVE_STREAM
                 
                 if (!hideBottomBar) {
                     NavigationBar(
@@ -397,6 +415,8 @@ fun TutorPanelScreen(
                             TutorSection.BOOKS -> TutorBooksTab(viewModel)
                             TutorSection.AUDIOBOOKS -> TutorAudioBooksTab(viewModel, onPlayAudio)
                             TutorSection.TEACHER_DETAIL -> TutorDetailScreen(viewModel)
+                            TutorSection.CREATE_ASSIGNMENT -> CreateAssignmentScreen(viewModel)
+                            TutorSection.START_LIVE_STREAM -> TutorCourseLiveTab(viewModel)
                             TutorSection.READ_BOOK -> {
                                 activeBook?.let { book ->
                                     PdfReaderScreen(
@@ -432,6 +452,14 @@ fun RowScope.TutorNavButton(selected: Boolean, onClick: () -> Unit, icon: ImageV
         selected = selected,
         onClick = onClick,
         icon = { Icon(icon, null) },
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+        label = { 
+            Text(
+                text = label, 
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            ) 
+        },
+        alwaysShowLabel = true
     )
 }

@@ -173,7 +173,9 @@ class CourseDetailViewModel(
                 userDao.upsertUser(user.copy(role = "student"))
             }
 
-            // 3. Update application status if needed (optional, purchase existence usually implies ENROLLED)
+            // 3. Update application status in database - Now explicitly applied from DB
+            val enrollmentId = "${userId}_${courseId}"
+            userDao.updateEnrollmentStatus(enrollmentId, "ENROLLED")
 
             // 4. Send Confirmation Notification
             userDao.addNotification(
@@ -196,6 +198,9 @@ class CourseDetailViewModel(
         viewModelScope.launch {
             if (userId.isEmpty()) return@launch
             userDao.deletePurchase(userId, courseId)
+            // Reset enrollment status back to APPROVED if user removes it from library
+            val enrollmentId = "${userId}_${courseId}"
+            userDao.updateEnrollmentStatus(enrollmentId, "APPROVED")
             onComplete(AppConstants.MSG_REMOVED_LIBRARY)
         }
     }
