@@ -65,6 +65,7 @@ fun NavGraphBuilder.dashboardNavGraph(
         NotificationScreen(
             onNavigateToItem = { navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$it") },
             onNavigateToInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE}/$it") },
+            onNavigateToMessages = { navController.navigate(AppConstants.ROUTE_MESSAGES) },
             onBack = { 
                 if (isAdmin) {
                     navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) {

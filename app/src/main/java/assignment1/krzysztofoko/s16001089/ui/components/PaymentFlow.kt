@@ -8,6 +8,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -50,7 +52,7 @@ fun OrderFlowDialog(
     val basePrice = if (book.mainCategory == AppConstants.CAT_COURSES && selectedPlanIndex == 1) book.modulePrice else book.price
     val finalPrice = basePrice * 0.9
     
-    // Fixed: Explicit type for currentPaymentMethod to resolve inference error at line 53
+    // Explicit type for currentPaymentMethod to resolve inference error
     var currentPaymentMethod: String by remember { 
         mutableStateOf(if (initialBalance >= finalPrice) AppConstants.METHOD_UNIVERSITY_ACCOUNT else AppConstants.METHOD_PAYPAL) 
     }
@@ -63,7 +65,6 @@ fun OrderFlowDialog(
     val userBalance = user?.balance ?: 0.0
     val isBalanceInsufficient = userBalance < finalPrice
 
-    // Fixed: Explicit type for remember to resolve inference error
     val amountFromWallet: Double = remember(currentPaymentMethod, useWalletBalance, userBalance, finalPrice) {
         if (currentPaymentMethod == AppConstants.METHOD_UNIVERSITY_ACCOUNT) {
             if (userBalance >= finalPrice) finalPrice else userBalance
@@ -115,7 +116,6 @@ fun OrderFlowDialog(
                     )
                 }
                 
-                // Fixed: Explicit progress Float to avoid inference issues with newer Material3 API versions
                 LinearProgressIndicator(
                     progress = step / 3f,
                     modifier = Modifier
@@ -224,24 +224,27 @@ fun OrderFlowDialog(
                                         productId = book.id
                                     ))
 
-                                    val notificationTitle = when (book.mainCategory) {
-                                        AppConstants.CAT_BOOKS -> AppConstants.NOTIF_TITLE_BOOK_PURCHASED
-                                        AppConstants.CAT_AUDIOBOOKS -> AppConstants.NOTIF_TITLE_AUDIOBOOK_PURCHASED
-                                        AppConstants.CAT_COURSES -> AppConstants.NOTIF_TITLE_COURSE_ENROLLED
-                                        AppConstants.CAT_GEAR -> AppConstants.NOTIF_TITLE_PRODUCT_PURCHASED
-                                        else -> AppConstants.NOTIF_TITLE_PRODUCT_PURCHASED
-                                    }
+                                    // Check if it's NOT a course before adding a purchase notification here.
+                                    // Courses handle their own enrollment confirmation in CourseDetailViewModel.
+                                    if (book.mainCategory != AppConstants.CAT_COURSES) {
+                                        val notificationTitle = when (book.mainCategory) {
+                                            AppConstants.CAT_BOOKS -> AppConstants.NOTIF_TITLE_BOOK_PURCHASED
+                                            AppConstants.CAT_AUDIOBOOKS -> AppConstants.NOTIF_TITLE_AUDIOBOOK_PURCHASED
+                                            AppConstants.CAT_GEAR -> AppConstants.NOTIF_TITLE_PRODUCT_PURCHASED
+                                            else -> AppConstants.NOTIF_TITLE_PRODUCT_PURCHASED
+                                        }
 
-                                    db.userDao().addNotification(NotificationLocal(
-                                        id = UUID.randomUUID().toString(),
-                                        userId = user?.id ?: "",
-                                        productId = book.id,
-                                        title = notificationTitle,
-                                        message = "Your order for '${book.title}' has been confirmed. Ref: $orderConf",
-                                        timestamp = System.currentTimeMillis(),
-                                        isRead = false,
-                                        type = "PURCHASE"
-                                    ))
+                                        db.userDao().addNotification(NotificationLocal(
+                                            id = UUID.randomUUID().toString(),
+                                            userId = user?.id ?: "",
+                                            productId = book.id,
+                                            title = notificationTitle,
+                                            message = "Your order for '${book.title}' has been confirmed. Ref: $orderConf",
+                                            timestamp = System.currentTimeMillis(),
+                                            isRead = false,
+                                            type = "PURCHASE"
+                                        ))
+                                    }
 
                                     onComplete(finalPrice, orderConf)
                                 }

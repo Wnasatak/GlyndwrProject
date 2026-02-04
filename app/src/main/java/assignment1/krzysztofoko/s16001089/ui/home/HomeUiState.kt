@@ -2,6 +2,7 @@ package assignment1.krzysztofoko.s16001089.ui.home
 
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
+import assignment1.krzysztofoko.s16001089.data.LiveSession
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.data.WalletTransaction
 
@@ -25,5 +26,6 @@ data class HomeUiState(
     val bookToRemove: Book? = null,
     val walletHistory: List<WalletTransaction> = emptyList(),
     val showWalletHistory: Boolean = false,
-    val localUser: UserLocal? = null
+    val localUser: UserLocal? = null,
+    val activeLiveSessions: List<LiveSession> = emptyList() // Added to track active tutor streams
 )

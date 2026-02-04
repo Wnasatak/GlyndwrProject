@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -50,10 +51,10 @@ fun TutorCourseLiveTab(
     viewModel: TutorViewModel
 ) {
     val course by viewModel.selectedCourse.collectAsState()
+    val isLive by viewModel.isLive.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    var isLive by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
     var isMicOn by remember { mutableStateOf(true) }
     var isCamOn by remember { mutableStateOf(true) }
@@ -61,7 +62,8 @@ fun TutorCourseLiveTab(
     var isFullScreen by remember { mutableStateOf(false) }
     
     var viewerCount by remember { mutableIntStateOf(0) }
-    var chatMessages by remember { mutableStateOf(listOf<LiveChatMessage>()) }
+    // Explicitly specifying the type to resolve compilation error
+    var chatMessages by remember { mutableStateOf<List<LiveChatMessage>>(emptyList()) }
     var teacherMsg by remember { mutableStateOf("") }
     
     val listState = rememberLazyListState()
@@ -77,14 +79,17 @@ fun TutorCourseLiveTab(
     }
 
     DisposableEffect(Unit) {
-        onDispose { exoPlayer.release() }
+        onDispose { 
+            exoPlayer.release() 
+        }
     }
 
     // Simulation Logic
     LaunchedEffect(isLive) {
         if (isLive) {
-            viewerCount = 12
+            viewerCount = 11 
             chatMessages = listOf(LiveChatMessage("System", "Broadcast started successfully."))
+            exoPlayer.play()
             
             while (isLive) {
                 delay((4000..8000).random().toLong())
@@ -104,6 +109,7 @@ fun TutorCourseLiveTab(
         } else {
             viewerCount = 0
             isRecording = false
+            exoPlayer.pause()
         }
     }
 
@@ -295,8 +301,7 @@ fun TutorCourseLiveTab(
                 Box(modifier = Modifier.padding(16.dp)) {
                     Button(
                         onClick = { 
-                            isLive = !isLive
-                            if (isLive) exoPlayer.play() else exoPlayer.pause()
+                            viewModel.toggleLiveStream(!isLive)
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp),

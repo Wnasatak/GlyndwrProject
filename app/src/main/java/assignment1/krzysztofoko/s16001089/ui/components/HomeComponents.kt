@@ -96,10 +96,103 @@ fun HomeTopBar(
 }
 
 @Composable
+fun EnrolledCourseHeader(
+    course: Book,
+    isLive: Boolean = false,
+    onEnterClassroom: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Live indicator in top right corner
+            if (isLive) {
+                val infiniteTransition = rememberInfiniteTransition(label = "live")
+                val alpha by infiniteTransition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 0.4f,
+                    animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
+                    label = "alpha"
+                )
+                Surface(
+                    color = Color.Red.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(bottomStart = 12.dp, topEnd = 0.dp),
+                    modifier = Modifier.align(Alignment.TopEnd),
+                    border = BorderStroke(0.5.dp, Color.Red.copy(alpha = 0.3f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .graphicsLayer { this.alpha = alpha }
+                                .background(Color.Red, CircleShape)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "LIVE",
+                            color = Color.Red,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                }
+            }
+
+            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                AsyncImage(
+                    model = formatAssetUrl(course.imageUrl),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "MY COURSE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color(0xFF00BFA5))
+                    Text(text = course.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { onEnterClassroom(course.id) },
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00BFA5))
+                    ) {
+                        Icon(Icons.Default.School, null, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Enter Classroom", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FreeCourseHeader(
+    course: Book,
+    isLive: Boolean = false,
+    onEnterClassroom: (String) -> Unit
+) {
+    EnrolledCourseHeader(course = course, isLive = isLive, onEnterClassroom = onEnterClassroom)
+}
+
+@Composable
 fun HomeBookItem(
     book: Book,
     isLoggedIn: Boolean,
-    isPendingReview: Boolean = false, // Added isPendingReview parameter
+    isPendingReview: Boolean = false,
     userRole: String?, 
     isLiked: Boolean,
     isPurchased: Boolean,
@@ -139,7 +232,7 @@ fun HomeBookItem(
         bottomContent = {
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (isPendingReview) { // Show REVIEWING badge if pending
+                if (isPendingReview) {
                     Surface(
                         color = Color(0xFFFBC02D).copy(alpha = 0.1f),
                         shape = RoundedCornerShape(8.dp),
@@ -228,7 +321,7 @@ private fun HomePriceLabel(book: Book, isLoggedIn: Boolean, userRole: String?) {
     
     if (book.price == 0.0) {
         Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = Color(0xFF4CAF50))
-    } else if (isLoggedIn && isStudent) { // Discount only for students
+    } else if (isLoggedIn && isStudent) {
         val discountPrice = "£" + String.format(Locale.US, "%.2f", book.price * 0.9)
         Text(
             text = "£" + String.format(Locale.US, "%.2f", book.price),

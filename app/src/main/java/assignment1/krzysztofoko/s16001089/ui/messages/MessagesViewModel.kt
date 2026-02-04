@@ -105,6 +105,20 @@ class MessagesViewModel(
                 timestamp = System.currentTimeMillis()
             )
             classroomDao.sendMessage(message)
+
+            // Add notification for the recipient so they see it in their notification hub
+            val currentUser = userDao.getUserById(userId)
+            val senderName = currentUser?.name ?: "User"
+
+            userDao.addNotification(NotificationLocal(
+                id = UUID.randomUUID().toString(),
+                userId = otherUser.id,
+                productId = "MESSAGE",
+                title = "New Message from $senderName",
+                message = "You have a new message: \"${text.take(30)}${if (text.length > 30) "..." else ""}\"",
+                timestamp = System.currentTimeMillis(),
+                type = "MESSAGE"
+            ))
         }
     }
 }

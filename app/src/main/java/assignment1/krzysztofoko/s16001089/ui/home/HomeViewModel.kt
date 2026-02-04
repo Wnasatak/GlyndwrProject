@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val repository: BookRepository, 
     private val userDao: UserDao,
+    private val classroomDao: ClassroomDao, // Added classroomDao
     private val auditDao: AuditDao,
     private val userId: String,              
     initialCategory: String? = null          
@@ -37,7 +38,8 @@ class HomeViewModel(
         if (userId.isNotEmpty()) userDao.getWalletHistory(userId) else flowOf(emptyList<WalletTransaction>()),
         _filterSettings,
         if (userId.isNotEmpty()) userDao.getUserFlow(userId) else flowOf(null),
-        if (userId.isNotEmpty()) userDao.getAllEnrollmentsFlow() else flowOf(emptyList()) // Fetch enrollments
+        if (userId.isNotEmpty()) userDao.getAllEnrollmentsFlow() else flowOf(emptyList()),
+        classroomDao.getAllActiveSessions() // Added active sessions stream
     ) { array ->
         @Suppress("UNCHECKED_CAST")
         val books = array[0] as List<Book>?
@@ -55,14 +57,20 @@ class HomeViewModel(
         val localUser = array[6] as UserLocal?
         @Suppress("UNCHECKED_CAST")
         val enrollments = array[7] as List<CourseEnrollmentDetails>
+        @Suppress("UNCHECKED_CAST")
+        val activeSessions = array[8] as List<LiveSession>
 
         val allBooks = books ?: emptyList()
         val appMap = enrollments.filter { it.userId == userId }.associate { it.courseId to it.status }
         
+        // Filter sessions to only those the student is enrolled in
+        val userSessions = activeSessions.filter { session ->
+            purchased.contains(session.courseId)
+        }
+
         val isAdminOrTutor = localUser?.role == "admin" || localUser?.role == "teacher" || localUser?.role == "tutor"
 
         val filtered = allBooks.filter { book ->
-            // University Courses are not available for Tutors and Admins
             if (isAdminOrTutor && book.mainCategory == AppConstants.CAT_COURSES) return@filter false
 
             val matchMain = when (filters.mainCategory) {
@@ -92,7 +100,7 @@ class HomeViewModel(
             filteredBooks = filtered,
             wishlistIds = wishlist.toSet(),
             purchasedIds = purchased.toSet(),
-            applicationsMap = appMap, // Pass mapping to state
+            applicationsMap = appMap,
             selectedMainCategory = filters.mainCategory,
             selectedSubCategory = filters.subCategory,
             searchQuery = filters.searchQuery,
@@ -104,7 +112,8 @@ class HomeViewModel(
             bookToRemove = filters.bookToRemove,
             walletHistory = wallet,
             showWalletHistory = filters.showWalletHistory,
-            localUser = localUser
+            localUser = localUser,
+            activeLiveSessions = userSessions
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState(isLoading = true))
 
@@ -214,14 +223,15 @@ private data class FilterSettings(
 class HomeViewModelFactory(
     private val repository: BookRepository,
     private val userDao: UserDao,
+    private val classroomDao: ClassroomDao, // Added classroomDao
     private val auditDao: AuditDao,
     private val userId: String,
     private val initialCategory: String? = null
 ) : androidx.lifecycle.ViewModelProvider.Factory {
-    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return HomeViewModel(repository, userDao, auditDao, userId, initialCategory) as T
+            return HomeViewModel(repository, userDao, classroomDao, auditDao, userId, initialCategory) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

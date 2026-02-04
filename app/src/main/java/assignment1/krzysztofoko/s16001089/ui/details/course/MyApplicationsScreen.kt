@@ -56,6 +56,7 @@ fun MyApplicationsScreen(
             containerColor = Color.Transparent,
             topBar = {
                 CenterAlignedTopAppBar(
+                    windowInsets = WindowInsets(0, 0, 0, 0), // Fix for big gap at top
                     title = { Text(AppConstants.TITLE_MY_APPLICATIONS, fontWeight = FontWeight.Black) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
                     actions = { IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) } },

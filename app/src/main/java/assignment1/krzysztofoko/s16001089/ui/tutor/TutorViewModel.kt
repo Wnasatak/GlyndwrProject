@@ -67,6 +67,9 @@ class TutorViewModel(
     private val _activeAudioBook = MutableStateFlow<AudioBook?>(null)
     val activeAudioBook: StateFlow<AudioBook?> = _activeAudioBook.asStateFlow()
 
+    private val _isLive = MutableStateFlow(false)
+    val isLive: StateFlow<Boolean> = _isLive.asStateFlow()
+
     // Attendance Date State
     private val _attendanceDate = MutableStateFlow(System.currentTimeMillis())
     val attendanceDate: StateFlow<Long> = _attendanceDate.asStateFlow()
@@ -360,6 +363,32 @@ class TutorViewModel(
         viewModelScope.launch {
             userDao.deletePurchase(tutorId, productId)
             addLog("TUTOR_REMOVE_FROM_LIBRARY", productId, "Tutor removed $productId from library")
+        }
+    }
+
+    // --- Live Stream ---
+    
+    fun toggleLiveStream(isLive: Boolean) {
+        val courseId = _selectedCourseId.value ?: return
+        viewModelScope.launch {
+            _isLive.value = isLive
+            
+            // Robust name retrieval
+            val profile = classroomDao.getTutorProfile(tutorId)
+            val userLocal = userDao.getUserById(tutorId)
+            val tutorName = profile?.name ?: userLocal?.name ?: "Tutor"
+            
+            val session = LiveSession(
+                id = "live_${courseId}", // Consistent ID
+                courseId = courseId,
+                tutorId = tutorId,
+                tutorName = tutorName,
+                startTime = System.currentTimeMillis(),
+                streamUrl = "https://example.com/stream/${courseId}",
+                isActive = isLive
+            )
+            classroomDao.insertLiveSessions(listOf(session))
+            addLog(if (isLive) "START_STREAM" else "END_STREAM", courseId, "Tutor ${if (isLive) "started" else "ended"} live broadcast for $courseId")
         }
     }
 

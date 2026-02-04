@@ -55,6 +55,7 @@ import java.util.*
 fun NotificationScreen(
     onNavigateToItem: (String) -> Unit,    
     onNavigateToInvoice: (String) -> Unit, 
+    onNavigateToMessages: () -> Unit,
     onBack: () -> Unit,                    
     isDarkTheme: Boolean,                  
     viewModel: NotificationViewModel = viewModel(factory = NotificationViewModelFactory(
@@ -202,6 +203,14 @@ fun NotificationScreen(
                     }
                     
                     Spacer(modifier = Modifier.height(32.dp))
+
+                    if (isMessage) {
+                        Button(onClick = { showSheet = false; onNavigateToMessages() }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                            Icon(imageVector = Icons.AutoMirrored.Filled.Chat, contentDescription = null)
+                            Spacer(Modifier.width(12.dp)); Text(text = "Show Message", fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                     
                     if (!isAnnouncement && !isMessage) {
                         Button(onClick = { showSheet = false; if (isTopUp) onNavigateToInvoice(selectedNotification!!.productId) else onNavigateToItem(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {

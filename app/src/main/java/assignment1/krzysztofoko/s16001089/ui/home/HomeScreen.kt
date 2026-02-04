@@ -42,6 +42,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(factory = HomeViewModelFactory(
         repository = BookRepository(AppDatabase.getDatabase(LocalContext.current)),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
+        classroomDao = AppDatabase.getDatabase(LocalContext.current).classroomDao(),
         auditDao = AppDatabase.getDatabase(LocalContext.current).auditDao(),
         userId = userId,
         initialCategory = initialCategory 
@@ -95,6 +96,9 @@ fun HomeScreen(
                         }
                     }
 
+                    // Removed large/mini banners from here as requested.
+                    // The "Live" indicator is now integrated directly inside the My Course cards below.
+
                     if (isLoggedIn) {
                         val enrolledPaidCourse = uiState.allBooks.find { 
                             it.mainCategory == AppConstants.CAT_COURSES && uiState.purchasedIds.contains(it.id) && it.price > 0.0
@@ -104,9 +108,11 @@ fun HomeScreen(
                         }
 
                         if (enrolledPaidCourse != null) {
+                            val isLive = uiState.activeLiveSessions.any { it.courseId == enrolledPaidCourse.id }
                             item {
                                 EnrolledCourseHeader(
                                     course = enrolledPaidCourse,
+                                    isLive = isLive,
                                     onEnterClassroom = { courseId -> 
                                         navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId") 
                                     }
@@ -115,8 +121,10 @@ fun HomeScreen(
                         }
                         
                         items(enrolledFreeCourses) { freeCourse ->
+                            val isLive = uiState.activeLiveSessions.any { it.courseId == freeCourse.id }
                             FreeCourseHeader(
                                 course = freeCourse,
+                                isLive = isLive,
                                 onEnterClassroom = { courseId -> 
                                     navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId") 
                                 }
