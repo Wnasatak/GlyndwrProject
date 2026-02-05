@@ -29,7 +29,8 @@ enum class TutorSection {
     LISTEN_AUDIOBOOK, 
     TEACHER_DETAIL,
     CREATE_ASSIGNMENT,
-    START_LIVE_STREAM
+    START_LIVE_STREAM,
+    STUDENT_PROFILE
 }
 
 data class ConversationPreview(
@@ -252,6 +253,22 @@ class TutorViewModel(
         .flatMapLatest<String?, List<LiveSession>> { id ->
             if (id == null) flowOf(emptyList())
             else classroomDao.getPreviousSessionsForCourse(id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val selectedStudentEnrollments: StateFlow<List<CourseEnrollmentDetails>> = _selectedStudent
+        .flatMapLatest { student ->
+            if (student == null) flowOf(emptyList())
+            else userDao.getEnrollmentsForUserFlow(student.id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val selectedStudentGrades: StateFlow<List<Grade>> = _selectedStudent
+        .flatMapLatest { student ->
+            if (student == null) flowOf(emptyList())
+            else classroomDao.getAllGradesForUser(student.id)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

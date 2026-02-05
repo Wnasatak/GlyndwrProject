@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -23,7 +27,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -81,7 +87,7 @@ fun MessagesScreen(
                                         }
                                         append(selectedUser?.name ?: "")
                                     }
-                                    Text(text = displayName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                    Text(text = displayName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = if (isDarkTheme) Color.White else Color.Black)
                                     Spacer(Modifier.width(8.dp))
                                     RoleTag(role = selectedUser?.role)
                                 }
@@ -90,14 +96,14 @@ fun MessagesScreen(
                                     Text(
                                         text = sharedCourse, 
                                         style = MaterialTheme.typography.labelSmall, 
-                                        color = Color.Gray, 
+                                        color = if (isDarkTheme) Color.White.copy(alpha = 0.6f) else Color.Gray, 
                                         fontSize = 9.sp,
-                                        modifier = Modifier.offset(y = (-3).dp) // Moved closer to title
+                                        modifier = Modifier.offset(y = (-3).dp)
                                     )
                                 }
                             }
                         } else {
-                            Text(text = AppConstants.TITLE_MESSAGES, fontWeight = FontWeight.Black)
+                            Text(text = AppConstants.TITLE_MESSAGES, fontWeight = FontWeight.Black, color = if (isDarkTheme) Color.White else Color.Black)
                         }
                     }
                 },
@@ -105,9 +111,11 @@ fun MessagesScreen(
                     IconButton(onClick = {
                         if (selectedUser != null) viewModel.selectConversation(null)
                         else onBack()
-                    }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
+                    }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = if (isDarkTheme) Color.White else Color.Black) }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = if (isDarkTheme) Color.Black.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                )
             )
 
             Box(modifier = Modifier.weight(1f)) {
@@ -121,10 +129,11 @@ fun MessagesScreen(
                             onUserClick = { viewModel.selectConversation(it) }, 
                             sdf = sdf,
                             currentUserId = currentUserId,
-                            viewModel = viewModel
+                            viewModel = viewModel,
+                            isDarkTheme = isDarkTheme
                         )
                     } else {
-                        ChatInterface(messages = messages, currentUserId = currentUserId, sdf = sdf)
+                        ChatInterface(messages = messages, currentUserId = currentUserId, sdf = sdf, isDarkTheme = isDarkTheme)
                     }
                 }
             }
@@ -133,7 +142,7 @@ fun MessagesScreen(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     tonalElevation = 8.dp,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                    color = if (isDarkTheme) Color.Black.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                 ) {
                     Row(
                         modifier = Modifier
@@ -147,9 +156,13 @@ fun MessagesScreen(
                             value = messageText,
                             onValueChange = { messageText = it },
                             modifier = Modifier.weight(1f),
-                            placeholder = { Text("Type a message...") },
+                            placeholder = { Text("Type a message...", color = if (isDarkTheme) Color.White.copy(alpha = 0.4f) else Color.Gray) },
                             shape = RoundedCornerShape(24.dp),
-                            colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                            textStyle = TextStyle(color = if (isDarkTheme) Color.White else Color.Black),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.2f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                focusedBorderColor = MaterialTheme.colorScheme.primary
+                            )
                         )
                         Spacer(Modifier.width(8.dp))
                         IconButton(
@@ -172,7 +185,8 @@ fun ConversationListView(
     onUserClick: (UserLocal) -> Unit,
     sdf: SimpleDateFormat,
     currentUserId: String,
-    viewModel: MessagesViewModel
+    viewModel: MessagesViewModel,
+    isDarkTheme: Boolean
 ) {
     val searchResults = remember(conversations, allUsers, searchQuery) {
         if (searchQuery.isEmpty()) {
@@ -201,15 +215,17 @@ fun ConversationListView(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            placeholder = { Text("Search users or messages...") },
-            leadingIcon = { Icon(Icons.Default.Search, null) },
-            trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { onSearchChange("") }) { Icon(Icons.Default.Close, null) } },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+            placeholder = { Text("Search Teacher / Admin", color = if (isDarkTheme) Color.White.copy(alpha = 0.4f) else Color.Gray) },
+            leadingIcon = { Icon(Icons.Default.Search, null, tint = if (isDarkTheme) Color.White.copy(alpha = 0.7f) else Color.Gray) },
+            trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { onSearchChange("") }) { Icon(Icons.Default.Close, null, tint = if (isDarkTheme) Color.White else Color.Black) } },
             shape = RoundedCornerShape(16.dp),
             singleLine = true,
+            textStyle = TextStyle(color = if (isDarkTheme) Color.White else Color.Black),
             colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-                focusedContainerColor = MaterialTheme.colorScheme.surface
+                unfocusedContainerColor = if (isDarkTheme) Color.White.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                focusedContainerColor = if (isDarkTheme) Color.White.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface,
+                unfocusedBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.1f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
             )
         )
 
@@ -224,21 +240,22 @@ fun ConversationListView(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(searchResults) { item ->
                     when (item) {
                         is ConversationItemType.Existing -> {
                             val sharedCourse by viewModel.getSharedCourse(item.preview.otherUser.id).collectAsState(initial = "")
-                            ExistingConversationCard(conv = item.preview, course = sharedCourse, onClick = { onUserClick(item.preview.otherUser) }, sdf = sdf)
+                            ExistingConversationCard(conv = item.preview, course = sharedCourse, onClick = { onUserClick(item.preview.otherUser) }, sdf = sdf, isDarkTheme = isDarkTheme)
                         }
                         is ConversationItemType.NewUser -> {
                             val sharedCourse by viewModel.getSharedCourse(item.user.id).collectAsState(initial = "")
-                            NewUserCard(user = item.user, course = sharedCourse, onClick = { onUserClick(item.user) })
+                            NewUserCard(user = item.user, course = sharedCourse, onClick = { onUserClick(item.user) }, isDarkTheme = isDarkTheme)
                         }
                     }
                 }
+                item { Spacer(Modifier.height(32.dp)) }
             }
         }
     }
@@ -250,42 +267,77 @@ sealed class ConversationItemType {
 }
 
 @Composable
-fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick: () -> Unit, sdf: SimpleDateFormat) {
+fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick: () -> Unit, sdf: SimpleDateFormat, isDarkTheme: Boolean) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDarkTheme) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+        ),
+        border = if (isDarkTheme) BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)) else null
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            UserAvatar(photoUrl = conv.otherUser.photoUrl, modifier = Modifier.size(50.dp))
+            UserAvatar(photoUrl = conv.otherUser.photoUrl, modifier = Modifier.size(54.dp))
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                        val displayName = buildString {
-                            if (!conv.otherUser.title.isNullOrEmpty()) {
-                                append(conv.otherUser.title)
-                                append(" ")
-                            }
-                            append(conv.otherUser.name)
+                // Row 1: Name and Role Tag
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    val displayName = buildString {
+                        if (!conv.otherUser.title.isNullOrEmpty()) {
+                            append(conv.otherUser.title)
+                            append(" ")
                         }
-                        Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Spacer(Modifier.width(8.dp))
-                        RoleTag(role = conv.otherUser.role)
+                        append(conv.otherUser.name)
                     }
-                    Text(sdf.format(Date(conv.lastMessage.timestamp)), style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(start = 8.dp))
+                    Text(
+                        text = displayName, 
+                        fontWeight = FontWeight.Bold, 
+                        fontSize = 17.sp, 
+                        maxLines = 1, 
+                        overflow = TextOverflow.Ellipsis, 
+                        modifier = Modifier.weight(1f, fill = false),
+                        color = if (isDarkTheme) Color.White else Color.Black
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    RoleTag(role = conv.otherUser.role)
                 }
+                
+                // Row 2: Course
                 if (course.isNotEmpty()) {
-                    Text(text = course, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        text = course, 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = MaterialTheme.colorScheme.primary, 
+                        fontSize = 11.sp, 
+                        maxLines = 1, 
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
-                Text(
-                    text = conv.lastMessage.message, 
-                    style = MaterialTheme.typography.bodySmall, 
-                    color = if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) MaterialTheme.colorScheme.primary else Color.Gray, 
-                    maxLines = 1, 
-                    overflow = TextOverflow.Ellipsis,
-                    fontWeight = if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) FontWeight.Bold else FontWeight.Normal
-                )
+
+                // Row 3: Message and Time
+                Row(
+                    modifier = Modifier.fillMaxWidth(), 
+                    horizontalArrangement = Arrangement.SpaceBetween, 
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = conv.lastMessage.message, 
+                        style = MaterialTheme.typography.bodySmall, 
+                        color = if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) MaterialTheme.colorScheme.primary else Color.Gray, 
+                        maxLines = 1, 
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) FontWeight.Black else FontWeight.Normal,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = sdf.format(Date(conv.lastMessage.timestamp)), 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = Color.Gray, 
+                        fontSize = 10.sp
+                    )
+                }
             }
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Default.ChevronRight, null, tint = Color.Gray.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
@@ -294,15 +346,17 @@ fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick:
 }
 
 @Composable
-fun NewUserCard(user: UserLocal, course: String, onClick: () -> Unit) {
+fun NewUserCard(user: UserLocal, course: String, onClick: () -> Unit, isDarkTheme: Boolean) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDarkTheme) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            UserAvatar(photoUrl = user.photoUrl, modifier = Modifier.size(50.dp))
+            UserAvatar(photoUrl = user.photoUrl, modifier = Modifier.size(54.dp))
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -313,16 +367,23 @@ fun NewUserCard(user: UserLocal, course: String, onClick: () -> Unit) {
                         }
                         append(user.name)
                     }
-                    Text(displayName, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        text = displayName, 
+                        fontWeight = FontWeight.Bold, 
+                        fontSize = 17.sp, 
+                        maxLines = 1, 
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (isDarkTheme) Color.White else Color.Black
+                    )
                     Spacer(Modifier.width(8.dp))
                     RoleTag(role = user.role)
                 }
                 if (course.isNotEmpty()) {
-                    Text(text = course, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = course, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
                 }
-                Text("Start a new conversation...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                Text("Start a new conversation...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
             }
-            Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
         }
     }
 }
@@ -337,20 +398,19 @@ fun RoleTag(role: String?) {
     }
     
     val tagColor = when (roleText) {
-        "ADMIN" -> Color(0xFFE53935)
-        "TEACHER" -> Color(0xFF1E88E5)
+        "ADMIN", "TEACHER" -> Color(0xFF1E88E5)
         "STUDENT" -> Color(0xFF43A047)
         else -> Color.Gray
     }
 
     Surface(
-        color = tagColor.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(4.dp),
-        border = BorderStroke(0.5.dp, tagColor.copy(alpha = 0.5f))
+        color = tagColor.copy(alpha = 0.15f),
+        shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(0.5.dp, tagColor.copy(alpha = 0.4f))
     ) {
         Text(
             text = roleText,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             style = MaterialTheme.typography.labelSmall,
             color = tagColor,
             fontSize = 9.sp,
@@ -360,26 +420,27 @@ fun RoleTag(role: String?) {
 }
 
 @Composable
-fun ChatInterface(messages: List<assignment1.krzysztofoko.s16001089.data.ClassroomMessage>, currentUserId: String, sdf: SimpleDateFormat) {
+fun ChatInterface(messages: List<assignment1.krzysztofoko.s16001089.data.ClassroomMessage>, currentUserId: String, sdf: SimpleDateFormat, isDarkTheme: Boolean) {
     val listState = rememberLazyListState()
     LaunchedEffect(messages.size) { if (messages.isNotEmpty()) { listState.animateScrollToItem(messages.size - 1) } }
-    LazyColumn(modifier = Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(messages) { msg ->
             val isMe = msg.senderId == currentUserId
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = if (isMe) Alignment.End else Alignment.Start) {
                 Surface(
-                    color = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    color = if (isMe) MaterialTheme.colorScheme.primary else if (isDarkTheme) Color.White.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMe) 16.dp else 4.dp, bottomEnd = if (isMe) 4.dp else 16.dp),
-                    modifier = Modifier.widthIn(max = 280.dp)
+                    modifier = Modifier.widthIn(max = 280.dp),
+                    border = if (!isMe && isDarkTheme) BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)) else null
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.Bottom,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
                             text = msg.message, 
-                            color = if (isMe) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (isMe) Color.White else if (isDarkTheme) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f, fill = false),
                             style = MaterialTheme.typography.bodyMedium
                         )

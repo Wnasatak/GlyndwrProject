@@ -8,16 +8,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Assignment
 import assignment1.krzysztofoko.s16001089.ui.classroom.components.Modules.ClassroomEmptyState
@@ -26,6 +28,9 @@ import java.util.*
 
 @Composable
 fun ClassroomAssignmentsTab(assignments: List<Assignment>, onSelect: (Assignment) -> Unit) {
+    var showSubmittedDialog by remember { mutableStateOf(false) }
+    var selectedTitle by remember { mutableStateOf("") }
+
     if (assignments.isEmpty()) {
         ClassroomEmptyState(AppConstants.MSG_NO_ASSIGNMENTS)
     } else {
@@ -35,9 +40,40 @@ fun ClassroomAssignmentsTab(assignments: List<Assignment>, onSelect: (Assignment
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(assignments) { assignment ->
-                AssignmentItem(assignment = assignment, onClick = { onSelect(assignment) })
+                AssignmentItem(
+                    assignment = assignment, 
+                    onClick = { 
+                        if (assignment.status == "SUBMITTED" || assignment.status == "GRADED") {
+                            selectedTitle = assignment.title
+                            showSubmittedDialog = true
+                        } else {
+                            onSelect(assignment) 
+                        }
+                    }
+                )
             }
         }
+    }
+
+    if (showSubmittedDialog) {
+        AlertDialog(
+            onDismissRequest = { showSubmittedDialog = false },
+            icon = { Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(48.dp)) },
+            title = { Text("Already Submitted", fontWeight = FontWeight.Black) },
+            text = { 
+                Text(
+                    "Your submission for \"$selectedTitle\" has already been received. You cannot resubmit at this time.",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showSubmittedDialog = false }) {
+                    Text("OK", fontWeight = FontWeight.Bold)
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
+        )
     }
 }
 

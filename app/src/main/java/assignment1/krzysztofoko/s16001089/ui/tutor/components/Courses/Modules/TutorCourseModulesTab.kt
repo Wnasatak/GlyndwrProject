@@ -40,47 +40,46 @@ fun TutorCourseModulesTab(
     var showCreateDialog by remember { mutableStateOf(false) }
     var moduleToDelete by remember { mutableStateOf<ModuleContent?>(null) }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showCreateDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp),
-                icon = { Icon(Icons.Default.Add, null) },
-                text = { Text("New Module", fontWeight = FontWeight.Bold) }
-            )
-        }
-    ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
-            Spacer(Modifier.height(24.dp))
-            
-            HeaderSection(
-                title = "Course Syllabus",
-                subtitle = course?.title ?: "Manage Content",
-                icon = Icons.Default.LibraryBooks
-            )
-            
-            Spacer(Modifier.height(24.dp))
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        Spacer(Modifier.height(24.dp))
+        
+        HeaderSection(
+            title = "Course Modules",
+            subtitle = course?.title ?: "Curriculum Management",
+            icon = Icons.Default.ViewModule
+        )
+        
+        Spacer(Modifier.height(24.dp))
 
-            if (modules.isEmpty()) {
-                EmptyModulesState { showCreateDialog = true }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = 100.dp)
-                ) {
-                    items(modules) { module ->
-                        ModuleItemCard(
-                            module = module,
-                            onEdit = { editingModule = module },
-                            onDelete = { moduleToDelete = module }
-                        )
-                    }
+        if (modules.isEmpty()) {
+            EmptyModulesState { showCreateDialog = true }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 100.dp)
+            ) {
+                items(modules) { module ->
+                    ModuleItemCard(
+                        module = module,
+                        onEdit = { editingModule = module },
+                        onDelete = { moduleToDelete = module }
+                    )
                 }
             }
         }
+    }
+
+    // Floating Action Button
+    Box(modifier = Modifier.fillMaxSize()) {
+        ExtendedFloatingActionButton(
+            onClick = { showCreateDialog = true },
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = Color.White,
+            shape = RoundedCornerShape(16.dp),
+            icon = { Icon(Icons.Default.Add, null) },
+            text = { Text("New Module", fontWeight = FontWeight.Bold) },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+        )
     }
 
     // Create / Edit Dialog
@@ -146,8 +145,10 @@ fun HeaderSection(title: String, subtitle: String, icon: ImageVector) {
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
         }
     }
@@ -176,16 +177,17 @@ fun ModuleItemCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
-                    modifier = Modifier.size(44.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier.size(40.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -196,8 +198,8 @@ fun ModuleItemCard(
                                 else -> Icons.Default.Article
                             },
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(24.dp)
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -205,39 +207,59 @@ fun ModuleItemCard(
                 Spacer(Modifier.width(16.dp))
                 
                 Column(modifier = Modifier.weight(1f)) {
+                    @Suppress("DEPRECATION")
                     Text(
                         text = module.title,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "Module Order: ${module.order}",
+                        text = "Sequence: #${module.order}",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray
                     )
                 }
 
-                Row {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalIconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.size(32.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.Edit, null, modifier = Modifier.size(16.dp))
                     }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.DeleteOutline, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.error)
+                    FilledTonalIconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(32.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(Icons.Default.DeleteOutline, null, modifier = Modifier.size(16.dp))
                     }
                 }
             }
             
-            Spacer(Modifier.height(12.dp))
+            if (module.description.isNotBlank()) {
+                Spacer(Modifier.height(12.dp))
+                @Suppress("DEPRECATION")
+                Text(
+                    text = module.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    lineHeight = 18.sp
+                )
+            }
             
-            Text(
-                text = module.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-            
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
             
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val typeLabel = when(module.contentType) {
@@ -246,17 +268,18 @@ fun ModuleItemCard(
                     "QUIZ" -> "Knowledge Check"
                     else -> "General Content"
                 }
-                SuggestionChip(
-                    onClick = {},
-                    label = { Text(typeLabel) },
-                    colors = SuggestionChipDefaults.suggestionChipColors(labelColor = MaterialTheme.colorScheme.primary)
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = module.contentUrl.take(25) + "...",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = typeLabel,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }

@@ -30,6 +30,7 @@ fun TutorDetailScreen(
     viewModel: TutorViewModel
 ) {
     val tutorProfile by viewModel.tutorProfile.collectAsState()
+    val userLocal by viewModel.currentUserLocal.collectAsState()
     val assignedCourses by viewModel.assignedCourses.collectAsState()
     val allCourses by viewModel.allCourses.collectAsState()
     
@@ -53,7 +54,7 @@ fun TutorDetailScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 UserAvatar(
-                    photoUrl = tutorProfile?.photoUrl,
+                    photoUrl = userLocal?.photoUrl ?: tutorProfile?.photoUrl,
                     modifier = Modifier.size(120.dp),
                     isLarge = true
                 )
@@ -64,7 +65,8 @@ fun TutorDetailScreen(
                         append(tutorProfile?.title)
                         append(" ")
                     }
-                    append(tutorProfile?.name ?: "Senior Tutor")
+                    // Fix: Prioritize userLocal name for identity consistency
+                    append(userLocal?.name ?: tutorProfile?.name ?: "Senior Tutor")
                 }
                 
                 Text(
@@ -164,7 +166,7 @@ fun TutorDetailScreen(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Default.Email,
                         label = "Email",
-                        value = tutorProfile?.email ?: "Not listed"
+                        value = userLocal?.email ?: tutorProfile?.email ?: "Not listed"
                     )
                     TutorMiniInfoCard(
                         modifier = Modifier.weight(1f),

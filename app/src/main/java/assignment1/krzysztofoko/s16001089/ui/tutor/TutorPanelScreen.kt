@@ -49,6 +49,7 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.components.Catalog.TutorBooks
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Catalog.TutorAudioBooksTab
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.CreateAssignmentScreen
+import assignment1.krzysztofoko.s16001089.ui.tutor.components.Students.TutorStudentProfileScreen
 import com.google.firebase.auth.FirebaseAuth
 import coil.compose.AsyncImage
 
@@ -207,6 +208,7 @@ fun TutorPanelScreen(
                                         TutorSection.TEACHER_DETAIL -> "Teacher Profile"
                                         TutorSection.CREATE_ASSIGNMENT -> "Create Assignment"
                                         TutorSection.START_LIVE_STREAM -> "Start Live Stream"
+                                        TutorSection.STUDENT_PROFILE -> "Student Profile"
                                         else -> ""
                                     }
                                     if (sectionTitle.isNotEmpty()) {
@@ -242,6 +244,10 @@ fun TutorPanelScreen(
                             } else if (currentSection == TutorSection.TEACHER_DETAIL) {
                                 IconButton(onClick = { viewModel.setSection(TutorSection.DASHBOARD) }) {
                                     Icon(Icons.Default.ArrowBack, "Back to Dashboard")
+                                }
+                            } else if (currentSection == TutorSection.STUDENT_PROFILE) {
+                                IconButton(onClick = { viewModel.setSection(TutorSection.STUDENTS) }) {
+                                    Icon(Icons.Default.ArrowBack, "Back to Student Directory")
                                 }
                             } else if (currentSection == TutorSection.CREATE_ASSIGNMENT || currentSection == TutorSection.START_LIVE_STREAM) {
                                 IconButton(onClick = { viewModel.setSection(TutorSection.DASHBOARD) }) {
@@ -339,7 +345,8 @@ fun TutorPanelScreen(
                         currentSection == TutorSection.COURSE_LIVE ||
                         currentSection == TutorSection.TEACHER_DETAIL ||
                         currentSection == TutorSection.CREATE_ASSIGNMENT ||
-                        currentSection == TutorSection.START_LIVE_STREAM
+                        currentSection == TutorSection.START_LIVE_STREAM ||
+                        currentSection == TutorSection.STUDENT_PROFILE
                 
                 if (!hideBottomBar) {
                     NavigationBar(
@@ -417,6 +424,7 @@ fun TutorPanelScreen(
                             TutorSection.TEACHER_DETAIL -> TutorDetailScreen(viewModel)
                             TutorSection.CREATE_ASSIGNMENT -> CreateAssignmentScreen(viewModel)
                             TutorSection.START_LIVE_STREAM -> TutorCourseLiveTab(viewModel)
+                            TutorSection.STUDENT_PROFILE -> TutorStudentProfileScreen(viewModel)
                             TutorSection.READ_BOOK -> {
                                 activeBook?.let { book ->
                                     PdfReaderScreen(

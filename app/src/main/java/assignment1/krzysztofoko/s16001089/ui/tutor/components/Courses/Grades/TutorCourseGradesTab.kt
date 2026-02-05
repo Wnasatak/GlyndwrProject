@@ -51,6 +51,8 @@ fun TutorCourseGradesTab(
     var editingGrade by remember { mutableStateOf<Grade?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        Spacer(Modifier.height(24.dp))
+        
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Grades & Student Performance",

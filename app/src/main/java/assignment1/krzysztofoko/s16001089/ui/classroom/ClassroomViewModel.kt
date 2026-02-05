@@ -60,6 +60,9 @@ class ClassroomViewModel(
     private val _selectedAssignment = MutableStateFlow<Assignment?>(null)
     val selectedAssignment = _selectedAssignment.asStateFlow()
 
+    private val _isSubmitting = MutableStateFlow(false)
+    val isSubmitting = _isSubmitting.asStateFlow()
+
     init {
         // Observe the active session and simulate broadcasting
         viewModelScope.launch {
@@ -109,6 +112,15 @@ class ClassroomViewModel(
 
     fun submitAssignment(assignmentId: String, content: String) {
         viewModelScope.launch {
+            _isSubmitting.value = true
+            
+            // Simulating file upload delay
+            if (content.contains("[File:")) {
+                delay(2000) // Longer delay for "file upload"
+            } else {
+                delay(500) // Short delay for text-only
+            }
+
             val submission = AssignmentSubmission(
                 id = UUID.randomUUID().toString(),
                 assignmentId = assignmentId,
@@ -122,6 +134,7 @@ class ClassroomViewModel(
                 classroomDao.updateAssignment(assignmentToUpdate.copy(status = "SUBMITTED"))
             }
             
+            _isSubmitting.value = false
             _selectedAssignment.value = null
         }
     }

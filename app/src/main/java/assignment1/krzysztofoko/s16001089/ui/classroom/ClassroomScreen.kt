@@ -44,6 +44,7 @@ fun ClassroomScreen(
     val liveChatMessages by viewModel.liveChatMessages.collectAsState()
     val isLiveViewActive by viewModel.isLiveViewActive.collectAsState()
     val selectedAssignment by viewModel.selectedAssignment.collectAsState()
+    val isSubmitting by viewModel.isSubmitting.collectAsState()
 
     val tabs = listOf(
         AppConstants.TAB_MODULES, 
@@ -64,6 +65,7 @@ fun ClassroomScreen(
         } else if (selectedAssignment != null) {
             AssignmentSubmissionView(
                 assignment = selectedAssignment!!,
+                isSubmitting = isSubmitting,
                 onSubmit = { content -> viewModel.submitAssignment(selectedAssignment!!.id, content) },
                 onCancel = { viewModel.selectAssignment(null) }
             )

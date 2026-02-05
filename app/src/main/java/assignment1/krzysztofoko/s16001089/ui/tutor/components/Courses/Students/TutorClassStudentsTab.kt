@@ -63,7 +63,9 @@ fun TutorClassStudentsTab(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        Spacer(Modifier.height(24.dp))
+
         // Header
         Row(verticalAlignment = Alignment.CenterVertically) {
             Surface(

@@ -45,52 +45,102 @@ fun TutorCourseAssignmentsTab(
     val assignments by viewModel.selectedCourseAssignments.collectAsState()
     val modules by viewModel.selectedCourseModules.collectAsState()
 
+    var step by remember { mutableIntStateOf(1) } // 1: Select Module, 2: Display Assignments
+    var selectedModuleId by remember { mutableStateOf<String?>(null) }
+    
     var editingAssignment by remember { mutableStateOf<Assignment?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var assignmentToDelete by remember { mutableStateOf<Assignment?>(null) }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        floatingActionButton = {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        Spacer(Modifier.height(24.dp))
+        
+        HeaderSection(
+            title = if (step == 1) "Select Module" else "Module Assignments",
+            subtitle = course?.title ?: "Manage Assignments",
+            icon = if (step == 1) Icons.Default.ViewModule else Icons.Default.Assignment
+        )
+        
+        Spacer(Modifier.height(24.dp))
+
+        AnimatedContent(
+            targetState = step,
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            label = "AssignmentStepTransition"
+        ) { currentStep ->
+            when (currentStep) {
+                1 -> {
+                    if (modules.isEmpty()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No modules found. Please create a module first.", color = Color.Gray)
+                        }
+                    } else {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(modules) { module ->
+                                ModuleSelectionCard(
+                                    title = module.title,
+                                    assignmentCount = assignments.count { it.moduleId == module.id },
+                                    onClick = {
+                                        selectedModuleId = module.id
+                                        step = 2
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                2 -> {
+                    val filteredAssignments = assignments.filter { it.moduleId == selectedModuleId }
+                    
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { step = 1 }) { Icon(Icons.Default.ArrowBack, null) }
+                            Text(
+                                text = modules.find { it.id == selectedModuleId }?.title ?: "Assignments",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        
+                        Spacer(Modifier.height(12.dp))
+
+                        if (filteredAssignments.isEmpty()) {
+                            EmptyAssignmentsState { showCreateDialog = true }
+                        } else {
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                contentPadding = PaddingValues(bottom = 100.dp)
+                            ) {
+                                items(filteredAssignments) { assignment ->
+                                    val module = modules.find { it.id == assignment.moduleId }
+                                    AssignmentCard(
+                                        assignment = assignment, 
+                                        module = module,
+                                        onEdit = { editingAssignment = assignment },
+                                        onDelete = { assignmentToDelete = assignment }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Floating Action Button logic for Step 2
+    if (step == 2) {
+        Box(modifier = Modifier.fillMaxSize()) {
             ExtendedFloatingActionButton(
                 onClick = { showCreateDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
                 icon = { Icon(Icons.Default.Add, null) },
-                text = { Text("New Assignment", fontWeight = FontWeight.Bold) }
+                text = { Text("New Assignment", fontWeight = FontWeight.Bold) },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
             )
-        }
-    ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
-            Spacer(Modifier.height(24.dp))
-            
-            HeaderSection(
-                title = "Curriculum Tasks",
-                subtitle = course?.title ?: "Manage Assignments",
-                icon = Icons.Default.Assignment
-            )
-            
-            Spacer(Modifier.height(24.dp))
-
-            if (assignments.isEmpty()) {
-                EmptyAssignmentsState { showCreateDialog = true }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = 100.dp)
-                ) {
-                    items(assignments) { assignment ->
-                        val module = modules.find { it.id == assignment.moduleId }
-                        AssignmentCard(
-                            assignment = assignment, 
-                            module = module,
-                            onEdit = { editingAssignment = assignment },
-                            onDelete = { assignmentToDelete = assignment }
-                        )
-                    }
-                }
-            }
         }
     }
 
@@ -122,6 +172,37 @@ fun TutorCourseAssignmentsTab(
                 assignmentToDelete = null
             }
         )
+    }
+}
+
+@Composable
+fun ModuleSelectionCard(title: String, assignmentCount: Int, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.ViewModule, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+                Text(text = "$assignmentCount Assignments", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            }
+            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
+        }
     }
 }
 

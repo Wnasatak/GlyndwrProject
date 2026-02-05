@@ -2,10 +2,12 @@ package assignment1.krzysztofoko.s16001089.ui.tutor.components.Students
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Group
@@ -160,7 +162,6 @@ fun StudentItemCard(
     allCourses: List<assignment1.krzysztofoko.s16001089.data.Course>,
     myCourseIds: Set<String>
 ) {
-    // Show all courses this student is enrolled in that belong to this tutor's assigned courses (Approved or Enrolled)
     val displayCourses = remember(allEnrollments, allCourses, myCourseIds) {
         allEnrollments
             .filter { it.userId == student.id && (it.status == "APPROVED" || it.status == "ENROLLED") && it.courseId in myCourseIds }
@@ -169,7 +170,7 @@ fun StudentItemCard(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { viewModel.setSection(TutorSection.STUDENT_PROFILE, student) },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
     ) {
         Row(

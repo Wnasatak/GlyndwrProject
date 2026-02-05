@@ -485,6 +485,9 @@ interface UserDao {
     @Query("SELECT * FROM course_enrollment_details ORDER BY submittedAt DESC")
     fun getAllEnrollmentsFlow(): Flow<List<CourseEnrollmentDetails>>
 
+    @Query("SELECT * FROM course_enrollment_details WHERE userId = :userId")
+    fun getEnrollmentsForUserFlow(userId: String): Flow<List<CourseEnrollmentDetails>>
+
     @Query("UPDATE course_enrollment_details SET status = :status WHERE id = :id")
     suspend fun updateEnrollmentStatus(id: String, status: String)
 }
