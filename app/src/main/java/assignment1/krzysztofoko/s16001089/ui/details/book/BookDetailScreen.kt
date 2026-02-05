@@ -63,10 +63,19 @@ fun BookDetailScreen(
     val book by viewModel.book.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val localUser by viewModel.localUser.collectAsState()
+    val roleDiscounts by viewModel.roleDiscounts.collectAsState()
     val isOwned by viewModel.isOwned.collectAsState()
     val inWishlist by viewModel.inWishlist.collectAsState()
     val allReviews by viewModel.allReviews.collectAsState()
     
+    // Dynamic Discount Calculation
+    val effectiveDiscount = remember(localUser, roleDiscounts) {
+        val userRole = localUser?.role ?: "user"
+        val roleRate = roleDiscounts.find { it.role == userRole }?.discountPercent ?: 0.0
+        val individualRate = localUser?.discountPercent ?: 0.0
+        maxOf(roleRate, individualRate)
+    }
+
     var showOrderFlow by remember { mutableStateOf(false) }
     var showRemoveConfirm by remember { mutableStateOf(false) }
     var showAddConfirm by remember { mutableStateOf(false) }
@@ -183,7 +192,9 @@ fun BookDetailScreen(
                                                     Button(onClick = { showAddConfirm = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Default.LibraryAdd, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_ADD_TO_LIBRARY, fontWeight = FontWeight.Bold) }
                                                 }
                                             } else {
-                                                val discountedPrice = currentBook.price * 0.9
+                                                val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
+                                                val discountedPrice = currentBook.price * discountMultiplier
+                                                
                                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                                         val pPrice = String.format(Locale.US, "%.2f", currentBook.price)
@@ -191,7 +202,18 @@ fun BookDetailScreen(
                                                         Text(text = "£$pPrice", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
                                                         Spacer(Modifier.width(12.dp)); Text(text = "£$dPrice", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                                     }
-                                                    Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { Text(AppConstants.TEXT_STUDENT_DISCOUNT, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 10.sp) }
+                                                    if (effectiveDiscount > 0) {
+                                                        val roleName = localUser?.role?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "User"
+                                                        Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { 
+                                                            Text(
+                                                                text = "${roleName.uppercase()} DISCOUNT (-${effectiveDiscount.toInt()}%)", 
+                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), 
+                                                                color = Color(0xFF2E7D32), 
+                                                                fontWeight = FontWeight.Bold, 
+                                                                fontSize = 10.sp
+                                                            ) 
+                                                        }
+                                                    }
                                                     Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text(AppConstants.BTN_ORDER_NOW, fontWeight = FontWeight.Bold) }
                                                 }
                                             }
@@ -212,7 +234,13 @@ fun BookDetailScreen(
         }
 
         if (showOrderFlow && book != null) {
-            OrderFlowDialog(book = book!!, user = localUser, onDismiss = { showOrderFlow = false }, onEditProfile = { showOrderFlow = false; onNavigateToProfile() }, onComplete = { finalPrice, orderRef -> viewModel.handlePurchaseComplete(context, finalPrice, orderRef) { msg -> showOrderFlow = false
+            OrderFlowDialog(
+                book = book!!, 
+                user = localUser, 
+                roleDiscounts = roleDiscounts,
+                onDismiss = { showOrderFlow = false }, 
+                onEditProfile = { showOrderFlow = false; onNavigateToProfile() }, 
+                onComplete = { finalPrice, orderRef -> viewModel.handlePurchaseComplete(context, finalPrice, orderRef) { msg -> showOrderFlow = false
                         scope.launch { snackbarHostState.showSnackbar(msg) }
                     }
                 }

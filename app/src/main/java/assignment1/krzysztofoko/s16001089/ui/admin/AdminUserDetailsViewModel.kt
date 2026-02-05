@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 class AdminUserDetailsViewModel(
     private val userId: String,
     private val userDao: UserDao,
+    private val courseDao: CourseDao,
     private val classroomDao: ClassroomDao,
     private val auditDao: AuditDao,
     private val bookRepository: BookRepository
@@ -34,6 +35,9 @@ class AdminUserDetailsViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val courseInstallments = userDao.getCourseInstallmentsForUser(userId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val courseEnrollments = userDao.getEnrollmentsForUserFlow(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val userGrades = classroomDao.getAllGradesForUser(userId)
@@ -62,6 +66,9 @@ class AdminUserDetailsViewModel(
         ids.mapNotNull { id -> books.find { it.id == id } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val allCourses = courseDao.getAllCourses()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
         viewModelScope.launch {
             userDao.getUserFlow(userId).collect { _user.value = it }
@@ -89,6 +96,13 @@ class AdminUserDetailsViewModel(
         }
     }
 
+    fun updateEnrollmentStatus(enrollmentId: String, newStatus: String) {
+        viewModelScope.launch {
+            userDao.updateEnrollmentStatus(enrollmentId, newStatus)
+            addLog("ENROLLMENT_STATUS_CHANGED", enrollmentId, "Admin updated enrollment status to $newStatus for user $userId")
+        }
+    }
+
     fun deleteComment(reviewId: Int) {
         viewModelScope.launch {
             userDao.deleteReview(reviewId)
@@ -113,6 +127,7 @@ class AdminUserDetailsViewModelFactory(
         return AdminUserDetailsViewModel(
             userId, 
             db.userDao(), 
+            db.courseDao(),
             db.classroomDao(), 
             db.auditDao(),
             BookRepository(db)

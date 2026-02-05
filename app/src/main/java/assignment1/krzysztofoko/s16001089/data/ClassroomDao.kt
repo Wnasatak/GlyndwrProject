@@ -21,9 +21,12 @@ interface ClassroomDao {
     @Query("DELETE FROM classroom_modules")
     suspend fun deleteAllModules()
 
-    // Assignments
+    // Assignments (Tasks)
     @Query("SELECT * FROM assignments WHERE courseId = :courseId ORDER BY dueDate ASC")
     fun getAssignmentsForCourse(courseId: String): Flow<List<Assignment>>
+
+    @Query("SELECT * FROM assignments WHERE moduleId = :moduleId ORDER BY dueDate ASC")
+    fun getAssignmentsForModule(moduleId: String): Flow<List<Assignment>>
 
     @Query("SELECT * FROM assignments ORDER BY dueDate ASC")
     fun getAllAssignments(): Flow<List<Assignment>>

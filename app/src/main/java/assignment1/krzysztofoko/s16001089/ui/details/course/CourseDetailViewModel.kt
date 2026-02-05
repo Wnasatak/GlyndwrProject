@@ -13,11 +13,6 @@ import java.util.*
 
 /**
  * ViewModel for the Course Details screen and Enrollment Application.
- *
- * Manages the multi-step enrollment process:
- * 1. Application Submission (Pending Review)
- * 2. Admin Approval (Status changes to Approved)
- * 3. User Payment/Final Enrollment (Status changes to Enrolled)
  */
 class CourseDetailViewModel(
     private val courseDao: CourseDao,
@@ -37,6 +32,9 @@ class CourseDetailViewModel(
     } else {
         flowOf(null)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val roleDiscounts: StateFlow<List<RoleDiscount>> = userDao.getAllRoleDiscounts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
      * Reactively checks if the user is already fully enrolled (paid and approved).

@@ -272,9 +272,10 @@ fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick:
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDarkTheme) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+            containerColor = if (isDarkTheme) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
         ),
-        border = if (isDarkTheme) BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)) else null
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             UserAvatar(photoUrl = conv.otherUser.photoUrl, modifier = Modifier.size(54.dp))
@@ -353,7 +354,8 @@ fun NewUserCard(user: UserLocal, course: String, onClick: () -> Unit, isDarkThem
         colors = CardDefaults.cardColors(
             containerColor = if (isDarkTheme) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             UserAvatar(photoUrl = user.photoUrl, modifier = Modifier.size(54.dp))

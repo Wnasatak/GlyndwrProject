@@ -30,6 +30,7 @@ import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.*
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -57,9 +58,9 @@ fun AdminUserDetailsScreen(
     val browseHistory by viewModel.browseHistory.collectAsState()
     val searchHistory by viewModel.searchHistory.collectAsState()
     val allReviews by viewModel.allReviews.collectAsState()
-    val installments by viewModel.courseInstallments.collectAsState()
+    val enrollments by viewModel.courseEnrollments.collectAsState()
     val grades by viewModel.userGrades.collectAsState()
-    val allBooks by viewModel.allBooks.collectAsState()
+    val allCourses by viewModel.allCourses.collectAsState()
     val purchasedBooks by viewModel.purchasedBooks.collectAsState()
     val commentedBooks by viewModel.commentedBooks.collectAsState()
     
@@ -190,7 +191,12 @@ fun AdminUserDetailsScreen(
                             }
                         )
                         2 -> UserCommentsTab(allReviews, viewModel)
-                        3 -> UserAcademicTab(installments, grades, allBooks)
+                        3 -> UserAcademicTab(
+                            enrollments = enrollments, 
+                            grades = grades, 
+                            allCourses = allCourses,
+                            onUpdateStatus = { eid, status -> viewModel.updateEnrollmentStatus(eid, status) }
+                        )
                         4 -> UserInvoicesTab(invoices)
                         5 -> UserWalletTab(transactions)
                     }

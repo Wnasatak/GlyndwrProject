@@ -133,9 +133,13 @@ fun NavGraphBuilder.dashboardNavGraph(
             onNavigateToStore = { navController.navigate(AppConstants.ROUTE_HOME) },
             onNavigateToProfile = { navController.navigate(AppConstants.ROUTE_PROFILE) },
             onLogout = onLogoutClick,
+            onNavigateToDeveloper = { navController.navigate(AppConstants.ROUTE_DEVELOPER) },
+            onNavigateToInstruction = { navController.navigate(AppConstants.ROUTE_INSTRUCTIONS) },
             isDarkTheme = isDarkTheme,
             onToggleTheme = onToggleTheme,
-            onPlayAudio = onPlayAudio
+            onPlayAudio = onPlayAudio,
+            currentPlayingBookId = currentPlayingBookId,
+            isAudioPlaying = isAudioPlaying
         )
     }
 }

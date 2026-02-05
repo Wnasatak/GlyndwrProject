@@ -15,10 +15,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminApplicationItem
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
 import assignment1.krzysztofoko.s16001089.ui.components.EnrollmentStatusBadge
@@ -34,12 +34,14 @@ fun ApplicationsTab(
     var selectedFilter by remember { mutableStateOf("ALL") }
     
     val pending = applications.filter { it.details.status == "PENDING_REVIEW" }
+    val enrolled = applications.filter { it.details.status == "ENROLLED" }
     val approved = applications.filter { it.details.status == "APPROVED" }
     val rejected = applications.filter { it.details.status == "REJECTED" }
 
     val filterOptions = listOf(
         AppsFilterOption("ALL", "All", Icons.Default.FilterList, applications.size, MaterialTheme.colorScheme.primary),
         AppsFilterOption("PENDING", "Pending", Icons.Default.Timer, pending.size, Color(0xFFFBC02D)),
+        AppsFilterOption("ENROLLED", "Enrolled", Icons.Default.School, enrolled.size, Color(0xFF673AB7)),
         AppsFilterOption("APPROVED", "Approved", Icons.Default.CheckCircle, approved.size, Color(0xFF4CAF50)),
         AppsFilterOption("REJECTED", "Declined", Icons.Default.Cancel, rejected.size, MaterialTheme.colorScheme.error)
     )
@@ -108,6 +110,7 @@ fun ApplicationsTab(
         val filteredList = when(selectedFilter) {
             "ALL" -> applications
             "PENDING" -> pending
+            "ENROLLED" -> enrolled
             "APPROVED" -> approved
             else -> rejected
         }
@@ -207,6 +210,18 @@ fun AdminApplicationCard(
                         Spacer(Modifier.width(8.dp))
                         Text("Approve", fontWeight = FontWeight.Bold)
                     }
+                }
+            } else if (app.details.status == "ENROLLED") {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onApprove,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                ) {
+                    Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Approve", fontWeight = FontWeight.Bold)
                 }
             }
         }

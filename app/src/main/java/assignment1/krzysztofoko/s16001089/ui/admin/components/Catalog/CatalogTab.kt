@@ -15,8 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
@@ -27,7 +27,9 @@ import java.util.UUID
 @Composable
 fun CatalogTab(
     viewModel: AdminViewModel,
-    isDarkTheme: Boolean
+    isDarkTheme: Boolean,
+    showAddProductDialog: Boolean,
+    onAddProductDialogConsumed: () -> Unit
 ) {
     val books by viewModel.allBooks.collectAsState(emptyList())
     val audioBooks by viewModel.allAudioBooks.collectAsState(emptyList())
@@ -50,13 +52,18 @@ fun CatalogTab(
     var courseToEdit by remember { mutableStateOf<Course?>(null) }
     var gearToEdit by remember { mutableStateOf<Gear?>(null) }
     
-    var showAddSelector by remember { mutableStateOf(false) }
-
     val infiniteCount = Int.MAX_VALUE
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % filters.size)
     val tabListState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
 
     Column(modifier = Modifier.fillMaxSize()) {
+        HeaderSection(
+            title = "Global Catalog",
+            subtitle = "Manage all products and inventory.",
+            icon = Icons.Default.Inventory,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+        )
+
         // Looping Category Filter
         LazyRow(
             state = tabListState,
@@ -103,19 +110,6 @@ fun CatalogTab(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                Button(
-                    onClick = { showAddSelector = true },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
-                ) {
-                    Icon(Icons.Default.Add, null)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Add New Product", fontWeight = FontWeight.Black)
-                }
-            }
-
             // Filtered Content...
             if (selectedFilter == "ALL" || selectedFilter == "BOOKS") {
                 item { CatalogSectionHeader("Academic Books", books.size) }
@@ -150,32 +144,32 @@ fun CatalogTab(
     }
 
     // --- Add Product Category Selector ---
-    if (showAddSelector) {
+    if (showAddProductDialog) {
         AlertDialog(
-            onDismissRequest = { showAddSelector = false },
+            onDismissRequest = { onAddProductDialogConsumed() },
             title = { Text("Select Product Category", fontWeight = FontWeight.Black) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AddCategoryButton("Academic Book", Icons.AutoMirrored.Filled.MenuBook) {
                         bookToEdit = Book(id = UUID.randomUUID().toString(), title = "", author = "", mainCategory = AppConstants.CAT_BOOKS)
-                        showAddSelector = false
+                        onAddProductDialogConsumed()
                     }
                     AddCategoryButton("Audiobook", Icons.Default.Headphones) {
                         audioToEdit = AudioBook(id = UUID.randomUUID().toString(), title = "", author = "", mainCategory = AppConstants.CAT_AUDIOBOOKS)
-                        showAddSelector = false
+                        onAddProductDialogConsumed()
                     }
                     AddCategoryButton("University Course", Icons.Default.School) {
                         courseToEdit = Course(id = UUID.randomUUID().toString(), title = "", department = "", mainCategory = AppConstants.CAT_COURSES)
-                        showAddSelector = false
+                        onAddProductDialogConsumed()
                     }
                     AddCategoryButton("Official Gear", Icons.Default.Checkroom) {
                         gearToEdit = Gear(id = UUID.randomUUID().toString(), title = "", brand = "Wrexham University", mainCategory = AppConstants.CAT_GEAR)
-                        showAddSelector = false
+                        onAddProductDialogConsumed()
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { showAddSelector = false }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { onAddProductDialogConsumed() }) { Text("Cancel") } }
         )
     }
 
@@ -197,6 +191,36 @@ fun CatalogTab(
     if (audioToEdit != null) AudioBookEditDialog(audioBook = audioToEdit!!, onDismiss = { audioToEdit = null }, onSave = { viewModel.saveAudioBook(it); audioToEdit = null })
     if (courseToEdit != null) CourseEditDialog(course = courseToEdit!!, onDismiss = { courseToEdit = null }, onSave = { viewModel.saveCourse(it); courseToEdit = null })
     if (gearToEdit != null) GearEditDialog(gear = gearToEdit!!, onDismiss = { gearToEdit = null }, onSave = { viewModel.saveGear(it); gearToEdit = null })
+}
+
+@Composable
+private fun HeaderSection(title: String, subtitle: String, icon: ImageVector, modifier: Modifier = Modifier) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        Surface(
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.size(48.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+        Spacer(Modifier.width(16.dp))
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
 }
 
 @Composable

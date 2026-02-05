@@ -40,10 +40,10 @@ fun TutorLibraryTab(
     val books by viewModel.libraryBooks.collectAsState()
     val audioBooks by viewModel.libraryAudioBooks.collectAsState()
     val purchasedIds by viewModel.purchasedIds.collectAsState()
-    
+
     var searchQuery by remember { mutableStateOf("") }
     var selectedTab by remember { mutableIntStateOf(0) }
-    
+
     val scope = rememberCoroutineScope()
     var isRemovingFromLibrary by remember { mutableStateOf(false) }
     var itemToConfirmRemove by remember { mutableStateOf<Any?>(null) } // Can be Book or AudioBook
@@ -111,7 +111,7 @@ fun TutorLibraryTab(
                             imageUrl = ab.imageUrl,
                             isAudio = true,
                             onRemove = { itemToConfirmRemove = ab },
-                            onAction = { 
+                            onAction = {
                                 // Directly play audio when clicking from library
                                 onPlayAudio(ab.toBook())
                             }
@@ -119,7 +119,7 @@ fun TutorLibraryTab(
                     }
                 }
             }
-            
+
             item {
                 Column(
                     modifier = Modifier
@@ -135,7 +135,7 @@ fun TutorLibraryTab(
                     )
                     Spacer(Modifier.height(12.dp))
                     Button(
-                        onClick = { 
+                        onClick = {
                             if (selectedTab == 0) {
                                 viewModel.setSection(TutorSection.BOOKS)
                             } else {
@@ -154,7 +154,7 @@ fun TutorLibraryTab(
                     }
                 }
             }
-            
+
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
@@ -163,7 +163,7 @@ fun TutorLibraryTab(
     itemToConfirmRemove?.let { item ->
         val title = if (item is Book) item.title else (item as AudioBook).title
         val id = if (item is Book) item.id else (item as AudioBook).id
-        
+
         AppPopups.RemoveFromLibraryConfirmation(
             show = true,
             bookTitle = title,

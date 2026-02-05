@@ -26,13 +26,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
-import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.data.UserLocal
+import assignment1.krzysztofoko.s16001089.data.*
+import com.google.firebase.auth.FirebaseAuth
 import coil.compose.AsyncImage
+import kotlinx.coroutines.flow.flowOf
 import java.util.Locale
 import kotlin.math.abs
 
@@ -110,7 +112,6 @@ fun EnrolledCourseHeader(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
-            // Live indicator in top right corner
             if (isLive) {
                 val infiniteTransition = rememberInfiniteTransition(label = "live")
                 val alpha by infiniteTransition.animateFloat(
@@ -203,6 +204,23 @@ fun HomeBookItem(
     onInvoiceClick: () -> Unit,
     onRemoveClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
+    val roleDiscounts by db.userDao().getAllRoleDiscounts().collectAsState(initial = emptyList<RoleDiscount>())
+    val userFlow = if (isLoggedIn && !FirebaseAuth.getInstance().currentUser?.uid.isNullOrEmpty()) {
+        db.userDao().getUserFlow(FirebaseAuth.getInstance().currentUser!!.uid)
+    } else {
+        flowOf(null)
+    }
+    val localUser by userFlow.collectAsState(initial = null)
+
+    val effectiveDiscount = remember(localUser, roleDiscounts) {
+        val uRole = localUser?.role ?: "user"
+        val roleRate = roleDiscounts.find { it.role == uRole }?.discountPercent ?: 0.0
+        val individualRate = localUser?.discountPercent ?: 0.0
+        maxOf(roleRate, individualRate)
+    }
+
     BookItemCard(
         book = book,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -230,7 +248,7 @@ fun HomeBookItem(
             }
         },
         bottomContent = {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (isPendingReview) {
                     Surface(
@@ -254,7 +272,7 @@ fun HomeBookItem(
                         isLoggedIn = isLoggedIn
                     )
                 } else {
-                    HomePriceLabel(book = book, isLoggedIn = isLoggedIn, userRole = userRole)
+                    HomePriceLabel(book = book, effectiveDiscount = effectiveDiscount, userRole = localUser?.role)
                 }
             }
         }
@@ -273,17 +291,17 @@ private fun HomePurchasedLabel(
         
         if (book.price > 0) {
             Surface(
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
                 shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
             ) {
                 Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         if (book.mainCategory == AppConstants.CAT_COURSES) Icons.Default.School else Icons.AutoMirrored.Filled.ReceiptLong, 
-                        null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary
+                        null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text(text = label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                    Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                 }
             }
             Spacer(Modifier.width(8.dp))
@@ -292,17 +310,17 @@ private fun HomePurchasedLabel(
             }
         } else {
             Surface(
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
                 shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
             ) {
                 Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         if (book.mainCategory == AppConstants.CAT_COURSES) Icons.Default.School else Icons.Default.LibraryAddCheck, 
-                        null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary
+                        null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text(text = label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                    Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                 }
             }
             if (book.mainCategory != AppConstants.CAT_GEAR) {
@@ -316,32 +334,49 @@ private fun HomePurchasedLabel(
 }
 
 @Composable
-private fun HomePriceLabel(book: Book, isLoggedIn: Boolean, userRole: String?) {
-    val isStudent = userRole?.equals("student", ignoreCase = true) == true
-    
+private fun HomePriceLabel(book: Book, effectiveDiscount: Double, userRole: String?) {
     if (book.price == 0.0) {
-        Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = Color(0xFF4CAF50))
-    } else if (isLoggedIn && isStudent) {
-        val discountPrice = "£" + String.format(Locale.US, "%.2f", book.price * 0.9)
-        Text(
-            text = "£" + String.format(Locale.US, "%.2f", book.price),
-            style = MaterialTheme.typography.bodyMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough),
-            color = Color.Gray
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) {
-            Text(
-                text = discountPrice,
-                style = MaterialTheme.typography.titleMedium,
-                color = Color(0xFF2E7D32),
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-            )
+        Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = Color(0xFF4CAF50))
+    } else if (effectiveDiscount > 0) {
+        val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
+        val discountPrice = "£" + String.format(Locale.US, "%.2f", book.price * discountMultiplier)
+        
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "£" + String.format(Locale.US, "%.2f", book.price),
+                    style = MaterialTheme.typography.bodySmall.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough),
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = discountPrice,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color(0xFF2E7D32),
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Surface(
+                color = Color(0xFFE8F5E9), 
+                shape = RoundedCornerShape(6.dp),
+                border = BorderStroke(0.5.dp, Color(0xFF2E7D32).copy(alpha = 0.3f))
+            ) {
+                val roleLabel = userRole?.uppercase() ?: "USER"
+                Text(
+                    text = "$roleLabel DISCOUNT (-${effectiveDiscount.toInt()}%)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF2E7D32),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    letterSpacing = 0.5.sp
+                )
+            }
         }
     } else {
         Text(
             text = "£" + String.format(Locale.US, "%.2f", book.price),
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -384,7 +419,7 @@ fun PromotionBanner(onRegisterClick: () -> Unit) {
         Box(modifier = Modifier.background(Brush.linearGradient(colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary))).padding(24.dp)) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(AppConstants.APP_NAME, style = MaterialTheme.typography.headlineSmall, color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Exclusive 10% student discount applied for enrolled students.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f))
+                Text("Enrol now to unlock exclusive group-wide discounts across our entire catalog.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f))
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(onClick = onRegisterClick, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = MaterialTheme.colorScheme.primary), shape = RoundedCornerShape(12.dp)) { Text("Get Started", fontWeight = FontWeight.Bold) }
             }
@@ -395,7 +430,17 @@ fun PromotionBanner(onRegisterClick: () -> Unit) {
 @Composable
 fun MemberWelcomeBanner(user: UserLocal?) {
     val role = user?.role ?: "user"
-    val isStudent = role.equals("student", ignoreCase = true)
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
+    val roleDiscounts by db.userDao().getAllRoleDiscounts().collectAsState(initial = emptyList<RoleDiscount>())
+    
+    val effectiveDiscount = remember(user, roleDiscounts) {
+        val userRole = user?.role ?: "user"
+        val roleRate = roleDiscounts.find { it.role == userRole }?.discountPercent ?: 0.0
+        val individualRate = user?.discountPercent ?: 0.0
+        maxOf(roleRate, individualRate)
+    }
+
     val displayRole = role.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
     
     val displayName = buildString {
@@ -417,8 +462,8 @@ fun MemberWelcomeBanner(user: UserLocal?) {
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(text = "Welcome, $displayName", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                if (isStudent) {
-                    Text(text = "10% discount activated! Enjoy your perks ✨", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                if (effectiveDiscount > 0) {
+                    Text(text = "${effectiveDiscount.toInt()}% $displayRole discount activated! Enjoy your perks ✨", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
                 } else {
                     Text(text = "Logged in as $displayRole. Access your management dashboard!", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
                 }

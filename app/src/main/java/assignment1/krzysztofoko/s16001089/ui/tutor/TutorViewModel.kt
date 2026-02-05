@@ -30,7 +30,8 @@ enum class TutorSection {
     TEACHER_DETAIL,
     CREATE_ASSIGNMENT,
     START_LIVE_STREAM,
-    STUDENT_PROFILE
+    STUDENT_PROFILE,
+    ABOUT
 }
 
 data class ConversationPreview(
@@ -400,6 +401,37 @@ class TutorViewModel(
         }
     }
 
+    fun sendMessage(text: String) {
+        val student = _selectedStudent.value ?: return
+        if (text.isBlank()) return
+
+        viewModelScope.launch {
+            val messageId = UUID.randomUUID().toString()
+            val message = ClassroomMessage(
+                id = messageId,
+                courseId = "GENERAL",
+                senderId = tutorId,
+                receiverId = student.id,
+                message = text,
+                timestamp = System.currentTimeMillis()
+            )
+            classroomDao.sendMessage(message)
+            
+            // Notify Student
+            userDao.addNotification(NotificationLocal(
+                id = UUID.randomUUID().toString(),
+                userId = student.id,
+                productId = "MESSAGE",
+                title = "New Message from Tutor",
+                message = "You have a new message from your tutor: \"${text.take(30)}${if (text.length > 30) "..." else ""}\"",
+                timestamp = System.currentTimeMillis(),
+                type = "MESSAGE"
+            ))
+
+            addLog("SEND_MESSAGE", student.id, "Sent message to ${student.name}")
+        }
+    }
+
     fun removeFromLibrary(productId: String) {
         viewModelScope.launch {
             userDao.deletePurchase(tutorId, productId)
@@ -471,37 +503,6 @@ class TutorViewModel(
                 }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    fun sendMessage(text: String) {
-        val student = _selectedStudent.value ?: return
-        if (text.isBlank()) return
-
-        viewModelScope.launch {
-            val messageId = UUID.randomUUID().toString()
-            val message = ClassroomMessage(
-                id = messageId,
-                courseId = "GENERAL",
-                senderId = tutorId,
-                receiverId = student.id,
-                message = text,
-                timestamp = System.currentTimeMillis()
-            )
-            classroomDao.sendMessage(message)
-            
-            // Notify Student
-            userDao.addNotification(NotificationLocal(
-                id = UUID.randomUUID().toString(),
-                userId = student.id,
-                productId = "MESSAGE",
-                title = "New Message from Tutor",
-                message = "You have a new message from your tutor: \"${text.take(30)}${if (text.length > 30) "..." else ""}\"",
-                timestamp = System.currentTimeMillis(),
-                type = "MESSAGE"
-            ))
-
-            addLog("SEND_MESSAGE", student.id, "Sent message to ${student.name}")
-        }
-    }
 
     private fun addLog(action: String, targetId: String, details: String) {
         viewModelScope.launch {

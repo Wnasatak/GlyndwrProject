@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -65,7 +66,6 @@ fun TutorDetailScreen(
                         append(tutorProfile?.title)
                         append(" ")
                     }
-                    // Fix: Prioritize userLocal name for identity consistency
                     append(userLocal?.name ?: tutorProfile?.name ?: "Senior Tutor")
                 }
                 
@@ -77,7 +77,8 @@ fun TutorDetailScreen(
                 Text(
                     text = if (isEditing) "Editing Professional Profile" else (tutorProfile?.department ?: "Faculty"),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
                 )
                 
                 Spacer(Modifier.height(16.dp))
@@ -90,7 +91,7 @@ fun TutorDetailScreen(
                     ) {
                         Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Edit Professional Details")
+                        Text("Edit Professional Details", fontWeight = FontWeight.Bold)
                     }
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -118,37 +119,44 @@ fun TutorDetailScreen(
 
         if (isEditing) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("About You", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    OutlinedTextField(
-                        value = editTitle,
-                        onValueChange = { editTitle = it },
-                        label = { Text("Title (e.g. Prof, Dr)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    OutlinedTextField(
-                        value = editDept,
-                        onValueChange = { editDept = it },
-                        label = { Text("Department") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    OutlinedTextField(
-                        value = editHours,
-                        onValueChange = { editHours = it },
-                        label = { Text("Office Hours") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    OutlinedTextField(
-                        value = editBio,
-                        onValueChange = { editBio = it },
-                        label = { Text("Biography") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3,
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                ) {
+                    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text("About You", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                        OutlinedTextField(
+                            value = editTitle,
+                            onValueChange = { editTitle = it },
+                            label = { Text("Title (e.g. Prof, Dr)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        OutlinedTextField(
+                            value = editDept,
+                            onValueChange = { editDept = it },
+                            label = { Text("Department") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        OutlinedTextField(
+                            value = editHours,
+                            onValueChange = { editHours = it },
+                            label = { Text("Office Hours") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        OutlinedTextField(
+                            value = editBio,
+                            onValueChange = { editBio = it },
+                            label = { Text("Biography") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
                 }
             }
         } else {
@@ -186,10 +194,9 @@ fun TutorDetailScreen(
                     Text(
                         text = "Assigned Classes",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Black
                     )
                     
-                    // Small inline manage button
                     IconButton(
                         onClick = { showAssignmentDialog = true },
                         modifier = Modifier.size(32.dp)
@@ -206,28 +213,40 @@ fun TutorDetailScreen(
 
             if (assignedCourses.isEmpty()) {
                 item {
+                    @Suppress("DEPRECATION")
                     Text(
                         "No courses assigned yet. Use the plus button above to link classes.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = Color.Gray,
+                        modifier = Modifier.padding(horizontal = 4.dp)
                     )
                 }
             } else {
                 items(assignedCourses) { course ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(12.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                shape = CircleShape,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            @Suppress("DEPRECATION")
                             Text(
                                 text = course.title, 
-                                fontWeight = FontWeight.Medium, 
+                                fontWeight = FontWeight.Bold, 
                                 style = MaterialTheme.typography.bodyMedium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -268,7 +287,7 @@ fun CourseAssignmentDialog(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.surface
         ) {
-            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -307,14 +326,17 @@ fun CourseAssignmentDialog(
                                 containerColor = if (isAssigned) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
                                                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                             ),
-                            border = if (isAssigned) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+                            border = if (isAssigned) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) 
+                                     else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                         ) {
                             Row(
                                 modifier = Modifier.padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
+                                    @Suppress("DEPRECATION")
                                     Text(course.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                    @Suppress("DEPRECATION")
                                     Text(course.department, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                 }
                                 if (isAssigned) {
@@ -329,10 +351,11 @@ fun CourseAssignmentDialog(
                 
                 Button(
                     onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(56.dp),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("Done")
+                    @Suppress("DEPRECATION")
+                    Text("Done", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -343,20 +366,32 @@ fun CourseAssignmentDialog(
 fun TutorInfoCard(icon: ImageVector, title: String, content: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    shape = CircleShape,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                @Suppress("DEPRECATION")
+                Text(title, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
+            @Suppress("DEPRECATION")
             Text(
                 text = content,
                 style = MaterialTheme.typography.bodyMedium,
-                lineHeight = 20.sp,
+                lineHeight = 22.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -367,14 +402,26 @@ fun TutorInfoCard(icon: ImageVector, title: String, content: String) {
 fun TutorMiniInfoCard(modifier: Modifier, icon: ImageVector, label: String, value: String) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.height(4.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                shape = CircleShape,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            @Suppress("DEPRECATION")
+            Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+            @Suppress("DEPRECATION")
+            Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

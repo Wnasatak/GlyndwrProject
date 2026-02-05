@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -79,6 +80,7 @@ fun EnrollmentStatusBadge(status: String, modifier: Modifier = Modifier) {
         "PENDING_REVIEW" -> Triple(Color(0xFFFBC02D), "PENDING", Icons.Default.PendingActions)
         "APPROVED" -> Triple(Color(0xFF4CAF50), "APPROVED", Icons.Default.CheckCircle)
         "REJECTED" -> Triple(Color(0xFFF44336), "DECLINED", Icons.Default.Error)
+        "ENROLLED" -> Triple(Color(0xFF673AB7), "ENROLLED", Icons.Default.School)
         else -> Triple(Color.Gray, status, Icons.Default.PendingActions)
     }
     

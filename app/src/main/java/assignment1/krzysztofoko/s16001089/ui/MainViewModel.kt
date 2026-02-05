@@ -116,14 +116,14 @@ class MainViewModel(
 
     /**
      * Refreshes the application catalog.
-     * Seeds the database if empty and collects combined data from all DAOs.
+     * Uses existing database data only.
      */
     fun refreshData() {
         viewModelScope.launch(Dispatchers.IO) {
             _isDataLoading.value = true
             _loadError.value = null
             try {
-                seedDatabase(db) // Ensures default content exists in the local DB
+                // Seeding is disabled - only using existing database content
                 repository.getAllCombinedData().collect { combined ->
                     _allBooks.value = combined ?: emptyList()
                     _isDataLoading.value = false

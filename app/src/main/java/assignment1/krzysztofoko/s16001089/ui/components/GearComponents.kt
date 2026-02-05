@@ -284,12 +284,11 @@ fun GearBottomActionBar(
             }
         } else if (stockCount > 0) {
             if (price > 0) {
-                val finalPrice = (price * 0.9) * quantity
                 Button(onClick = onCheckout, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.ShoppingCart, null)
                         Spacer(Modifier.width(12.dp))
-                        Text("Checkout • £${String.format(Locale.US, "%.2f", finalPrice)}", fontWeight = FontWeight.Bold)
+                        Text("Checkout • £${String.format(Locale.US, "%.2f", price)}", fontWeight = FontWeight.Bold)
                     }
                 }
             } else {

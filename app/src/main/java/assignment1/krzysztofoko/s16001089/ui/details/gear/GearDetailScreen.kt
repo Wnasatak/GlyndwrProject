@@ -66,9 +66,18 @@ fun GearDetailScreen(
     val selectedImageIndex by viewModel.selectedImageIndex.collectAsState()
     
     val localUser by viewModel.localUser.collectAsState()
+    val roleDiscounts by viewModel.roleDiscounts.collectAsState()
     val isOwned by viewModel.isOwned.collectAsState()
     val orderConfirmation by viewModel.orderConfirmation.collectAsState()
     val allReviews by viewModel.allReviews.collectAsState()
+
+    // Dynamic Discount Calculation
+    val effectiveDiscount = remember(localUser, roleDiscounts) {
+        val userRole = localUser?.role ?: "user"
+        val roleRate = roleDiscounts.find { it.role == userRole }?.discountPercent ?: 0.0
+        val individualRate = localUser?.discountPercent ?: 0.0
+        maxOf(roleRate, individualRate)
+    }
 
     var showPickupPopup by remember { mutableStateOf(false) }
     var showOrderFlow by remember { mutableStateOf(false) }
@@ -133,13 +142,30 @@ fun GearDetailScreen(
                                             Text(text = currentGear.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
                                         }
                                         
-                                        val isStudent = localUser?.role == "student"
                                         Column(horizontalAlignment = Alignment.End) {
-                                            if (isStudent && currentGear.price > 0) {
-                                                Text(text = "£${String.format(Locale.US, "%.2f", currentGear.price)}", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
-                                                Text(text = "£${String.format(Locale.US, "%.2f", currentGear.price * 0.9)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                            if (currentGear.price > 0) {
+                                                val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
+                                                val discountedPrice = currentGear.price * discountMultiplier
+                                                
+                                                if (effectiveDiscount > 0) {
+                                                    Text(text = "£${String.format(Locale.US, "%.2f", currentGear.price)}", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
+                                                    Text(text = "£${String.format(Locale.US, "%.2f", discountedPrice)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                                    
+                                                    val roleName = localUser?.role?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "User"
+                                                    Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp), modifier = Modifier.padding(top = 4.dp)) { 
+                                                        Text(
+                                                            text = "${roleName.uppercase()} DISCOUNT (-${effectiveDiscount.toInt()}%)", 
+                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), 
+                                                            color = Color(0xFF2E7D32), 
+                                                            fontWeight = FontWeight.Bold, 
+                                                            fontSize = 10.sp
+                                                        ) 
+                                                    }
+                                                } else {
+                                                    Text(text = "£${String.format(Locale.US, "%.2f", currentGear.price)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                                                }
                                             } else {
-                                                Text(text = if (currentGear.price > 0) "£${String.format(Locale.US, "%.2f", currentGear.price)}" else "FREE", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = if (currentGear.price > 0) MaterialTheme.colorScheme.onSurface else Color(0xFF4CAF50))
+                                                Text(text = "FREE", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50))
                                             }
                                         }
                                     }
@@ -195,9 +221,11 @@ fun GearDetailScreen(
         if (gear != null && !loading) {
             val currentGear = gear!!
             Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
+                val unitPrice = currentGear.price * discountMultiplier
                 GearBottomActionBar(
                     isOwned = isOwned,
-                    price = if (localUser?.role == "student") currentGear.price * 0.9 else currentGear.price,
+                    price = unitPrice * quantity,
                     stockCount = currentGear.stockCount,
                     quantity = quantity,
                     isLoggedIn = user != null,
@@ -215,6 +243,7 @@ fun GearDetailScreen(
                 show = showOrderFlow,
                 book = gear!!.toBook(),
                 user = localUser,
+                roleDiscounts = roleDiscounts,
                 onDismiss = { showOrderFlow = false },
                 onEditProfile = { showOrderFlow = false; onNavigateToProfile() },
                 onComplete = { finalPrice, orderRef -> 

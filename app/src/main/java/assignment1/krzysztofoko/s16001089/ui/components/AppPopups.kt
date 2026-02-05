@@ -2,6 +2,7 @@ package assignment1.krzysztofoko.s16001089.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -13,12 +14,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -28,17 +31,16 @@ import androidx.compose.ui.window.DialogProperties
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.UserLocal
+import assignment1.krzysztofoko.s16001089.data.RoleDiscount
+import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
+import java.util.*
 
 /**
  * Centralized Popup Controller.
- * Fully aligned with AppConstants.kt definitions.
  */
 object AppPopups {
 
-    /**
-     * Confirmation dialog for adding a free item with custom templates.
-     */
     @Composable
     fun AddToLibraryConfirmation(
         show: Boolean,
@@ -94,9 +96,6 @@ object AppPopups {
         )
     }
 
-    /**
-     * Animated loading popup shown while adding an item to the library.
-     */
     @Composable
     fun AddingToLibraryLoading(show: Boolean, category: String, isAudioBook: Boolean = false) {
         if (!show) return
@@ -128,9 +127,6 @@ object AppPopups {
         }
     }
 
-    /**
-     * Animated loading popup shown while removing an item from the library.
-     */
     @Composable
     fun RemovingFromLibraryLoading(show: Boolean) {
         if (!show) return
@@ -150,9 +146,6 @@ object AppPopups {
         }
     }
 
-    /**
-     * Generic authentication loading popup used for Google Sign-In and 2FA triggers.
-     */
     @Composable
     fun AuthLoading(show: Boolean, message: String = "Securing your session...") {
         if (!show) return
@@ -207,7 +200,7 @@ object AppPopups {
     @Composable
     fun AuthSuccess(show: Boolean, isDarkTheme: Boolean, onDismiss: () -> Unit) {
         if (show) {
-            val totalTime = 10000 // 10 seconds in ms
+            val totalTime = 10000 
             var timeLeftMs by remember { mutableIntStateOf(totalTime) }
             
             LaunchedEffect(Unit) {
@@ -223,7 +216,6 @@ object AppPopups {
             Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-                        // Dynamic Animated Background
                         HorizontalWavyBackground(
                             isDarkTheme = isDarkTheme,
                             wave1HeightFactor = 0.3f,
@@ -237,7 +229,6 @@ object AppPopups {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            // Circular Countdown Visual
                             Box(contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator(
                                     progress = { timeLeftMs.toFloat() / totalTime.toFloat() },
@@ -329,8 +320,8 @@ object AppPopups {
     }
 
     @Composable
-    fun OrderPurchase(show: Boolean, book: Book?, user: UserLocal?, onDismiss: () -> Unit, onEditProfile: () -> Unit, onComplete: (Double, String) -> Unit) {
-        if (show && book != null) { OrderFlowDialog(book = book, user = user, onDismiss = onDismiss, onEditProfile = onEditProfile, onComplete = onComplete) }
+    fun OrderPurchase(show: Boolean, book: Book?, user: UserLocal?, roleDiscounts: List<RoleDiscount> = emptyList(), onDismiss: () -> Unit, onEditProfile: () -> Unit, onComplete: (Double, String) -> Unit) {
+        if (show && book != null) { OrderFlowDialog(book = book, user = user, roleDiscounts = roleDiscounts, onDismiss = onDismiss, onEditProfile = onEditProfile, onComplete = onComplete) }
     }
 
     @Composable
@@ -366,5 +357,52 @@ object AppPopups {
     @Composable
     fun SaveReviewChangesConfirmation(show: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {
         if (show) { AlertDialog(onDismissRequest = onDismiss, title = { Text(AppConstants.TITLE_SAVE_CHANGES, fontWeight = FontWeight.Bold) }, text = { Text(AppConstants.MSG_SAVE_CHANGES_DESC) }, confirmButton = { Button(onClick = onConfirm) { Text(AppConstants.BTN_SAVE, fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = onDismiss) { Text(AppConstants.BTN_DISCARD) } }) }
+    }
+
+    @Composable
+    fun AppInfoDialog(show: Boolean, onDismiss: () -> Unit) {
+        if (!show) return
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            icon = { 
+                Surface(
+                    modifier = Modifier.size(64.dp),
+                    shape = CircleShape,
+                    color = Color.White,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                ) {
+                    AsyncImage(
+                        model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
+                        contentDescription = "App Logo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            },
+            title = { Text("Wrexham University Portal", fontWeight = FontWeight.Black) },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Text("Version 1.0.0 (Stable)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "This integrated academic ecosystem provides a seamless experience for students and tutors at Wrexham University. Developed as a part of the Mobile App Development module.",
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Developer: Krzysztof Oko (S16001089)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = onDismiss, shape = RoundedCornerShape(12.dp)) {
+                    Text("Close")
+                }
+            },
+            shape = RoundedCornerShape(28.dp)
+        )
     }
 }

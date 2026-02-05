@@ -50,6 +50,7 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.components.Catalog.TutorAudio
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.CreateAssignmentScreen
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Students.TutorStudentProfileScreen
+import assignment1.krzysztofoko.s16001089.ui.info.AboutScreen
 import com.google.firebase.auth.FirebaseAuth
 import coil.compose.AsyncImage
 
@@ -64,6 +65,8 @@ fun TutorPanelScreen(
     onNavigateToStore: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onLogout: () -> Unit,
+    onNavigateToDeveloper: () -> Unit,
+    onNavigateToInstruction: () -> Unit,
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit,
     onPlayAudio: (Book) -> Unit,
@@ -87,14 +90,14 @@ fun TutorPanelScreen(
     var showMenu by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (!isReaderOpen) {
+        if (!isReaderOpen && currentSection != TutorSection.ABOUT) {
             HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         }
 
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                if (!isReaderOpen && currentSection != TutorSection.LISTEN_AUDIOBOOK) {
+                if (!isReaderOpen && currentSection != TutorSection.LISTEN_AUDIOBOOK && currentSection != TutorSection.ABOUT) {
                     TopAppBar(
                         windowInsets = WindowInsets(0, 0, 0, 0),
                         title = { 
@@ -315,6 +318,14 @@ fun TutorPanelScreen(
                                             },
                                             leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
                                         )
+                                        DropdownMenuItem(
+                                            text = { Text("App Info") },
+                                            onClick = {
+                                                showMenu = false
+                                                viewModel.setSection(TutorSection.ABOUT)
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.Info, null) }
+                                        )
                                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                         DropdownMenuItem(
                                             text = { Text(AppConstants.BTN_LOG_OUT, color = MaterialTheme.colorScheme.error) },
@@ -346,7 +357,8 @@ fun TutorPanelScreen(
                         currentSection == TutorSection.TEACHER_DETAIL ||
                         currentSection == TutorSection.CREATE_ASSIGNMENT ||
                         currentSection == TutorSection.START_LIVE_STREAM ||
-                        currentSection == TutorSection.STUDENT_PROFILE
+                        currentSection == TutorSection.STUDENT_PROFILE ||
+                        currentSection == TutorSection.ABOUT
                 
                 if (!hideBottomBar) {
                     NavigationBar(
@@ -399,7 +411,7 @@ fun TutorPanelScreen(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(bottom = if (isChatOpen) 0.dp else bottomPadding)
+                        .padding(bottom = if (isChatOpen || currentSection == TutorSection.ABOUT) 0.dp else bottomPadding)
                 ) {
                     AnimatedContent(
                         targetState = currentSection,
@@ -425,6 +437,15 @@ fun TutorPanelScreen(
                             TutorSection.CREATE_ASSIGNMENT -> CreateAssignmentScreen(viewModel)
                             TutorSection.START_LIVE_STREAM -> TutorCourseLiveTab(viewModel)
                             TutorSection.STUDENT_PROFILE -> TutorStudentProfileScreen(viewModel)
+                            TutorSection.ABOUT -> {
+                                AboutScreen(
+                                    onBack = { viewModel.setSection(TutorSection.DASHBOARD) },
+                                    onDeveloperClick = onNavigateToDeveloper,
+                                    onInstructionClick = onNavigateToInstruction,
+                                    isDarkTheme = isDarkTheme,
+                                    onToggleTheme = onToggleTheme
+                                )
+                            }
                             TutorSection.READ_BOOK -> {
                                 activeBook?.let { book ->
                                     PdfReaderScreen(

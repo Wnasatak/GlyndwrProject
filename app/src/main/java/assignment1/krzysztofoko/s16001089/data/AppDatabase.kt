@@ -16,9 +16,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         Assignment::class, AssignmentSubmission::class, Grade::class, LiveSession::class, 
         ClassroomMessage::class, TutorProfile::class, WalletTransaction::class,
         CourseEnrollmentDetails::class, SystemLog::class, AssignedCourse::class,
-        Attendance::class
+        Attendance::class, RoleDiscount::class
     ], 
-    version = 26, 
+    version = 27, 
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,9 +35,15 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        private val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `global_discounts` (`role` TEXT NOT NULL, `discountPercent` REAL NOT NULL, PRIMARY KEY(`role`))")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN discountPercent REAL NOT NULL DEFAULT 0.0")
+            }
+        }
+
         private val MIGRATION_25_26 = object : Migration(25, 26) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Update live_sessions table with new columns
                 db.execSQL("ALTER TABLE live_sessions ADD COLUMN moduleId TEXT NOT NULL DEFAULT ''")
                 db.execSQL("ALTER TABLE live_sessions ADD COLUMN assignmentId TEXT DEFAULT NULL")
                 db.execSQL("ALTER TABLE live_sessions ADD COLUMN title TEXT NOT NULL DEFAULT 'Live Broadcast'")
@@ -112,7 +118,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
                     MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
                     MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
-                    MIGRATION_25_26
+                    MIGRATION_25_26, MIGRATION_26_27
                 )
                 .fallbackToDestructiveMigration()
                 .build()

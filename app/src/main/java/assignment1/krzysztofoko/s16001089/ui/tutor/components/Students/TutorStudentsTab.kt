@@ -1,6 +1,7 @@
 package assignment1.krzysztofoko.s16001089.ui.tutor.components.Students
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
-import assignment1.krzysztofoko.s16001089.ui.tutor.components.Messages.RoleTag
+import assignment1.krzysztofoko.s16001089.ui.messages.RoleTag
 import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,12 +80,15 @@ fun TutorStudentsTab(
                 )
             },
             leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp)) },
-            shape = MaterialTheme.shapes.medium,
+            shape = RoundedCornerShape(12.dp),
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+            )
         )
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (myResults.isNotEmpty()) {
                 item {
                     SectionHeader(
@@ -171,7 +175,10 @@ fun StudentItemCard(
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable { viewModel.setSection(TutorSection.STUDENT_PROFILE, student) },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -189,6 +196,7 @@ fun StudentItemCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (!student.title.isNullOrEmpty()) {
+                        @Suppress("DEPRECATION")
                         Text(
                             text = student.title,
                             style = MaterialTheme.typography.labelSmall,
@@ -201,6 +209,7 @@ fun StudentItemCard(
                     RoleTag(student.role)
                 }
 
+                @Suppress("DEPRECATION")
                 Text(
                     text = student.name,
                     fontWeight = FontWeight.Black,
@@ -209,6 +218,7 @@ fun StudentItemCard(
                     overflow = TextOverflow.Ellipsis
                 )
 
+                @Suppress("DEPRECATION")
                 Text(student.email, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
 
                 if (displayCourses.isNotEmpty()) {

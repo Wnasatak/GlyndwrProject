@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -99,7 +100,10 @@ fun TutorCourseAssignmentsTab(
                                 text = modules.find { it.id == selectedModuleId }?.title ?: "Assignments",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
                             )
                         }
                         
@@ -313,9 +317,10 @@ fun AssignmentCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top // Changed to Top to prevent vertical squeeze
             ) {
                 Surface(
+                    modifier = Modifier.weight(1f, fill = false),
                     color = (module?.title?.let { Color(0xFF673AB7) } ?: MaterialTheme.colorScheme.secondary).copy(alpha = 0.1f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
@@ -334,20 +339,27 @@ fun AssignmentCard(
                             text = module?.title?.uppercase() ?: "GENERAL",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Black,
-                            color = (module?.title?.let { Color(0xFF673AB7) } ?: MaterialTheme.colorScheme.secondary)
+                            color = (module?.title?.let { Color(0xFF673AB7) } ?: MaterialTheme.colorScheme.secondary),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
                 
+                Spacer(Modifier.width(12.dp))
+
                 Text(
                     text = timeLeft,
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    fontWeight = FontWeight.Black, // Increased weight for visibility
+                    color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp)) // Increased spacing before title
             
             Text(
                 text = assignment.title,
@@ -356,7 +368,7 @@ fun AssignmentCard(
                 color = MaterialTheme.colorScheme.onSurface
             )
             
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp)) // Increased spacing after title
             
             Text(
                 text = assignment.description,

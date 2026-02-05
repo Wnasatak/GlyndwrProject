@@ -17,7 +17,8 @@ class AdminViewModel(
     private val bookDao: BookDao,
     private val audioBookDao: AudioBookDao,
     private val gearDao: GearDao,
-    private val auditDao: AuditDao
+    private val auditDao: AuditDao,
+    private val classroomDao: ClassroomDao
 ) : ViewModel() {
 
     private val auth = FirebaseAuth.getInstance()
@@ -44,6 +45,10 @@ class AdminViewModel(
 
     // --- User Management ---
     val allUsers: StateFlow<List<UserLocal>> = userDao.getAllUsersFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // --- Discounts ---
+    val roleDiscounts: StateFlow<List<RoleDiscount>> = userDao.getAllRoleDiscounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- Catalog Management ---
@@ -120,6 +125,13 @@ class AdminViewModel(
         }
     }
 
+    fun saveRoleDiscount(role: String, discount: Double) {
+        viewModelScope.launch {
+            userDao.upsertRoleDiscount(RoleDiscount(role, discount))
+            addLog("DISCOUNT_UPDATED", role, "Set $role discount to $discount%", "ADMIN")
+        }
+    }
+
     // --- Actions: Catalog Management ---
     fun saveBook(book: Book) {
         viewModelScope.launch { 
@@ -185,6 +197,42 @@ class AdminViewModel(
         }
     }
 
+    // --- Actions: Modules ---
+    fun getModulesForCourse(courseId: String): Flow<List<ModuleContent>> = 
+        classroomDao.getModulesForCourse(courseId)
+
+    fun saveModule(module: ModuleContent) {
+        viewModelScope.launch {
+            classroomDao.upsertModule(module)
+            addLog("MODULE_SAVED", module.id, "Saved module: ${module.title} for course ${module.courseId}", "ADMIN")
+        }
+    }
+
+    fun deleteModule(moduleId: String) {
+        viewModelScope.launch {
+            classroomDao.deleteModule(moduleId)
+            addLog("MODULE_DELETED", moduleId, "Deleted module from course", "ADMIN")
+        }
+    }
+
+    // --- Actions: Tasks (Assignments) ---
+    fun getAssignmentsForModule(moduleId: String): Flow<List<Assignment>> =
+        classroomDao.getAssignmentsForModule(moduleId)
+
+    fun saveAssignment(assignment: Assignment) {
+        viewModelScope.launch {
+            classroomDao.upsertAssignment(assignment)
+            addLog("TASK_SAVED", assignment.id, "Saved task: ${assignment.title}", "ADMIN")
+        }
+    }
+
+    fun deleteAssignment(assignmentId: String) {
+        viewModelScope.launch {
+            classroomDao.deleteAssignment(assignmentId)
+            addLog("TASK_DELETED", assignmentId, "Deleted task", "ADMIN")
+        }
+    }
+
     // --- Actions: Broadcast ---
     fun sendBroadcast(title: String, message: String) {
         viewModelScope.launch {
@@ -227,7 +275,8 @@ class AdminViewModelFactory(
             db.bookDao(),
             db.audioBookDao(),
             db.gearDao(),
-            db.auditDao()
+            db.auditDao(),
+            db.classroomDao()
         ) as T
     }
 }

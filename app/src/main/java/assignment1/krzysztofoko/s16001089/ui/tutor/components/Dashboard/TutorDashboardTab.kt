@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -89,7 +90,7 @@ fun TutorDashboardTab(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
             ) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     // Profile Button in top right
@@ -560,12 +561,13 @@ fun TutorResourceItem(
         modifier = Modifier
             .width(140.dp)
             .clickable { onItemClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Column {
-            Box(modifier = Modifier.height(160.dp).fillMaxWidth().clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))) {
+            Box(modifier = Modifier.height(160.dp).fillMaxWidth().clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))) {
                 if (imageUrl.isNotEmpty()) {
                     AsyncImage(
                         model = formatAssetUrl(imageUrl),
@@ -620,7 +622,7 @@ fun TutorResourceItem(
                         onClick = onAddClick,
                         modifier = Modifier.fillMaxWidth().height(28.dp),
                         contentPadding = PaddingValues(0.dp),
-                        shape = RoundedCornerShape(6.dp)
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Text("Add to Library", fontSize = 10.sp, fontWeight = FontWeight.Black)
                     }
@@ -635,17 +637,17 @@ fun TutorResourceItem(
                             enabled = false,
                             modifier = Modifier.weight(1f).height(28.dp),
                             contentPadding = PaddingValues(0.dp),
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(8.dp),
                             border = BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = 0.5f))
                         ) {
-                            Text("In Library", fontSize = 10.sp, color = Color(0xFF4CAF50))
+                            Text("In Library", fontSize = 10.sp, color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
                         }
                         
                         Box(
                             modifier = Modifier
                                 .size(28.dp)
-                                .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
-                                .border(0.5.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                .border(0.5.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                                 .clickable { onRemoveClick() },
                             contentAlignment = Alignment.Center
                         ) {
@@ -676,8 +678,9 @@ fun TutorStatCard(
         modifier = modifier.height(110.dp),
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Column(
             modifier = Modifier
@@ -704,9 +707,10 @@ fun TutorActionCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -722,10 +726,11 @@ fun TutorActionCard(
                 }
             }
             Spacer(Modifier.width(16.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(text = title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
                 Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
+            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray.copy(alpha = 0.5f))
         }
     }
 }

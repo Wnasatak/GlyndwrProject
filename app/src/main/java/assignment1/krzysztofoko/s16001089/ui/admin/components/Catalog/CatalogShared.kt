@@ -4,8 +4,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,12 +33,13 @@ fun CatalogItemCard(
     icon: ImageVector,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    isDarkTheme: Boolean
+    isDarkTheme: Boolean,
+    onClick: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() },
+            .clickable { onClick?.invoke() ?: onEdit() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isDarkTheme) MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)

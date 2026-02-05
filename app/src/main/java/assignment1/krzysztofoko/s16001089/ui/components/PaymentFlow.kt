@@ -39,6 +39,7 @@ import java.util.*
 fun OrderFlowDialog(
     book: Book,
     user: UserLocal?,
+    roleDiscounts: List<RoleDiscount> = emptyList(),
     onDismiss: () -> Unit,
     onEditProfile: () -> Unit,
     onComplete: (Double, String) -> Unit
@@ -48,11 +49,19 @@ fun OrderFlowDialog(
     var fullName by remember { mutableStateOf(user?.name ?: "") }
     var isProcessing by remember { mutableStateOf(false) }
     
+    // Dynamic Discount Logic
+    val effectiveDiscount = remember(user, roleDiscounts) {
+        val userRole = user?.role ?: "user"
+        val roleRate = roleDiscounts.find { it.role == userRole }?.discountPercent ?: 0.0
+        val individualRate = user?.discountPercent ?: 0.0
+        maxOf(roleRate, individualRate)
+    }
+    val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
+
     val initialBalance = user?.balance ?: 0.0
     val basePrice = if (book.mainCategory == AppConstants.CAT_COURSES && selectedPlanIndex == 1) book.modulePrice else book.price
-    val finalPrice = basePrice * 0.9
+    val finalPrice = basePrice * discountMultiplier
     
-    // Explicit type for currentPaymentMethod to resolve inference error
     var currentPaymentMethod: String by remember { 
         mutableStateOf(if (initialBalance >= finalPrice) AppConstants.METHOD_UNIVERSITY_ACCOUNT else AppConstants.METHOD_PAYPAL) 
     }
@@ -128,7 +137,7 @@ fun OrderFlowDialog(
                 Box(modifier = Modifier.wrapContentHeight()) {
                     AnimatedContent(targetState = step, label = "orderStep") { currentStep ->
                         when (currentStep) {
-                            1 -> Step1Review(book, book.mainCategory == AppConstants.CAT_COURSES, selectedPlanIndex, basePrice, finalPrice) { selectedPlanIndex = it }
+                            1 -> Step1Review(book, book.mainCategory == AppConstants.CAT_COURSES, selectedPlanIndex, basePrice, finalPrice, effectiveDiscount) { selectedPlanIndex = it }
                             2 -> Step2Billing(fullName, user?.email ?: "") { fullName = it }
                             3 -> Step3Payment(
                                 user = user,
@@ -203,7 +212,7 @@ fun OrderFlowDialog(
                                         itemCategory = book.mainCategory,
                                         itemVariant = null,
                                         pricePaid = finalPrice,
-                                        discountApplied = basePrice * 0.1,
+                                        discountApplied = basePrice - finalPrice,
                                         quantity = 1,
                                         purchasedAt = System.currentTimeMillis(),
                                         paymentMethod = currentPaymentMethod,
@@ -224,8 +233,6 @@ fun OrderFlowDialog(
                                         productId = book.id
                                     ))
 
-                                    // Check if it's NOT a course before adding a purchase notification here.
-                                    // Courses handle their own enrollment confirmation in CourseDetailViewModel.
                                     if (book.mainCategory != AppConstants.CAT_COURSES) {
                                         val notificationTitle = when (book.mainCategory) {
                                             AppConstants.CAT_BOOKS -> AppConstants.NOTIF_TITLE_BOOK_PURCHASED
@@ -263,7 +270,7 @@ fun OrderFlowDialog(
 }
 
 @Composable
-fun Step1Review(book: Book, isCourse: Boolean, selectedPlanIndex: Int, basePrice: Double, finalPrice: Double, onPlanSelect: (Int) -> Unit) {
+fun Step1Review(book: Book, isCourse: Boolean, selectedPlanIndex: Int, basePrice: Double, finalPrice: Double, discountPercent: Double, onPlanSelect: (Int) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)),
@@ -294,7 +301,9 @@ fun Step1Review(book: Book, isCourse: Boolean, selectedPlanIndex: Int, basePrice
         }
         Spacer(modifier = Modifier.height(24.dp))
         DetailRow(AppConstants.LABEL_PRICE, "£" + String.format(Locale.US, "%.2f", basePrice))
-        DetailRow(AppConstants.LABEL_STUDENT_DISCOUNT_VAL, "-£" + String.format(Locale.US, "%.2f", basePrice * 0.1))
+        if (discountPercent > 0) {
+            DetailRow("Applied Discount (${discountPercent.toInt()}%)", "-£" + String.format(Locale.US, "%.2f", basePrice - finalPrice))
+        }
         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
         DetailRow(AppConstants.LABEL_TOTAL_AMOUNT, "£" + String.format(Locale.US, "%.2f", finalPrice), isTotal = true)
     }

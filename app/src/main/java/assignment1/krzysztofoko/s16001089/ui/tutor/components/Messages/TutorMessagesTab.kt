@@ -10,11 +10,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -23,6 +25,7 @@ import assignment1.krzysztofoko.s16001089.data.Course
 import assignment1.krzysztofoko.s16001089.data.CourseEnrollmentDetails
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
+import assignment1.krzysztofoko.s16001089.ui.messages.RoleTag
 import assignment1.krzysztofoko.s16001089.ui.tutor.ConversationPreview
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
@@ -61,13 +64,26 @@ fun TutorMessagesTab(
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        Spacer(Modifier.height(24.dp))
+        
+        HeaderSection(
+            title = "Messages",
+            subtitle = "Academic Communication",
+            icon = Icons.Default.QuestionAnswer
+        )
+        
         OutlinedTextField(
             value = searchTxt,
             onValueChange = { searchTxt = it },
             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            placeholder = { Text("Search users or messages...") },
-            leadingIcon = { Icon(Icons.Default.Search, null) },
-            shape = MaterialTheme.shapes.medium
+            placeholder = { Text("Search users or messages...", color = Color.Gray) },
+            leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+            )
         )
         
         if (searchResults.isEmpty()) {
@@ -81,7 +97,8 @@ fun TutorMessagesTab(
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 100.dp)
             ) {
                 items(searchResults) { result ->
                     when (result) {
@@ -105,7 +122,6 @@ fun TutorMessagesTab(
                         }
                     }
                 }
-                item { Spacer(Modifier.height(80.dp)) }
             }
         }
     }
@@ -113,7 +129,7 @@ fun TutorMessagesTab(
 
 private fun getUserCourses(userId: String, enrollments: List<CourseEnrollmentDetails>, courses: List<Course>): String {
     return enrollments
-        .filter { it.userId == userId && it.status == "APPROVED" }
+        .filter { it.userId == userId && (it.status == "APPROVED" || it.status == "ENROLLED") }
         .mapNotNull { env -> courses.find { it.id == env.courseId }?.title }
         .joinToString(", ")
 }
@@ -132,14 +148,16 @@ fun ConversationItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UserAvatar(photoUrl = conversation.student.photoUrl, modifier = Modifier.size(50.dp))
+            UserAvatar(photoUrl = conversation.student.photoUrl, modifier = Modifier.size(54.dp))
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 // Row 1: Name and Role Tag
@@ -150,7 +168,7 @@ fun ConversationItem(
                     Text(
                         text = conversation.student.name, 
                         fontWeight = FontWeight.Bold, 
-                        fontSize = 16.sp,
+                        fontSize = 17.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -167,7 +185,8 @@ fun ConversationItem(
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        fontSize = 10.sp
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
@@ -208,21 +227,23 @@ fun NewConversationItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UserAvatar(photoUrl = user.photoUrl, modifier = Modifier.size(50.dp))
+            UserAvatar(photoUrl = user.photoUrl, modifier = Modifier.size(54.dp))
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = user.name, 
                         fontWeight = FontWeight.Bold, 
-                        fontSize = 16.sp,
+                        fontSize = 17.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -238,14 +259,16 @@ fun NewConversationItem(
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        fontSize = 10.sp
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
                 Text(
                     text = "Start a new conversation...",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
                 )
             }
             Spacer(Modifier.width(8.dp))
@@ -255,26 +278,33 @@ fun NewConversationItem(
 }
 
 @Composable
-fun RoleTag(role: String?) {
-    val roleText = (role ?: "user").uppercase()
-    val tagColor = when(roleText) {
-        "ADMIN", "TUTOR" -> Color(0xFFE53935)
-        "STUDENT" -> Color(0xFF43A047)
-        else -> Color.Gray
-    }
-
-    Surface(
-        color = tagColor.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(4.dp),
-        border = BorderStroke(0.5.dp, tagColor.copy(alpha = 0.5f))
-    ) {
-        Text(
-            text = roleText,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = tagColor,
-            fontSize = 8.sp,
-            fontWeight = FontWeight.Black
-        )
+private fun HeaderSection(title: String, subtitle: String, icon: ImageVector) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.size(48.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+        Spacer(Modifier.width(16.dp))
+        Column {
+            @Suppress("DEPRECATION")
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+            @Suppress("DEPRECATION")
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }

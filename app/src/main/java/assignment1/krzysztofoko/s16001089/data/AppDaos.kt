@@ -123,12 +123,13 @@ data class UserLocal(
     val name: String,
     val email: String,
     val photoUrl: String? = null,
-    val title: String? = null, // Added title field
+    val title: String? = null,
     val address: String? = null,
     val phoneNumber: String? = null,
     val selectedPaymentMethod: String? = null,
     val balance: Double = 0.0,
-    val role: String = "student"
+    val role: String = "student",
+    val discountPercent: Double = 0.0 // Added field for individual user discounts
 )
 
 @Entity(tableName = "wishlist", primaryKeys = ["userId", "productId"])
@@ -258,6 +259,12 @@ data class CourseEnrollmentDetails(
     val specialSupportRequirements: String? = null,
     val status: String = "PENDING_REVIEW", 
     val submittedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "global_discounts")
+data class RoleDiscount(
+    @PrimaryKey val role: String, // "admin", "student", "teacher", "user"
+    val discountPercent: Double
 )
 
 @Dao
@@ -490,4 +497,13 @@ interface UserDao {
 
     @Query("UPDATE course_enrollment_details SET status = :status WHERE id = :id")
     suspend fun updateEnrollmentStatus(id: String, status: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertRoleDiscount(discount: RoleDiscount)
+
+    @Query("SELECT * FROM global_discounts WHERE role = :role")
+    suspend fun getRoleDiscount(role: String): RoleDiscount?
+
+    @Query("SELECT * FROM global_discounts")
+    fun getAllRoleDiscounts(): Flow<List<RoleDiscount>>
 }

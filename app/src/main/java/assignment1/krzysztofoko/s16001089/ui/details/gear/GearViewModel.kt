@@ -50,6 +50,9 @@ class GearViewModel(
         flowOf(null)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    val roleDiscounts: StateFlow<List<RoleDiscount>> = userDao.getAllRoleDiscounts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val isOwned: StateFlow<Boolean> = if (userId.isNotEmpty()) {
         userDao.getPurchaseIds(userId).map { it.contains(gearId) }
     } else {

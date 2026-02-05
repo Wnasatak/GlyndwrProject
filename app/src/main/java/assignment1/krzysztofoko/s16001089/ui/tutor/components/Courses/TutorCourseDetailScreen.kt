@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
@@ -34,29 +35,24 @@ fun TutorCourseDetailScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item { Spacer(Modifier.height(24.dp)) }
+        
         item {
-            Column {
-                Text(
-                    text = course?.title ?: "",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text = course?.department ?: "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            HeaderSection(
+                title = "Course Management",
+                subtitle = course?.title ?: "",
+                icon = Icons.Default.SettingsSuggest
+            )
         }
 
         item {
             Text(
-                text = "Course Management",
+                text = "Academic Control",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Black,
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
@@ -106,6 +102,36 @@ fun TutorCourseDetailScreen(
 }
 
 @Composable
+private fun HeaderSection(title: String, subtitle: String, icon: ImageVector) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.size(48.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+        Spacer(Modifier.width(16.dp))
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
 fun CourseOptionCard(
     title: String,
     description: String,
@@ -116,9 +142,10 @@ fun CourseOptionCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -134,10 +161,11 @@ fun CourseOptionCard(
                 }
             }
             Spacer(Modifier.width(16.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(text = title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color.Gray, lineHeight = 16.sp)
             }
+            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray.copy(alpha = 0.5f))
         }
     }
 }
