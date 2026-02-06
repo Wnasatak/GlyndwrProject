@@ -259,7 +259,7 @@ object AppPopups {
                             Spacer(Modifier.height(12.dp))
                             
                             Text(
-                                text = AppConstants.MSG_IDENTITY_VERIFIED_DESC,
+                                text = "Your security check was successful.\nYou are now fully logged in to the Glyndwr University portal.",
                                 textAlign = TextAlign.Center,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)

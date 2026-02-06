@@ -26,7 +26,6 @@ import java.util.*
 fun UserInfoTab(user: UserLocal?, viewModel: AdminUserDetailsViewModel) {
     if (user == null) return
     var showEditDialog by remember { mutableStateOf(false) }
-    var showDiscountDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp), 
@@ -90,32 +89,19 @@ fun UserInfoTab(user: UserLocal?, viewModel: AdminUserDetailsViewModel) {
             InfoSectionDetails("Account Status") {
                 val balanceFormatted = String.format(Locale.US, "%.2f", user.balance)
                 InfoRowDetails(Icons.Default.AccountBalanceWallet, "Balance", "£$balanceFormatted")
-                InfoRowDetails(Icons.Default.Percent, "Personal Discount", "${user.discountPercent}%")
                 InfoRowDetails(Icons.Default.Badge, "User ID", user.id)
             }
         }
 
         item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = { showEditDialog = true }, 
-                    modifier = Modifier.weight(1f).height(56.dp), 
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Icon(Icons.Default.Edit, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Edit Info", fontWeight = FontWeight.Black)
-                }
-                Button(
-                    onClick = { showDiscountDialog = true }, 
-                    modifier = Modifier.weight(1f).height(56.dp), 
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Icon(Icons.Default.Percent, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Discount", fontWeight = FontWeight.Black)
-                }
+            Button(
+                onClick = { showEditDialog = true }, 
+                modifier = Modifier.fillMaxWidth().height(56.dp), 
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(Icons.Default.Edit, null)
+                Spacer(Modifier.width(12.dp))
+                Text("Edit Account Details", fontWeight = FontWeight.Black)
             }
         }
         item { Spacer(Modifier.height(20.dp)) }
@@ -130,36 +116,6 @@ fun UserInfoTab(user: UserLocal?, viewModel: AdminUserDetailsViewModel) {
                 viewModel.updateUser(updated)
                 showEditDialog = false 
             }
-        )
-    }
-
-    if (showDiscountDialog) {
-        var discountText by remember { mutableStateOf(user.discountPercent.toString()) }
-        AlertDialog(
-            onDismissRequest = { showDiscountDialog = false },
-            title = { Text("Edit Personal Discount", fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    Text("Set a specific discount percentage for this user.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    Spacer(Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = discountText,
-                        onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) discountText = it },
-                        label = { Text("Discount (%)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
-                    )
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    val discount = discountText.toDoubleOrNull() ?: 0.0
-                    viewModel.updateUser(user.copy(discountPercent = discount))
-                    showDiscountDialog = false
-                }) { Text("Save Discount") }
-            },
-            dismissButton = { TextButton(onClick = { showDiscountDialog = false }) { Text("Cancel") } }
         )
     }
 }

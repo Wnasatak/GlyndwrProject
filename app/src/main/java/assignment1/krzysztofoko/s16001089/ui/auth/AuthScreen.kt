@@ -142,6 +142,7 @@ fun AuthScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
+                        .imePadding() // Automatically adds padding when the keyboard is visible
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp), 
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -367,7 +368,8 @@ fun AuthScreen(
                         }
                     }
                     
-                    Spacer(modifier = Modifier.height(48.dp))
+                    // Added a larger spacer at the bottom to ensure user can scroll past the keyboard
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
         }

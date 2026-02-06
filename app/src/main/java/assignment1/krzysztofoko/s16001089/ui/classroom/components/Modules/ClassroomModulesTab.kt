@@ -21,7 +21,7 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.ModuleContent
 
 @Composable
-fun ClassroomModulesTab(modules: List<ModuleContent>) {
+fun ClassroomModulesTab(modules: List<ModuleContent>, onModuleClick: (ModuleContent) -> Unit) {
     if (modules.isEmpty()) {
         ClassroomEmptyState(AppConstants.MSG_NO_MODULES)
     } else {
@@ -31,7 +31,7 @@ fun ClassroomModulesTab(modules: List<ModuleContent>) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(modules) { module ->
-                ModuleItem(module = module, onClick = { /* Open Content */ })
+                ModuleItem(module = module, onClick = { onModuleClick(module) })
             }
         }
     }
@@ -75,7 +75,7 @@ fun ModuleItem(module: ModuleContent, onClick: () -> Unit) {
                 Text(
                     text = "Module ${module.order}: ${module.title}",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Black
                 )
                 Text(
                     text = module.description,

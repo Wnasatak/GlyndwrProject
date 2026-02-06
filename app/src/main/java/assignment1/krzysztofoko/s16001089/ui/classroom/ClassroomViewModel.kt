@@ -60,6 +60,9 @@ class ClassroomViewModel(
     private val _selectedAssignment = MutableStateFlow<Assignment?>(null)
     val selectedAssignment = _selectedAssignment.asStateFlow()
 
+    private val _selectedModule = MutableStateFlow<ModuleContent?>(null)
+    val selectedModule = _selectedModule.asStateFlow()
+
     private val _isSubmitting = MutableStateFlow(false)
     val isSubmitting = _isSubmitting.asStateFlow()
 
@@ -81,6 +84,10 @@ class ClassroomViewModel(
                 }
             }
         }
+    }
+
+    fun selectModule(module: ModuleContent?) {
+        _selectedModule.value = module
     }
 
     fun selectAssignment(assignment: Assignment?) {

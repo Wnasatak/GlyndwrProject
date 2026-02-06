@@ -44,6 +44,7 @@ fun ClassroomScreen(
     val liveChatMessages by viewModel.liveChatMessages.collectAsState()
     val isLiveViewActive by viewModel.isLiveViewActive.collectAsState()
     val selectedAssignment by viewModel.selectedAssignment.collectAsState()
+    val selectedModule by viewModel.selectedModule.collectAsState()
     val isSubmitting by viewModel.isSubmitting.collectAsState()
 
     val tabs = listOf(
@@ -68,6 +69,13 @@ fun ClassroomScreen(
                 isSubmitting = isSubmitting,
                 onSubmit = { content -> viewModel.submitAssignment(selectedAssignment!!.id, content) },
                 onCancel = { viewModel.selectAssignment(null) }
+            )
+        } else if (selectedModule != null) {
+            ModuleDetailView(
+                module = selectedModule!!,
+                assignments = assignments,
+                onBack = { viewModel.selectModule(null) },
+                onSubmitAssignment = { viewModel.selectAssignment(it) }
             )
         } else {
             Scaffold(
@@ -130,7 +138,7 @@ fun ClassroomScreen(
                             label = "tabTransition"
                         ) { targetTab ->
                             when (targetTab) {
-                                0 -> ClassroomModulesTab(modules)
+                                0 -> ClassroomModulesTab(modules, onModuleClick = { viewModel.selectModule(it) })
                                 1 -> ClassroomAssignmentsTab(assignments, onSelect = { viewModel.selectAssignment(it) })
                                 2 -> ClassroomPerformanceTab(grades, assignments)
                             }
