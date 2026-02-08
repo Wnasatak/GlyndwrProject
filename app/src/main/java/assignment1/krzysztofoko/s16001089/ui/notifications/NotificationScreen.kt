@@ -36,9 +36,7 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.NotificationLocal
-import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
-import assignment1.krzysztofoko.s16001089.ui.components.VerticalWavyBackground
-import assignment1.krzysztofoko.s16001089.ui.components.formatAssetUrl
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.theme.*
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
@@ -48,7 +46,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Screen displaying the user's notification history with engaging announcement support.
+ * Screen displaying the user's notification history.
+ * Optimized for tablets with AdaptiveScreenContainer.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,29 +110,31 @@ fun NotificationScreen(
                 )
             }
         ) { paddingValues ->
-            if (notifications.isEmpty()) {
-                EmptyNotificationsView(modifier = Modifier.padding(paddingValues))
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(notifications, key = { it.id }) { notification ->
-                        val isVisible = !dismissingIds.value.contains(notification.id)
-                        LaunchedEffect(isVisible) { if (!isVisible) { delay(300); viewModel.deleteNotification(notification.id) } }
+            AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+                if (notifications.isEmpty()) {
+                    EmptyNotificationsView(modifier = Modifier.padding(paddingValues))
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        items(notifications, key = { it.id }) { notification ->
+                            val isVisible = !dismissingIds.value.contains(notification.id)
+                            LaunchedEffect(isVisible) { if (!isVisible) { delay(300); viewModel.deleteNotification(notification.id) } }
 
-                        AnimatedVisibility(
-                            visible = isVisible,
-                            enter = fadeIn() + expandVertically(),
-                            exit = slideOutHorizontally(targetOffsetX = { -it }) + shrinkVertically() + fadeOut(),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            NotificationItem(notification = notification, isDarkTheme = isDarkTheme, viewModel = viewModel, onDelete = { dismissingIds.value = dismissingIds.value + notification.id }, onClick = { 
-                                    scope.launch {
-                                        relatedBook = if (notification.type == "ANNOUNCEMENT" || notification.type == "MESSAGE") null else viewModel.getRelatedBook(notification.productId)
-                                        selectedNotification = notification
-                                        showSheet = true
-                                        viewModel.markAsRead(notification.id)
+                            AnimatedVisibility(
+                                visible = isVisible,
+                                enter = fadeIn() + expandVertically(),
+                                exit = slideOutHorizontally(targetOffsetX = { -it }) + shrinkVertically() + fadeOut(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                NotificationItem(notification = notification, isDarkTheme = isDarkTheme, viewModel = viewModel, onDelete = { dismissingIds.value = dismissingIds.value + notification.id }, onClick = { 
+                                        scope.launch {
+                                            relatedBook = if (notification.type == "ANNOUNCEMENT" || notification.type == "MESSAGE") null else viewModel.getRelatedBook(notification.productId)
+                                            selectedNotification = notification
+                                            showSheet = true
+                                            viewModel.markAsRead(notification.id)
+                                        }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
@@ -151,101 +152,110 @@ fun NotificationScreen(
                 containerColor = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
             ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    // Styled Icon Header with Radial Glow
-                    Box(
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                    Column(
                         modifier = Modifier
-                            .size(80.dp)
-                            .background(
-                                brush = if (isAnnouncement || isMessage) Brush.radialGradient(listOf(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), Color.Transparent))
-                                        else Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), Color.Transparent)),
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
+                            .widthIn(max = 600.dp)
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                            .padding(bottom = 40.dp), 
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // Styled Icon Header
                         Box(
-                            modifier = Modifier.size(56.dp).background(if (isAnnouncement || isMessage) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary, CircleShape),
+                            modifier = Modifier
+                                .size(80.dp)
+                                .background(
+                                    brush = if (isAnnouncement || isMessage) Brush.radialGradient(listOf(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), Color.Transparent))
+                                            else Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), Color.Transparent)),
+                                    shape = CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = when {
-                                    isMessage -> Icons.AutoMirrored.Filled.Chat
-                                    isAnnouncement -> Icons.Default.Campaign
-                                    isTopUp -> Icons.Default.AccountBalanceWallet
-                                    selectedNotification!!.type == AppConstants.NOTIF_TYPE_PURCHASE -> Icons.Default.ShoppingBag
-                                    selectedNotification!!.type == AppConstants.NOTIF_TYPE_PICKUP -> Icons.Default.Storefront
-                                    else -> Icons.Default.Notifications
-                                },
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(28.dp)
+                            Box(
+                                modifier = Modifier.size(56.dp).background(if (isAnnouncement || isMessage) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = when {
+                                        isMessage -> Icons.AutoMirrored.Filled.Chat
+                                        isAnnouncement -> Icons.Default.Campaign
+                                        isTopUp -> Icons.Default.AccountBalanceWallet
+                                        selectedNotification!!.type == AppConstants.NOTIF_TYPE_PURCHASE -> Icons.Default.ShoppingBag
+                                        selectedNotification!!.type == AppConstants.NOTIF_TYPE_PICKUP -> Icons.Default.Storefront
+                                        else -> Icons.Default.Notifications
+                                    },
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Text(text = selectedNotification!!.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = selectedNotification!!.message, 
+                                style = MaterialTheme.typography.bodyLarge, 
+                                color = MaterialTheme.colorScheme.onSurface, 
+                                textAlign = TextAlign.Center, 
+                                modifier = Modifier.padding(20.dp),
+                                lineHeight = 24.sp
                             )
                         }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Text(text = selectedNotification!!.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = selectedNotification!!.message, 
-                            style = MaterialTheme.typography.bodyLarge, 
-                            color = MaterialTheme.colorScheme.onSurface, 
-                            textAlign = TextAlign.Center, 
-                            modifier = Modifier.padding(20.dp),
-                            lineHeight = 24.sp
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
 
-                    if (isMessage) {
-                        Button(onClick = { showSheet = false; onNavigateToMessages() }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.Chat, contentDescription = null)
-                            Spacer(Modifier.width(12.dp)); Text(text = "Show Message", fontWeight = FontWeight.Bold)
+                        if (isMessage) {
+                            Button(onClick = { showSheet = false; onNavigateToMessages() }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                                Icon(imageVector = Icons.AutoMirrored.Filled.Chat, contentDescription = null)
+                                Spacer(Modifier.width(12.dp)); Text(text = "Show Message", fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                    
-                    if (!isAnnouncement && !isMessage) {
-                        Button(onClick = { showSheet = false; if (isTopUp) onNavigateToInvoice(selectedNotification!!.productId) else onNavigateToItem(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                            Icon(imageVector = if (isTopUp) Icons.AutoMirrored.Filled.ReceiptLong else Icons.Default.OpenInNew, contentDescription = null)
-                            Spacer(Modifier.width(12.dp)); Text(text = if (isTopUp) AppConstants.BTN_VIEW_INVOICE else AppConstants.BTN_VIEW_PRODUCT_DETAILS, fontWeight = FontWeight.Bold)
+                        
+                        if (!isAnnouncement && !isMessage) {
+                            Button(onClick = { showSheet = false; if (isTopUp) onNavigateToInvoice(selectedNotification!!.productId) else onNavigateToItem(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                                Icon(imageVector = if (isTopUp) Icons.AutoMirrored.Filled.ReceiptLong else Icons.Default.OpenInNew, contentDescription = null)
+                                Spacer(Modifier.width(12.dp)); Text(text = if (isTopUp) AppConstants.BTN_VIEW_INVOICE else AppConstants.BTN_VIEW_PRODUCT_DETAILS, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                    
-                    if (!isTopUp && !isAnnouncement && !isMessage && relatedBook != null && relatedBook!!.price > 0) {
-                        OutlinedButton(onClick = { showSheet = false; onNavigateToInvoice(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                            Icon(Icons.AutoMirrored.Filled.ReceiptLong, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_VIEW_INVOICE, fontWeight = FontWeight.Bold)
+                        
+                        if (!isTopUp && !isAnnouncement && !isMessage && relatedBook != null && relatedBook!!.price > 0) {
+                            OutlinedButton(onClick = { showSheet = false; onNavigateToInvoice(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                                Icon(Icons.AutoMirrored.Filled.ReceiptLong, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_VIEW_INVOICE, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                    
-                    if (relatedBook != null && relatedBook!!.price <= 0 && relatedBook!!.mainCategory != AppConstants.CAT_GEAR && !isTopUp && !isAnnouncement && !isMessage) {
-                        OutlinedButton(onClick = { showSheet = false; showRemoveConfirm = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))) {
-                            Icon(Icons.Default.DeleteOutline, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, fontWeight = FontWeight.Bold)
+                        
+                        if (relatedBook != null && relatedBook!!.price <= 0 && relatedBook!!.mainCategory != AppConstants.CAT_GEAR && !isTopUp && !isAnnouncement && !isMessage) {
+                            OutlinedButton(onClick = { showSheet = false; showRemoveConfirm = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))) {
+                                Icon(Icons.Default.DeleteOutline, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
 
-                    OutlinedButton(
-                        onClick = { dismissingIds.value = dismissingIds.value + selectedNotification!!.id; showSheet = false }, 
-                        modifier = Modifier.fillMaxWidth().height(56.dp), 
-                        shape = RoundedCornerShape(16.dp), 
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), 
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
-                    ) {
-                        Icon(Icons.Default.DeleteSweep, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_DELETE_NOTIFICATION, fontWeight = FontWeight.Bold)
+                        OutlinedButton(
+                            onClick = { dismissingIds.value = dismissingIds.value + selectedNotification!!.id; showSheet = false }, 
+                            modifier = Modifier.fillMaxWidth().height(56.dp), 
+                            shape = RoundedCornerShape(16.dp), 
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), 
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
+                        ) {
+                            Icon(Icons.Default.DeleteSweep, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_DELETE_NOTIFICATION, fontWeight = FontWeight.Bold)
+                        }
+                        
+                        TextButton(onClick = { showSheet = false }, modifier = Modifier.padding(top = 8.dp)) { Text(AppConstants.BTN_CLOSE, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
-                    
-                    TextButton(onClick = { showSheet = false }, modifier = Modifier.padding(top = 8.dp)) { Text(AppConstants.BTN_CLOSE, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
             }
         }
@@ -305,7 +315,7 @@ fun NotificationItem(
         else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
     }
 
-    // Pulsing animation for unread announcements/messages
+    // Pulsing animation
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by if ((isAnnouncement || isMessage) && !notification.isRead) {
         infiniteTransition.animateFloat(
@@ -364,7 +374,6 @@ fun NotificationItem(
             
             Column(modifier = Modifier.weight(1f)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    // Title section with weight to prevent pushing everything out
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                         Text(
                             text = notification.title, 
@@ -373,7 +382,7 @@ fun NotificationItem(
                             color = if ((isAnnouncement || isMessage) && !notification.isRead) categoryColor else MaterialTheme.colorScheme.onSurface, 
                             maxLines = 1, 
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false) // Added this to constrain width
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         if (isAnnouncement && !notification.isRead) {
                             Surface(

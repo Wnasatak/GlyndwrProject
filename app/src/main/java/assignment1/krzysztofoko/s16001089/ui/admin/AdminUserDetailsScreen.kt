@@ -28,15 +28,15 @@ import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.*
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveScreenContainer
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
-import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
+import assignment1.krzysztofoko.s16001089.ui.components.isTablet
 
 /**
  * Screen for Administrators to view and manage specific student details.
- * Contains tabs for Info, Activity, Comments, Academic, Invoices, and Wallet history.
+ * Optimized for tablets by centering content and disabling infinite navbar loop.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,10 +74,10 @@ fun AdminUserDetailsScreen(
         TabItem("Wallet", Icons.Default.AccountBalanceWallet)
     )
 
-    // Looping Tab Row State
+    val isTablet = isTablet()
     val infiniteCount = Int.MAX_VALUE
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % tabs.size)
-    val tabListState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
+    val tabListState = rememberLazyListState(initialFirstVisibleItemIndex = if (isTablet) 0 else startPosition)
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
@@ -125,43 +125,30 @@ fun AdminUserDetailsScreen(
                             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                         )
                         
-                        // Icon-driven Looping Tab Navigation
-                        LazyRow(
-                            state = tabListState,
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            contentPadding = PaddingValues(horizontal = 16.dp)
-                        ) {
-                            items(infiniteCount) { index ->
-                                val tabIndex = index % tabs.size
-                                val tab = tabs[tabIndex]
-                                val isSelected = selectedTab == tabIndex
-                                
-                                Box(
-                                    modifier = Modifier
-                                        .padding(horizontal = 4.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                        .clickable { selectedTab = tabIndex }
-                                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = tab.icon, 
-                                            contentDescription = null, 
-                                            modifier = Modifier.size(16.dp),
-                                            tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                            LazyRow(
+                                state = tabListState,
+                                modifier = Modifier.widthIn(max = 1200.dp).fillMaxWidth().height(48.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = if (isTablet) Arrangement.Center else Arrangement.Start
+                            ) {
+                                if (isTablet) {
+                                    items(tabs.size) { index ->
+                                        TabItemView(
+                                            tab = tabs[index],
+                                            isSelected = selectedTab == index,
+                                            onSelect = { selectedTab = index }
                                         )
-                                        AnimatedVisibility(visible = isSelected) {
-                                            Text(
-                                                text = tab.title,
-                                                modifier = Modifier.padding(start = 6.dp),
-                                                style = MaterialTheme.typography.labelLarge,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White
-                                            )
-                                        }
+                                    }
+                                } else {
+                                    items(infiniteCount) { index ->
+                                        val tabIndex = index % tabs.size
+                                        TabItemView(
+                                            tab = tabs[tabIndex],
+                                            isSelected = selectedTab == tabIndex,
+                                            onSelect = { selectedTab = tabIndex }
+                                        )
                                     }
                                 }
                             }
@@ -171,36 +158,71 @@ fun AdminUserDetailsScreen(
                 }
             }
         ) { padding ->
-            Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-                AnimatedContent(
-                    targetState = selectedTab,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "TabContentTransition"
-                ) { targetIndex ->
-                    when (targetIndex) {
-                        0 -> UserInfoTab(user, viewModel)
-                        1 -> UserActivityTab(
-                            browseHistory = browseHistory, 
-                            wishlist = wishlist, 
-                            searchHistory = searchHistory, 
-                            purchasedBooks = purchasedBooks, 
-                            commentedBooks = commentedBooks, 
-                            viewModel = viewModel,
-                            onNavigateToBook = { bookId ->
-                                navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$bookId")
-                            }
-                        )
-                        2 -> UserCommentsTab(allReviews, viewModel)
-                        3 -> UserAcademicTab(
-                            enrollments = enrollments, 
-                            grades = grades, 
-                            allCourses = allCourses,
-                            onUpdateStatus = { eid, status -> viewModel.updateEnrollmentStatus(eid, status) }
-                        )
-                        4 -> UserInvoicesTab(invoices)
-                        5 -> UserWalletTab(transactions)
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                AdaptiveScreenContainer(
+                    maxWidth = AdaptiveWidths.Wide
+                ) { isTablet ->
+                    AnimatedContent(
+                        targetState = selectedTab,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                        label = "TabContentTransition"
+                    ) { targetIndex ->
+                        when (targetIndex) {
+                            0 -> UserInfoTab(user, viewModel)
+                            1 -> UserActivityTab(
+                                browseHistory = browseHistory, 
+                                wishlist = wishlist, 
+                                searchHistory = searchHistory, 
+                                purchasedBooks = purchasedBooks, 
+                                commentedBooks = commentedBooks, 
+                                viewModel = viewModel,
+                                onNavigateToBook = { bookId ->
+                                    navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$bookId")
+                                }
+                            )
+                            2 -> UserCommentsTab(allReviews, viewModel)
+                            3 -> UserAcademicTab(
+                                enrollments = enrollments, 
+                                grades = grades, 
+                                allCourses = allCourses,
+                                onUpdateStatus = { eid, status -> viewModel.updateEnrollmentStatus(eid, status) }
+                            )
+                            4 -> UserInvoicesTab(invoices)
+                            5 -> UserWalletTab(transactions)
+                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun TabItemView(tab: TabItem, isSelected: Boolean, onSelect: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 4.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+            .clickable { onSelect() }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = tab.icon, 
+                contentDescription = null, 
+                modifier = Modifier.size(16.dp),
+                tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            AnimatedVisibility(visible = isSelected) {
+                Text(
+                    text = tab.title,
+                    modifier = Modifier.padding(start = 6.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             }
         }
     }

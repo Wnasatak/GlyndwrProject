@@ -209,7 +209,7 @@ fun DashboardHeader(
 fun WalletHistorySheet(
     transactions: List<WalletTransaction>,
     onNavigateToProduct: (String) -> Unit,
-    onViewInvoice: (String, String?) -> Unit, // Updated to accept optional order reference
+    onViewInvoice: (String, String?) -> Unit, 
     onDismiss: () -> Unit
 ) {
     val sdf = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
@@ -322,7 +322,6 @@ fun WalletHistorySheet(
                                                 text = { Text("View Invoice") },
                                                 onClick = {
                                                     showItemMenu = false
-                                                    // Pass both productId and orderReference to ensure uniqueness
                                                     onViewInvoice(tx.productId, tx.orderReference)
                                                     onDismiss()
                                                 },
@@ -349,6 +348,10 @@ fun WalletHistorySheet(
     }
 }
 
+/**
+ * Adaptive Horizontal list for books.
+ * Optimized for tablets (full width) and phones (looping + focus scaling).
+ */
 @Composable
 fun GrowingLazyRow(
     books: List<Book>,
@@ -357,39 +360,57 @@ fun GrowingLazyRow(
 ) {
     if (books.isEmpty()) return
     
+    val isTablet = isTablet()
     val listState = rememberLazyListState()
-    val itemsToShow = remember(books) { List(100) { books }.flatten() }
-    val initialIndex = itemsToShow.size / 2 - (itemsToShow.size / 2 % books.size)
 
-    LaunchedEffect(books) { listState.scrollToItem(initialIndex) }
-
-    LazyRow(
-        state = listState,
-        contentPadding = PaddingValues(horizontal = 32.dp, vertical = 24.dp), 
-        horizontalArrangement = Arrangement.spacedBy(12.dp), 
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        itemsIndexed(itemsToShow) { index, book ->
-            Box(
-                modifier = Modifier.graphicsLayer {
-                    val layoutInfo = listState.layoutInfo
-                    val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
-                    
-                    if (itemInfo != null) {
-                        val viewportWidth = layoutInfo.viewportEndOffset.toFloat()
-                        val itemOffset = itemInfo.offset.toFloat()
-                        val itemSize = itemInfo.size.toFloat()
-                        val centerOffset = (viewportWidth - itemSize) / 2
-                        val distanceFromCenter = kotlin.math.abs(itemOffset - centerOffset)
-                        
-                        val scale = (1.1f - (distanceFromCenter / (viewportWidth / 2)) * 0.3f).coerceIn(0.8f, 1.1f)
-                        scaleX = scale
-                        scaleY = scale
-                        shadowElevation = (16f * scale).coerceAtLeast(2f)
-                    }
-                }
-            ) {
+    if (isTablet) {
+        // Tablet version: Full width from left to right, no looping
+        LazyRow(
+            state = listState,
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp), 
+            horizontalArrangement = Arrangement.spacedBy(16.dp), 
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(books) { book ->
                 WishlistMiniCard(book = book, icon = icon, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)) { onBookClick(book) }
+            }
+        }
+    } else {
+        // Phone version: Original looping behavior with focus scaling
+        val itemsToShow = remember(books) { List(100) { books }.flatten() }
+        val initialIndex = itemsToShow.size / 2 - (itemsToShow.size / 2 % books.size)
+
+        LaunchedEffect(books) { listState.scrollToItem(initialIndex) }
+
+        LazyRow(
+            state = listState,
+            contentPadding = PaddingValues(horizontal = 32.dp, vertical = 24.dp), 
+            horizontalArrangement = Arrangement.spacedBy(12.dp), 
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            itemsIndexed(itemsToShow) { index, book ->
+                Box(
+                    modifier = Modifier.graphicsLayer {
+                        val layoutInfo = listState.layoutInfo
+                        val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
+                        
+                        if (itemInfo != null) {
+                            val viewportWidth = layoutInfo.viewportEndOffset.toFloat()
+                            val itemOffset = itemInfo.offset.toFloat()
+                            val itemSize = itemInfo.size.toFloat()
+                            val centerOffset = (viewportWidth - itemSize) / 2
+                            val distanceFromCenter = kotlin.math.abs(itemOffset - centerOffset)
+                            
+                            val scale = (1.1f - (distanceFromCenter / (viewportWidth / 2)) * 0.3f).coerceIn(0.8f, 1.1f)
+                            scaleX = scale
+                            scaleY = scale
+                            shadowElevation = (16f * scale).coerceAtLeast(2f)
+                        }
+                    }
+                ) {
+                    WishlistMiniCard(book = book, icon = icon, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)) { onBookClick(book) }
+                }
             }
         }
     }

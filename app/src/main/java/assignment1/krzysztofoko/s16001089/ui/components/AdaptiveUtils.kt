@@ -1,12 +1,20 @@
 package assignment1.krzysztofoko.s16001089.ui.components
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 
 /**
  * Standard width constraints for different types of screens on tablets.
@@ -46,6 +54,70 @@ object AdaptiveSpacing {
 fun isTablet(): Boolean {
     val configuration = LocalConfiguration.current
     return configuration.screenWidthDp >= 600
+}
+
+/**
+ * Branded University Logo with a centered soft shade/glow effect behind it.
+ * This effect is consistent across both phone and tablet devices.
+ */
+@Composable
+fun AdaptiveBrandedLogo(
+    model: Any?,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    logoSize: Dp = 36.dp
+) {
+    val infiniteTransition = rememberInfiniteTransition("logo_pulse")
+    
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowAlpha"
+    )
+    
+    val glowScale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.2f, 
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowScale"
+    )
+
+    Box(
+        modifier = modifier.size(logoSize),
+        contentAlignment = Alignment.Center
+    ) {
+        // Centered radial gradient shade behind the logo for all devices
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val radius = (size.minDimension / 1.4f) * glowScale
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFFBB86FC).copy(alpha = 0.4f * glowAlpha),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = radius
+                ),
+                radius = radius,
+                center = center
+            )
+        }
+
+        AsyncImage(
+            model = model,
+            contentDescription = contentDescription,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+        )
+    }
 }
 
 /**

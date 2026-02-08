@@ -2,8 +2,6 @@ package assignment1.krzysztofoko.s16001089.ui.splash
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +19,7 @@ import kotlinx.coroutines.launch
 
 /**
  * The initial landing screen of the application.
- * Updated to use centralized isTablet() utility for better scaling on large screens.
+ * Optimized for tablets with a balanced cinematic layout.
  */
 @Composable
 fun SplashScreen(
@@ -112,11 +110,11 @@ fun SplashScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.weight(1f))
+                // Anchors everything nicely in the upper-middle of the screen
+                Spacer(modifier = Modifier.weight(if (isTablet) 0.6f else 1f))
 
                 AnimatedSplashLogo(
                     scale = entryScale.value,
@@ -126,30 +124,31 @@ fun SplashScreen(
                     rainbowColor = rainbowColor
                 )
                 
-                Spacer(modifier = Modifier.height(if (isTablet) 32.dp else 24.dp))
+                Spacer(modifier = Modifier.height(if (isTablet) 20.dp else 24.dp))
 
-                // Institutional Branding Text - Larger on tablets
-                Text(
-                    text = AppConstants.INSTITUTION,
-                    style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge,
-                    textAlign = TextAlign.Center,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth().alpha(entryAlpha.value)
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = AppConstants.INSTITUTION,
+                        style = if (isTablet) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.alpha(entryAlpha.value)
+                    )
+                    
+                    Text(
+                        text = AppConstants.APP_NAME,
+                        style = if (isTablet) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineSmall,
+                        textAlign = TextAlign.Center,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = if (isTablet) 3.sp else 2.sp,
+                        modifier = Modifier.alpha(entryAlpha.value)
+                    )
+                }
                 
-                // Application Name - Larger on tablets
-                Text(
-                    text = AppConstants.APP_NAME,
-                    style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
-                    textAlign = TextAlign.Center,
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = if (isTablet) 4.sp else 2.sp,
-                    modifier = Modifier.fillMaxWidth().alpha(entryAlpha.value)
-                )
-                
-                Spacer(modifier = Modifier.weight(1f))
+                // Strong upward push to keep the logo area high and the footer low
+                Spacer(modifier = Modifier.weight(if (isTablet) 2.5f else 1f))
 
                 SplashFooter(isLoadingData = isLoadingData, alpha = entryAlpha.value)
             }

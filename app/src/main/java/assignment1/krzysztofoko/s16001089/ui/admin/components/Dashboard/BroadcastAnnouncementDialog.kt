@@ -21,6 +21,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
+import assignment1.krzysztofoko.s16001089.ui.components.isTablet
 
 @Composable
 fun BroadcastAnnouncementDialog(
@@ -43,10 +45,13 @@ fun BroadcastAnnouncementDialog(
 
     val selectedTarget = targetOptions.find { it.id == selectedTargetId }
     val dialogShape = RoundedCornerShape(28.dp)
+    val isTablet = isTablet()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), dialogShape),
+        modifier = Modifier
+            .widthIn(max = 500.dp) // Constrain width for tablet
+            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), dialogShape),
         title = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Surface(
@@ -119,7 +124,7 @@ fun BroadcastAnnouncementDialog(
                             expanded = isMenuExpanded,
                             onDismissRequest = { isMenuExpanded = false },
                             modifier = Modifier
-                                .fillMaxWidth(0.8f)
+                                .width(if (isTablet) 400.dp else 280.dp) // Optimized width for dropdown
                                 .background(MaterialTheme.colorScheme.surface)
                                 .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
                             shape = RoundedCornerShape(12.dp)

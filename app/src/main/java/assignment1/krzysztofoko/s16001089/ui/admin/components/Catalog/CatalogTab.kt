@@ -25,8 +25,7 @@ import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
-import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveScreenContainer
-import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import java.util.UUID
 
 @Composable
@@ -56,12 +55,14 @@ fun CatalogTab(
     var courseToEdit by remember { mutableStateOf<Course?>(null) }
     var gearToEdit by remember { mutableStateOf<Gear?>(null) }
     
+    val isTablet = isTablet()
     val infiniteCount = Int.MAX_VALUE
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % filters.size)
-    val tabListState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
+    val tabListState = rememberLazyListState(initialFirstVisibleItemIndex = if (isTablet) 0 else startPosition)
 
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
         val columns = if (isTablet) 2 else 1
+        val horizontalPadding = 16.dp 
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
@@ -75,7 +76,7 @@ fun CatalogTab(
                     title = "Global Catalog",
                     subtitle = "Manage all products and inventory.",
                     icon = Icons.Default.Inventory,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 12.dp)
                 )
             }
 
@@ -84,68 +85,63 @@ fun CatalogTab(
                     state = tabListState,
                     modifier = Modifier.fillMaxWidth().height(60.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    contentPadding = PaddingValues(horizontal = horizontalPadding),
+                    horizontalArrangement = if (isTablet) Arrangement.Center else Arrangement.spacedBy(8.dp)
                 ) {
-                    items(infiniteCount) { index ->
-                        val filter = filters[index % filters.size]
-                        val isSelected = selectedFilter == filter.id
-                        
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                                .clickable { selectedFilter = filter.id }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = filter.icon, 
-                                    contentDescription = null, 
-                                    modifier = Modifier.size(18.dp),
-                                    tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
-                                AnimatedVisibility(visible = isSelected) {
-                                    Text(
-                                        text = filter.title,
-                                        modifier = Modifier.padding(start = 8.dp),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                }
-                            }
+                    if (isTablet) {
+                        items(filters) { filter ->
+                            CatalogFilterItem(
+                                filter = filter,
+                                isSelected = selectedFilter == filter.id,
+                                onClick = { selectedFilter = filter.id }
+                            )
+                        }
+                    } else {
+                        items(infiniteCount) { index ->
+                            val filter = filters[index % filters.size]
+                            CatalogFilterItem(
+                                filter = filter,
+                                isSelected = selectedFilter == filter.id,
+                                onClick = { selectedFilter = filter.id }
+                            )
                         }
                     }
                 }
             }
 
             if (selectedFilter == "ALL" || selectedFilter == "BOOKS") {
-                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Academic Books", books.size) }
+                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Academic Books", books.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(books) { item ->
-                    CatalogItemCard(title = item.title, subtitle = "By ${item.author}", price = item.price, imageUrl = item.imageUrl, icon = Icons.AutoMirrored.Filled.MenuBook, onEdit = { bookToEdit = item }, onDelete = { itemToDelete = item.id to "Book" }, isDarkTheme = isDarkTheme)
+                    Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
+                        CatalogItemCard(title = item.title, subtitle = "By ${item.author}", price = item.price, imageUrl = item.imageUrl, icon = Icons.AutoMirrored.Filled.MenuBook, onEdit = { bookToEdit = item }, onDelete = { itemToDelete = item.id to "Book" }, isDarkTheme = isDarkTheme)
+                    }
                 }
             }
 
             if (selectedFilter == "ALL" || selectedFilter == "AUDIO") {
-                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Audio Learning", audioBooks.size) }
+                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Audio Learning", audioBooks.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(audioBooks) { item ->
-                    CatalogItemCard(title = item.title, subtitle = "By ${item.author}", price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.Headphones, onEdit = { audioToEdit = item }, onDelete = { itemToDelete = item.id to "Audiobook" }, isDarkTheme = isDarkTheme)
+                    Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
+                        CatalogItemCard(title = item.title, subtitle = "By ${item.author}", price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.Headphones, onEdit = { audioToEdit = item }, onDelete = { itemToDelete = item.id to "Audiobook" }, isDarkTheme = isDarkTheme)
+                    }
                 }
             }
 
             if (selectedFilter == "ALL" || selectedFilter == "COURSES") {
-                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("University Courses", courses.size) }
+                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("University Courses", courses.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(courses) { item ->
-                    CatalogItemCard(title = item.title, subtitle = item.department, price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.School, onEdit = { courseToEdit = item }, onDelete = { itemToDelete = item.id to "Course" }, isDarkTheme = isDarkTheme)
+                    Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
+                        CatalogItemCard(title = item.title, subtitle = item.department, price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.School, onEdit = { courseToEdit = item }, onDelete = { itemToDelete = item.id to "Course" }, isDarkTheme = isDarkTheme)
+                    }
                 }
             }
 
             if (selectedFilter == "ALL" || selectedFilter == "GEAR") {
-                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Official Gear", gear.size) }
+                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Official Gear", gear.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(gear) { item ->
-                    CatalogItemCard(title = item.title, subtitle = "Stock: ${item.stockCount} left", price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.Checkroom, onEdit = { gearToEdit = item }, onDelete = { itemToDelete = item.id to "Gear Item" }, isDarkTheme = isDarkTheme)
+                    Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
+                        CatalogItemCard(title = item.title, subtitle = "Stock: ${item.stockCount} left", price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.Checkroom, onEdit = { gearToEdit = item }, onDelete = { itemToDelete = item.id to "Gear Item" }, isDarkTheme = isDarkTheme)
+                    }
                 }
             }
 
@@ -200,6 +196,41 @@ fun CatalogTab(
     if (audioToEdit != null) AudioBookEditDialog(audioBook = audioToEdit!!, onDismiss = { audioToEdit = null }, onSave = { viewModel.saveAudioBook(it); audioToEdit = null })
     if (courseToEdit != null) CourseEditDialog(course = courseToEdit!!, onDismiss = { courseToEdit = null }, onSave = { viewModel.saveCourse(it); courseToEdit = null })
     if (gearToEdit != null) GearEditDialog(gear = gearToEdit!!, onDismiss = { gearToEdit = null }, onSave = { viewModel.saveGear(it); gearToEdit = null })
+}
+
+@Composable
+fun CatalogFilterItem(
+    filter: CatalogFilter,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 4.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = filter.icon, 
+                contentDescription = null, 
+                modifier = Modifier.size(18.dp),
+                tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            AnimatedVisibility(visible = isSelected) {
+                Text(
+                    text = filter.title,
+                    modifier = Modifier.padding(start = 8.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+    }
 }
 
 @Composable

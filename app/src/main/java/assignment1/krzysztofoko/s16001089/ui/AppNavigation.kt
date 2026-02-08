@@ -83,7 +83,8 @@ fun AppNavigation(
         onLogoutClick = { mainVm.showLogoutConfirm = true },
         onToggleTheme = onToggleTheme,
         isDarkTheme = isDarkTheme,
-        windowSizeClass = windowSizeClass
+        windowSizeClass = windowSizeClass,
+        onClassroomClick = { id -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$id") } // Navigation Logic
     ) { paddingValues ->
         
         AppNavigationPopups(

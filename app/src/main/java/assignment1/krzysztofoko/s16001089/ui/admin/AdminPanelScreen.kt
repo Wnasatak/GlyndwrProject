@@ -3,23 +3,21 @@ package assignment1.krzysztofoko.s16001089.ui.admin
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Course
 import assignment1.krzysztofoko.s16001089.data.ModuleContent
@@ -32,8 +30,7 @@ import assignment1.krzysztofoko.s16001089.ui.admin.components.Courses.ModuleTask
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Dashboard.AdminDashboardTab
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.UserManagementTab
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.UsersLogsTab
-import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
-import coil.compose.AsyncImage
+import assignment1.krzysztofoko.s16001089.ui.components.*
 
 enum class AdminSection { DASHBOARD, APPLICATIONS, USERS, CATALOG, COURSES, LOGS }
 
@@ -70,7 +67,6 @@ fun AdminPanelScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
 
-        // Only show main Scaffold if no overlay is active
         if (!isShowingOverlay) {
             Scaffold(
                 containerColor = Color.Transparent,
@@ -79,35 +75,14 @@ fun AdminPanelScreen(
                         windowInsets = WindowInsets(0, 0, 0, 0),
                         title = { 
                             Row(modifier = Modifier.padding(start = 12.dp)) {
-                                Text(text = sectionTitle, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
+                                Text(text = sectionTitle, fontWeight = FontWeight.Black, style = if(sectionTitle == "Product Inventory") MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge)
                             }
                         },
                         navigationIcon = {
-                            val infiniteTransition = rememberInfiniteTransition("logo_pulse")
-                            val animatedShadow by infiniteTransition.animateValue(
-                                initialValue = 8.dp,
-                                targetValue = 24.dp,
-                                typeConverter = Dp.VectorConverter,
-                                animationSpec = infiniteRepeatable(
-                                    animation = tween(1500, easing = FastOutSlowInEasing),
-                                    repeatMode = RepeatMode.Reverse
-                                ),
-                                label = "shadow"
-                            )
-
-                            AsyncImage(
+                            AdaptiveBrandedLogo(
                                 model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
                                 contentDescription = "University Logo",
-                                modifier = Modifier
-                                    .padding(start = 12.dp)
-                                    .size(36.dp)
-                                    .shadow(
-                                        elevation = animatedShadow,
-                                        shape = CircleShape,
-                                        ambientColor = MaterialTheme.colorScheme.primary,
-                                        spotColor = MaterialTheme.colorScheme.primary
-                                    )
-                                    .clip(CircleShape)
+                                modifier = Modifier.padding(start = 12.dp)
                             )
                         },
                         actions = {

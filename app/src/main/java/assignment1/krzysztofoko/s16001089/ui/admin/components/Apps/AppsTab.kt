@@ -49,9 +49,10 @@ fun ApplicationsTab(
         AppsFilterOption("REJECTED", "Declined", Icons.Default.Cancel, rejected.size, MaterialTheme.colorScheme.error)
     )
 
+    val isTablet = isTablet()
     val infiniteCount = Int.MAX_VALUE
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % filterOptions.size)
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = if (isTablet) 0 else startPosition)
 
     val filteredList = when(selectedFilter) {
         "ALL" -> applications
@@ -61,89 +62,120 @@ fun ApplicationsTab(
         else -> rejected
     }
 
-    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
-        val columns = if (isTablet) 2 else 1
-        
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+    Column(modifier = Modifier.fillMaxSize()) {
+        // --- Integrated Top Filter Menu ---
+        Surface(
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+            tonalElevation = 2.dp
         ) {
-            item(span = { GridItemSpan(this.maxLineSpan) }) {
-                LazyRow(
-                    state = listState,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            LazyRow(
+                state = listState,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = if (isTablet) Arrangement.Center else Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isTablet) {
+                    // Static row for tablets
+                    items(filterOptions) { option ->
+                        AppsFilterItem(
+                            option = option,
+                            isSelected = selectedFilter == option.id,
+                            onClick = { selectedFilter = option.id }
+                        )
+                    }
+                } else {
+                    // Infinite loop for phones
                     items(infiniteCount) { index ->
                         val option = filterOptions[index % filterOptions.size]
-                        val isSelected = selectedFilter == option.id
-                        
-                        Surface(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .clickable { selectedFilter = option.id },
-                            color = if (isSelected) option.color.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-                            border = BorderStroke(
-                                width = if (isSelected) 2.dp else 1.dp,
-                                color = if (isSelected) option.color else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                            ),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = option.icon,
-                                    contentDescription = null,
-                                    tint = if (isSelected) option.color else Color.Gray,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    text = option.label,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
-                                    color = if (isSelected) option.color else Color.Gray
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Surface(
-                                    color = if (isSelected) option.color else Color.Gray.copy(alpha = 0.2f),
-                                    shape = CircleShape
-                                ) {
-                                    Text(
-                                        text = option.count.toString(),
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Black,
-                                        color = if (isSelected) Color.White else Color.Gray
-                                    )
-                                }
-                            }
-                        }
+                        AppsFilterItem(
+                            option = option,
+                            isSelected = selectedFilter == option.id,
+                            onClick = { selectedFilter = option.id }
+                        )
                     }
                 }
             }
+        }
 
+        // --- Adaptive Content Area ---
+        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+            val columns = if (isTablet) 2 else 1
+            
             if (filteredList.isEmpty()) {
-                item(span = { GridItemSpan(this.maxLineSpan) }) {
-                    AppsEmptyState(
-                        icon = filterOptions.find { it.id == selectedFilter }?.icon ?: Icons.Default.Inbox,
-                        message = "No ${selectedFilter.lowercase()} applications found."
-                    )
-                }
+                AppsEmptyState(
+                    icon = filterOptions.find { it.id == selectedFilter }?.icon ?: Icons.Default.Inbox,
+                    message = "No ${selectedFilter.lowercase()} applications found."
+                )
             } else {
-                items(filteredList) { app ->
-                    AdminApplicationCard(
-                        app = app,
-                        onApprove = { viewModel.approveApplication(app.details.id, app.details.userId, app.course?.title ?: "Course") },
-                        onReject = { viewModel.rejectApplication(app.details.id, app.details.userId, app.course?.title ?: "Course") },
-                        onCheck = { onReviewApp(app) }
-                    )
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columns),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp, start = 16.dp, end = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(filteredList) { app ->
+                        AdminApplicationCard(
+                            app = app,
+                            onApprove = { viewModel.approveApplication(app.details.id, app.details.userId, app.course?.title ?: "Course") },
+                            onReject = { viewModel.rejectApplication(app.details.id, app.details.userId, app.course?.title ?: "Course") },
+                            onCheck = { onReviewApp(app) }
+                        )
+                    }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppsFilterItem(
+    option: AppsFilterOption,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .padding(horizontal = 4.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable { onClick() },
+        color = if (isSelected) option.color.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        border = BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp,
+            color = if (isSelected) option.color else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = option.icon,
+                contentDescription = null,
+                tint = if (isSelected) option.color else Color.Gray,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = option.label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
+                color = if (isSelected) option.color else Color.Gray
+            )
+            Spacer(Modifier.width(6.dp))
+            Surface(
+                color = if (isSelected) option.color else Color.Gray.copy(alpha = 0.2f),
+                shape = CircleShape
+            ) {
+                Text(
+                    text = option.count.toString(),
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    color = if (isSelected) Color.White else Color.Gray
+                )
             }
         }
     }
@@ -159,10 +191,10 @@ fun AdminApplicationCard(
     val sdf = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
     
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

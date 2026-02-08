@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,6 +27,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -44,6 +47,7 @@ import java.util.Locale
  * A shared Scaffold wrapper that provides the branded University TopBar
  * and consistent layout padding for all main screens.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopLevelScaffold(
     currentUser: FirebaseUser?,
@@ -61,9 +65,12 @@ fun TopLevelScaffold(
     onToggleTheme: () -> Unit,
     isDarkTheme: Boolean,
     windowSizeClass: WindowSizeClass? = null,
+    onClassroomClick: (String) -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
 ) {
     var showMoreMenu by remember { mutableStateOf(false) }
+    var showClassroomPicker by remember { mutableStateOf(false) }
+    
     val isAdmin = localUser?.role == "admin"
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
@@ -80,9 +87,16 @@ fun TopLevelScaffold(
     val filteredOwnedBooks by dashboardViewModel.filteredOwnedBooks.collectAsState()
     val purchasedIds by dashboardViewModel.purchasedIds.collectAsState()
 
+    val enrolledPaidCourse = filteredOwnedBooks.find { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
+    val enrolledFreeCourses = filteredOwnedBooks.filter { it.mainCategory == AppConstants.CAT_COURSES && it.price <= 0.0 && purchasedIds.contains(it.id) }
+    
+    val enrolledCourses = remember(enrolledPaidCourse, enrolledFreeCourses) {
+        listOfNotNull(enrolledPaidCourse) + enrolledFreeCourses
+    }
+
     val hasActiveEnrolledCourse = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
     val showApplications = applicationCount > 0 && !hasActiveEnrolledCourse
-    val hasCourses = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && purchasedIds.contains(it.id) }
+    val hasCourses = enrolledCourses.isNotEmpty()
 
     val infiniteTransition = rememberInfiniteTransition(label = "bellRing")
     val rotation by infiniteTransition.animateFloat(
@@ -103,10 +117,12 @@ fun TopLevelScaffold(
             NavigationRail(
                 containerColor = MaterialTheme.colorScheme.surface,
                 header = {
-                    UserAvatar(
-                        photoUrl = localUser?.photoUrl ?: currentUser.photoUrl?.toString(),
-                        modifier = Modifier.size(48.dp).padding(8.dp).clickable { onProfileClick() }
-                    )
+                    Box(modifier = Modifier.padding(top = 12.dp, bottom = 8.dp), contentAlignment = Alignment.Center) {
+                        UserAvatar(
+                            photoUrl = localUser?.photoUrl ?: currentUser.photoUrl?.toString(),
+                            modifier = Modifier.size(44.dp).clickable { onProfileClick() }
+                        )
+                    }
                 },
                 modifier = Modifier.fillMaxHeight()
             ) {
@@ -122,6 +138,57 @@ fun TopLevelScaffold(
                     icon = { Icon(if (isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Dashboard, null) },
                     label = { Text(if (isAdmin) "Admin" else "Dashboard") }
                 )
+
+                // Classroom item with Dropdown
+                if (hasCourses) {
+                    Box {
+                        NavigationRailItem(
+                            selected = currentRoute?.contains(AppConstants.ROUTE_CLASSROOM) == true,
+                            onClick = { showClassroomPicker = true },
+                            icon = { Icon(Icons.Default.School, null) },
+                            label = { Text("Classroom") }
+                        )
+                        DropdownMenu(
+                            expanded = showClassroomPicker,
+                            onDismissRequest = { showClassroomPicker = false },
+                            // Offset adjusted to display menu higher
+                            offset = androidx.compose.ui.unit.DpOffset(x = 80.dp, y = (-180).dp),
+                            modifier = Modifier.width(280.dp).padding(vertical = 8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Text("Select Classroom", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            }
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            enrolledCourses.forEach { course ->
+                                DropdownMenuItem(
+                                    text = { Text(course.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    onClick = {
+                                        showClassroomPicker = false
+                                        onClassroomClick(course.id)
+                                    },
+                                    leadingIcon = { 
+                                        Surface(
+                                            modifier = Modifier.size(32.dp),
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(Icons.Default.AutoStories, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
                 if (showApplications) {
                     NavigationRailItem(
                         selected = currentRoute == AppConstants.ROUTE_MY_APPLICATIONS,
@@ -156,14 +223,16 @@ fun TopLevelScaffold(
 
         Scaffold(
             topBar = {
+                // HIDE the global top bar on the Dashboard, Admin, and Tutor panels to avoid double headers and double bells.
                 if (currentUser != null && 
                     currentRoute != null && 
                     currentRoute != AppConstants.ROUTE_SPLASH && 
                     currentRoute != AppConstants.ROUTE_AUTH &&
                     currentRoute != AppConstants.ROUTE_DASHBOARD && 
+                    currentRoute != AppConstants.ROUTE_ADMIN_PANEL && 
+                    currentRoute != AppConstants.ROUTE_TUTOR_PANEL && 
                     currentRoute != AppConstants.ROUTE_PROFILE && 
                     currentRoute != AppConstants.ROUTE_NOTIFICATIONS &&
-                    currentRoute != AppConstants.ROUTE_TUTOR_PANEL &&
                     currentRoute != AppConstants.ROUTE_ABOUT &&
                     currentRoute != AppConstants.ROUTE_DEVELOPER &&
                     currentRoute != AppConstants.ROUTE_INSTRUCTIONS &&
@@ -298,7 +367,7 @@ fun TopLevelScaffold(
                                                         text = { Text(AppConstants.TITLE_CLASSROOM) }, 
                                                         onClick = { 
                                                             showMoreMenu = false
-                                                            onDashboardClick() 
+                                                            showClassroomPicker = true 
                                                         }, 
                                                         leadingIcon = { Icon(Icons.Default.School, null) }
                                                     )
@@ -326,6 +395,68 @@ fun TopLevelScaffold(
             modifier = Modifier.weight(1f),
             content = content
         )
+    }
+
+    // Modal Bottom Sheet for Course Selection on Phones
+    if (showClassroomPicker && !useNavRail) {
+        ModalBottomSheet(
+            onDismissRequest = { showClassroomPicker = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 40.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(16.dp))
+                    Text(
+                        text = "Your Classrooms",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+                Spacer(Modifier.height(24.dp))
+                
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(enrolledCourses) { course ->
+                        Surface(
+                            onClick = {
+                                showClassroomPicker = false
+                                onClassroomClick(course.id)
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(48.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.AutoStories, null, tint = Color.White)
+                                    }
+                                }
+                                Spacer(Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(course.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(course.author, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                }
+                                Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

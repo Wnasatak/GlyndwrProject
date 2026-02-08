@@ -103,9 +103,9 @@ fun CatalogItemCard(
 }
 
 @Composable
-fun CatalogSectionHeader(title: String, count: Int) {
+fun CatalogSectionHeader(title: String, count: Int, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

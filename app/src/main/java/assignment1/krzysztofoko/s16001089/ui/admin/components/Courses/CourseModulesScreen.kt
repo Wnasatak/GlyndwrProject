@@ -24,8 +24,14 @@ import assignment1.krzysztofoko.s16001089.data.ModuleContent
 import assignment1.krzysztofoko.s16001089.data.Assignment
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Catalog.CatalogDeleteDialog
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveScreenContainer
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
 import java.util.UUID
 
+/**
+ * Optimized Course Modules Screen.
+ * Fully adaptive for tablets using AdaptiveScreenContainer.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CourseModulesScreen(
@@ -44,7 +50,7 @@ fun CourseModulesScreen(
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
                 title = { 
                     Text(
                         text = course.title,
@@ -77,38 +83,40 @@ fun CourseModulesScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                HeaderSection(
-                    title = "Course Syllabus",
-                    subtitle = "Organize modules and learning content.",
-                    icon = Icons.Default.LibraryBooks,
-                    isDarkTheme = isDarkTheme
-                )
-            }
-
-            if (modules.isEmpty()) {
+        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
-                        Text("No modules found for this course.", color = Color.Gray)
-                    }
-                }
-            } else {
-                items(modules) { module ->
-                    ModuleItemCard(
-                        module = module,
-                        onEdit = { moduleToEdit = module },
-                        onDelete = { moduleToDelete = module },
-                        onClick = { onModuleSelected(module) }
+                    HeaderSection(
+                        title = "Course Syllabus",
+                        subtitle = "Organize modules and learning content.",
+                        icon = Icons.Default.LibraryBooks,
+                        isDarkTheme = isDarkTheme
                     )
                 }
+
+                if (modules.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+                            Text("No modules found for this course.", color = Color.Gray)
+                        }
+                    }
+                } else {
+                    items(modules) { module ->
+                        ModuleItemCard(
+                            module = module,
+                            onEdit = { moduleToEdit = module },
+                            onDelete = { moduleToDelete = module },
+                            onClick = { onModuleSelected(module) }
+                        )
+                    }
+                }
+                
+                item { Spacer(Modifier.height(40.dp)) }
             }
-            
-            item { Spacer(Modifier.height(40.dp)) }
         }
     }
 
@@ -212,7 +220,7 @@ fun ModuleTasksOverlay(
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
                 title = {
                     Text(
                         text = module.title,
@@ -244,37 +252,39 @@ fun ModuleTasksOverlay(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                HeaderSection(
-                    title = "Tasks & Assignments",
-                    subtitle = "Create and manage student work.",
-                    icon = Icons.Default.Assignment,
-                    isDarkTheme = isDarkTheme
-                )
-            }
-
-            if (tasks.isEmpty()) {
+        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
-                        Text("No tasks found for this module.", color = Color.Gray)
-                    }
-                }
-            } else {
-                items(tasks) { task ->
-                    TaskItemCard(
-                        task = task,
-                        onEdit = { taskToEdit = task },
-                        onDelete = { taskToDelete = task }
+                    HeaderSection(
+                        title = "Tasks & Assignments",
+                        subtitle = "Create and manage student work.",
+                        icon = Icons.Default.Assignment,
+                        isDarkTheme = isDarkTheme
                     )
                 }
+
+                if (tasks.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+                            Text("No tasks found for this module.", color = Color.Gray)
+                        }
+                    }
+                } else {
+                    items(tasks) { task ->
+                        TaskItemCard(
+                            task = task,
+                            onEdit = { taskToEdit = task },
+                            onDelete = { taskToDelete = task }
+                        )
+                    }
+                }
+                
+                item { Spacer(Modifier.height(40.dp)) }
             }
-            
-            item { Spacer(Modifier.height(40.dp)) }
         }
     }
 

@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -19,7 +20,7 @@ import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.classroom.components.Assignments.ClassroomAssignmentsTab
 import assignment1.krzysztofoko.s16001089.ui.classroom.components.Modules.ClassroomModulesTab
 import assignment1.krzysztofoko.s16001089.ui.classroom.components.Performance.ClassroomPerformanceTab
-import assignment1.krzysztofoko.s16001089.ui.components.VerticalWavyBackground
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,7 +41,6 @@ fun ClassroomScreen(
     val assignments by viewModel.assignments.collectAsState()
     val grades by viewModel.grades.collectAsState()
     val activeSession by viewModel.activeSession.collectAsState()
-    val broadcastMessage by viewModel.broadcastMessage.collectAsState()
     val liveChatMessages by viewModel.liveChatMessages.collectAsState()
     val isLiveViewActive by viewModel.isLiveViewActive.collectAsState()
     val selectedAssignment by viewModel.selectedAssignment.collectAsState()
@@ -64,19 +64,23 @@ fun ClassroomScreen(
                 onClose = { viewModel.leaveLiveSession() }
             )
         } else if (selectedAssignment != null) {
-            AssignmentSubmissionView(
-                assignment = selectedAssignment!!,
-                isSubmitting = isSubmitting,
-                onSubmit = { content -> viewModel.submitAssignment(selectedAssignment!!.id, content) },
-                onCancel = { viewModel.selectAssignment(null) }
-            )
+            AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) {
+                AssignmentSubmissionView(
+                    assignment = selectedAssignment!!,
+                    isSubmitting = isSubmitting,
+                    onSubmit = { content -> viewModel.submitAssignment(selectedAssignment!!.id, content) },
+                    onCancel = { viewModel.selectAssignment(null) }
+                )
+            }
         } else if (selectedModule != null) {
-            ModuleDetailView(
-                module = selectedModule!!,
-                assignments = assignments,
-                onBack = { viewModel.selectModule(null) },
-                onSubmitAssignment = { viewModel.selectAssignment(it) }
-            )
+            AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) {
+                ModuleDetailView(
+                    module = selectedModule!!,
+                    assignments = assignments,
+                    onBack = { viewModel.selectModule(null) },
+                    onSubmitAssignment = { viewModel.selectAssignment(it) }
+                )
+            }
         } else {
             Scaffold(
                 containerColor = Color.Transparent,
@@ -98,49 +102,58 @@ fun ClassroomScreen(
                     )
                 }
             ) { padding ->
-                Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    // Live Session Card
-                    LiveBroadcastCard(
-                        session = activeSession,
-                        onJoinClick = { viewModel.enterLiveSession() }
-                    )
-
-                    // Navigation Tabs - Changed to ScrollableTabRow with minimal edge padding to ensure inline fit
-                    ScrollableTabRow(
-                        selectedTabIndex = selectedTab,
-                        containerColor = Color.Transparent,
-                        edgePadding = 12.dp,
-                        divider = {}
-                    ) {
-                        tabs.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTab == index,
-                                onClick = { viewModel.selectTab(index) },
-                                text = { 
-                                    Text(
-                                        text = title, 
-                                        fontWeight = FontWeight.Black,
-                                        fontSize = 13.sp, // Slightly reduced to ensure single line
-                                        maxLines = 1
-                                    ) 
-                                }
-                            )
+                AdaptiveScreenContainer(
+                    maxWidth = AdaptiveWidths.Wide,
+                    modifier = Modifier.padding(padding)
+                ) { isTablet ->
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Live Session Card - Center constrained on tablets
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Box(modifier = if (isTablet) Modifier.widthIn(max = AdaptiveWidths.Medium) else Modifier.fillMaxWidth()) {
+                                LiveBroadcastCard(
+                                    session = activeSession,
+                                    onJoinClick = { viewModel.enterLiveSession() }
+                                )
+                            }
                         }
-                    }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                        // Navigation Tabs
+                        ScrollableTabRow(
+                            selectedTabIndex = selectedTab,
+                            containerColor = Color.Transparent,
+                            edgePadding = 12.dp,
+                            divider = {}
+                        ) {
+                            tabs.forEachIndexed { index, title ->
+                                Tab(
+                                    selected = selectedTab == index,
+                                    onClick = { viewModel.selectTab(index) },
+                                    text = { 
+                                        Text(
+                                            text = title, 
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 13.sp,
+                                            maxLines = 1
+                                        ) 
+                                    }
+                                )
+                            }
+                        }
 
-                    // Tab Content
-                    Box(modifier = Modifier.weight(1f)) {
-                        AnimatedContent(
-                            targetState = selectedTab,
-                            transitionSpec = { fadeIn() togetherWith fadeOut() },
-                            label = "tabTransition"
-                        ) { targetTab ->
-                            when (targetTab) {
-                                0 -> ClassroomModulesTab(modules, onModuleClick = { viewModel.selectModule(it) })
-                                1 -> ClassroomAssignmentsTab(assignments, onSelect = { viewModel.selectAssignment(it) })
-                                2 -> ClassroomPerformanceTab(grades, assignments)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                        // Tab Content
+                        Box(modifier = Modifier.weight(1f)) {
+                            AnimatedContent(
+                                targetState = selectedTab,
+                                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                label = "tabTransition"
+                            ) { targetTab ->
+                                when (targetTab) {
+                                    0 -> ClassroomModulesTab(modules, onModuleClick = { viewModel.selectModule(it) })
+                                    1 -> ClassroomAssignmentsTab(assignments, onSelect = { viewModel.selectAssignment(it) })
+                                    2 -> ClassroomPerformanceTab(grades, assignments)
+                                }
                             }
                         }
                     }

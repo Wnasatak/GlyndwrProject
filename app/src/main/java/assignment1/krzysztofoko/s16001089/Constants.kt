@@ -177,8 +177,6 @@ object AppConstants {
     const val TEXT_AUDIO_CONTENT = "Audio Content"
     const val TEXT_INSTALLMENTS_AVAILABLE = "Installments Available"
     const val TEXT_READING = "Reading..."
-    const val TEXT_STUDENT_DISCOUNT = "STUDENT PRICE (-10%)"
-    const val TEXT_STUDENT_RATE = "STUDENT RATE (-10%)"
     const val TEXT_DEFAULT = "Default"
     const val TEXT_EMAIL = "Email"
     const val TEXT_STUDENT_ID = "Student ID"
@@ -273,18 +271,6 @@ object AppConstants {
     const val MSG_DEMO_MODE_DESC = "For this demonstration, your code is provided below, but please also check your email! 😊"
     const val MSG_PAID_COURSE_LIMIT = "You can only be enrolled in one paid course at a time."
 
-    // --- Roadmap Items ---
-    const val ROADMAP_AI_TITLE = "AI-POWERED RECOMMENDATIONS"
-    const val ROADMAP_AI_DESC = "Personalized item suggestions based on your viewing and purchase history using advanced machine learning models."
-    const val ROADMAP_TRACKING_TITLE = "REAL-TIME TRACKING"
-    const val ROADMAP_TRACKING_DESC = "Live tracking for physical university gear orders with push notifications for every step of the delivery process."
-    const val ROADMAP_COMMUNITY_TITLE = "COMMUNITY HUB"
-    const val ROADMAP_COMMUNITY_DESC = "Discussion forums for university courses where students can share notes, ask questions, and collaborate on projects."
-    const val ROADMAP_OFFLINE_TITLE = "FULL OFFLINE MODE"
-    const val ROADMAP_OFFLINE_DESC = "Enhanced offline capabilities allowing students to access all purchased courses and reading materials without any internet connection."
-    const val ROADMAP_OFFLINE_TITLE_2 = "OFFLINE MODE" // Added to avoid conflict
-    const val ROADMAP_PAYMENTS_TITLE = "EXTERNAL PAYMENTS"
-    const val ROADMAP_PAYMENTS_DESC = "Integration with major regional banks and crypto-wallets to provide more flexibility in payment options beyond the University Account."
 
     // --- Version Info Items ---
     const val VER_READER_TITLE = "ENHANCED PDF READER"

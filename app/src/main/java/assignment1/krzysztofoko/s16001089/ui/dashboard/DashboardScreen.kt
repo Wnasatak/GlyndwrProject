@@ -8,12 +8,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,7 +40,6 @@ import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 /**
  * Main User Dashboard Screen.
@@ -96,9 +95,43 @@ fun DashboardScreen(
     var selectedBookForPickup by remember { mutableStateOf<Book?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     var showWalletHistory by remember { mutableStateOf(false) }
+    
+    // Classroom picker state for consistent behavior
+    var showClassroomPicker by remember { mutableStateOf(false) }
 
     val isTablet = isTablet()
     val columns = if (isTablet) 2 else 1
+    val gridState = rememberLazyGridState()
+
+    // Stable top sections logic
+    val enrolledPaidCourse = remember(allBooks, purchasedIds) {
+        allBooks.find { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
+    }
+    val enrolledFreeCourses = remember(allBooks, purchasedIds) {
+        allBooks.filter { it.mainCategory == AppConstants.CAT_COURSES && it.price <= 0.0 && purchasedIds.contains(it.id) }
+    }
+    val enrolledCourses = remember(enrolledPaidCourse, enrolledFreeCourses) {
+        listOfNotNull(enrolledPaidCourse) + enrolledFreeCourses
+    }
+
+    val isAdmin = localUser?.role == "admin"
+    val isTutor = localUser?.role == "teacher" || localUser?.role == "tutor"
+    val showApplications = applicationCount > 0 && enrolledPaidCourse == null
+
+    // Scroll index for auto-scroll
+    val collectionIndex = remember(showApplications, enrolledPaidCourse, enrolledFreeCourses, isAdmin, isTutor) {
+        var count = 1 // dashboardHeaderSection
+        if (showApplications) count++
+        if (enrolledPaidCourse != null || enrolledFreeCourses.isNotEmpty()) {
+            count++ // header
+            if (enrolledPaidCourse != null) count++
+            count += enrolledFreeCourses.size
+        }
+        if (isAdmin) count++
+        if (isTutor) count++
+        count += 6 // activityRowsSection
+        count 
+    }
 
     // Animation for the ringing bell
     val infiniteTransition = rememberInfiniteTransition(label = "bellRing")
@@ -123,12 +156,6 @@ fun DashboardScreen(
     val infiniteCount = Int.MAX_VALUE
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % filterOptions.size)
     val filterListState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
-
-    val isTutor = localUser?.role == "teacher" || localUser?.role == "tutor"
-    val isAdmin = localUser?.role == "admin"
-
-    val hasActiveEnrolledCourse = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
-    val showApplications = applicationCount > 0 && !hasActiveEnrolledCourse
 
     Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) viewModel.setSearchVisible(false) }) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
@@ -158,7 +185,6 @@ fun DashboardScreen(
                         TopBarSearchAction(isSearchVisible = isSearchVisible) { viewModel.setSearchVisible(true) }
                         IconButton(onClick = { navController.navigate(AppConstants.ROUTE_HOME) }) { Icon(Icons.Default.Storefront, AppConstants.TITLE_STORE) }
 
-                        // Messages Icon
                         if (hasMessages) {
                             Box(contentAlignment = Alignment.TopEnd) {
                                 val chatColor = if (unreadMessagesCount > 0 && isDarkTheme) Color(0xFFFFEB3B) else if (unreadMessagesCount > 0) Color(0xFFFBC02D) else MaterialTheme.colorScheme.onSurface
@@ -168,14 +194,13 @@ fun DashboardScreen(
                                 if (unreadMessagesCount > 0) {
                                     Surface(color = Color(0xFFE53935), shape = CircleShape, border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.surface), modifier = Modifier.size(18.dp).offset(x = 4.dp, y = (-2).dp).align(Alignment.TopEnd)) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Text(text = if (unreadMessagesCount > 9) "!" else unreadMessagesCount.toString(), style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp), color = Color.White, textAlign = TextAlign.Center)
+                                            Text(text = if (unreadMessagesCount > 9) "!" else unreadMessagesCount.toString(), style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp), color = Color.White, textAlign = TextAlign.Center)
                                         }
                                     }
                                 }
                             }
                         }
 
-                        // Notification Bell
                         Box(contentAlignment = Alignment.TopEnd) {
                             val bellColor = if (unreadCount > 0 && isDarkTheme) Color(0xFFFFEB3B) else if (unreadCount > 0) Color(0xFFFBC02D) else MaterialTheme.colorScheme.onSurface
                             IconButton(onClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) }, modifier = Modifier.size(36.dp)) {
@@ -184,7 +209,7 @@ fun DashboardScreen(
                             if (unreadCount > 0) {
                                 Surface(color = Color(0xFFE53935), shape = CircleShape, border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.surface), modifier = Modifier.size(18.dp).offset(x = 4.dp, y = (-2).dp).align(Alignment.TopEnd)) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Text(text = if (unreadCount > 9) "!" else unreadCount.toString(), style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp), color = Color.White, textAlign = TextAlign.Center)
+                                        Text(text = if (unreadCount > 9) "!" else unreadCount.toString(), style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp), color = Color.White, textAlign = TextAlign.Center)
                                     }
                                 }
                             }
@@ -197,9 +222,16 @@ fun DashboardScreen(
                                     DropdownMenuItem(text = { Text(AppConstants.TITLE_MY_APPLICATIONS) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Assignment, null) })
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 }
-                                val hasCourses = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && purchasedIds.contains(it.id) }
+                                val hasCourses = enrolledCourses.isNotEmpty()
                                 if (hasCourses) {
-                                    DropdownMenuItem(text = { Text(AppConstants.TITLE_CLASSROOM) }, onClick = { showMenu = false; val activeCourses = filteredOwnedBooks.filter { it.mainCategory == AppConstants.CAT_COURSES && purchasedIds.contains(it.id) }; if (activeCourses.isNotEmpty()) { navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${activeCourses.first().id}") } }, leadingIcon = { Icon(Icons.Default.School, null) })
+                                    DropdownMenuItem(
+                                        text = { Text(AppConstants.TITLE_CLASSROOM) }, 
+                                        onClick = { 
+                                            showMenu = false
+                                            showClassroomPicker = true 
+                                        }, 
+                                        leadingIcon = { Icon(Icons.Default.School, null) }
+                                    )
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 }
                                 DropdownMenuItem(text = { Text(AppConstants.TITLE_MESSAGES) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_MESSAGES) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Chat, null) })
@@ -222,168 +254,56 @@ fun DashboardScreen(
                     maxWidth = AdaptiveWidths.Wide
                 ) { isTablet ->
                     LazyVerticalGrid(
+                        state = gridState,
                         columns = GridCells.Fixed(columns),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
-                        contentPadding = PaddingValues(bottom = 32.dp),
+                        modifier = Modifier.fillMaxSize().padding(paddingValues),
+                        // Optimized bottom padding: enough for scroll alignment but not "forever" long.
+                        contentPadding = PaddingValues(bottom = 300.dp),
                         horizontalArrangement = if (isTablet) Arrangement.spacedBy(16.dp) else Arrangement.Start
                     ) {
-                        item(span = { GridItemSpan(this.maxLineSpan) }) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                                Box(modifier = if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth()) {
-                                    DashboardHeader(
-                                        name = localUser?.name ?: AppConstants.TEXT_STUDENT,
-                                        photoUrl = localUser?.photoUrl,
-                                        role = localUser?.role ?: "student",
-                                        balance = localUser?.balance ?: 0.0,
-                                        onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) },
-                                        onViewHistory = { showWalletHistory = true }
-                                    )
+                        dashboardHeaderSection(localUser, isTablet, onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) }, onViewHistory = { showWalletHistory = true })
+                        
+                        applicationsSection(showApplications, isTablet, onClick = { navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) })
+                        
+                        enrolledCoursesSection(enrolledPaidCourse, enrolledFreeCourses, activeLiveSessions, isTablet, onEnterClassroom = { id -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$id") })
+                        
+                        quickActionsSection(isAdmin, isTutor, onAdminClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) }, onTutorClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) })
+                        
+                        activityRowsSection(lastViewedBooks, commentedBooks, wishlistBooks, onBookClick = { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") })
+                        
+                        collectionControlsSection(
+                            isTablet = isTablet, 
+                            selectedFilter = selectedFilter, 
+                            filterOptions = filterOptions, 
+                            filterListState = filterListState, 
+                            infiniteCount = infiniteCount, 
+                            onFilterClick = { filter -> 
+                                viewModel.setCollectionFilter(filter)
+                                scope.launch {
+                                    gridState.animateScrollToItem(collectionIndex)
                                 }
                             }
-                        }
-
-                        if (showApplications) {
-                            item(span = { GridItemSpan(this.maxLineSpan) }) {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                                    Card(
-                                        modifier = Modifier
-                                            .then(if (isTablet) Modifier.widthIn(max = 580.dp) else Modifier.fillMaxWidth())
-                                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                                            .clickable { navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) },
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
-                                        shape = RoundedCornerShape(16.dp)
-                                    ) {
-                                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.AutoMirrored.Filled.Assignment, null, tint = MaterialTheme.colorScheme.secondary)
-                                            Spacer(Modifier.width(12.dp))
-                                            Column {
-                                                Text(AppConstants.TITLE_MY_APPLICATIONS, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                                                Text("Track your enrollment status", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
-                                            }
-                                            Spacer(Modifier.weight(1f))
-                                            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.secondary)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        val enrolledPaidCourse = filteredOwnedBooks.find { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
-                        val enrolledFreeCourses = filteredOwnedBooks.filter { it.mainCategory == AppConstants.CAT_COURSES && it.price <= 0.0 && purchasedIds.contains(it.id) }
-
-                        if (enrolledPaidCourse != null || enrolledFreeCourses.isNotEmpty()) {
-                            item(span = { GridItemSpan(this.maxLineSpan) }) { SectionHeader(AppConstants.LABEL_MY_COURSES) }
-                            if (enrolledPaidCourse != null) {
-                                val isLive = activeLiveSessions.any { it.courseId == enrolledPaidCourse.id }
-                                item(span = { GridItemSpan(this.maxLineSpan) }) { 
-                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                                        Box(modifier = if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth()) {
-                                            EnrolledCourseHeader(course = enrolledPaidCourse, isLive = isLive, onEnterClassroom = { courseId: String -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId") })
-                                        }
-                                    }
-                                }
-                            }
-                            items(enrolledFreeCourses, span = { GridItemSpan(this.maxLineSpan) }) { freeCourse ->
-                                val isLive = activeLiveSessions.any { it.courseId == freeCourse.id }
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                                    Box(modifier = if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth()) {
-                                        FreeCourseHeader(course = freeCourse, isLive = isLive, onEnterClassroom = { courseId: String -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId") })
-                                    }
-                                }
-                            }
-                        }
-
-                        if (isAdmin) { item(span = { GridItemSpan(this.maxLineSpan) }) { Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) { AdminQuickActions { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) } } } }
-                        if (isTutor) { item(span = { GridItemSpan(this.maxLineSpan) }) { Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) { TutorQuickActions { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) } } } }
-
-                        item(span = { GridItemSpan(this.maxLineSpan) }) { SectionHeader(AppConstants.TITLE_CONTINUE_READING) }
-                        if (lastViewedBooks.isNotEmpty()) { item(span = { GridItemSpan(this.maxLineSpan) }) { GrowingLazyRow(lastViewedBooks, icon = Icons.Default.History) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item(span = { GridItemSpan(this.maxLineSpan) }) { EmptySectionPlaceholder(AppConstants.MSG_NO_RECENT_REVIEWS) } }
-
-                        item(span = { GridItemSpan(this.maxLineSpan) }) { SectionHeader(AppConstants.TITLE_RECENT_ACTIVITY) }
-                        if (commentedBooks.isNotEmpty()) { item(span = { GridItemSpan(this.maxLineSpan) }) { GrowingLazyRow(commentedBooks, icon = Icons.AutoMirrored.Filled.Comment) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item(span = { GridItemSpan(this.maxLineSpan) }) { EmptySectionPlaceholder(AppConstants.MSG_NO_RECENT_REVIEWS) } }
-
-                        item(span = { GridItemSpan(this.maxLineSpan) }) { SectionHeader(AppConstants.TITLE_RECENTLY_LIKED) }
-                        if (wishlistBooks.isNotEmpty()) { item(span = { GridItemSpan(this.maxLineSpan) }) { GrowingLazyRow(wishlistBooks, icon = Icons.Default.Favorite) { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") } } } else { item(span = { GridItemSpan(this.maxLineSpan) }) { EmptySectionPlaceholder(AppConstants.MSG_FAVORITES_EMPTY) } }
-
-                        item(span = { GridItemSpan(this.maxLineSpan) }) {
-                            SectionHeader(AppConstants.TITLE_YOUR_COLLECTION)
-                            LazyRow(state = filterListState, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                items(infiniteCount) { index ->
-                                    val filterIndex = index % filterOptions.size
-                                    val filter = filterOptions[filterIndex]
-                                    val scale by remember { derivedStateOf {
-                                        val layoutInfo = filterListState.layoutInfo
-                                        val visibleItemsInfo = layoutInfo.visibleItemsInfo
-                                        val itemInfo = visibleItemsInfo.find { it.index == index }
-                                        if (itemInfo != null) {
-                                            val center = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset) / 2
-                                            val itemCenter = itemInfo.offset + (itemInfo.size / 2)
-                                            val dist = abs(center - itemCenter).toFloat()
-                                            val normDist = (dist / center).coerceIn(0f, 1f)
-                                            1.25f - (normDist * 0.4f)
-                                        } else 0.85f
-                                    } }
-                                    CategorySquareButton(label = filter, icon = when(filter) { AppConstants.FILTER_BOOKS -> Icons.AutoMirrored.Filled.MenuBook; AppConstants.FILTER_AUDIOBOOKS -> Icons.Default.Headphones; AppConstants.FILTER_GEAR -> Icons.Default.Checkroom; AppConstants.FILTER_COURSES -> Icons.Default.School; else -> Icons.Default.GridView }, isSelected = selectedFilter == filter, scale = scale, onClick = { viewModel.setCollectionFilter(filter) })
-                                }
-                            }
-                        }
-
-                        if (filteredOwnedBooks.isEmpty()) {
-                            item(span = { GridItemSpan(this.maxLineSpan) }) { EmptyLibraryPlaceholder(onBrowse = {
-                                val targetCategory = if (selectedFilter == AppConstants.FILTER_ALL) AppConstants.CAT_ALL else AppConstants.mapFilterToCategory(selectedFilter)
-                                navController.navigate("${AppConstants.ROUTE_HOME}?category=$targetCategory")
-                            }) }
-                        } else {
-                            items(filteredOwnedBooks) { book ->
-                                var showItemMenu by remember { mutableStateOf(false) }
-                                val appStatus = applicationsMap[book.id]
-                                val isPending = appStatus == "PENDING_REVIEW"
-                                val isApproved = appStatus == "APPROVED"
-                                val isRejected = appStatus == "REJECTED"
-                                val isFullyOwned = purchasedIds.contains(book.id)
-                                val isAlreadyEnrolledInOther = book.mainCategory == AppConstants.CAT_COURSES && book.price > 0.0 && !isFullyOwned && filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
-
-                                BookItemCard(
-                                    book = book,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    onClick = { viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") },
-                                    imageOverlay = { if (book.isAudioBook) { Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) { SpinningAudioButton(isPlaying = isAudioPlaying && currentPlayingBookId == book.id, onToggle = { onPlayAudio(book) }, size = 40) } } },
-                                    topEndContent = {
-                                        if (!isPending && !isAlreadyEnrolledInOther) {
-                                            Box {
-                                                IconButton(onClick = { viewModel.setSearchVisible(false); showItemMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) { Icon(imageVector = Icons.Default.MoreVert, contentDescription = AppConstants.TITLE_OPTIONS, modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline) }
-                                                DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
-                                                    if (book.mainCategory == AppConstants.CAT_COURSES && !isRejected) { DropdownMenuItem(text = { Text(if (isApproved && !isFullyOwned) "Complete Enrollment" else AppConstants.BTN_ENTER_CLASSROOM) }, onClick = { showMenu = false; if (isApproved && !isFullyOwned) navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") else navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${book.id}") }, leadingIcon = { Icon(Icons.Default.School, null) }) }
-                                                    if (book.price > 0.0 && isFullyOwned) { DropdownMenuItem(text = { Text(AppConstants.BTN_VIEW_INVOICE) }, onClick = { showMenu = false; onViewInvoice(book) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }) }
-                                                    if (book.mainCategory == AppConstants.CAT_GEAR) { DropdownMenuItem(text = { Text(AppConstants.BTN_PICKUP_INFO) }, onClick = { showMenu = false; selectedBookForPickup = book }, leadingIcon = { Icon(Icons.Default.Info, null) }) }
-                                                    if (book.mainCategory != AppConstants.CAT_GEAR && book.price <= 0.0) { DropdownMenuItem(text = { Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; viewModel.setBookToRemove(book) }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }) }
-                                                }
-                                            }
-                                        }
-                                    },
-                                    bottomContent = {
-                                        Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                            val label = when { isPending -> "REVIEWING"; isAlreadyEnrolledInOther -> "ALREADY ENROLLED"; isApproved && !isFullyOwned -> "APPROVED"; isRejected -> "DECLINED"; else -> AppConstants.getItemStatusLabel(book) }
-                                            val color = when { isPending -> Color(0xFFFBC02D); isAlreadyEnrolledInOther -> MaterialTheme.colorScheme.secondary; isApproved && !isFullyOwned -> Color(0xFF4CAF50); isRejected -> Color(0xFFF44336); else -> MaterialTheme.colorScheme.primary }
-                                            Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, color.copy(alpha = 0.3f))) {
-                                                Text(text = label, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.ExtraBold)
-                                            }
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                        item(span = { GridItemSpan(this.maxLineSpan) }) { Spacer(Modifier.height(140.dp)) }
+                        )
+                        
+                        ownedBooksGrid(
+                            books = filteredOwnedBooks,
+                            purchasedIds = purchasedIds,
+                            applicationsMap = applicationsMap,
+                            isDarkTheme = isDarkTheme,
+                            isAudioPlaying = isAudioPlaying,
+                            currentPlayingBookId = currentPlayingBookId,
+                            onBookClick = { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") },
+                            onPlayAudio = onPlayAudio,
+                            onViewInvoice = onViewInvoice,
+                            onPickupInfo = { selectedBookForPickup = it },
+                            onRemoveFromLibrary = { viewModel.setBookToRemove(it) },
+                            onEnterClassroom = { id -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$id") }
+                        )
                     }
                 }
 
                 // Centered Search Section
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(top = paddingValues.calculateTopPadding()),
-                    contentAlignment = Alignment.TopCenter
-                ) {
+                Box(modifier = Modifier.fillMaxWidth().padding(top = paddingValues.calculateTopPadding()), contentAlignment = Alignment.TopCenter) {
                     HomeSearchSection(
                         isSearchVisible = isSearchVisible, 
                         searchQuery = searchQuery, 
@@ -397,10 +317,51 @@ fun DashboardScreen(
                             viewModel.setSearchVisible(false)
                             navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") 
                         }, 
-                        modifier = Modifier
-                            .then(if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth())
-                            .zIndex(10f)
+                        modifier = Modifier.then(if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth()).zIndex(10f)
                     )
+                }
+            }
+        }
+
+        // Classroom selection Bottom Sheet
+        if (showClassroomPicker) {
+            ModalBottomSheet(
+                onDismissRequest = { showClassroomPicker = false },
+                containerColor = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 40.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(16.dp))
+                        Text(text = "Your Classrooms", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(enrolledCourses) { course ->
+                            Surface(
+                                onClick = {
+                                    showClassroomPicker = false
+                                    navController.navigate("${AppConstants.ROUTE_CLASSROOM}/${course.id}")
+                                },
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                            ) {
+                                Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary) {
+                                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoStories, null, tint = Color.White) }
+                                    }
+                                    Spacer(Modifier.width(16.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(course.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(course.author, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    }
+                                    Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

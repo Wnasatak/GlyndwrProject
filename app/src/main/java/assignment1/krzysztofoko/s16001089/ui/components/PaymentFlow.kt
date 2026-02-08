@@ -34,6 +34,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.*
 
+/**
+ * Branded multi-step checkout dialog.
+ * Optimized for tablets with constrained adaptive widths.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderFlowDialog(
@@ -86,13 +90,16 @@ fun OrderFlowDialog(
     
     val amountToPayExternal = (finalPrice - amountFromWallet).coerceAtLeast(0.0)
 
+    val isTablet = isTablet()
+
     Dialog(
         onDismissRequest = { if (!isProcessing) onDismiss() },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.95f)
+                .widthIn(max = 550.dp) // Constraint for tablet optimization
+                .fillMaxWidth(if (isTablet) 0.7f else 0.95f)
                 .wrapContentHeight()
                 .padding(16.dp),
             shape = RoundedCornerShape(28.dp),
@@ -126,7 +133,7 @@ fun OrderFlowDialog(
                 }
                 
                 LinearProgressIndicator(
-                    progress = step / 3f,
+                    progress = { step / 3f },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp)

@@ -1,19 +1,20 @@
 package assignment1.krzysztofoko.s16001089.ui.details.gear
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,22 +32,22 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
- * Detailed Information Screen for University Gear (Merchandise).
- * Fully refactored to use centralized Adaptive utilities and spacing.
+ * Detailed Information Screen for University Gear.
+ * Fixed tablet layout and bottom bar positioning.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GearDetailScreen(
-    navController: NavController,     
-    gearId: String,                   
-    initialGear: Gear? = null,        
-    user: FirebaseUser?,              
-    onLoginRequired: () -> Unit,      
-    onBack: () -> Unit,               
-    isDarkTheme: Boolean,             
-    onToggleTheme: () -> Unit,        
-    onNavigateToProfile: () -> Unit,  
-    onViewInvoice: (String) -> Unit,  
+    navController: NavController,
+    gearId: String,
+    initialGear: Gear? = null,
+    user: FirebaseUser?,
+    onLoginRequired: () -> Unit,
+    onBack: () -> Unit,
+    isDarkTheme: Boolean,
+    onToggleTheme: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onViewInvoice: (String) -> Unit,
     viewModel: GearViewModel = viewModel(factory = GearViewModelFactory(
         gearDao = AppDatabase.getDatabase(LocalContext.current).gearDao(),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
@@ -67,7 +68,6 @@ fun GearDetailScreen(
     val selectedSize by viewModel.selectedSize.collectAsState()
     val selectedColor by viewModel.selectedColor.collectAsState()
     val quantity by viewModel.quantity.collectAsState()
-    val selectedImageIndex by viewModel.selectedImageIndex.collectAsState()
     
     val localUser by viewModel.localUser.collectAsState()
     val roleDiscounts by viewModel.roleDiscounts.collectAsState()
@@ -76,8 +76,8 @@ fun GearDetailScreen(
     val allReviews by viewModel.allReviews.collectAsState()
 
     val effectiveDiscount = remember(localUser, roleDiscounts) {
-        val userRole = localUser?.role ?: "user"
-        val roleRate = roleDiscounts.find { it.role == userRole }?.discountPercent ?: 0.0
+        val uRole = localUser?.role ?: "user"
+        val roleRate = roleDiscounts.find { it.role == uRole }?.discountPercent ?: 0.0
         val individualRate = localUser?.discountPercent ?: 0.0
         maxOf(roleRate, individualRate)
     }
@@ -87,143 +87,112 @@ fun GearDetailScreen(
     var showAddConfirm by remember { mutableStateOf(false) }
     var isProcessingAddition by remember { mutableStateOf(false) }
 
-    val images = remember(gear) { listOfNotNull(gear?.imageUrl, gear?.secondaryImageUrl) }
-
     Box(modifier = Modifier.fillMaxSize()) {
-        HorizontalWavyBackground(isDarkTheme = isDarkTheme, wave1HeightFactor = 0.45f, wave2HeightFactor = 0.65f, wave1Amplitude = 80f, wave2Amplitude = 100f)
+        HorizontalWavyBackground(isDarkTheme = isDarkTheme)
 
         Scaffold(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
-                    windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { 
-                        Text(
-                            text = gear?.title ?: AppConstants.TITLE_GEAR_DETAILS, 
-                            fontSize = 16.sp, 
-                            fontWeight = FontWeight.Bold, 
-                            maxLines = 1, 
-                            overflow = TextOverflow.Ellipsis
-                        ) 
-                    },
-                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Return") } },
+                    title = { Text(gear?.title ?: "Details", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
                     actions = { IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) } },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 )
-            }
-        ) { paddingValues ->
-            if (loading && gear == null) {
-                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            } else if (gear == null) {
-                Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
-                        Spacer(Modifier.height(16.dp)); Text(AppConstants.MSG_ITEM_NOT_FOUND)
-                        TextButton(onClick = onBack) { Text(AppConstants.BTN_GO_BACK) }
+            },
+            bottomBar = {
+                if (gear != null && !loading) {
+                    val unitPrice = gear!!.price * ((100.0 - effectiveDiscount) / 100.0)
+                    Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)).padding(bottom = 16.dp), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.widthIn(max = AdaptiveWidths.Medium)) {
+                            GearBottomActionBar(
+                                isOwned = isOwned,
+                                price = unitPrice * quantity,
+                                stockCount = gear!!.stockCount,
+                                quantity = quantity,
+                                isLoggedIn = user != null,
+                                onViewInvoice = { onViewInvoice(gear!!.id) },
+                                onPickupInfo = { showPickupPopup = true },
+                                onLoginRequired = onLoginRequired,
+                                onCheckout = { showOrderFlow = true },
+                                onFreePickup = { showAddConfirm = true }
+                            )
+                        }
                     }
                 }
+            }
+        ) { padding ->
+            if (loading && gear == null) {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            } else if (gear == null) {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text("Item not found") }
             } else {
-                gear?.let { currentGear ->
-                    val isFree = currentGear.price <= 0
-                    AdaptiveScreenContainer(
-                        modifier = Modifier.padding(paddingValues),
-                        maxWidth = AdaptiveWidths.Medium
-                    ) { isTablet ->
+                gear?.let { item ->
+                    Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
                         LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 120.dp)
+                            modifier = Modifier.fillMaxHeight().widthIn(max = AdaptiveWidths.Medium),
+                            contentPadding = PaddingValues(bottom = 32.dp)
                         ) {
                             item {
                                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    Box(modifier = Modifier.adaptiveHeroWidth()) {
-                                        ProductHeaderImage(book = currentGear.toBook(), isOwned = isOwned, isDarkTheme = isDarkTheme, primaryColor = MaterialTheme.colorScheme.primary)
-                                    }
+                                    ProductHeaderImage(book = item.toBook(), isOwned = isOwned, isDarkTheme = isDarkTheme, primaryColor = MaterialTheme.colorScheme.primary)
                                 }
                             }
-
                             item {
                                 Card(
                                     modifier = Modifier.fillMaxWidth().offset(y = (-24).dp),
-                                    shape = RoundedCornerShape(topStart = AdaptiveSpacing.cornerRadius(), topEnd = AdaptiveSpacing.cornerRadius()),
+                                    shape = RoundedCornerShape(32.dp),
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = if (isDarkTheme) 0.dp else 8.dp)
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                                 ) {
-                                    Column(modifier = Modifier.padding(AdaptiveSpacing.contentPadding())) {
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(text = "Wrexham University", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                                Text(text = currentGear.title, style = if (isTablet) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                                    Column(modifier = Modifier.padding(24.dp)) {
+                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text("Wrexham University", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                                Text(item.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
                                             }
-                                            
                                             Column(horizontalAlignment = Alignment.End) {
-                                                if (currentGear.price > 0) {
-                                                    val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
-                                                    val discountedPrice = currentGear.price * discountMultiplier
-                                                    
+                                                val discountPrice = item.price * ((100.0 - effectiveDiscount) / 100.0)
+                                                if (item.price > 0) {
                                                     if (effectiveDiscount > 0) {
-                                                        Text(text = "£${String.format(Locale.US, "%.2f", currentGear.price)}", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
-                                                        Text(text = "£${String.format(Locale.US, "%.2f", discountedPrice)}", style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                                                        
-                                                        val roleName = localUser?.role?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "User"
-                                                        Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp), modifier = Modifier.padding(top = 4.dp)) { 
-                                                            Text(
-                                                                text = "${roleName.uppercase()} DISCOUNT (-${effectiveDiscount.toInt()}%)", 
-                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), 
-                                                                color = Color(0xFF2E7D32), 
-                                                                fontWeight = FontWeight.Bold, 
-                                                                fontSize = if (isTablet) 12.sp else 10.sp
-                                                            ) 
-                                                        }
+                                                        Text("£${String.format("%.2f", item.price)}", style = MaterialTheme.typography.bodySmall.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
+                                                        Text("£${String.format("%.2f", discountPrice)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                                     } else {
-                                                        Text(text = "£${String.format(Locale.US, "%.2f", currentGear.price)}", style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                                                        Text("£${String.format("%.2f", item.price)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                                                     }
                                                 } else {
-                                                    Text(text = "FREE", style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50))
+                                                    Text("FREE", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50))
                                                 }
                                             }
                                         }
                                         
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        GearTagsSection(tags = currentGear.productTags)
+                                        Spacer(Modifier.height(16.dp))
+                                        GearTagsSection(item.productTags)
+                                        Spacer(Modifier.height(24.dp))
                                         
-                                        Spacer(modifier = Modifier.height(24.dp))
-                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                                        Spacer(modifier = Modifier.height(24.dp))
-
                                         GearOptionSelectors(
-                                            sizes = currentGear.sizes,
-                                            selectedSize = selectedSize,
-                                            onSizeSelected = { viewModel.setSelectedSize(it) },
-                                            colors = currentGear.colors,
-                                            selectedColor = selectedColor,
-                                            onColorSelected = { viewModel.setSelectedColor(it) },
-                                            onColorClick = { color ->
-                                                if (images.size > 1) {
-                                                    viewModel.setSelectedImageIndex(if (color.contains("Pink", ignoreCase = true)) 1 else 0)
-                                                }
-                                            }
+                                            sizes = item.sizes, selectedSize = selectedSize, onSizeSelected = { viewModel.setSelectedSize(it) },
+                                            colors = item.colors, selectedColor = selectedColor, onColorSelected = { viewModel.setSelectedColor(it) }, onColorClick = {}
                                         )
-
-                                        GearStockIndicator(stockCount = currentGear.stockCount, quantity = quantity, isOwned = isOwned, isFree = isFree, onQuantityChange = { viewModel.setQuantity(it) })
-
-                                        Spacer(modifier = Modifier.height(32.dp))
-                                        Text(text = AppConstants.SECTION_DESCRIPTION_GEAR, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                        Spacer(Modifier.height(8.dp))
-                                        Text(text = currentGear.description, style = MaterialTheme.typography.bodyLarge, lineHeight = if (isTablet) 28.sp else 24.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
                                         
-                                        Spacer(modifier = Modifier.height(32.dp))
-                                        GearSpecsCard(material = currentGear.material, sku = currentGear.sku, category = currentGear.category)
+                                        GearStockIndicator(item.stockCount, quantity, isOwned, item.price <= 0) { viewModel.setQuantity(it) }
+                                        
+                                        Spacer(Modifier.height(32.dp))
+                                        Text("Description", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                        Text(item.description, style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                                        
+                                        Spacer(Modifier.height(32.dp))
+                                        GearSpecsCard(item.material, item.sku, item.category)
                                         
                                         if (similarGear.isNotEmpty()) {
-                                            Spacer(modifier = Modifier.height(40.dp))
-                                            Text(text = AppConstants.TITLE_SIMILAR_PRODUCTS, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                            Spacer(Modifier.height(16.dp))
-                                            UniversalProductSlider(products = similarGear.map { it.toBook() }, onProductClick = { selectedBook -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${selectedBook.id}") })
+                                            Spacer(Modifier.height(40.dp))
+                                            Text("Similar Products", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                            UniversalProductSlider(similarGear.map { it.toBook() }) { navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${it.id}") }
                                         }
-
-                                        Spacer(modifier = Modifier.height(40.dp))
-                                        ReviewSection(productId = gearId, reviews = allReviews, localUser = localUser, isLoggedIn = user != null, db = AppDatabase.getDatabase(LocalContext.current), isDarkTheme = isDarkTheme, onReviewPosted = { scope.launch { snackbarHostState.showSnackbar(AppConstants.MSG_THANKS_REVIEW) } }, onLoginClick = onLoginRequired)
+                                        
+                                        Spacer(Modifier.height(40.dp))
+                                        ReviewSection(productId = gearId, reviews = allReviews, localUser = localUser, isLoggedIn = user != null, db = AppDatabase.getDatabase(context), isDarkTheme = isDarkTheme, onReviewPosted = {}, onLoginClick = onLoginRequired)
                                     }
                                 }
                             }
@@ -233,69 +202,27 @@ fun GearDetailScreen(
             }
         }
 
-        if (gear != null && !loading) {
-            val currentGear = gear!!
-            Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
-                val unitPrice = currentGear.price * discountMultiplier
-                
-                // Adaptive Action Bar: Centered and squeezed on tablet
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Box(modifier = Modifier.adaptiveWidth(AdaptiveWidths.Medium)) {
-                        GearBottomActionBar(
-                            isOwned = isOwned,
-                            price = unitPrice * quantity,
-                            stockCount = currentGear.stockCount,
-                            quantity = quantity,
-                            isLoggedIn = user != null,
-                            onViewInvoice = { onViewInvoice(currentGear.id) },
-                            onPickupInfo = { showPickupPopup = true },
-                            onLoginRequired = onLoginRequired,
-                            onCheckout = { showOrderFlow = true },
-                            onFreePickup = { showAddConfirm = true }
-                        )
-                    }
-                }
-            }
-        }
-
         if (showOrderFlow && gear != null) {
-            AppPopups.OrderPurchase(
-                show = showOrderFlow,
-                book = gear!!.toBook(),
-                user = localUser,
-                roleDiscounts = roleDiscounts,
-                onDismiss = { showOrderFlow = false },
-                onEditProfile = { showOrderFlow = false; onNavigateToProfile() },
-                onComplete = { finalPrice, orderRef -> 
-                    viewModel.handlePurchaseComplete(context, quantity, finalPrice, orderRef) { msg ->
-                        showOrderFlow = false
-                        scope.launch { snackbarHostState.showSnackbar(msg) }
-                    }
-                }
-            )
+            AppPopups.OrderPurchase(show = showOrderFlow, book = gear!!.toBook(), user = localUser, roleDiscounts = roleDiscounts, onDismiss = { showOrderFlow = false }, onEditProfile = { showOrderFlow = false; onNavigateToProfile() }, onComplete = { price, ref -> viewModel.handlePurchaseComplete(context, quantity, price, ref) { showOrderFlow = false; scope.launch { snackbarHostState.showSnackbar(it) } } })
         }
-
-        if (showPickupPopup) { PickupInfoDialog(orderConfirmation = orderConfirmation, onDismiss = { showPickupPopup = false }) }
-
+        if (showPickupPopup) { PickupInfoDialog(orderConfirmation, onDismiss = { showPickupPopup = false }) }
         AppPopups.AddToLibraryConfirmation(
-            show = showAddConfirm,
-            itemTitle = gear?.title ?: "",
-            category = AppConstants.CAT_GEAR,
-            onDismiss = { showAddConfirm = false },
-            onConfirm = {
-                showAddConfirm = false
-                isProcessingAddition = true
-                scope.launch {
-                    delay(2000)
-                    viewModel.handleFreePickup(context) { msg ->
-                        isProcessingAddition = false
-                        scope.launch { snackbarHostState.showSnackbar(msg) }
-                    }
-                }
+            show = showAddConfirm, 
+            itemTitle = gear?.title ?: "", 
+            category = AppConstants.CAT_GEAR, 
+            onDismiss = { showAddConfirm = false }, 
+            onConfirm = { 
+                showAddConfirm = false; 
+                isProcessingAddition = true; 
+                scope.launch { 
+                    delay(2000); 
+                    viewModel.handleFreePickup(context) { 
+                        isProcessingAddition = false; 
+                        scope.launch { snackbarHostState.showSnackbar(it) } 
+                    } 
+                } 
             }
         )
-
-        AppPopups.AddingToLibraryLoading(show = isProcessingAddition, category = AppConstants.CAT_GEAR)
+        AppPopups.AddingToLibraryLoading(isProcessingAddition, AppConstants.CAT_GEAR)
     }
 }

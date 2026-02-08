@@ -68,7 +68,7 @@ fun AnimatedSplashBackground(progress: Float) {
 
 /**
  * Renders the primary animated logo.
- * Restored to original phone behavior while remaining optimized for tablets.
+ * Optimized size for tablets to ensure it fits and remains centered.
  */
 @Composable
 fun AnimatedSplashLogo(
@@ -85,32 +85,31 @@ fun AnimatedSplashLogo(
         val screenWidth = maxWidth
         val screenHeight = maxHeight
         
-        // Use exactly 350.dp for phones (original) or tighter width for tablets
+        // Large but safe logo width for tablets
         val logoWidth = if (isTablet) {
             when {
-                screenWidth > 800.dp -> 300.dp 
-                screenWidth > 600.dp -> 280.dp 
-                else -> screenWidth * 0.7f    
-            }.coerceAtMost(screenHeight * 0.35f)
+                screenWidth > 1000.dp -> 520.dp 
+                screenWidth > 800.dp -> 480.dp 
+                else -> 420.dp    
+            }.coerceAtMost(screenHeight * 0.4f) 
         } else {
-            // Original phone behavior: proportional to width
-            screenWidth * 0.9f
+            screenWidth * 0.85f
         }
 
-        // OUTER GLOW - Original phone size was fixed 350.dp
-        val glowSize = if (isTablet) logoWidth * 1.4f else 350.dp
+        // Reduced glow multiplier to prevent pushing other elements
+        val glowSize = if (isTablet) logoWidth * 1.3f else 350.dp
 
         Box(
             modifier = Modifier
                 .size(glowSize)
-                .scale(scale * pulseScale * (if (isTablet) 1f else 1.2f))
+                .scale(scale * pulseScale * (if (isTablet) 1.05f else 1.2f))
                 .alpha(alpha * shadeAlpha)
                 .drawBehind {
                     drawCircle(
                         Brush.radialGradient(
                             colors = listOf(
-                                rainbowColor.copy(alpha = 0.8f),
-                                rainbowColor.copy(alpha = 0.2f),
+                                rainbowColor.copy(alpha = 0.7f),
+                                rainbowColor.copy(alpha = 0.3f),
                                 Color.Transparent
                             ),
                             center = center,
@@ -129,7 +128,8 @@ fun AnimatedSplashLogo(
                 .scale(scale * pulseScale)
                 .alpha(alpha),
             contentScale = ContentScale.Fit,
-            colorFilter = ColorFilter.tint(rainbowColor, BlendMode.Modulate)
+            // Modulate filter for professional integrated look
+            colorFilter = ColorFilter.tint(rainbowColor.copy(alpha = 0.8f), BlendMode.Modulate)
         )
     }
 }
@@ -148,16 +148,16 @@ fun SplashFooter(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = if (isTablet) 24.dp else 60.dp), // Original 60.dp for phone
+            .padding(bottom = if (isTablet) 40.dp else 60.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = if (isLoadingData) AppConstants.MSG_SYNC_DATABASE else AppConstants.MSG_SYNC_COMPLETE,
-            color = Color.White.copy(alpha = 0.8f),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
+            color = Color.White.copy(alpha = 0.9f),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Black,
             modifier = Modifier
-                .padding(bottom = if (isTablet) 8.dp else 12.dp)
+                .padding(bottom = 8.dp)
                 .alpha(alpha)
         )
 
@@ -165,18 +165,18 @@ fun SplashFooter(
             color = Color.White,
             strokeWidth = 4.dp,
             modifier = Modifier
-                .size(if (isTablet) 24.dp else 40.dp)
+                .size(if (isTablet) 28.dp else 40.dp)
                 .alpha(alpha)
         )
 
-        Spacer(modifier = Modifier.height(if (isTablet) 12.dp else 24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = "Version ${AppConstants.VERSION_NAME}",
             modifier = Modifier.alpha(alpha * 0.9f),
             color = Color.White,
-            style = if (isTablet) MaterialTheme.typography.labelSmall else MaterialTheme.typography.titleSmall,
-            fontWeight = if (isTablet) FontWeight.Medium else FontWeight.Bold
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.ExtraBold
         )
     }
 }
