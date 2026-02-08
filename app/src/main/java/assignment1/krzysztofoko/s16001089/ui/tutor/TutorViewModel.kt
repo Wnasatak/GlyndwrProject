@@ -31,7 +31,8 @@ enum class TutorSection {
     CREATE_ASSIGNMENT,
     START_LIVE_STREAM,
     STUDENT_PROFILE,
-    ABOUT
+    ABOUT,
+    NOTIFICATIONS
 }
 
 data class ConversationPreview(
@@ -229,6 +230,10 @@ class TutorViewModel(
 
     val pendingApplications: StateFlow<Int> = userDao.getAllEnrollmentsFlow()
         .map { it.filter { app -> app.status == "PENDING_REVIEW" }.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val unreadNotificationsCount: StateFlow<Int> = userDao.getNotificationsForUser(tutorId)
+        .map { list -> list.count { !it.isRead } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val allBooks: StateFlow<List<Book>> = bookDao.getAllBooks()

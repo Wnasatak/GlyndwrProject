@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +32,7 @@ class MainActivity : ComponentActivity() {
     // The actual media controller used to interact with the PlaybackService
     private var mediaController: MediaController? = null
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -38,6 +41,9 @@ class MainActivity : ComponentActivity() {
         controllerFuture = MediaController.Builder(this, sessionToken).buildAsync()
 
         setContent {
+            // Calculate WindowSizeClass for adaptive layouts
+            val windowSizeClass = calculateWindowSizeClass(this)
+            
             // Global app theme state
             var isDarkTheme by remember { mutableStateOf(true) }
             // State holding the player instance, used by UI components to control playback
@@ -74,7 +80,8 @@ class MainActivity : ComponentActivity() {
                 AppNavigation(
                     isDarkTheme = isDarkTheme,
                     onToggleTheme = { isDarkTheme = !isDarkTheme },
-                    externalPlayer = playerState
+                    externalPlayer = playerState,
+                    windowSizeClass = windowSizeClass
                 )
             }
         }

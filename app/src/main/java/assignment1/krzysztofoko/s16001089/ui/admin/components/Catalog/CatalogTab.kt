@@ -4,6 +4,10 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,10 +22,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveScreenContainer
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
 import java.util.UUID
 
 @Composable
@@ -45,7 +50,6 @@ fun CatalogTab(
         CatalogFilter("GEAR", "Gear", Icons.Default.Checkroom)
     )
 
-    // Selection States for Dialogs
     var itemToDelete by remember { mutableStateOf<Pair<String, String>?>(null) }
     var bookToEdit by remember { mutableStateOf<Book?>(null) }
     var audioToEdit by remember { mutableStateOf<AudioBook?>(null) }
@@ -56,94 +60,100 @@ fun CatalogTab(
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % filters.size)
     val tabListState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        HeaderSection(
-            title = "Global Catalog",
-            subtitle = "Manage all products and inventory.",
-            icon = Icons.Default.Inventory,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-        )
+    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+        val columns = if (isTablet) 2 else 1
 
-        // Looping Category Filter
-        LazyRow(
-            state = tabListState,
-            modifier = Modifier.fillMaxWidth().height(60.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(infiniteCount) { index ->
-                val filter = filters[index % filters.size]
-                val isSelected = selectedFilter == filter.id
-                
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                        .clickable { selectedFilter = filter.id }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
+            item(span = { GridItemSpan(this.maxLineSpan) }) {
+                HeaderSection(
+                    title = "Global Catalog",
+                    subtitle = "Manage all products and inventory.",
+                    icon = Icons.Default.Inventory,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+            }
+
+            item(span = { GridItemSpan(this.maxLineSpan) }) {
+                LazyRow(
+                    state = tabListState,
+                    modifier = Modifier.fillMaxWidth().height(60.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = filter.icon, 
-                            contentDescription = null, 
-                            modifier = Modifier.size(18.dp),
-                            tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                        AnimatedVisibility(visible = isSelected) {
-                            Text(
-                                text = filter.title,
-                                modifier = Modifier.padding(start = 8.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
+                    items(infiniteCount) { index ->
+                        val filter = filters[index % filters.size]
+                        val isSelected = selectedFilter == filter.id
+                        
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                .clickable { selectedFilter = filter.id }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = filter.icon, 
+                                    contentDescription = null, 
+                                    modifier = Modifier.size(18.dp),
+                                    tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                                AnimatedVisibility(visible = isSelected) {
+                                    Text(
+                                        text = filter.title,
+                                        modifier = Modifier.padding(start = 8.dp),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Filtered Content...
             if (selectedFilter == "ALL" || selectedFilter == "BOOKS") {
-                item { CatalogSectionHeader("Academic Books", books.size) }
+                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Academic Books", books.size) }
                 items(books) { item ->
                     CatalogItemCard(title = item.title, subtitle = "By ${item.author}", price = item.price, imageUrl = item.imageUrl, icon = Icons.AutoMirrored.Filled.MenuBook, onEdit = { bookToEdit = item }, onDelete = { itemToDelete = item.id to "Book" }, isDarkTheme = isDarkTheme)
                 }
             }
 
             if (selectedFilter == "ALL" || selectedFilter == "AUDIO") {
-                item { CatalogSectionHeader("Audio Learning", audioBooks.size) }
+                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Audio Learning", audioBooks.size) }
                 items(audioBooks) { item ->
                     CatalogItemCard(title = item.title, subtitle = "By ${item.author}", price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.Headphones, onEdit = { audioToEdit = item }, onDelete = { itemToDelete = item.id to "Audiobook" }, isDarkTheme = isDarkTheme)
                 }
             }
 
             if (selectedFilter == "ALL" || selectedFilter == "COURSES") {
-                item { CatalogSectionHeader("University Courses", courses.size) }
+                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("University Courses", courses.size) }
                 items(courses) { item ->
                     CatalogItemCard(title = item.title, subtitle = item.department, price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.School, onEdit = { courseToEdit = item }, onDelete = { itemToDelete = item.id to "Course" }, isDarkTheme = isDarkTheme)
                 }
             }
 
             if (selectedFilter == "ALL" || selectedFilter == "GEAR") {
-                item { CatalogSectionHeader("Official Gear", gear.size) }
+                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Official Gear", gear.size) }
                 items(gear) { item ->
                     CatalogItemCard(title = item.title, subtitle = "Stock: ${item.stockCount} left", price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.Checkroom, onEdit = { gearToEdit = item }, onDelete = { itemToDelete = item.id to "Gear Item" }, isDarkTheme = isDarkTheme)
                 }
             }
 
-            item { Spacer(Modifier.height(80.dp)) }
+            item(span = { GridItemSpan(this.maxLineSpan) }) { Spacer(Modifier.height(80.dp)) }
         }
     }
 
-    // --- Add Product Category Selector ---
+    // --- Overlays ---
     if (showAddProductDialog) {
         AlertDialog(
             onDismissRequest = { onAddProductDialogConsumed() },
@@ -173,7 +183,6 @@ fun CatalogTab(
         )
     }
 
-    // --- Deletion & Edit Dialogs ---
     if (itemToDelete != null) {
         val (id, cat) = itemToDelete!!
         CatalogDeleteDialog(itemName = cat, onDismiss = { itemToDelete = null }, onConfirm = {

@@ -2,11 +2,14 @@ package assignment1.krzysztofoko.s16001089.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
@@ -22,6 +25,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -173,7 +177,7 @@ object AppPopups {
     @Composable
     fun SignedOutSuccess(show: Boolean, onDismiss: () -> Unit) {
         if (show) {
-            var timeLeft by remember { mutableIntStateOf(5) }
+            var timeLeft by remember { mutableStateOf(5) }
             LaunchedEffect(Unit) { while (timeLeft > 0) { delay(1000); timeLeft-- }; onDismiss() }
             AlertDialog(onDismissRequest = onDismiss, icon = { Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(48.dp)) }, title = { Text(AppConstants.TITLE_SIGNED_OUT) }, text = { Text("${AppConstants.MSG_SIGNED_OUT_DESC} $timeLeft seconds.", textAlign = TextAlign.Center) }, confirmButton = { TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CLOSE) } })
         }
@@ -200,8 +204,11 @@ object AppPopups {
     @Composable
     fun AuthSuccess(show: Boolean, isDarkTheme: Boolean, onDismiss: () -> Unit) {
         if (show) {
+            val configuration = LocalConfiguration.current
+            val isTablet = configuration.screenWidthDp >= 600
+            
             val totalTime = 10000 
-            var timeLeftMs by remember { mutableIntStateOf(totalTime) }
+            var timeLeftMs by remember { mutableStateOf(totalTime) }
             
             LaunchedEffect(Unit) {
                 val start = System.currentTimeMillis()
@@ -224,86 +231,96 @@ object AppPopups {
                             wave2Amplitude = 80f
                         )
 
-                        Column(
-                            modifier = Modifier.fillMaxSize().padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                        // Centered Column for Tablet, squeezed to center
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(
-                                    progress = { timeLeftMs.toFloat() / totalTime.toFloat() },
-                                    modifier = Modifier.size(160.dp),
-                                    color = Color(0xFF4CAF50),
-                                    strokeWidth = 8.dp,
-                                    trackColor = Color(0xFF4CAF50).copy(alpha = 0.1f),
-                                    strokeCap = StrokeCap.Round
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(100.dp),
-                                    tint = Color(0xFF4CAF50)
-                                )
-                            }
-                            
-                            Spacer(Modifier.height(40.dp))
-                            
-                            Text(
-                                text = AppConstants.TITLE_IDENTITY_VERIFIED,
-                                style = MaterialTheme.typography.headlineLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            
-                            Spacer(Modifier.height(12.dp))
-                            
-                            Text(
-                                text = "Your security check was successful.\nYou are now fully logged in to the Glyndwr University portal.",
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                            )
-                            
-                            Spacer(Modifier.height(24.dp))
-                            
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.3f else 0.6f),
-                                shape = RoundedCornerShape(12.dp)
+                            Column(
+                                modifier = Modifier
+                                    .then(if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxSize())
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "${AppConstants.TEXT_REDIRECTING} ",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                Box(contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(
+                                        progress = { timeLeftMs.toFloat() / totalTime.toFloat() },
+                                        modifier = Modifier.size(if (isTablet) 120.dp else 160.dp),
+                                        color = Color(0xFF4CAF50),
+                                        strokeWidth = 8.dp,
+                                        trackColor = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                                        strokeCap = StrokeCap.Round
                                     )
-                                    Text(
-                                        text = "${(timeLeftMs / 1000) + 1}",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Text(
-                                        text = " ${AppConstants.TEXT_SECONDS}",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(if (isTablet) 80.dp else 100.dp),
+                                        tint = Color(0xFF4CAF50)
                                     )
                                 }
-                            }
+                                
+                                Spacer(Modifier.height(40.dp))
+                                
+                                Text(
+                                    text = AppConstants.TITLE_IDENTITY_VERIFIED,
+                                    style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                
+                                Spacer(Modifier.height(12.dp))
+                                
+                                Text(
+                                    text = "Your security check was successful.\nYou are now fully logged in to the Glyndwr University portal.",
+                                    textAlign = TextAlign.Center,
+                                    style = if (isTablet) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                )
+                                
+                                Spacer(Modifier.height(24.dp))
+                                
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.3f else 0.6f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "${AppConstants.TEXT_REDIRECTING} ",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                        Text(
+                                            text = "${(timeLeftMs / 1000) + 1}",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = " ${AppConstants.TEXT_SECONDS}",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
 
-                            Spacer(Modifier.height(64.dp))
-                            
-                            Button(
-                                onClick = onDismiss,
-                                modifier = Modifier.fillMaxWidth().height(56.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                                shape = RoundedCornerShape(16.dp),
-                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
-                            ) {
-                                Text(AppConstants.BTN_CONTINUE_HOME, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                                Spacer(Modifier.height(if (isTablet) 48.dp else 64.dp))
+                                
+                                Button(
+                                    onClick = onDismiss,
+                                    modifier = Modifier
+                                        .then(if (isTablet) Modifier.width(400.dp) else Modifier.fillMaxWidth())
+                                        .height(56.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                                    shape = RoundedCornerShape(16.dp),
+                                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+                                ) {
+                                    Text(AppConstants.BTN_CONTINUE_HOME, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                                }
                             }
                         }
                     }
@@ -369,7 +386,7 @@ object AppPopups {
                     modifier = Modifier.size(64.dp),
                     shape = CircleShape,
                     color = Color.White,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                 ) {
                     AsyncImage(
                         model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
@@ -404,5 +421,53 @@ object AppPopups {
             },
             shape = RoundedCornerShape(28.dp)
         )
+    }
+
+    @Composable
+    fun AdminProjectDetails(show: Boolean, onDismiss: () -> Unit) {
+        if (show) {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                modifier = Modifier.border(1.2.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), RoundedCornerShape(28.dp)),
+                title = { Text("Project Documentation", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        PopupItem(Icons.Default.Info, "Description", AppConstants.PROJECT_INFO)
+                        PopupItem(Icons.Default.AssignmentInd, "Student Name", AppConstants.DEVELOPER_NAME)
+                        PopupItem(Icons.Default.Numbers, "ID Number", AppConstants.STUDENT_ID)
+                        PopupItem(Icons.Default.AccountBalance, "University", AppConstants.INSTITUTION)
+                        PopupItem(Icons.Default.Build, "Build Version", AppConstants.VERSION_NAME)
+                    }
+                },
+                confirmButton = { Button(onClick = onDismiss) { Text("Close") } },
+                shape = RoundedCornerShape(28.dp)
+            )
+        }
+    }
+
+    @Composable
+    fun AdminSaveSuccess(show: Boolean, onDismiss: () -> Unit) {
+        if (show) {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                icon = { Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(48.dp)) },
+                title = { Text("Success", fontWeight = FontWeight.Bold) },
+                text = { Text("Role discounts have been updated successfully across the system.", textAlign = TextAlign.Center) },
+                confirmButton = { Button(onClick = onDismiss) { Text("Great!") } },
+                shape = RoundedCornerShape(28.dp)
+            )
+        }
+    }
+
+    @Composable
+    private fun PopupItem(icon: ImageVector, label: String, value: String) {
+        Row(verticalAlignment = Alignment.Top) {
+            Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                Text(value, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
     }
 }

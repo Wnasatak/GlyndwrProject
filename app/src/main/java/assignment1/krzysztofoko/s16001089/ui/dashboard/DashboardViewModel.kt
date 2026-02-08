@@ -12,7 +12,7 @@ import java.util.*
 
 /**
  * Enhanced ViewModel for the User Dashboard.
- * Manages comprehensive student activity including library, history, invoices, and academic progress.
+ * Fixed flow emission issues using SharingStarted.Lazily to ensure data displays on first load.
  */
 class DashboardViewModel(
     private val repository: BookRepository, 
@@ -45,40 +45,42 @@ class DashboardViewModel(
         userDao.getUserFlow(userId)
     } else {
         flowOf(null)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     val walletHistory: StateFlow<List<WalletTransaction>> = if (userId.isNotEmpty()) {
         userDao.getWalletHistory(userId)
     } else {
         flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val invoices: StateFlow<List<Invoice>> = if (userId.isNotEmpty()) {
         userDao.getInvoicesForUser(userId)
     } else {
         flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // --- Catalog & Library ---
     val allBooks: StateFlow<List<Book>> = repository.getAllCombinedData(userId)
         .map { it ?: emptyList() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val purchasedIds: StateFlow<Set<String>> = if (userId.isNotEmpty()) {
         userDao.getPurchaseIds(userId).map { it.toSet() }
     } else {
         flowOf(emptySet())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     val filteredOwnedBooks: StateFlow<List<Book>> = combine(
         allBooks, 
         userDao.getPurchaseIds(userId),
         userDao.getAllEnrollmentsFlow(),
         _selectedCollectionFilter
-    ) { books, purchasedIds, enrollments, filter ->
+    ) { books, purchasedIdsList, enrollments, filter ->
         val userEnrollments = enrollments.filter { it.userId == userId }
+        val pIds = purchasedIdsList.toSet()
+        
         val owned = books.filter { book ->
-            purchasedIds.contains(book.id) || userEnrollments.any { it.courseId == book.id }
+            pIds.contains(book.id) || userEnrollments.any { it.courseId == book.id }
         }
         
         when (filter) {
@@ -88,49 +90,49 @@ class DashboardViewModel(
             "Courses" -> owned.filter { it.mainCategory == AppConstants.CAT_COURSES }
             else -> owned
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // --- Live Sessions ---
     val activeLiveSessions: StateFlow<List<LiveSession>> = classroomDao.getAllActiveSessions()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // --- Activity & Engagement ---
     val wishlistBooks: StateFlow<List<Book>> = combine(allBooks, userDao.getWishlistIds(userId)) { books, ids ->
         ids.mapNotNull { id -> books.find { it.id == id } }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val lastViewedBooks: StateFlow<List<Book>> = combine(allBooks, userDao.getHistoryIds(userId)) { books, ids ->
         ids.mapNotNull { id -> books.find { it.id == id } }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val commentedBooks: StateFlow<List<Book>> = combine(allBooks, userDao.getCommentedProductIds(userId)) { books, ids ->
         ids.mapNotNull { id -> books.find { it.id == id } }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val userReviews: StateFlow<List<ReviewLocal>> = if (userId.isNotEmpty()) {
         userDao.getReviewsForUser(userId)
     } else {
         flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val searchHistory: StateFlow<List<String>> = if (userId.isNotEmpty()) {
         userDao.getRecentSearches(userId)
     } else {
         flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // --- Academic Status ---
     val courseInstallments: StateFlow<List<CourseInstallment>> = if (userId.isNotEmpty()) {
         userDao.getCourseInstallmentsForUser(userId)
     } else {
         flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val userGrades: StateFlow<List<Grade>> = if (userId.isNotEmpty()) {
         classroomDao.getAllGradesForUser(userId)
     } else {
         flowOf(emptyList())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val unreadNotificationsCount: StateFlow<Int> = if (userId.isNotEmpty()) {
         userDao.getNotificationsForUser(userId).map { list ->
@@ -138,13 +140,13 @@ class DashboardViewModel(
         }
     } else {
         flowOf(0)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
     val hasMessages: StateFlow<Boolean> = if (userId.isNotEmpty()) {
         classroomDao.getAllMessagesForUser(userId).map { it.isNotEmpty() }
     } else {
         flowOf(false)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, false)
 
     val unreadMessagesCount: StateFlow<Int> = if (userId.isNotEmpty()) {
         classroomDao.getAllMessagesForUser(userId).map { list ->
@@ -152,7 +154,7 @@ class DashboardViewModel(
         }
     } else {
         flowOf(0)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
     val applicationsMap: StateFlow<Map<String, String>> = if (userId.isNotEmpty()) {
         userDao.getAllEnrollmentsFlow().map { list ->
@@ -160,21 +162,21 @@ class DashboardViewModel(
         }
     } else {
         flowOf(emptyMap())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     val applicationCount: StateFlow<Int> = combine(
         userDao.getAllEnrollmentsFlow(),
         purchasedIds
     ) { enrollments, purchased ->
         enrollments.count { it.userId == userId && !purchased.contains(it.courseId) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
     val suggestions: StateFlow<List<Book>> = combine(allBooks, _searchQuery) { books, query ->
         if (query.length < 2) emptyList()
         else books.filter { 
             it.title.contains(query, ignoreCase = true) || it.author.contains(query, ignoreCase = true)
         }.take(5)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // --- Logging Helper ---
     private fun addLog(action: String, targetId: String, details: String) {

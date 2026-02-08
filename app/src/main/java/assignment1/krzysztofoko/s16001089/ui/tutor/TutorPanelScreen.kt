@@ -17,10 +17,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,6 +52,7 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.components.Catalog.TutorAudio
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.CreateAssignmentScreen
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Students.TutorStudentProfileScreen
+import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationScreen
 import assignment1.krzysztofoko.s16001089.ui.info.AboutScreen
 import com.google.firebase.auth.FirebaseAuth
 import coil.compose.AsyncImage
@@ -84,20 +87,33 @@ fun TutorPanelScreen(
     val activeAudioBook by viewModel.activeAudioBook.collectAsState()
     val selectedStudent by viewModel.selectedStudent.collectAsState()
     val selectedCourse by viewModel.selectedCourse.collectAsState()
+    val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
     
     val isChatOpen = currentSection == TutorSection.CHAT
     val isReaderOpen = currentSection == TutorSection.READ_BOOK
     var showMenu by remember { mutableStateOf(false) }
 
+    // Animation for the ringing bell
+    val infiniteTransitionBell = rememberInfiniteTransition(label = "bellRing")
+    val rotation by infiniteTransitionBell.animateFloat(
+        initialValue = -15f,
+        targetValue = 15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(250, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "rotation"
+    )
+
     Box(modifier = Modifier.fillMaxSize()) {
-        if (!isReaderOpen && currentSection != TutorSection.ABOUT) {
+        if (!isReaderOpen && currentSection != TutorSection.ABOUT && currentSection != TutorSection.NOTIFICATIONS) {
             HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         }
 
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                if (!isReaderOpen && currentSection != TutorSection.LISTEN_AUDIOBOOK && currentSection != TutorSection.ABOUT) {
+                if (!isReaderOpen && currentSection != TutorSection.LISTEN_AUDIOBOOK && currentSection != TutorSection.ABOUT && currentSection != TutorSection.NOTIFICATIONS) {
                     TopAppBar(
                         windowInsets = WindowInsets(0, 0, 0, 0),
                         title = { 
@@ -286,6 +302,41 @@ fun TutorPanelScreen(
                                     }
                                 }
 
+                                // Branded Notification Bell
+                                Box(contentAlignment = Alignment.TopEnd) {
+                                    val bellColor = if (unreadCount > 0 && isDarkTheme) Color(0xFFFFEB3B) 
+                                                    else if (unreadCount > 0) Color(0xFFFBC02D)
+                                                    else MaterialTheme.colorScheme.onSurface
+                                    
+                                    IconButton(onClick = { viewModel.setSection(TutorSection.NOTIFICATIONS) }, modifier = Modifier.size(36.dp)) {
+                                        Icon(
+                                            imageVector = if (unreadCount > 0) Icons.Default.NotificationsActive else Icons.Default.Notifications,
+                                            contentDescription = AppConstants.TITLE_NOTIFICATIONS,
+                                            tint = bellColor,
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .graphicsLayer { if (unreadCount > 0) rotationZ = rotation }
+                                        )
+                                    }
+                                    if (unreadCount > 0) {
+                                        Surface(
+                                            color = Color(0xFFE53935),
+                                            shape = CircleShape,
+                                            border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.surface),
+                                            modifier = Modifier.size(18.dp).offset(x = 4.dp, y = (-2).dp).align(Alignment.TopEnd)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = if (unreadCount > 9) "!" else unreadCount.toString(),
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp),
+                                                    color = Color.White,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
                                 Box {
                                     IconButton(onClick = { showMenu = true }) {
                                         Icon(Icons.Default.MoreVert, AppConstants.TITLE_MORE_OPTIONS)
@@ -358,6 +409,7 @@ fun TutorPanelScreen(
                         currentSection == TutorSection.CREATE_ASSIGNMENT ||
                         currentSection == TutorSection.START_LIVE_STREAM ||
                         currentSection == TutorSection.STUDENT_PROFILE ||
+                        currentSection == TutorSection.NOTIFICATIONS ||
                         currentSection == TutorSection.ABOUT
                 
                 if (!hideBottomBar) {
@@ -411,7 +463,7 @@ fun TutorPanelScreen(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(bottom = if (isChatOpen || currentSection == TutorSection.ABOUT) 0.dp else bottomPadding)
+                        .padding(bottom = if (isChatOpen || currentSection == TutorSection.ABOUT || currentSection == TutorSection.NOTIFICATIONS) 0.dp else bottomPadding)
                 ) {
                     AnimatedContent(
                         targetState = currentSection,
@@ -437,6 +489,15 @@ fun TutorPanelScreen(
                             TutorSection.CREATE_ASSIGNMENT -> CreateAssignmentScreen(viewModel)
                             TutorSection.START_LIVE_STREAM -> TutorCourseLiveTab(viewModel)
                             TutorSection.STUDENT_PROFILE -> TutorStudentProfileScreen(viewModel)
+                            TutorSection.NOTIFICATIONS -> {
+                                NotificationScreen(
+                                    onNavigateToItem = { _ -> /* Tutors don't buy from store here */ },
+                                    onNavigateToInvoice = { _ -> },
+                                    onNavigateToMessages = { viewModel.setSection(TutorSection.MESSAGES) },
+                                    onBack = { viewModel.setSection(TutorSection.DASHBOARD) },
+                                    isDarkTheme = isDarkTheme
+                                )
+                            }
                             TutorSection.ABOUT -> {
                                 AboutScreen(
                                     onBack = { viewModel.setSection(TutorSection.DASHBOARD) },

@@ -2,13 +2,14 @@ package assignment1.krzysztofoko.s16001089.ui.admin.components.Courses
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,8 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Course
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Catalog.*
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveScreenContainer
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
 import java.util.UUID
 
 @Composable
@@ -49,13 +52,17 @@ fun CoursesTab(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
+    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+        val columns = if (isTablet) 2 else 1
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 16.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
+            item(span = { GridItemSpan(this.maxLineSpan) }) {
                 HeaderSection(
                     title = "Academic Catalog",
                     subtitle = "Manage university courses and syllabus.",
@@ -64,7 +71,7 @@ fun CoursesTab(
                 )
             }
 
-            item { 
+            item(span = { GridItemSpan(this.maxLineSpan) }) { 
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                     CatalogSectionHeader("Active Courses", courses.size) 
                 }
@@ -86,32 +93,32 @@ fun CoursesTab(
                 }
             }
 
-            item { Spacer(Modifier.height(80.dp)) }
+            item(span = { GridItemSpan(this.maxLineSpan) }) { Spacer(Modifier.height(80.dp)) }
         }
+    }
 
-        // --- Edit Course Dialog ---
-        if (courseToEdit != null) {
-            CourseEditDialog(
-                course = courseToEdit!!,
-                onDismiss = { courseToEdit = null },
-                onSave = { 
-                    viewModel.saveCourse(it)
-                    courseToEdit = null 
-                }
-            )
-        }
+    // --- Edit Course Dialog ---
+    if (courseToEdit != null) {
+        CourseEditDialog(
+            course = courseToEdit!!,
+            onDismiss = { courseToEdit = null },
+            onSave = { 
+                viewModel.saveCourse(it)
+                courseToEdit = null 
+            }
+        )
+    }
 
-        // --- Deletion Dialog ---
-        if (itemToDelete != null) {
-            CatalogDeleteDialog(
-                itemName = "Course",
-                onDismiss = { itemToDelete = null },
-                onConfirm = {
-                    viewModel.deleteCourse(itemToDelete!!.id)
-                    itemToDelete = null
-                }
-            )
-        }
+    // --- Deletion Dialog ---
+    if (itemToDelete != null) {
+        CatalogDeleteDialog(
+            itemName = "Course",
+            onDismiss = { itemToDelete = null },
+            onConfirm = {
+                viewModel.deleteCourse(itemToDelete!!.id)
+                itemToDelete = null
+            }
+        )
     }
 }
 

@@ -234,13 +234,20 @@ class AdminViewModel(
     }
 
     // --- Actions: Broadcast ---
-    fun sendBroadcast(title: String, message: String) {
+    fun sendBroadcast(title: String, message: String, targetRoles: List<String>, onComplete: (Int) -> Unit) {
         viewModelScope.launch {
-            val allUserIds = allUsers.value.map { it.id }
-            allUserIds.forEach { uid ->
+            // Fetch users directly from DB to ensure we have the absolute latest list
+            val allUsersList = userDao.getAllUsersFlow().first() 
+            
+            // Explicit filter: user role must be in the target list (case-insensitive)
+            val usersToNotify = allUsersList.filter { user ->
+                targetRoles.any { role -> role.equals(user.role.trim(), ignoreCase = true) }
+            }
+            
+            usersToNotify.forEach { user ->
                 userDao.addNotification(NotificationLocal(
                     id = UUID.randomUUID().toString(),
-                    userId = uid,
+                    userId = user.id,
                     productId = "BROADCAST",
                     title = title,
                     message = message,
@@ -248,7 +255,8 @@ class AdminViewModel(
                     type = "ANNOUNCEMENT"
                 ))
             }
-            addLog("BROADCAST", "ALL_USERS", "Sent announcement: $title", "ADMIN")
+            addLog("BROADCAST", targetRoles.joinToString(", "), "Sent announcement to ${usersToNotify.size} users: $title", "ADMIN")
+            onComplete(usersToNotify.size)
         }
     }
 

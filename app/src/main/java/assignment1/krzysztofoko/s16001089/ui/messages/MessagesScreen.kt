@@ -8,12 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -23,14 +19,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,8 +30,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.UserLocal
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveScreenContainer
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
+import assignment1.krzysztofoko.s16001089.ui.theme.*
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
@@ -119,56 +114,77 @@ fun MessagesScreen(
             )
 
             Box(modifier = Modifier.weight(1f)) {
-                AnimatedContent(targetState = selectedUser, label = "ChatTransition") { targetUser ->
-                    if (targetUser == null) {
-                        ConversationListView(
-                            conversations = conversations, 
-                            allUsers = allUsers,
-                            searchQuery = searchQuery,
-                            onSearchChange = { viewModel.updateSearchQuery(it) },
-                            onUserClick = { viewModel.selectConversation(it) }, 
-                            sdf = sdf,
-                            currentUserId = currentUserId,
-                            viewModel = viewModel,
-                            isDarkTheme = isDarkTheme
-                        )
-                    } else {
-                        ChatInterface(messages = messages, currentUserId = currentUserId, sdf = sdf, isDarkTheme = isDarkTheme)
+                AdaptiveScreenContainer(
+                    maxWidth = if (selectedUser == null) AdaptiveWidths.Medium else AdaptiveWidths.Wide
+                ) { isTablet ->
+                    AnimatedContent(targetState = selectedUser, label = "ChatTransition") { targetUser ->
+                        if (targetUser == null) {
+                            ConversationListView(
+                                conversations = conversations, 
+                                allUsers = allUsers,
+                                searchQuery = searchQuery,
+                                onSearchChange = { viewModel.updateSearchQuery(it) },
+                                onUserClick = { viewModel.selectConversation(it) }, 
+                                sdf = sdf,
+                                currentUserId = currentUserId,
+                                viewModel = viewModel,
+                                isDarkTheme = isDarkTheme
+                            )
+                        } else {
+                            ChatInterface(messages = messages, currentUserId = currentUserId, sdf = sdf, isDarkTheme = isDarkTheme)
+                        }
                     }
                 }
             }
             
             if (selectedUser != null) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    tonalElevation = 8.dp,
-                    color = if (isDarkTheme) Color.Black.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                Box(
+                    contentAlignment = Alignment.Center, 
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (isDarkTheme) Color.Black.copy(alpha = 0.2f) else Color.Transparent)
+                        .padding(bottom = 12.dp)
                 ) {
-                    Row(
+                    Surface(
                         modifier = Modifier
+                            .widthIn(max = AdaptiveWidths.Wide)
                             .fillMaxWidth()
-                            .windowInsetsPadding(WindowInsets.ime)
-                            .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 16.dp),
+                        color = Color.Transparent
                     ) {
-                        var messageText by remember { mutableStateOf("") }
-                        OutlinedTextField(
-                            value = messageText,
-                            onValueChange = { messageText = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("Type a message...", color = if (isDarkTheme) Color.White.copy(alpha = 0.4f) else Color.Gray) },
-                            shape = RoundedCornerShape(24.dp),
-                            textStyle = TextStyle(color = if (isDarkTheme) Color.White else Color.Black),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.2f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                focusedBorderColor = MaterialTheme.colorScheme.primary
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .windowInsetsPadding(WindowInsets.ime),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            var messageText by remember { mutableStateOf("") }
+                            OutlinedTextField(
+                                value = messageText,
+                                onValueChange = { messageText = it },
+                                modifier = Modifier.weight(1f),
+                                placeholder = { Text("Type a message...", color = if (isDarkTheme) Color.White.copy(alpha = 0.4f) else Color.Gray) },
+                                shape = RoundedCornerShape(32.dp),
+                                textStyle = TextStyle(color = if (isDarkTheme) Color.White else Color.Black),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedContainerColor = if (isDarkTheme) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.9f),
+                                    focusedContainerColor = if (isDarkTheme) Color.White.copy(alpha = 0.1f) else Color.White,
+                                    unfocusedBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.1f) else Color.Gray.copy(alpha = 0.3f),
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary
+                                )
                             )
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        IconButton(
-                            onClick = { if (messageText.isNotBlank()) { viewModel.sendMessage(messageText); messageText = "" } },
-                            colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White)
-                        ) { Icon(Icons.AutoMirrored.Filled.Send, null) }
+                            Spacer(Modifier.width(12.dp))
+                            FloatingActionButton(
+                                onClick = { if (messageText.isNotBlank()) { viewModel.sendMessage(messageText); messageText = "" } },
+                                shape = CircleShape,
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = Color.White,
+                                modifier = Modifier.size(48.dp),
+                                elevation = FloatingActionButtonDefaults.elevation(0.dp)
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.Send, null, modifier = Modifier.size(20.dp))
+                            }
+                        }
                     }
                 }
             }
@@ -272,10 +288,9 @@ fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick:
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDarkTheme) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+            containerColor = if (isDarkTheme) DarkSurface else MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             UserAvatar(photoUrl = conv.otherUser.photoUrl, modifier = Modifier.size(54.dp))
@@ -322,10 +337,18 @@ fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick:
                     horizontalArrangement = Arrangement.SpaceBetween, 
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val messageColor = if (conv.lastMessage.message.contains("Hi, Emma", ignoreCase = true)) {
+                         if (isDarkTheme) CyanAccent else VoucherViolet
+                    } else if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) {
+                        MaterialTheme.colorScheme.primary 
+                    } else {
+                        Color.Gray
+                    }
+
                     Text(
                         text = conv.lastMessage.message, 
                         style = MaterialTheme.typography.bodySmall, 
-                        color = if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) MaterialTheme.colorScheme.primary else Color.Gray, 
+                        color = messageColor, 
                         maxLines = 1, 
                         overflow = TextOverflow.Ellipsis,
                         fontWeight = if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) FontWeight.Black else FontWeight.Normal,
@@ -352,10 +375,9 @@ fun NewUserCard(user: UserLocal, course: String, onClick: () -> Unit, isDarkThem
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDarkTheme) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+            containerColor = if (isDarkTheme) DarkSurface else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             UserAvatar(photoUrl = user.photoUrl, modifier = Modifier.size(54.dp))
@@ -432,7 +454,7 @@ fun ChatInterface(messages: List<assignment1.krzysztofoko.s16001089.data.Classro
                 Surface(
                     color = if (isMe) MaterialTheme.colorScheme.primary else if (isDarkTheme) Color.White.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMe) 16.dp else 4.dp, bottomEnd = if (isMe) 4.dp else 16.dp),
-                    modifier = Modifier.widthIn(max = 280.dp),
+                    modifier = Modifier.widthIn(max = 480.dp),
                     border = if (!isMe && isDarkTheme) BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)) else null
                 ) {
                     Row(

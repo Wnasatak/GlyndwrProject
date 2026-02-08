@@ -8,7 +8,7 @@ import assignment1.krzysztofoko.s16001089.data.Book
  */
 object AppConstants {
     // --- Application Branding ---
-    const val VERSION_NAME = "0.11.770 Under Development"
+    const val VERSION_NAME = "0.17.948 Under Development"
     const val INSTITUTION = "Wrexham Glyndŵr University"
     const val DEVELOPER_NAME = "Krzysztof Oko"
     const val STUDENT_ID = "S16001089"

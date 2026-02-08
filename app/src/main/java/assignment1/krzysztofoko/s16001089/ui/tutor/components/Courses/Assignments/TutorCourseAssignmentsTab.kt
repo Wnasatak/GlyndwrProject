@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.data.Assignment
 import assignment1.krzysztofoko.s16001089.data.ModuleContent
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveContent
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -46,14 +47,14 @@ fun TutorCourseAssignmentsTab(
     val assignments by viewModel.selectedCourseAssignments.collectAsState()
     val modules by viewModel.selectedCourseModules.collectAsState()
 
-    var step by remember { mutableIntStateOf(1) } // 1: Select Module, 2: Display Assignments
+    var step by remember { mutableIntStateOf(1) } 
     var selectedModuleId by remember { mutableStateOf<String?>(null) }
     
     var editingAssignment by remember { mutableStateOf<Assignment?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var assignmentToDelete by remember { mutableStateOf<Assignment?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+    AdaptiveContent {
         Spacer(Modifier.height(24.dp))
         
         HeaderSection(
@@ -76,7 +77,7 @@ fun TutorCourseAssignmentsTab(
                             Text("No modules found. Please create a module first.", color = Color.Gray)
                         }
                     } else {
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        LazyColumn(modifier = Modifier.heightIn(max = 2000.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             items(modules) { module ->
                                 ModuleSelectionCard(
                                     title = module.title,
@@ -93,7 +94,7 @@ fun TutorCourseAssignmentsTab(
                 2 -> {
                     val filteredAssignments = assignments.filter { it.moduleId == selectedModuleId }
                     
-                    Column(modifier = Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { step = 1 }) { Icon(Icons.Default.ArrowBack, null) }
                             Text(
@@ -113,6 +114,7 @@ fun TutorCourseAssignmentsTab(
                             EmptyAssignmentsState { showCreateDialog = true }
                         } else {
                             LazyColumn(
+                                modifier = Modifier.heightIn(max = 2000.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                                 contentPadding = PaddingValues(bottom = 100.dp)
                             ) {
@@ -133,7 +135,6 @@ fun TutorCourseAssignmentsTab(
         }
     }
 
-    // Floating Action Button logic for Step 2
     if (step == 2) {
         Box(modifier = Modifier.fillMaxSize()) {
             ExtendedFloatingActionButton(
@@ -148,7 +149,6 @@ fun TutorCourseAssignmentsTab(
         }
     }
 
-    // Create / Edit Dialog
     if (showCreateDialog || editingAssignment != null) {
         AssignmentEditDialog(
             assignment = editingAssignment,
@@ -166,7 +166,6 @@ fun TutorCourseAssignmentsTab(
         )
     }
 
-    // Delete Confirmation
     if (assignmentToDelete != null) {
         DeleteConfirmationDialog(
             title = assignmentToDelete?.title ?: "",
@@ -242,7 +241,7 @@ fun HeaderSection(title: String, subtitle: String, icon: ImageVector) {
 
 @Composable
 fun EmptyAssignmentsState(onAction: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(32.dp)
@@ -317,7 +316,7 @@ fun AssignmentCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top // Changed to Top to prevent vertical squeeze
+                verticalAlignment = Alignment.Top 
             ) {
                 Surface(
                     modifier = Modifier.weight(1f, fill = false),
@@ -351,7 +350,7 @@ fun AssignmentCard(
                 Text(
                     text = timeLeft,
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Black, // Increased weight for visibility
+                    fontWeight = FontWeight.Black, 
                     color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     softWrap = false,
@@ -359,7 +358,7 @@ fun AssignmentCard(
                 )
             }
 
-            Spacer(Modifier.height(16.dp)) // Increased spacing before title
+            Spacer(Modifier.height(16.dp)) 
             
             Text(
                 text = assignment.title,
@@ -368,7 +367,7 @@ fun AssignmentCard(
                 color = MaterialTheme.colorScheme.onSurface
             )
             
-            Spacer(Modifier.height(8.dp)) // Increased spacing after title
+            Spacer(Modifier.height(8.dp)) 
             
             Text(
                 text = assignment.description,
@@ -438,7 +437,6 @@ fun AssignmentEditDialog(
     var selectedModuleId by remember { mutableStateOf(assignment?.moduleId ?: modules.firstOrNull()?.id ?: "") }
     var dueDateMillis by remember { mutableStateOf(assignment?.dueDate ?: (System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) }
     
-    // File formats state
     val initialFormats = assignment?.allowedFileTypes?.split(",")?.toSet() ?: setOf("PDF", "DOCX", "ZIP")
     var allowPdf by remember { mutableStateOf("PDF" in initialFormats) }
     var allowDocx by remember { mutableStateOf("DOCX" in initialFormats) }
@@ -529,7 +527,6 @@ fun AssignmentEditDialog(
                             shape = RoundedCornerShape(12.dp)
                         )
 
-                        // Improved Module Selection
                         Text(
                             "Associate Module", 
                             style = MaterialTheme.typography.labelLarge, 
@@ -571,7 +568,6 @@ fun AssignmentEditDialog(
                             }
                         }
 
-                        // File Formats
                         Text(
                             "Allowed Formats", 
                             style = MaterialTheme.typography.labelLarge, 
@@ -599,7 +595,6 @@ fun AssignmentEditDialog(
                             )
                         }
 
-                        // Date Selection
                         Surface(
                             onClick = { showDatePicker = true },
                             shape = RoundedCornerShape(12.dp),

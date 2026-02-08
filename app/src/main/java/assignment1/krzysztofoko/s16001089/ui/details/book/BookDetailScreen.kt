@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Login
-import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +21,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
@@ -34,6 +32,7 @@ import java.util.Locale
 
 /**
  * Detailed Information Screen for a Book item.
+ * Optimized with centralized Adaptive utilities for a cleaner, consistent UI.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,10 +67,9 @@ fun BookDetailScreen(
     val inWishlist by viewModel.inWishlist.collectAsState()
     val allReviews by viewModel.allReviews.collectAsState()
     
-    // Dynamic Discount Calculation
     val effectiveDiscount = remember(localUser, roleDiscounts) {
-        val userRole = localUser?.role ?: "user"
-        val roleRate = roleDiscounts.find { it.role == userRole }?.discountPercent ?: 0.0
+        val uRole = localUser?.role ?: "user"
+        val roleRate = roleDiscounts.find { it.role == uRole }?.discountPercent ?: 0.0
         val individualRate = localUser?.discountPercent ?: 0.0
         maxOf(roleRate, individualRate)
     }
@@ -135,99 +133,112 @@ fun BookDetailScreen(
                 }
             } else {
                 book?.let { currentBook ->
-                    LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp)) {
-                        item {
-                            ProductHeaderImage(book = currentBook, isOwned = isOwned, isDarkTheme = isDarkTheme, primaryColor = primaryColor)
-                            Spacer(Modifier.height(24.dp))
-                        }
-
-                        item {
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)), 
-                                shape = RoundedCornerShape(24.dp), 
-                                border = BorderStroke(1.dp, if (isDarkTheme) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                            ) {
-                                Column(modifier = Modifier.padding(20.dp)) {
-                                    Text(text = currentBook.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-                                    Text(text = "${AppConstants.TEXT_BY} ${currentBook.author}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { 
-                                        AssistChip(onClick = {}, label = { Text(currentBook.category) })
-                                        AssistChip(onClick = {}, label = { Text(AppConstants.TEXT_ACADEMIC_MATERIAL) }) 
+                    AdaptiveScreenContainer(
+                        modifier = Modifier.padding(paddingValues),
+                        maxWidth = AdaptiveWidths.Medium
+                    ) { isTablet ->
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = if (isTablet) 32.dp else 12.dp, vertical = 16.dp)
+                        ) {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.adaptiveHeroWidth()) {
+                                        ProductHeaderImage(book = currentBook, isOwned = isOwned, isDarkTheme = isDarkTheme, primaryColor = primaryColor)
                                     }
-                                    Spacer(modifier = Modifier.height(24.dp))
-                                    Text(text = AppConstants.SECTION_ABOUT_ITEM, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(text = currentBook.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp)
-                                    Spacer(modifier = Modifier.height(32.dp))
-                                    Box(modifier = Modifier.fillMaxWidth()) {
-                                        if (isOwned) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                                ViewInvoiceButton(price = currentBook.price, onClick = { onViewInvoice(currentBook.id) })
-                                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                                    Button(onClick = { onReadBook(currentBook.id) }, modifier = Modifier.weight(1f).height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                                                        Icon(Icons.Default.AutoStories, null)
-                                                        Spacer(Modifier.width(12.dp))
-                                                        Text(AppConstants.BTN_READ_NOW, fontWeight = FontWeight.Bold)
-                                                    }
-                                                    if (currentBook.price <= 0) {
-                                                        OutlinedButton(onClick = { showRemoveConfirm = true }, modifier = Modifier.height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))) { Icon(Icons.Default.DeleteOutline, null) }
-                                                    }
-                                                }
-                                            }
-                                        } else if (user == null) {
-                                            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
-                                                Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Icon(Icons.Default.LockPerson, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-                                                    Spacer(Modifier.height(12.dp)); Text(AppConstants.TITLE_SIGN_IN_REQUIRED, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                                    Text(AppConstants.MSG_SIGN_IN_PROMPT_BOOK, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
-                                                    Spacer(Modifier.height(20.dp)); Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(AppConstants.BTN_SIGN_IN_REGISTER) }
-                                                }
-                                            }
-                                        } else {
-                                            if (currentBook.price == 0.0) {
-                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                                                    Spacer(modifier = Modifier.height(24.dp))
-                                                    Button(onClick = { showAddConfirm = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Default.LibraryAdd, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_ADD_TO_LIBRARY, fontWeight = FontWeight.Bold) }
-                                                }
-                                            } else {
-                                                val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
-                                                val discountedPrice = currentBook.price * discountMultiplier
-                                                
-                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                                        val pPrice = String.format(Locale.US, "%.2f", currentBook.price)
-                                                        val dPrice = String.format(Locale.US, "%.2f", discountedPrice)
-                                                        Text(text = "£$pPrice", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
-                                                        Spacer(Modifier.width(12.dp)); Text(text = "£$dPrice", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                                                    }
-                                                    if (effectiveDiscount > 0) {
-                                                        val roleName = localUser?.role?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "User"
-                                                        Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { 
-                                                            Text(
-                                                                text = "${roleName.uppercase()} DISCOUNT (-${effectiveDiscount.toInt()}%)", 
-                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), 
-                                                                color = Color(0xFF2E7D32), 
-                                                                fontWeight = FontWeight.Bold, 
-                                                                fontSize = 10.sp
-                                                            ) 
+                                }
+                                Spacer(Modifier.height(AdaptiveSpacing.medium()))
+                            }
+
+                            item {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)), 
+                                    shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()), 
+                                    border = BorderStroke(1.dp, if (isDarkTheme) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                                ) {
+                                    Column(modifier = Modifier.padding(AdaptiveSpacing.contentPadding())) {
+                                        Text(text = currentBook.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                                        Text(text = "${AppConstants.TEXT_BY} ${currentBook.author}", style = if (isTablet) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { 
+                                            AssistChip(onClick = {}, label = { Text(currentBook.category) })
+                                            AssistChip(onClick = {}, label = { Text(AppConstants.TEXT_ACADEMIC_MATERIAL) }) 
+                                        }
+                                        Spacer(modifier = Modifier.height(AdaptiveSpacing.medium()))
+                                        Text(text = AppConstants.SECTION_ABOUT_ITEM, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(text = currentBook.description, style = MaterialTheme.typography.bodyLarge, lineHeight = if (isTablet) 28.sp else 24.sp)
+                                        Spacer(modifier = Modifier.height(if (isTablet) 40.dp else 32.dp))
+                                        
+                                        Box(modifier = Modifier.fillMaxWidth()) {
+                                            if (isOwned) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+                                                    ViewInvoiceButton(price = currentBook.price, onClick = { onViewInvoice(currentBook.id) }, modifier = Modifier.adaptiveButtonWidth())
+                                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = if (isTablet) Modifier.widthIn(max = 500.dp) else Modifier.fillMaxWidth()) {
+                                                        Button(onClick = { onReadBook(currentBook.id) }, modifier = Modifier.weight(1f).height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                                                            Icon(Icons.Default.AutoStories, null)
+                                                            Spacer(Modifier.width(12.dp))
+                                                            Text(AppConstants.BTN_READ_NOW, fontWeight = FontWeight.Bold)
+                                                        }
+                                                        if (currentBook.price <= 0) {
+                                                            OutlinedButton(onClick = { showRemoveConfirm = true }, modifier = Modifier.height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))) { Icon(Icons.Default.DeleteOutline, null) }
                                                         }
                                                     }
-                                                    Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text(AppConstants.BTN_ORDER_NOW, fontWeight = FontWeight.Bold) }
+                                                }
+                                            } else if (user == null) {
+                                                Card(modifier = Modifier.adaptiveButtonWidth().align(Alignment.Center), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
+                                                    Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                                        Icon(Icons.Default.LockPerson, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                                                        Spacer(Modifier.height(12.dp)); Text(AppConstants.TITLE_SIGN_IN_REQUIRED, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                                        Text(AppConstants.MSG_SIGN_IN_PROMPT_BOOK, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
+                                                        Spacer(Modifier.height(20.dp)); Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(AppConstants.BTN_SIGN_IN_REGISTER) }
+                                                    }
+                                                }
+                                            } else {
+                                                if (currentBook.price == 0.0) {
+                                                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                                        Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                                        Spacer(modifier = Modifier.height(24.dp))
+                                                        Button(onClick = { showAddConfirm = true }, modifier = Modifier.adaptiveButtonWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Default.LibraryAdd, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_ADD_TO_LIBRARY, fontWeight = FontWeight.Bold) }
+                                                    }
+                                                } else {
+                                                    val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
+                                                    val discountedPrice = currentBook.price * discountMultiplier
+                                                    
+                                                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            val pPrice = String.format(Locale.US, "%.2f", currentBook.price)
+                                                            val dPrice = String.format(Locale.US, "%.2f", discountedPrice)
+                                                            Text(text = "£$pPrice", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
+                                                            Spacer(Modifier.width(12.dp)); Text(text = "£$dPrice", style = if (isTablet) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                                        }
+                                                        if (effectiveDiscount > 0) {
+                                                            val roleName = localUser?.role?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "User"
+                                                            Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { 
+                                                                Text(
+                                                                    text = "${roleName.uppercase()} DISCOUNT (-${effectiveDiscount.toInt()}%)", 
+                                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), 
+                                                                    color = Color(0xFF2E7D32), 
+                                                                    fontWeight = FontWeight.Bold, 
+                                                                    fontSize = if (isTablet) 12.sp else 10.sp
+                                                                ) 
+                                                            }
+                                                        }
+                                                        Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.adaptiveButtonWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text(AppConstants.BTN_ORDER_NOW, fontWeight = FontWeight.Bold) }
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        item {
-                            Spacer(modifier = Modifier.height(32.dp))
-                            ReviewSection(productId = bookId, reviews = allReviews, localUser = localUser, isLoggedIn = user != null, db = AppDatabase.getDatabase(LocalContext.current), isDarkTheme = isDarkTheme, onReviewPosted = { scope.launch { snackbarHostState.showSnackbar(AppConstants.MSG_THANKS_REVIEW) } }, onLoginClick = onLoginRequired)
+                            item {
+                                Spacer(modifier = Modifier.height(32.dp))
+                                ReviewSection(productId = bookId, reviews = allReviews, localUser = localUser, isLoggedIn = user != null, db = AppDatabase.getDatabase(LocalContext.current), isDarkTheme = isDarkTheme, onReviewPosted = { scope.launch { snackbarHostState.showSnackbar(AppConstants.MSG_THANKS_REVIEW) } }, onLoginClick = onLoginRequired)
+                            }
+                            item { Spacer(modifier = Modifier.height(48.dp)) }
                         }
-                        item { Spacer(modifier = Modifier.height(48.dp)) }
                     }
                 }
             }

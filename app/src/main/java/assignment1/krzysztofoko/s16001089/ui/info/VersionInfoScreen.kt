@@ -16,26 +16,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
-import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
-import assignment1.krzysztofoko.s16001089.ui.components.InfoCard
+import assignment1.krzysztofoko.s16001089.ui.components.*
 
 /**
  * Screen displaying the version history and "What's New" information.
- * Shows users the latest features and security updates.
+ * Refactored to use centralized Adaptive utilities for consistency and cleaner code.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VersionInfoScreen(
-    onBack: () -> Unit,             // Callback to return to previous screen
-    isDarkTheme: Boolean,           // Current theme state
-    onToggleTheme: () -> Unit       // Callback to change theme
+    onBack: () -> Unit,             
+    isDarkTheme: Boolean,           
+    onToggleTheme: () -> Unit       
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
-        // Shared wavy background used across info screens
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent, // Transparent to let wavy background show through
+            containerColor = Color.Transparent, 
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
@@ -52,7 +50,6 @@ fun VersionInfoScreen(
                         }
                     },
                     actions = {
-                        // Quick theme toggle icon
                         IconButton(onClick = onToggleTheme) {
                             Icon(
                                 imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
@@ -66,94 +63,83 @@ fun VersionInfoScreen(
                 )
             }
         ) { padding ->
-            // Scrollable column to hold all version update cards
-            Column(
+            AdaptiveScreenContainer(
                 modifier = Modifier
-                    .fillMaxSize()
                     .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Section header
-                Text(
-                    text = AppConstants.TITLE_LATEST_UPDATES,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // NEW: PDF Reader Update Card
-                InfoCard(
-                    icon = Icons.Default.PictureAsPdf,
-                    title = AppConstants.VER_READER_TITLE,
-                    content = AppConstants.VER_READER_DESC,
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                )
-
-                // Version 1.0.0 Final Release Card
-                InfoCard(
-                    icon = Icons.Default.History,
-                    title = AppConstants.VER_FINAL_DEMO_TITLE,
-                    content = AppConstants.VER_FINAL_DEMO_DESC,
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                )
-
-                // Security & 2FA Update Card
-                InfoCard(
-                    icon = Icons.Default.Security,
-                    title = AppConstants.VER_SECURITY_TITLE,
-                    content = AppConstants.VER_SECURITY_DESC,
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                )
-
-                // Interactive Reviews & Interactions Update Card
-                InfoCard(
-                    icon = Icons.Default.Comment,
-                    title = AppConstants.VER_REVIEWS_TITLE,
-                    content = AppConstants.VER_REVIEWS_DESC,
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                )
-
-                // UI/Theme System Update Card
-                InfoCard(
-                    icon = Icons.Default.ColorLens,
-                    title = AppConstants.VER_THEME_TITLE,
-                    content = AppConstants.VER_THEME_DESC,
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                )
-
-                // Product Catalog Expansion Card
-                InfoCard(
-                    icon = Icons.Default.Inventory,
-                    title = AppConstants.VER_CATALOG_TITLE,
-                    content = AppConstants.VER_CATALOG_DESC,
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                )
-                
-                Spacer(modifier = Modifier.height(32.dp))
-                
-                // Return button
-                Button(
-                    onClick = onBack,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                maxWidth = AdaptiveWidths.Standard
+            ) { isTablet ->
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(AppConstants.BTN_CLOSE, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = AppConstants.TITLE_LATEST_UPDATES,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = if (isTablet) Modifier else Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    InfoCard(
+                        icon = Icons.Default.PictureAsPdf,
+                        title = AppConstants.VER_READER_TITLE,
+                        content = AppConstants.VER_READER_DESC,
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                    )
+
+                    InfoCard(
+                        icon = Icons.Default.History,
+                        title = AppConstants.VER_FINAL_DEMO_TITLE,
+                        content = AppConstants.VER_FINAL_DEMO_DESC,
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                    )
+
+                    InfoCard(
+                        icon = Icons.Default.Security,
+                        title = AppConstants.VER_SECURITY_TITLE,
+                        content = AppConstants.VER_SECURITY_DESC,
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                    )
+
+                    InfoCard(
+                        icon = Icons.Default.Comment,
+                        title = AppConstants.VER_REVIEWS_TITLE,
+                        content = AppConstants.VER_REVIEWS_DESC,
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                    )
+
+                    InfoCard(
+                        icon = Icons.Default.ColorLens,
+                        title = AppConstants.VER_THEME_TITLE,
+                        content = AppConstants.VER_THEME_DESC,
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                    )
+
+                    InfoCard(
+                        icon = Icons.Default.Inventory,
+                        title = AppConstants.VER_CATALOG_TITLE,
+                        content = AppConstants.VER_CATALOG_DESC,
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                    )
+                    
+                    Spacer(modifier = Modifier.height(if (isTablet) 32.dp else 12.dp))
+                    
+                    Button(
+                        onClick = onBack,
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        @Suppress("DEPRECATION")
+                        Text(AppConstants.BTN_CLOSE, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

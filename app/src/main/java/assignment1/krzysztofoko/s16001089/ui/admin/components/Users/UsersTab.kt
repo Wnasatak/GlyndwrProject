@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveContent
 import java.util.*
 
 @Composable
@@ -20,22 +21,24 @@ fun UsersTab(viewModel: AdminViewModel, onNavigateToUserDetails: (String) -> Uni
     val users by viewModel.allUsers.collectAsState()
     var isCreatingNew by remember { mutableStateOf(false) }
     var userToDelete by remember { mutableStateOf<UserLocal?>(null) }
-    
-    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            Button(
-                onClick = { isCreatingNew = true },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
-            ) {
-                Icon(Icons.Default.PersonAdd, null)
-                Spacer(Modifier.width(12.dp))
-                Text("Create New Account", fontWeight = FontWeight.Black)
+
+    AdaptiveContent {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Button(
+                    onClick = { isCreatingNew = true },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                ) {
+                    Icon(Icons.Default.PersonAdd, null)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Create New Account", fontWeight = FontWeight.Black)
+                }
             }
-        }
-        items(users) { user ->
-            AdminUserCard(user = user, onClick = { onNavigateToUserDetails(user.id) }, onDelete = { userToDelete = user })
+            items(users) { user ->
+                AdminUserCard(user = user, onClick = { onNavigateToUserDetails(user.id) }, onDelete = { userToDelete = user })
+            }
         }
     }
 

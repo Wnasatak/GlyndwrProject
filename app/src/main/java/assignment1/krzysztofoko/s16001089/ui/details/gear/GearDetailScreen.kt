@@ -1,5 +1,6 @@
 package assignment1.krzysztofoko.s16001089.ui.details.gear
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +32,7 @@ import java.util.Locale
 
 /**
  * Detailed Information Screen for University Gear (Merchandise).
+ * Fully refactored to use centralized Adaptive utilities and spacing.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +58,8 @@ fun GearDetailScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    
+    val isTablet = isTablet()
 
     val gear by viewModel.gear.collectAsState()
     val loading by viewModel.loading.collectAsState()
@@ -71,7 +75,6 @@ fun GearDetailScreen(
     val orderConfirmation by viewModel.orderConfirmation.collectAsState()
     val allReviews by viewModel.allReviews.collectAsState()
 
-    // Dynamic Discount Calculation
     val effectiveDiscount = remember(localUser, roleDiscounts) {
         val userRole = localUser?.role ?: "user"
         val roleRate = roleDiscounts.find { it.role == userRole }?.discountPercent ?: 0.0
@@ -123,93 +126,105 @@ fun GearDetailScreen(
             } else {
                 gear?.let { currentGear ->
                     val isFree = currentGear.price <= 0
-                    LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(bottom = 120.dp)) {
-                        item {
-                            ProductHeaderImage(book = currentGear.toBook(), isOwned = isOwned, isDarkTheme = isDarkTheme, primaryColor = MaterialTheme.colorScheme.primary)
-                        }
+                    AdaptiveScreenContainer(
+                        modifier = Modifier.padding(paddingValues),
+                        maxWidth = AdaptiveWidths.Medium
+                    ) { isTablet ->
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(bottom = 120.dp)
+                        ) {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.adaptiveHeroWidth()) {
+                                        ProductHeaderImage(book = currentGear.toBook(), isOwned = isOwned, isDarkTheme = isDarkTheme, primaryColor = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
 
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().offset(y = (-24).dp),
-                                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                elevation = CardDefaults.cardElevation(defaultElevation = if (isDarkTheme) 0.dp else 8.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(24.dp)) {
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(text = "Wrexham University", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                            Text(text = currentGear.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-                                        }
-                                        
-                                        Column(horizontalAlignment = Alignment.End) {
-                                            if (currentGear.price > 0) {
-                                                val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
-                                                val discountedPrice = currentGear.price * discountMultiplier
-                                                
-                                                if (effectiveDiscount > 0) {
-                                                    Text(text = "£${String.format(Locale.US, "%.2f", currentGear.price)}", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
-                                                    Text(text = "£${String.format(Locale.US, "%.2f", discountedPrice)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().offset(y = (-24).dp),
+                                    shape = RoundedCornerShape(topStart = AdaptiveSpacing.cornerRadius(), topEnd = AdaptiveSpacing.cornerRadius()),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = if (isDarkTheme) 0.dp else 8.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(AdaptiveSpacing.contentPadding())) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(text = "Wrexham University", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                                Text(text = currentGear.title, style = if (isTablet) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                                            }
+                                            
+                                            Column(horizontalAlignment = Alignment.End) {
+                                                if (currentGear.price > 0) {
+                                                    val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
+                                                    val discountedPrice = currentGear.price * discountMultiplier
                                                     
-                                                    val roleName = localUser?.role?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "User"
-                                                    Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp), modifier = Modifier.padding(top = 4.dp)) { 
-                                                        Text(
-                                                            text = "${roleName.uppercase()} DISCOUNT (-${effectiveDiscount.toInt()}%)", 
-                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), 
-                                                            color = Color(0xFF2E7D32), 
-                                                            fontWeight = FontWeight.Bold, 
-                                                            fontSize = 10.sp
-                                                        ) 
+                                                    if (effectiveDiscount > 0) {
+                                                        Text(text = "£${String.format(Locale.US, "%.2f", currentGear.price)}", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
+                                                        Text(text = "£${String.format(Locale.US, "%.2f", discountedPrice)}", style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                                        
+                                                        val roleName = localUser?.role?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "User"
+                                                        Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp), modifier = Modifier.padding(top = 4.dp)) { 
+                                                            Text(
+                                                                text = "${roleName.uppercase()} DISCOUNT (-${effectiveDiscount.toInt()}%)", 
+                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), 
+                                                                color = Color(0xFF2E7D32), 
+                                                                fontWeight = FontWeight.Bold, 
+                                                                fontSize = if (isTablet) 12.sp else 10.sp
+                                                            ) 
+                                                        }
+                                                    } else {
+                                                        Text(text = "£${String.format(Locale.US, "%.2f", currentGear.price)}", style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                                                     }
                                                 } else {
-                                                    Text(text = "£${String.format(Locale.US, "%.2f", currentGear.price)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                                                    Text(text = "FREE", style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50))
                                                 }
-                                            } else {
-                                                Text(text = "FREE", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50))
                                             }
                                         }
-                                    }
-                                    
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    GearTagsSection(tags = currentGear.productTags)
-                                    
-                                    Spacer(modifier = Modifier.height(24.dp))
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                                    Spacer(modifier = Modifier.height(24.dp))
+                                        
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        GearTagsSection(tags = currentGear.productTags)
+                                        
+                                        Spacer(modifier = Modifier.height(24.dp))
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                        Spacer(modifier = Modifier.height(24.dp))
 
-                                    GearOptionSelectors(
-                                        sizes = currentGear.sizes,
-                                        selectedSize = selectedSize,
-                                        onSizeSelected = { viewModel.setSelectedSize(it) },
-                                        colors = currentGear.colors,
-                                        selectedColor = selectedColor,
-                                        onColorSelected = { viewModel.setSelectedColor(it) },
-                                        onColorClick = { color ->
-                                            if (images.size > 1) {
-                                                viewModel.setSelectedImageIndex(if (color.contains("Pink", ignoreCase = true)) 1 else 0)
+                                        GearOptionSelectors(
+                                            sizes = currentGear.sizes,
+                                            selectedSize = selectedSize,
+                                            onSizeSelected = { viewModel.setSelectedSize(it) },
+                                            colors = currentGear.colors,
+                                            selectedColor = selectedColor,
+                                            onColorSelected = { viewModel.setSelectedColor(it) },
+                                            onColorClick = { color ->
+                                                if (images.size > 1) {
+                                                    viewModel.setSelectedImageIndex(if (color.contains("Pink", ignoreCase = true)) 1 else 0)
+                                                }
                                             }
+                                        )
+
+                                        GearStockIndicator(stockCount = currentGear.stockCount, quantity = quantity, isOwned = isOwned, isFree = isFree, onQuantityChange = { viewModel.setQuantity(it) })
+
+                                        Spacer(modifier = Modifier.height(32.dp))
+                                        Text(text = AppConstants.SECTION_DESCRIPTION_GEAR, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                        Spacer(Modifier.height(8.dp))
+                                        Text(text = currentGear.description, style = MaterialTheme.typography.bodyLarge, lineHeight = if (isTablet) 28.sp else 24.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
+                                        
+                                        Spacer(modifier = Modifier.height(32.dp))
+                                        GearSpecsCard(material = currentGear.material, sku = currentGear.sku, category = currentGear.category)
+                                        
+                                        if (similarGear.isNotEmpty()) {
+                                            Spacer(modifier = Modifier.height(40.dp))
+                                            Text(text = AppConstants.TITLE_SIMILAR_PRODUCTS, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                            Spacer(Modifier.height(16.dp))
+                                            UniversalProductSlider(products = similarGear.map { it.toBook() }, onProductClick = { selectedBook -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${selectedBook.id}") })
                                         }
-                                    )
 
-                                    GearStockIndicator(stockCount = currentGear.stockCount, quantity = quantity, isOwned = isOwned, isFree = isFree, onQuantityChange = { viewModel.setQuantity(it) })
-
-                                    Spacer(modifier = Modifier.height(32.dp))
-                                    Text(text = AppConstants.SECTION_DESCRIPTION_GEAR, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(text = currentGear.description, style = MaterialTheme.typography.bodyLarge, lineHeight = 24.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
-                                    
-                                    Spacer(modifier = Modifier.height(32.dp))
-                                    GearSpecsCard(material = currentGear.material, sku = currentGear.sku, category = currentGear.category)
-                                    
-                                    if (similarGear.isNotEmpty()) {
                                         Spacer(modifier = Modifier.height(40.dp))
-                                        Text(text = AppConstants.TITLE_SIMILAR_PRODUCTS, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                        Spacer(Modifier.height(16.dp))
-                                        UniversalProductSlider(products = similarGear.map { it.toBook() }, onProductClick = { selectedBook -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${selectedBook.id}") })
+                                        ReviewSection(productId = gearId, reviews = allReviews, localUser = localUser, isLoggedIn = user != null, db = AppDatabase.getDatabase(LocalContext.current), isDarkTheme = isDarkTheme, onReviewPosted = { scope.launch { snackbarHostState.showSnackbar(AppConstants.MSG_THANKS_REVIEW) } }, onLoginClick = onLoginRequired)
                                     }
-
-                                    Spacer(modifier = Modifier.height(40.dp))
-                                    ReviewSection(productId = gearId, reviews = allReviews, localUser = localUser, isLoggedIn = user != null, db = AppDatabase.getDatabase(LocalContext.current), isDarkTheme = isDarkTheme, onReviewPosted = { scope.launch { snackbarHostState.showSnackbar(AppConstants.MSG_THANKS_REVIEW) } }, onLoginClick = onLoginRequired)
                                 }
                             }
                         }
@@ -223,18 +238,24 @@ fun GearDetailScreen(
             Box(modifier = Modifier.align(Alignment.BottomCenter)) {
                 val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
                 val unitPrice = currentGear.price * discountMultiplier
-                GearBottomActionBar(
-                    isOwned = isOwned,
-                    price = unitPrice * quantity,
-                    stockCount = currentGear.stockCount,
-                    quantity = quantity,
-                    isLoggedIn = user != null,
-                    onViewInvoice = { onViewInvoice(currentGear.id) },
-                    onPickupInfo = { showPickupPopup = true },
-                    onLoginRequired = onLoginRequired,
-                    onCheckout = { showOrderFlow = true },
-                    onFreePickup = { showAddConfirm = true }
-                )
+                
+                // Adaptive Action Bar: Centered and squeezed on tablet
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.adaptiveWidth(AdaptiveWidths.Medium)) {
+                        GearBottomActionBar(
+                            isOwned = isOwned,
+                            price = unitPrice * quantity,
+                            stockCount = currentGear.stockCount,
+                            quantity = quantity,
+                            isLoggedIn = user != null,
+                            onViewInvoice = { onViewInvoice(currentGear.id) },
+                            onPickupInfo = { showPickupPopup = true },
+                            onLoginRequired = onLoginRequired,
+                            onCheckout = { showOrderFlow = true },
+                            onFreePickup = { showAddConfirm = true }
+                        )
+                    }
+                }
             }
         }
 

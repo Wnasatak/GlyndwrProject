@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
@@ -26,26 +27,23 @@ import assignment1.krzysztofoko.s16001089.ui.components.InfoCard
 
 /**
  * Instruction Screen providing a user guide for the application.
- * 
- * This screen explains the core features of the Glyndŵr Store, such as browsing,
- * signing in for discounts, making purchases, and personalizing the app theme.
- * It uses a consistent visual style with the rest of the 'Info' module.
+ * Optimized for both phone (original layout) and tablet (centered/squeezed).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstructionScreen(
-    onBack: () -> Unit,               // Callback to return to the previous screen
-    isDarkTheme: Boolean,             // Current global theme state
-    onToggleTheme: () -> Unit         // Callback to flip between Dark and Light mode
+    onBack: () -> Unit,
+    isDarkTheme: Boolean,
+    onToggleTheme: () -> Unit
 ) {
-    // Root container allowing for background layering
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp >= 600
+
     Box(modifier = Modifier.fillMaxSize()) {
-        
-        // The shared wavy background component used for all informational screens
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent, // Transparent background to show the waves behind
+            containerColor = Color.Transparent,
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
@@ -58,104 +56,93 @@ fun InstructionScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
                     actions = {
-                        // Quick theme toggle icon button in the header
                         IconButton(onClick = onToggleTheme) {
                             Icon(
                                 imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                contentDescription = "Switch Theme"
+                                contentDescription = "Toggle Theme"
                             )
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f) // Glass-morphism effect
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
                 )
             }
         ) { padding ->
-            // Scrollable column to accommodate varying screen sizes and content lengths
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState()) // Enables vertical scrolling
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Box for global content alignment: Centered on tablet, start-aligned on phone
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = if (isTablet) Alignment.TopCenter else Alignment.TopStart
             ) {
-                // Section welcome header
-                Text(
-                    text = AppConstants.TITLE_WELCOME_STORE,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                /**
-                 * Feature Guide: Browse Items
-                 * Explains the main Home screen navigation and filtering.
-                 */
-                InfoCard(
-                    icon = Icons.Default.MenuBook,
-                    title = "Browse Items",
-                    content = "Use the home screen to browse through various books, audio books, and university gear. You can filter by category using the top bar.",
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                )
-                
-                /**
-                 * Feature Guide: Authentication
-                 * Highlights the benefits of logging in, such as the student discount.
-                 */
-                InfoCard(
-                    icon = Icons.Default.Person,
-                    title = "Sign In",
-                    content = "Sign in to your account to access your personal dashboard and see your order history. Students get an automatic 10% discount!",
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                )
-                
-                /**
-                 * Feature Guide: Purchases
-                 * Describes the workflow for viewing item details and adding them to the collection.
-                 */
-                InfoCard(
-                    icon = Icons.Default.ShoppingCart,
-                    title = "Buy & Details",
-                    content = "Click on any item to see more details. If you're signed in, you can purchase items and they will appear in your dashboard.",
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                )
-                
-                /**
-                 * Feature Guide: Customization
-                 * Explains how to use the theme toggle for accessibility and preference.
-                 */
-                InfoCard(
-                    icon = Icons.Default.Settings,
-                    title = "Customization",
-                    content = "Toggle between Light and Dark mode using the sun/moon icon in the top bar to suit your preference.",
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
-                )
-                
-                Spacer(modifier = Modifier.height(32.dp))
-                
-                // Primary 'Dismiss' button at the bottom of the guide
-                Button(
-                    onClick = onBack,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp)
+                Column(
+                    modifier = Modifier
+                        .then(if (isTablet) Modifier.widthIn(max = 600.dp).fillMaxHeight() else Modifier.fillMaxSize())
+                        .verticalScroll(rememberScrollState())
+                        .padding(24.dp),
+                    horizontalAlignment = if (isTablet) Alignment.CenterHorizontally else Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(if (isTablet) 12.dp else 0.dp)
                 ) {
-                    Text(AppConstants.BTN_GOT_IT, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = AppConstants.TITLE_WELCOME_STORE,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = if (isTablet) Modifier else Modifier.padding(bottom = 16.dp)
+                    )
+                    
+                    if (isTablet) Spacer(modifier = Modifier.height(12.dp))
+                    
+                    InfoCard(
+                        icon = Icons.Default.MenuBook,
+                        title = "Browse Items",
+                        content = "Use the home screen to browse through various books, audio books, and university gear. You can filter by category using the top bar.",
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                    )
+                    
+                    InfoCard(
+                        icon = Icons.Default.Person,
+                        title = "Sign In",
+                        content = "Sign in to your account to access your personal dashboard and see your order history. Students get an automatic 10% discount!",
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                    )
+                    
+                    InfoCard(
+                        icon = Icons.Default.ShoppingCart,
+                        title = "Buy & Details",
+                        content = "Click on any item to see more details. If you're signed in, you can purchase items and they will appear in your dashboard.",
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                    )
+                    
+                    InfoCard(
+                        icon = Icons.Default.Settings,
+                        title = "Customization",
+                        content = "Toggle between Light and Dark mode using the sun/moon icon in the top bar to suit your preference.",
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                    )
+                    
+                    Spacer(modifier = Modifier.height(if (isTablet) 32.dp else 24.dp))
+                    
+                    Button(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .then(if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth())
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(AppConstants.BTN_GOT_IT, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

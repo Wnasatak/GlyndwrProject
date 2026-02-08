@@ -54,6 +54,7 @@ fun AdminPanelScreen(
     var selectedModuleForTasks by remember { mutableStateOf<ModuleContent?>(null) }
     var showAddProductDialog by remember { mutableStateOf(false) }
     var showAddCourseDialog by remember { mutableStateOf(false) }
+    var showAddUserDialog by remember { mutableStateOf(false) }
 
     val isShowingOverlay = selectedAppForReview != null || selectedCourseForModules != null || selectedModuleForTasks != null
 
@@ -76,7 +77,11 @@ fun AdminPanelScreen(
                 topBar = {
                     TopAppBar(
                         windowInsets = WindowInsets(0, 0, 0, 0),
-                        title = { Text(text = sectionTitle, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge) },
+                        title = { 
+                            Row(modifier = Modifier.padding(start = 12.dp)) {
+                                Text(text = sectionTitle, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
+                            }
+                        },
                         navigationIcon = {
                             val infiniteTransition = rememberInfiniteTransition("logo_pulse")
                             val animatedShadow by infiniteTransition.animateValue(
@@ -116,6 +121,11 @@ fun AdminPanelScreen(
                                     Icon(Icons.Default.Add, "Add Course")
                                 }
                             }
+                            if (currentSection == AdminSection.USERS) {
+                                IconButton(onClick = { showAddUserDialog = true }) {
+                                    Icon(Icons.Default.Add, "Add User")
+                                }
+                            }
                             IconButton(onClick = onToggleTheme) { 
                                 Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) 
                             }
@@ -145,7 +155,12 @@ fun AdminPanelScreen(
                         when (section) {
                             AdminSection.DASHBOARD -> AdminDashboardTab(viewModel, isDarkTheme)
                             AdminSection.APPLICATIONS -> ApplicationsTab(viewModel = viewModel, onReviewApp = { selectedAppForReview = it })
-                            AdminSection.USERS -> UserManagementTab(viewModel, onNavigateToUserDetails)
+                            AdminSection.USERS -> UserManagementTab(
+                                viewModel = viewModel, 
+                                onNavigateToUserDetails = onNavigateToUserDetails,
+                                showAddUserDialog = showAddUserDialog,
+                                onAddUserDialogConsumed = { showAddUserDialog = false }
+                            )
                             AdminSection.COURSES -> CoursesTab(
                                 viewModel = viewModel, 
                                 isDarkTheme = isDarkTheme, 

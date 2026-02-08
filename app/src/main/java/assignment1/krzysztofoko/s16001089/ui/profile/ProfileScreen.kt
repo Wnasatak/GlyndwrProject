@@ -31,15 +31,15 @@ import kotlinx.coroutines.launch
 
 /**
  * Composable representing the User Profile and Settings screen.
- * Allows users to update personal info, manage addresses, payment methods, and account security.
+ * Updated with AdaptiveScreenContainer to look good on tablets.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    onLogout: () -> Unit,             // Callback to handle user logout
-    isDarkTheme: Boolean,             // Current theme state
-    onToggleTheme: () -> Unit,        // Callback to toggle dark/light mode
+    onLogout: () -> Unit,             
+    isDarkTheme: Boolean,             
+    onToggleTheme: () -> Unit,        
     viewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
         auditDao = AppDatabase.getDatabase(LocalContext.current).auditDao(),
@@ -52,15 +52,12 @@ fun ProfileScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Observe local user data from the Room database
     val localUser by viewModel.localUser.collectAsState(initial = null)
 
-    // Sync ViewModel fields with database data when it loads
     LaunchedEffect(localUser) {
         localUser?.let { viewModel.initFields(it) }
     }
 
-    // States to control various settings popups/dialogs
     var showSelectionPopup by remember { mutableStateOf(false) }
     var currentPopupStep by remember { mutableIntStateOf(1) }
     var cardNumber by remember { mutableStateOf("") }
@@ -71,10 +68,8 @@ fun ProfileScreen(
     var showAddressPopup by remember { mutableStateOf(false) }
     var showEmailPopup by remember { mutableStateOf(false) }
 
-    // Determine the user's display photo (prefer local DB over Firebase)
     val currentPhotoUrl = localUser?.photoUrl ?: user?.photoUrl?.toString()
 
-    // Launcher for selecting a profile picture from the gallery
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -86,7 +81,7 @@ fun ProfileScreen(
     }
 
     Scaffold(
-        containerColor = Color.Transparent, // Transparent to show wavy background behind
+        containerColor = Color.Transparent, 
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
@@ -98,11 +93,9 @@ fun ProfileScreen(
                     } 
                 },
                 actions = {
-                    // Quick theme toggle
                     IconButton(onClick = onToggleTheme) { 
                         Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) 
                     }
-                    // Logout button
                     IconButton(onClick = onLogout) { 
                         Icon(Icons.AutoMirrored.Filled.Logout, AppConstants.BTN_LOG_OUT, tint = MaterialTheme.colorScheme.error) 
                     }
@@ -114,100 +107,92 @@ fun ProfileScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
-            // Reusable wavy background component
             HorizontalWavyBackground(isDarkTheme = isDarkTheme)
             
-            Column(
+            AdaptiveScreenContainer(
                 modifier = Modifier
-                    .fillMaxSize()
                     .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Header displaying profile picture and upload status
-                ProfileHeader(
-                    photoUrl = currentPhotoUrl,
-                    isUploading = viewModel.isUploading,
-                    onPickPhoto = { photoPickerLauncher.launch("image/*") }
-                )
-
-                // Main card containing editable profile sections
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                    ),
-                    shape = RoundedCornerShape(24.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                    .verticalScroll(rememberScrollState()),
+                maxWidth = 600.dp
+            ) { isTablet ->
+                Column(
+                    modifier = Modifier.padding(horizontal = if (isTablet) 32.dp else 16.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(modifier = Modifier.padding(24.dp)) {
-                        // Section for Name, Phone, and Email
-                        PersonalInfoSection(
-                            title = viewModel.title,
-                            onTitleChange = { viewModel.title = it },
-                            firstName = viewModel.firstName,
-                            onFirstNameChange = { viewModel.firstName = it },
-                            surname = viewModel.surname,
-                            onSurnameChange = { viewModel.surname = it },
-                            phoneNumber = viewModel.phoneNumber,
-                            onPhoneNumberChange = { viewModel.phoneNumber = it },
-                            email = localUser?.email ?: "",
-                            onEditEmail = { showEmailPopup = true }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(32.dp))
-                        
-                        // Address management section
-                        ProfileAddressSection(
-                            address = viewModel.selectedAddress,
-                            onChangeAddress = { showAddressPopup = true }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(32.dp))
-                        
-                        // Payment method selection section
-                        ProfilePaymentSection(
-                            paymentMethod = viewModel.selectedPaymentMethod,
-                            onChangePayment = { currentPopupStep = 1; showSelectionPopup = true }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(32.dp))
-                        
-                        // Security (Password) section
-                        ProfileSecuritySection(
-                            onChangePassword = { showPasswordPopup = true }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(32.dp))
-                        
-                        // Main Save Button
-                        Button(
-                            onClick = {
-                                viewModel.updateProfile { msg ->
-                                    scope.launch { snackbarHostState.showSnackbar(msg) }
+                    ProfileHeader(
+                        photoUrl = currentPhotoUrl,
+                        isUploading = viewModel.isUploading,
+                        onPickPhoto = { photoPickerLauncher.launch("image/*") }
+                    )
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        ),
+                        shape = RoundedCornerShape(24.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                    ) {
+                        Column(modifier = Modifier.padding(24.dp)) {
+                            PersonalInfoSection(
+                                title = viewModel.title,
+                                onTitleChange = { viewModel.title = it },
+                                firstName = viewModel.firstName,
+                                onFirstNameChange = { viewModel.firstName = it },
+                                surname = viewModel.surname,
+                                onSurnameChange = { viewModel.surname = it },
+                                phoneNumber = viewModel.phoneNumber,
+                                onPhoneNumberChange = { viewModel.phoneNumber = it },
+                                email = localUser?.email ?: "",
+                                onEditEmail = { showEmailPopup = true }
+                            )
+                            
+                            Spacer(modifier = Modifier.height(32.dp))
+                            
+                            ProfileAddressSection(
+                                address = viewModel.selectedAddress,
+                                onChangeAddress = { showAddressPopup = true }
+                            )
+                            
+                            Spacer(modifier = Modifier.height(32.dp))
+                            
+                            ProfilePaymentSection(
+                                paymentMethod = viewModel.selectedPaymentMethod,
+                                onChangePayment = { currentPopupStep = 1; showSelectionPopup = true }
+                            )
+                            
+                            Spacer(modifier = Modifier.height(32.dp))
+                            
+                            ProfileSecuritySection(
+                                onChangePassword = { showPasswordPopup = true }
+                            )
+                            
+                            Spacer(modifier = Modifier.height(32.dp))
+                            
+                            Button(
+                                onClick = {
+                                    viewModel.updateProfile { msg ->
+                                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().height(50.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                enabled = !viewModel.isUploading
+                            ) {
+                                if (viewModel.isUploading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                                } else {
+                                    Text(AppConstants.BTN_SAVE_PROFILE, fontWeight = FontWeight.Bold)
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !viewModel.isUploading
-                        ) {
-                            if (viewModel.isUploading) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                            } else {
-                                Text(AppConstants.BTN_SAVE_PROFILE, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
+                    Spacer(modifier = Modifier.height(40.dp))
                 }
-                Spacer(modifier = Modifier.height(40.dp))
             }
         }
 
-        // --- Dialogs and Popups for specific settings ---
-
-        // Dialog for adding/switching payment methods (Card or PayPal)
         PaymentMethodDialog(
             show = showSelectionPopup,
             currentStep = currentPopupStep,
@@ -231,7 +216,6 @@ fun ProfileScreen(
             onPaypalEmailChange = { paypalEmail = it }
         )
 
-        // Popup for requesting a password reset email
         AppPopups.ProfilePasswordChange(
             show = showPasswordPopup,
             userEmail = user?.email ?: "",
@@ -242,7 +226,6 @@ fun ProfileScreen(
             }
         )
 
-        // Dialog for managing physical shipping/billing addresses
         AppPopups.AddressManagement(
             show = showAddressPopup,
             onDismiss = { showAddressPopup = false },
@@ -255,13 +238,11 @@ fun ProfileScreen(
             }
         )
 
-        // Popup for changing the primary login email
         AppPopups.ProfileEmailChange(
             show = showEmailPopup,
             currentEmail = user?.email ?: "",
             onDismiss = { showEmailPopup = false },
             onSuccess = { _ -> 
-                // Logout and return to Auth screen after email change for security
                 viewModel.signOut(localUser)
                 navController.navigate(AppConstants.ROUTE_AUTH) { popUpTo(0) } 
             }

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -364,7 +365,7 @@ private fun HomePriceLabel(book: Book, effectiveDiscount: Double, userRole: Stri
             ) {
                 val roleLabel = userRole?.uppercase() ?: "USER"
                 Text(
-                    text = "$roleLabel DISCOUNT (-${effectiveDiscount.toInt()}%)",
+                    text = "$roleLabel DISCOUNT (-${effectiveDiscount.toInt()}% )",
                     style = MaterialTheme.typography.labelSmall,
                     color = Color(0xFF2E7D32),
                     fontWeight = FontWeight.Bold,
@@ -474,45 +475,70 @@ fun MemberWelcomeBanner(user: UserLocal?) {
 
 @Composable
 fun MainCategoryFilterBar(categories: List<String>, selectedCategory: String, onCategorySelected: (String) -> Unit) {
-    val infiniteCategories = Int.MAX_VALUE
-    val startPosition = infiniteCategories / 2 - (infiniteCategories / 2 % categories.size)
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp >= 600
     
-    LazyRow(
-        state = listState,
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        items(infiniteCategories) { index ->
-            val categoryIndex = index % categories.size
-            val category = categories[categoryIndex]
-            
-            val scale by remember {
-                derivedStateOf {
-                    val layoutInfo = listState.layoutInfo
-                    val visibleItemsInfo = layoutInfo.visibleItemsInfo
-                    val itemInfo = visibleItemsInfo.find { it.index == index }
-                    
-                    if (itemInfo != null) {
-                        val center = layoutInfo.viewportEndOffset / 2
-                        val itemCenter = itemInfo.offset + (itemInfo.size / 2)
-                        val distanceFromCenter = abs(center - itemCenter).toFloat()
-                        val normalizedDistance = (distanceFromCenter / center).coerceIn(0f, 1f)
-                        1.25f - (normalizedDistance * 0.4f)
-                    } else {
-                        0.85f
+    if (isTablet) {
+        // Standard Row for Tablets (No duplicates)
+        val listState = rememberLazyListState()
+        LazyRow(
+            state = listState,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items(categories) { category ->
+                CategorySquareButton(
+                    label = category,
+                    icon = getMainCategoryIcon(category),
+                    isSelected = selectedCategory == category,
+                    scale = 1f,
+                    onClick = { onCategorySelected(category) }
+                )
+            }
+        }
+    } else {
+        // Infinite Row for Phones
+        val infiniteCategories = Int.MAX_VALUE
+        val startPosition = infiniteCategories / 2 - (infiniteCategories / 2 % categories.size)
+        val listState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
+        
+        LazyRow(
+            state = listState,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items(infiniteCategories) { index ->
+                val categoryIndex = index % categories.size
+                val category = categories[categoryIndex]
+                
+                val scale by remember {
+                    derivedStateOf {
+                        val layoutInfo = listState.layoutInfo
+                        val visibleItemsInfo = layoutInfo.visibleItemsInfo
+                        val itemInfo = visibleItemsInfo.find { it.index == index }
+                        
+                        if (itemInfo != null) {
+                            val center = layoutInfo.viewportEndOffset / 2
+                            val itemCenter = itemInfo.offset + (itemInfo.size / 2)
+                            val distanceFromCenter = abs(center - itemCenter).toFloat()
+                            val normalizedDistance = (distanceFromCenter / center).coerceIn(0f, 1f)
+                            1.25f - (normalizedDistance * 0.4f)
+                        } else {
+                            0.85f
+                        }
                     }
                 }
-            }
 
-            CategorySquareButton(
-                label = category,
-                icon = getMainCategoryIcon(category),
-                isSelected = selectedCategory == category,
-                scale = scale,
-                onClick = { onCategorySelected(category) }
-            )
+                CategorySquareButton(
+                    label = category,
+                    icon = getMainCategoryIcon(category),
+                    isSelected = selectedCategory == category,
+                    scale = scale,
+                    onClick = { onCategorySelected(category) }
+                )
+            }
         }
     }
 }

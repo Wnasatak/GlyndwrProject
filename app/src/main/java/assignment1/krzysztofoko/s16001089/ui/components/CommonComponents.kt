@@ -2,7 +2,9 @@ package assignment1.krzysztofoko.s16001089.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.CheckCircle
@@ -15,9 +17,48 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
+
+/**
+ * A reusable wrapper for adaptive content that caps width on tablets/large screens.
+ * Ensures the app looks balanced and "contained" rather than stretched.
+ */
+@Composable
+fun AdaptiveContent(
+    modifier: Modifier = Modifier,
+    maxWidth: Dp = 600.dp,
+    padding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+    isScrollable: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp >= 600
+    val horizontalPadding = if (isTablet) 32.dp else padding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = maxWidth)
+                .fillMaxHeight()
+                .then(if (isScrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+                .padding(
+                    start = horizontalPadding,
+                    end = horizontalPadding,
+                    top = padding.calculateTopPadding(),
+                    bottom = padding.calculateBottomPadding()
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            content = content
+        )
+    }
+}
 
 @Composable
 fun InfoCard(

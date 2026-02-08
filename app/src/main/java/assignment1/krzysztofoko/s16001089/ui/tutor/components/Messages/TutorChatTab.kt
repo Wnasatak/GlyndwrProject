@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveContent
 import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import coil.compose.AsyncImage
@@ -45,12 +46,11 @@ fun TutorChatTab(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Messages List
+    AdaptiveContent(isScrollable = false) {
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             state = listState,
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(messages) { msg ->
@@ -91,11 +91,11 @@ fun TutorChatTab(
             }
         }
 
-        // Input Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
             tonalElevation = 8.dp,
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
             Row(
                 modifier = Modifier

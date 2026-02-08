@@ -364,6 +364,7 @@ fun NotificationItem(
             
             Column(modifier = Modifier.weight(1f)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    // Title section with weight to prevent pushing everything out
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                         Text(
                             text = notification.title, 
@@ -371,7 +372,8 @@ fun NotificationItem(
                             fontWeight = if (notification.isRead) FontWeight.Bold else FontWeight.Black, 
                             color = if ((isAnnouncement || isMessage) && !notification.isRead) categoryColor else MaterialTheme.colorScheme.onSurface, 
                             maxLines = 1, 
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false) // Added this to constrain width
                         )
                         if (isAnnouncement && !notification.isRead) {
                             Surface(

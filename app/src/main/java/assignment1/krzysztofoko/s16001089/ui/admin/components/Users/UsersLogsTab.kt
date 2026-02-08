@@ -21,16 +21,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.data.SystemLog
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveContent
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
 fun UsersLogsTab(viewModel: AdminViewModel) {
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Admin, 1: User
+    var selectedTab by remember { mutableIntStateOf(0) } 
     val tabs = listOf("Admin Actions", "User Activity")
     
     val adminLogs by viewModel.adminLogs.collectAsState(initial = emptyList())
@@ -43,7 +46,7 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
 
     var selectedLogForDetail by remember { mutableStateOf<SystemLog?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    AdaptiveContent(isScrollable = false) {
         TabRow(
             selectedTabIndex = selectedTab,
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
@@ -58,9 +61,8 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
             }
         }
 
-        // Action Row with Search Toggle and Sub-filters
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (!isSearchVisible) {
@@ -121,13 +123,13 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
         }
 
         if (filteredLogs.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Text("No matching logs.", color = Color.Gray, fontSize = 16.sp)
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 32.dp, start = 16.dp, end = 16.dp),
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(filteredLogs) { log ->
@@ -199,7 +201,7 @@ fun FilterPillSmall(id: String, icon: ImageVector, isSelected: Boolean, onClick:
             Icon(imageVector = icon, contentDescription = id, modifier = Modifier.size(18.dp), tint = if (isSelected) Color.White else Color.Gray)
             if (isSelected) {
                 Spacer(Modifier.width(6.dp))
-                Text(text = id.capitalize(), style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(text = id.capitalizeText(), style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -234,35 +236,50 @@ fun LogItemCard(log: SystemLog, onClick: () -> Unit) {
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
         )
     ) {
-        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(44.dp),
                 shape = CircleShape,
                 color = color.copy(alpha = 0.1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = color)
+                    Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = color)
                 }
             }
             
             Spacer(Modifier.width(16.dp))
             
             Column(modifier = Modifier.weight(1f)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(), 
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text(
                         text = log.action.replace("_", " "),
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Black,
-                        color = color
+                        color = color,
+                        modifier = Modifier.weight(1f, fill = false),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         text = sdf.format(Date(log.timestamp)),
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
+                        color = Color.Gray,
+                        textAlign = TextAlign.End
                     )
                 }
-                Spacer(Modifier.height(6.dp))
-                Text(text = log.details, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = log.details, 
+                    style = MaterialTheme.typography.bodyMedium, 
+                    maxLines = 1, 
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
                 Text(
                     text = "By: ${log.userName}",
                     style = MaterialTheme.typography.labelSmall,
@@ -354,4 +371,4 @@ fun LogDetailPopup(log: SystemLog, onDismiss: () -> Unit) {
     )
 }
 
-private fun String.capitalize(): String = this.lowercase().replaceFirstChar { it.uppercase() }
+private fun String.capitalizeText(): String = this.lowercase().replaceFirstChar { it.uppercase() }

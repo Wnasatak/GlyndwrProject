@@ -57,7 +57,7 @@ fun UserAvatar(
     Surface(
         modifier = modifier,
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.2f)
+        color = Color.Transparent
     ) {
         BoxWithConstraints(contentAlignment = Alignment.Center) {
             val autoIconSize = when {
@@ -241,8 +241,7 @@ fun ProfileAddressSection(
         ) {
             Row(
                 modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Home, null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(16.dp))
                 Text(

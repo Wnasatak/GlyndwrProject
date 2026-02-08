@@ -2,6 +2,7 @@ package assignment1.krzysztofoko.s16001089.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -25,7 +26,8 @@ import assignment1.krzysztofoko.s16001089.ui.details.course.MyApplicationsScreen
 fun AppNavigation(
     isDarkTheme: Boolean,           
     onToggleTheme: () -> Unit,      
-    externalPlayer: Player? = null  
+    externalPlayer: Player? = null,
+    windowSizeClass: WindowSizeClass? = null
 ) {
     val context = LocalContext.current
     val navController = rememberNavController()
@@ -59,7 +61,6 @@ fun AppNavigation(
         }
     }
 
-    // Updated TopLevelScaffold call with new application and theme parameters
     TopLevelScaffold(
         currentUser = currentUser,
         localUser = localUser,
@@ -78,9 +79,11 @@ fun AppNavigation(
         onWalletClick = { mainVm.showWalletHistory = true },
         onNotificationsClick = { navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) },
         onMyApplicationsClick = { navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) },
+        onMessagesClick = { navController.navigate(AppConstants.ROUTE_MESSAGES) },
         onLogoutClick = { mainVm.showLogoutConfirm = true },
         onToggleTheme = onToggleTheme,
-        isDarkTheme = isDarkTheme
+        isDarkTheme = isDarkTheme,
+        windowSizeClass = windowSizeClass
     ) { paddingValues ->
         
         AppNavigationPopups(
