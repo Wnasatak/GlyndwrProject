@@ -102,7 +102,18 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
                     Column(modifier = Modifier.adaptiveWidth(AdaptiveWidths.Medium), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             StatCard(modifier = Modifier.weight(1f), title = "Users", value = users.size.toString(), icon = Icons.Default.People, color = MaterialTheme.colorScheme.primary, onClick = { viewModel.setSection(AdminSection.USERS) })
-                            StatCard(modifier = Modifier.weight(1f), title = "Pending", value = pendingApps.toString(), icon = Icons.Default.Timer, color = Color(0xFFFBC02D), onClick = { viewModel.setSection(AdminSection.APPLICATIONS) })
+                            
+                            // Optimization for visibility in light mode: Using a deeper Amber/Orange color for Pending
+                            val pendingColor = if (isDarkTheme) Color(0xFFFBC02D) else Color(0xFFF57C00)
+                            
+                            StatCard(
+                                modifier = Modifier.weight(1f), 
+                                title = "Pending", 
+                                value = pendingApps.toString(), 
+                                icon = Icons.Default.Timer, 
+                                color = pendingColor, 
+                                onClick = { viewModel.setSection(AdminSection.APPLICATIONS) }
+                            )
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             StatCard(modifier = Modifier.weight(1f), title = "Catalog", value = (books.size + courses.size).toString(), icon = Icons.Default.Inventory, color = Color(0xFF4CAF50), onClick = { viewModel.setSection(AdminSection.CATALOG) })

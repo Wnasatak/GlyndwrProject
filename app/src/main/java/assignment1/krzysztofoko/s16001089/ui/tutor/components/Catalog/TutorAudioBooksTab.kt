@@ -5,25 +5,21 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AudioBook
 import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
-import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorResourceDetailDialog
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorResourceItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorAudioBooksTab(
     viewModel: TutorViewModel,
@@ -41,40 +37,42 @@ fun TutorAudioBooksTab(
     var abToConfirmAdd by remember { mutableStateOf<AudioBook?>(null) }
     var abToConfirmRemove by remember { mutableStateOf<AudioBook?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            placeholder = { Text("Search audiobooks...") },
-            leadingIcon = { Icon(Icons.Default.Search, null) },
-            shape = MaterialTheme.shapes.medium
-        )
+    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = AdaptiveSpacing.contentPadding())) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                placeholder = { Text("Search audiobooks...") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                shape = MaterialTheme.shapes.medium
+            )
 
-        val filteredAudio = allAudioBooks.filter { it.title.contains(searchQuery, ignoreCase = true) }
+            val filteredAudio = allAudioBooks.filter { it.title.contains(searchQuery, ignoreCase = true) }
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(filteredAudio) { ab ->
-                val isAdded = purchasedIds.contains(ab.id)
-                TutorResourceItem(
-                    title = ab.title,
-                    imageUrl = ab.imageUrl,
-                    isAdded = isAdded,
-                    isAudio = true,
-                    onAddClick = { abToConfirmAdd = ab },
-                    onRemoveClick = { abToConfirmRemove = ab },
-                    onItemClick = { detailAudioBook = ab }
-                )
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(if (isTablet) 3 else 2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(filteredAudio) { ab ->
+                    val isAdded = purchasedIds.contains(ab.id)
+                    TutorResourceItem(
+                        title = ab.title,
+                        imageUrl = ab.imageUrl,
+                        isAdded = isAdded,
+                        isAudio = true,
+                        onAddClick = { abToConfirmAdd = ab },
+                        onRemoveClick = { abToConfirmRemove = ab },
+                        onItemClick = { detailAudioBook = ab }
+                    )
+                }
+                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
-            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
 
@@ -129,7 +127,10 @@ fun TutorAudioBooksTab(
             isAdded = purchasedIds.contains(ab.id),
             onAddClick = { abToConfirmAdd = ab },
             onRemoveClick = { abToConfirmRemove = ab },
-            onActionClick = { viewModel.openAudioBook(ab) },
+            onActionClick = { 
+                // Using the available openAudioBook method from viewModel
+                viewModel.openAudioBook(ab) 
+            },
             onDismiss = { detailAudioBook = null }
         )
     }

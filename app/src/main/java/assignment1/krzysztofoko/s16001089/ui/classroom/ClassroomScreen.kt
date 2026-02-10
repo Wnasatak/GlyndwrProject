@@ -20,6 +20,8 @@ import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.classroom.components.Assignments.ClassroomAssignmentsTab
 import assignment1.krzysztofoko.s16001089.ui.classroom.components.Modules.ClassroomModulesTab
 import assignment1.krzysztofoko.s16001089.ui.classroom.components.Performance.ClassroomPerformanceTab
+import assignment1.krzysztofoko.s16001089.ui.classroom.components.Broadcasts.ClassroomBroadcastsTab
+import assignment1.krzysztofoko.s16001089.ui.classroom.components.Broadcasts.BroadcastReplayView
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
 
@@ -45,12 +47,15 @@ fun ClassroomScreen(
     val isLiveViewActive by viewModel.isLiveViewActive.collectAsState()
     val selectedAssignment by viewModel.selectedAssignment.collectAsState()
     val selectedModule by viewModel.selectedModule.collectAsState()
+    val selectedBroadcast by viewModel.selectedBroadcast.collectAsState()
     val isSubmitting by viewModel.isSubmitting.collectAsState()
+    val sharedBroadcasts by viewModel.sharedBroadcasts.collectAsState()
 
     val tabs = listOf(
         AppConstants.TAB_MODULES, 
         AppConstants.TAB_ASSIGNMENTS, 
-        AppConstants.TAB_PERFORMANCE
+        AppConstants.TAB_PERFORMANCE,
+        "Broadcasts"
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -62,6 +67,11 @@ fun ClassroomScreen(
                 chatMessages = liveChatMessages,
                 onSendMessage = { viewModel.sendLiveChatMessage(it) },
                 onClose = { viewModel.leaveLiveSession() }
+            )
+        } else if (selectedBroadcast != null) {
+            BroadcastReplayView(
+                session = selectedBroadcast!!,
+                onClose = { viewModel.selectBroadcast(null) }
             )
         } else if (selectedAssignment != null) {
             AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) {
@@ -153,6 +163,12 @@ fun ClassroomScreen(
                                     0 -> ClassroomModulesTab(modules, onModuleClick = { viewModel.selectModule(it) })
                                     1 -> ClassroomAssignmentsTab(assignments, onSelect = { viewModel.selectAssignment(it) })
                                     2 -> ClassroomPerformanceTab(grades, assignments)
+                                    3 -> ClassroomBroadcastsTab(
+                                        sharedBroadcasts = sharedBroadcasts, 
+                                        modules = modules, 
+                                        assignments = assignments,
+                                        onBroadcastClick = { viewModel.selectBroadcast(it) }
+                                    )
                                 }
                             }
                         }

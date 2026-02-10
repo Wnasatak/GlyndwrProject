@@ -215,7 +215,7 @@ fun GearStockIndicator(
             }
         }
         
-        if (!isOwned && stockCount > 0 && !isFree) {
+        if (stockCount > 0 && !isFree) {
             Spacer(Modifier.weight(1f))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { if (quantity > 1) onQuantityChange(quantity - 1) }, modifier = Modifier.size(32.dp)) {
@@ -259,49 +259,85 @@ fun GearBottomActionBar(
     onFreePickup: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)).padding(16.dp).navigationBarsPadding()) {
-        if (isOwned) {
-            if (price > 0) {
-                Button(onClick = onViewInvoice, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.ReceiptLong, null)
-                    Spacer(Modifier.width(12.dp))
-                    Text("View Invoice", fontWeight = FontWeight.Bold)
-                }
-            } else {
-                Button(
-                    onClick = onPickupInfo,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Icon(Icons.Default.Info, null)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Where to pickup?", fontWeight = FontWeight.Bold)
-                }
-            }
-        } else if (!isLoggedIn) {
+        if (!isLoggedIn) {
             Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                 Text("Sign In to Shop")
             }
         } else if (stockCount > 0) {
-            if (price > 0) {
-                Button(onClick = onCheckout, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.ShoppingCart, null)
-                        Spacer(Modifier.width(12.dp))
-                        Text("Checkout • £${String.format(Locale.US, "%.2f", price)}", fontWeight = FontWeight.Bold)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (isOwned) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (price > 0) {
+                            OutlinedButton(
+                                onClick = onViewInvoice,
+                                modifier = Modifier.weight(1f).height(56.dp),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ReceiptLong, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Invoice", fontWeight = FontWeight.Bold)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = onPickupInfo,
+                                modifier = Modifier.weight(1f).height(56.dp),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Icon(Icons.Default.Info, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Pickup Info", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        if (price > 0) {
+                            Button(
+                                onClick = onCheckout,
+                                modifier = Modifier.weight(1.5f).height(56.dp),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.AddShoppingCart, null)
+                                    Spacer(Modifier.width(12.dp))
+                                    Text("Order Another • £${String.format(Locale.US, "%.2f", price)}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+                            }
+                        } else {
+                            Button(
+                                onClick = onFreePickup,
+                                modifier = Modifier.weight(1.5f).height(56.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = StoreFreeGreen)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.FrontHand, null)
+                                    Spacer(Modifier.width(12.dp))
+                                    Text("Order Another", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                     }
-                }
-            } else {
-                Button(
-                    onClick = onFreePickup,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = StoreFreeGreen)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.FrontHand, null)
-                        Spacer(Modifier.width(12.dp))
-                        Text("Pick it up for FREE", fontWeight = FontWeight.Bold)
+                } else {
+                    if (price > 0) {
+                        Button(onClick = onCheckout, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.ShoppingCart, null)
+                                Spacer(Modifier.width(12.dp))
+                                Text("Checkout • £${String.format(Locale.US, "%.2f", price)}", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        Button(
+                            onClick = onFreePickup,
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = StoreFreeGreen)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.FrontHand, null)
+                                Spacer(Modifier.width(12.dp))
+                                Text("Pick it up for FREE", fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }

@@ -104,6 +104,9 @@ interface ClassroomDao {
     @Query("UPDATE live_sessions SET isActive = :isActive WHERE id = :sessionId")
     suspend fun updateSessionStatus(sessionId: String, isActive: Boolean)
 
+    @Query("UPDATE live_sessions SET title = :newTitle WHERE id = :sessionId")
+    suspend fun updateSessionTitle(sessionId: String, newTitle: String)
+
     @Query("DELETE FROM live_sessions WHERE id = :sessionId")
     suspend fun deleteSession(sessionId: String)
 

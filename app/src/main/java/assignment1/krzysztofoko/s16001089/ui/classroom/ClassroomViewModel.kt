@@ -45,6 +45,10 @@ class ClassroomViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    // Shared broadcasts archive for this course
+    val sharedBroadcasts: StateFlow<List<LiveSession>> = classroomDao.getPreviousSessionsForCourse(courseId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val _broadcastMessage = MutableStateFlow<String?>(null)
     val broadcastMessage = _broadcastMessage.asStateFlow()
 
@@ -62,6 +66,9 @@ class ClassroomViewModel(
 
     private val _selectedModule = MutableStateFlow<ModuleContent?>(null)
     val selectedModule = _selectedModule.asStateFlow()
+
+    private val _selectedBroadcast = MutableStateFlow<LiveSession?>(null)
+    val selectedBroadcast = _selectedBroadcast.asStateFlow()
 
     private val _isSubmitting = MutableStateFlow(false)
     val isSubmitting = _isSubmitting.asStateFlow()
@@ -92,6 +99,10 @@ class ClassroomViewModel(
 
     fun selectAssignment(assignment: Assignment?) {
         _selectedAssignment.value = assignment
+    }
+
+    fun selectBroadcast(session: LiveSession?) {
+        _selectedBroadcast.value = session
     }
 
     fun enterLiveSession() {

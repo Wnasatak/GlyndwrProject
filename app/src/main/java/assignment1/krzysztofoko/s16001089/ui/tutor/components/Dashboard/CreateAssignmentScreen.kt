@@ -7,9 +7,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,8 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.data.Assignment
-import assignment1.krzysztofoko.s16001089.data.Course
 import assignment1.krzysztofoko.s16001089.data.ModuleContent
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveScreenContainer
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import java.text.SimpleDateFormat
@@ -118,10 +123,10 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        // Progress Stepper
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Progress Stepper - FULL WIDTH
         Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp).padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -132,207 +137,210 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
             StepIndicator(number = 3, label = "Details", active = step >= 3, completed = step > 3)
         }
 
-        when (step) {
-            1 -> {
-                Text("Select Course", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(16.dp))
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(assignedCourses) { course ->
-                        SelectionCard(
-                            title = course.title,
-                            subtitle = course.department,
-                            icon = Icons.Default.School,
-                            selected = selectedCourse?.id == course.id,
-                            onClick = {
-                                viewModel.updateSelectedCourse(course.id)
-                                step = 2
-                            }
-                        )
-                    }
-                }
-            }
-            2 -> {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { step = 1 }) { Icon(Icons.Default.ArrowBack, null) }
-                    Text("Select Module", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                }
-                Text(
-                    text = "Course: ${selectedCourse?.title}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 48.dp)
-                )
-                
-                Spacer(Modifier.height(16.dp))
-                
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    if (selectedCourseModules.isEmpty()) {
-                        item {
-                            Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.Inbox, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
-                                    Spacer(Modifier.height(16.dp))
-                                    Text("No modules found for this course.", color = Color.Gray)
-                                }
+        // ADAPTIVE CONTENT AREA
+        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) { isTablet ->
+            Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                when (step) {
+                    1 -> {
+                        Text("Select Course", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(16.dp))
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(assignedCourses) { course ->
+                                SelectionCard(
+                                    title = course.title,
+                                    subtitle = course.department,
+                                    icon = Icons.Default.School,
+                                    selected = selectedCourse?.id == course.id,
+                                    onClick = {
+                                        viewModel.updateSelectedCourse(course.id)
+                                        step = 2
+                                    }
+                                )
                             }
                         }
-                    } else {
-                        items(selectedCourseModules) { module ->
-                            SelectionCard(
-                                title = module.title,
-                                subtitle = "Module Type: ${module.contentType}",
-                                icon = Icons.Default.ViewModule,
-                                selected = selectedModuleId == module.id,
-                                onClick = {
-                                    viewModel.selectModule(module.id)
-                                    step = 3
-                                }
-                            )
+                    }
+                    2 -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { step = 1 }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
+                            Text("Select Module", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         }
-                    }
-                }
-                
-                Button(
-                    onClick = { showCreateModuleDialog = true },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Icon(Icons.Default.Add, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Create New Module", fontWeight = FontWeight.Bold)
-                }
-            }
-            3 -> {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { step = 2 }) { Icon(Icons.Default.ArrowBack, null) }
-                    Text("Assignment Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                }
-                
-                Spacer(Modifier.height(16.dp))
-                
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.weight(1f)) {
-                    item {
-                        OutlinedTextField(
-                            value = title,
-                            onValueChange = { title = it },
-                            label = { Text("Assignment Title") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-                    item {
-                        OutlinedTextField(
-                            value = description,
-                            onValueChange = { description = it },
-                            label = { Text("Description / Instructions") },
-                            modifier = Modifier.fillMaxWidth().height(120.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-                    item {
-                        OutlinedTextField(
-                            value = dueDateText,
-                            onValueChange = { /* Read-only via picker */ },
-                            readOnly = true,
-                            label = { Text("Due Date & Time") },
-                            modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
-                            enabled = false, // Use enabled=false with colors if you want it to look clickable but not typed into
-                            colors = OutlinedTextFieldDefaults.colors(
-                                disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                disabledBorderColor = MaterialTheme.colorScheme.outline,
-                                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            trailingIcon = { 
-                                IconButton(onClick = { showDatePicker = true }) {
-                                    Icon(Icons.Default.CalendarToday, null)
-                                }
-                            }
-                        )
-                    }
-                    item {
-                        OutlinedTextField(
-                            value = totalPoints,
-                            onValueChange = { totalPoints = it },
-                            label = { Text("Total Points") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-                    
-                    item {
                         Text(
-                            text = "Allowed Submission Formats",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 8.dp)
+                            text = "Course: ${selectedCourse?.title}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 48.dp)
                         )
                         
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Spacer(Modifier.height(16.dp))
+                        
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            FilterChip(
-                                selected = allowPdf,
-                                onClick = { allowPdf = !allowPdf },
-                                label = { Text("PDF") },
-                                leadingIcon = if (allowPdf) {
-                                    { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
-                            FilterChip(
-                                selected = allowDocx,
-                                onClick = { allowDocx = !allowDocx },
-                                label = { Text("DOCX") },
-                                leadingIcon = if (allowDocx) {
-                                    { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
-                            FilterChip(
-                                selected = allowZip,
-                                onClick = { allowZip = !allowZip },
-                                label = { Text("ZIP") },
-                                leadingIcon = if (allowZip) {
-                                    { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
+                            if (selectedCourseModules.isEmpty()) {
+                                item {
+                                    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Icon(Icons.Default.Inbox, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
+                                            Spacer(Modifier.height(16.dp))
+                                            Text("No modules found for this course.", color = Color.Gray)
+                                        }
+                                    }
+                                }
+                            } else {
+                                items(selectedCourseModules) { module ->
+                                    SelectionCard(
+                                        title = module.title,
+                                        subtitle = "Module Type: ${module.contentType}",
+                                        icon = Icons.Default.ViewModule,
+                                        selected = selectedModuleId == module.id,
+                                        onClick = {
+                                            viewModel.selectModule(module.id)
+                                            step = 3
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        
+                        Button(
+                            onClick = { showCreateModuleDialog = true },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Icon(Icons.Default.Add, null)
+                            Spacer(Modifier.width(8.dp))
+                            @Suppress("DEPRECATION")
+                            Text("Create New Module", fontWeight = FontWeight.Bold)
                         }
                     }
-                }
-
-                Button(
-                    onClick = {
-                        if (title.isNotBlank() && selectedCourse != null && selectedModuleId != null) {
-                            val formats = mutableListOf<String>()
-                            if (allowPdf) formats.add("PDF")
-                            if (allowDocx) formats.add("DOCX")
-                            if (allowZip) formats.add("ZIP")
-                            
-                            val assignment = Assignment(
-                                id = UUID.randomUUID().toString(),
-                                courseId = selectedCourse!!.id,
-                                moduleId = selectedModuleId!!,
-                                title = title,
-                                description = description,
-                                dueDate = dueDateMillis,
-                                status = "PENDING",
-                                allowedFileTypes = formats.joinToString(",")
-                            )
-                            viewModel.upsertAssignment(assignment)
-                            viewModel.setSection(TutorSection.DASHBOARD)
+                    3 -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { step = 2 }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
+                            Text("Assignment Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 16.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Create Assignment", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        
+                        Spacer(Modifier.height(16.dp))
+                        
+                        Column(
+                            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = title,
+                                onValueChange = { title = it },
+                                label = { Text("Assignment Title") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            
+                            OutlinedTextField(
+                                value = description,
+                                onValueChange = { description = it },
+                                label = { Text("Description / Instructions") },
+                                modifier = Modifier.fillMaxWidth().height(120.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            
+                            OutlinedTextField(
+                                value = dueDateText,
+                                onValueChange = { /* Read-only via picker */ },
+                                readOnly = true,
+                                label = { Text("Due Date & Time") },
+                                modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
+                                enabled = false,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                    disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                trailingIcon = { 
+                                    IconButton(onClick = { showDatePicker = true }) {
+                                        Icon(Icons.Default.CalendarToday, null)
+                                    }
+                                }
+                            )
+                            
+                            OutlinedTextField(
+                                value = totalPoints,
+                                onValueChange = { totalPoints = it },
+                                label = { Text("Total Points") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            
+                            Text(
+                                text = "Allowed Submission Formats",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = allowPdf,
+                                    onClick = { allowPdf = !allowPdf },
+                                    label = { Text("PDF") },
+                                    leadingIcon = if (allowPdf) {
+                                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                    } else null
+                                )
+                                FilterChip(
+                                    selected = allowDocx,
+                                    onClick = { allowDocx = !allowDocx },
+                                    label = { Text("DOCX") },
+                                    leadingIcon = if (allowDocx) {
+                                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                    } else null
+                                )
+                                FilterChip(
+                                    selected = allowZip,
+                                    onClick = { allowZip = !allowZip },
+                                    label = { Text("ZIP") },
+                                    leadingIcon = if (allowZip) {
+                                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                    } else null
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                if (title.isNotBlank() && selectedCourse != null && selectedModuleId != null) {
+                                    val formats = mutableListOf<String>()
+                                    if (allowPdf) formats.add("PDF")
+                                    if (allowDocx) formats.add("DOCX")
+                                    if (allowZip) formats.add("ZIP")
+                                    
+                                    val assignment = Assignment(
+                                        id = UUID.randomUUID().toString(),
+                                        courseId = selectedCourse!!.id,
+                                        moduleId = selectedModuleId!!,
+                                        title = title,
+                                        description = description,
+                                        dueDate = dueDateMillis,
+                                        status = "PENDING",
+                                        allowedFileTypes = formats.joinToString(",")
+                                    )
+                                    viewModel.upsertAssignment(assignment)
+                                    viewModel.setSection(TutorSection.DASHBOARD)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 16.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            @Suppress("DEPRECATION")
+                            Text("Create Assignment", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                    }
                 }
             }
         }
@@ -369,6 +377,7 @@ fun CreateModuleDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
         title = { Text("Create New Module", fontWeight = FontWeight.Bold) },
         text = {
             Column {
+                @Suppress("DEPRECATION")
                 Text("Enter a title for the new module.", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
@@ -480,6 +489,7 @@ fun SelectionCard(
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
+                @Suppress("DEPRECATION")
                 Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
             if (selected) {

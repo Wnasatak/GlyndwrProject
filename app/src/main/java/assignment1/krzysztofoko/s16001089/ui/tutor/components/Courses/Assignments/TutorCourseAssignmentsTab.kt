@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.data.Assignment
 import assignment1.krzysztofoko.s16001089.data.ModuleContent
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
-import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveContent
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -54,78 +54,92 @@ fun TutorCourseAssignmentsTab(
     var showCreateDialog by remember { mutableStateOf(false) }
     var assignmentToDelete by remember { mutableStateOf<Assignment?>(null) }
 
-    AdaptiveContent {
-        Spacer(Modifier.height(24.dp))
-        
-        HeaderSection(
-            title = if (step == 1) "Select Module" else "Module Assignments",
-            subtitle = course?.title ?: "Manage Assignments",
-            icon = if (step == 1) Icons.Default.ViewModule else Icons.Default.Assignment
-        )
-        
-        Spacer(Modifier.height(24.dp))
+    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) { isTablet ->
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = AdaptiveSpacing.contentPadding())) {
+            Spacer(Modifier.height(12.dp))
+            
+            AdaptiveDashboardHeader(
+                title = if (step == 1) "Select Module" else "Module Assignments",
+                subtitle = course?.title ?: "Manage Assignments",
+                icon = if (step == 1) Icons.Default.ViewModule else Icons.Default.Assignment
+            )
+            
+            Spacer(Modifier.height(24.dp))
 
-        AnimatedContent(
-            targetState = step,
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
-            label = "AssignmentStepTransition"
-        ) { currentStep ->
-            when (currentStep) {
-                1 -> {
-                    if (modules.isEmpty()) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No modules found. Please create a module first.", color = Color.Gray)
-                        }
-                    } else {
-                        LazyColumn(modifier = Modifier.heightIn(max = 2000.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(modules) { module ->
-                                ModuleSelectionCard(
-                                    title = module.title,
-                                    assignmentCount = assignments.count { it.moduleId == module.id },
-                                    onClick = {
-                                        selectedModuleId = module.id
-                                        step = 2
-                                    }
+            AnimatedContent(
+                targetState = step,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "AssignmentStepTransition"
+            ) { currentStep ->
+                when (currentStep) {
+                    1 -> {
+                        if (modules.isEmpty()) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "No modules found. Please create a module first.", 
+                                    style = if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                                    color = Color.Gray
                                 )
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(), 
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                contentPadding = PaddingValues(bottom = 100.dp)
+                            ) {
+                                items(modules) { module ->
+                                    ModuleSelectionCard(
+                                        title = module.title,
+                                        assignmentCount = assignments.count { it.moduleId == module.id },
+                                        onClick = {
+                                            selectedModuleId = module.id
+                                            step = 2
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
-                }
-                2 -> {
-                    val filteredAssignments = assignments.filter { it.moduleId == selectedModuleId }
-                    
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { step = 1 }) { Icon(Icons.Default.ArrowBack, null) }
-                            Text(
-                                text = modules.find { it.id == selectedModuleId }?.title ?: "Assignments",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                    2 -> {
+                        val filteredAssignments = assignments.filter { it.moduleId == selectedModuleId }
                         
-                        Spacer(Modifier.height(12.dp))
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(
+                                    onClick = { step = 1 },
+                                    modifier = Modifier.size(if (isTablet) 48.dp else 40.dp)
+                                ) { Icon(Icons.Default.ArrowBack, null, modifier = Modifier.size(if (isTablet) 28.dp else 24.dp)) }
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = modules.find { it.id == selectedModuleId }?.title ?: "Assignments",
+                                    style = if (isTablet) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            
+                            Spacer(Modifier.height(12.dp))
 
-                        if (filteredAssignments.isEmpty()) {
-                            EmptyAssignmentsState { showCreateDialog = true }
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.heightIn(max = 2000.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                                contentPadding = PaddingValues(bottom = 100.dp)
-                            ) {
-                                items(filteredAssignments) { assignment ->
-                                    val module = modules.find { it.id == assignment.moduleId }
-                                    AssignmentCard(
-                                        assignment = assignment, 
-                                        module = module,
-                                        onEdit = { editingAssignment = assignment },
-                                        onDelete = { assignmentToDelete = assignment }
-                                    )
+                            if (filteredAssignments.isEmpty()) {
+                                EmptyAssignmentsState { showCreateDialog = true }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                                    contentPadding = PaddingValues(bottom = 100.dp)
+                                ) {
+                                    items(filteredAssignments) { assignment ->
+                                        val module = modules.find { it.id == assignment.moduleId }
+                                        AssignmentCard(
+                                            assignment = assignment, 
+                                            module = module,
+                                            onEdit = { editingAssignment = assignment },
+                                            onDelete = { assignmentToDelete = assignment }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -133,10 +147,8 @@ fun TutorCourseAssignmentsTab(
                 }
             }
         }
-    }
 
-    if (step == 2) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        if (step == 2) {
             ExtendedFloatingActionButton(
                 onClick = { showCreateDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -144,7 +156,10 @@ fun TutorCourseAssignmentsTab(
                 shape = RoundedCornerShape(16.dp),
                 icon = { Icon(Icons.Default.Add, null) },
                 text = { Text("New Assignment", fontWeight = FontWeight.Bold) },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(AdaptiveSpacing.contentPadding())
+                    .padding(bottom = 16.dp)
             )
         }
     }
@@ -180,60 +195,40 @@ fun TutorCourseAssignmentsTab(
 
 @Composable
 fun ModuleSelectionCard(title: String, assignmentCount: Int, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    AdaptiveDashboardCard(onClick = onClick) { isTablet ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Surface(
-                modifier = Modifier.size(40.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shape = RoundedCornerShape(10.dp)
+                modifier = Modifier.size(if (isTablet) 56.dp else 40.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(if (isTablet) 14.dp else 10.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.ViewModule, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.Default.ViewModule, 
+                        null, 
+                        tint = MaterialTheme.colorScheme.primary, 
+                        modifier = Modifier.size(if (isTablet) 28.dp else 20.dp)
+                    )
                 }
             }
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(if (isTablet) 24.dp else 16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                Text(text = "$assignmentCount Assignments", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(
+                    text = title, 
+                    fontWeight = FontWeight.Bold, 
+                    style = if (isTablet) MaterialTheme.typography.titleLarge else MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "$assignmentCount Assignments", 
+                    style = if (isTablet) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall, 
+                    color = Color.Gray
+                )
             }
-            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
-        }
-    }
-}
-
-@Composable
-fun HeaderSection(title: String, subtitle: String, icon: ImageVector) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Surface(
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.size(48.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
-            }
-        }
-        Spacer(Modifier.width(16.dp))
-        Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+            Icon(
+                Icons.Default.ChevronRight, 
+                null, 
+                tint = Color.Gray.copy(alpha = 0.5f),
+                modifier = Modifier.size(if (isTablet) 28.dp else 24.dp)
             )
         }
     }
@@ -241,39 +236,41 @@ fun HeaderSection(title: String, subtitle: String, icon: ImageVector) {
 
 @Composable
 fun EmptyAssignmentsState(onAction: () -> Unit) {
+    val isTablet = isTablet()
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
+            modifier = Modifier.padding(if (isTablet) 48.dp else 32.dp)
         ) {
             Icon(
                 Icons.Default.AssignmentLate,
                 null,
-                modifier = Modifier.size(80.dp),
+                modifier = Modifier.size(if (isTablet) 120.dp else 80.dp),
                 tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                "No assignments yet",
-                style = MaterialTheme.typography.headlineSmall,
+                text = "No assignments yet",
+                style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.outline
             )
             Text(
-                "Start by adding a new coursework task for your students to complete.",
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium,
+                text = "Start by adding a new coursework task for your students to complete.",
+                textAlign = TextAlign.Center,
+                style = if (isTablet) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
                 modifier = Modifier.padding(top = 8.dp)
             )
             Spacer(Modifier.height(24.dp))
             OutlinedButton(
                 onClick = onAction,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                modifier = if (isTablet) Modifier.height(52.dp) else Modifier
             ) {
                 Icon(Icons.Default.Add, null)
                 Spacer(Modifier.width(8.dp))
-                Text("Create First Assignment")
+                Text("Create First Assignment", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -303,16 +300,10 @@ fun AssignmentCard(
         }
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        border = if (isOverdue) BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(0.3f)) else null
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+    AdaptiveDashboardCard(
+        backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+    ) { isTablet ->
+        Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -330,13 +321,13 @@ fun AssignmentCard(
                         Icon(
                             Icons.Default.Layers, 
                             null, 
-                            modifier = Modifier.size(12.dp), 
+                            modifier = Modifier.size(if (isTablet) 14.dp else 12.dp), 
                             tint = (module?.title?.let { Color(0xFF673AB7) } ?: MaterialTheme.colorScheme.secondary)
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = module?.title?.uppercase() ?: "GENERAL",
-                            style = MaterialTheme.typography.labelSmall,
+                            style = if (isTablet) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Black,
                             color = (module?.title?.let { Color(0xFF673AB7) } ?: MaterialTheme.colorScheme.secondary),
                             maxLines = 1,
@@ -349,7 +340,7 @@ fun AssignmentCard(
 
                 Text(
                     text = timeLeft,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = if (isTablet) MaterialTheme.typography.bodySmall else MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Black, 
                     color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     maxLines = 1,
@@ -362,7 +353,7 @@ fun AssignmentCard(
             
             Text(
                 text = assignment.title,
-                style = MaterialTheme.typography.titleLarge,
+                style = if (isTablet) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -371,11 +362,11 @@ fun AssignmentCard(
             
             Text(
                 text = assignment.description,
-                style = MaterialTheme.typography.bodyMedium,
+                style = if (isTablet) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
-                lineHeight = 20.sp
+                lineHeight = if (isTablet) 22.sp else 20.sp
             )
 
             Spacer(Modifier.height(20.dp))
@@ -390,12 +381,12 @@ fun AssignmentCard(
                         Icons.Default.Schedule, 
                         null, 
                         tint = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline, 
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(if (isTablet) 20.dp else 16.dp)
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = dueDate,
-                        style = MaterialTheme.typography.labelLarge,
+                        style = if (isTablet) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -404,18 +395,18 @@ fun AssignmentCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     FilledTonalIconButton(
                         onClick = onEdit,
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(if (isTablet) 48.dp else 40.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.Edit, "Edit", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Edit, "Edit", modifier = Modifier.size(if (isTablet) 22.dp else 18.dp))
                     }
                     IconButton(
                         onClick = onDelete,
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(if (isTablet) 48.dp else 40.dp)
                             .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
                     ) {
-                        Icon(Icons.Default.DeleteOutline, "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.DeleteOutline, "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(if (isTablet) 22.dp else 18.dp))
                     }
                 }
             }
@@ -432,6 +423,7 @@ fun AssignmentEditDialog(
     onDismiss: () -> Unit,
     onSave: (Assignment) -> Unit
 ) {
+    val isTablet = isTablet()
     var title by remember { mutableStateOf(assignment?.title ?: "") }
     var description by remember { mutableStateOf(assignment?.description ?: "") }
     var selectedModuleId by remember { mutableStateOf(assignment?.moduleId ?: modules.firstOrNull()?.id ?: "") }
@@ -463,6 +455,7 @@ fun AssignmentEditDialog(
                 }) { Text("Next") }
             },
             dismissButton = {
+                @Suppress("DEPRECATION")
                 TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
             }
         ) {
@@ -489,17 +482,17 @@ fun AssignmentEditDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier.padding(24.dp).fillMaxWidth(),
+        modifier = Modifier.padding(AdaptiveSpacing.contentPadding()).adaptiveWidth(AdaptiveWidths.Standard),
         content = {
             Surface(
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 6.dp
             ) {
-                Column(modifier = Modifier.padding(24.dp)) {
+                Column(modifier = Modifier.padding(AdaptiveSpacing.medium())) {
                     Text(
                         text = if (assignment == null) "New Assignment" else "Edit Assignment",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Black
                     )
                     
@@ -528,8 +521,8 @@ fun AssignmentEditDialog(
                         )
 
                         Text(
-                            "Associate Module", 
-                            style = MaterialTheme.typography.labelLarge, 
+                            text = "Associate Module", 
+                            style = if (isTablet) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelLarge, 
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
@@ -569,8 +562,8 @@ fun AssignmentEditDialog(
                         }
 
                         Text(
-                            "Allowed Formats", 
-                            style = MaterialTheme.typography.labelLarge, 
+                            text = "Allowed Formats", 
+                            style = if (isTablet) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelLarge, 
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
@@ -610,11 +603,11 @@ fun AssignmentEditDialog(
                                     Text("Deadline", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     Text(
                                         SimpleDateFormat("MMMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(dueDateMillis)),
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        style = if (isTablet) MaterialTheme.typography.titleLarge else MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
-                                Icon(Icons.Default.Schedule, null, tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Default.Schedule, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(if (isTablet) 28.dp else 24.dp))
                             }
                         }
                     }
@@ -623,11 +616,12 @@ fun AssignmentEditDialog(
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TextButton(onClick = onDismiss) { Text("Cancel") }
-                        Spacer(Modifier.width(8.dp))
+                        @Suppress("DEPRECATION")
+                        TextButton(onClick = onDismiss, modifier = Modifier.height(if (isTablet) 48.dp else 36.dp)) { Text("Cancel", fontWeight = FontWeight.Medium) }
+                        
                         Button(
                             onClick = {
                                 val formats = mutableListOf<String>()
@@ -648,7 +642,8 @@ fun AssignmentEditDialog(
                             },
                             enabled = title.isNotBlank() && selectedModuleId.isNotBlank(),
                             shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = if (isTablet) 12.dp else 8.dp),
+                            modifier = Modifier.height(if (isTablet) 48.dp else 40.dp)
                         ) {
                             Text("Save Assignment", fontWeight = FontWeight.Bold)
                         }
@@ -664,7 +659,7 @@ fun DeleteConfirmationDialog(title: String, onDismiss: () -> Unit, onConfirm: ()
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
-        title = { Text("Remove Assignment") },
+        title = { Text("Remove Assignment", fontWeight = FontWeight.Bold) },
         text = { 
             Text("Are you sure you want to permanently delete '$title'? All student submissions and grades for this task will be lost.") 
         },

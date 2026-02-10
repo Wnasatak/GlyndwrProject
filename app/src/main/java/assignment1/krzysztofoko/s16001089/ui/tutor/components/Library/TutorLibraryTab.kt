@@ -3,9 +3,9 @@ package assignment1.krzysztofoko.s16001089.ui.tutor.components.Library
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
@@ -23,8 +23,7 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AudioBook
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.toBook
-import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
-import assignment1.krzysztofoko.s16001089.ui.components.BookItemCard
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorResourceDetailDialog
@@ -39,7 +38,6 @@ fun TutorLibraryTab(
 ) {
     val books by viewModel.libraryBooks.collectAsState()
     val audioBooks by viewModel.libraryAudioBooks.collectAsState()
-    val purchasedIds by viewModel.purchasedIds.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -49,113 +47,125 @@ fun TutorLibraryTab(
     var itemToConfirmRemove by remember { mutableStateOf<Any?>(null) } // Can be Book or AudioBook
     var detailItem by remember { mutableStateOf<Any?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            placeholder = { Text("Search your library...") },
-            leadingIcon = { Icon(Icons.Default.Search, null) },
-            shape = MaterialTheme.shapes.medium
-        )
-
-        TabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.primary
-        ) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
-                text = { Text("Books (${books.size})") }
+    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+        Column(modifier = Modifier.fillMaxSize()) {
+            Spacer(Modifier.height(12.dp))
+            
+            AdaptiveDashboardHeader(
+                title = "Resource Library",
+                subtitle = "Access your educational materials",
+                icon = Icons.Default.LibraryBooks,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
-                text = { Text("Audiobooks (${audioBooks.size})") }
-            )
-        }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (selectedTab == 0) {
-                val filteredBooks = books.filter { it.title.contains(searchQuery, ignoreCase = true) }
-                if (filteredBooks.isEmpty()) {
-                    item { LibraryEmptyState("No books found in your library.") }
-                } else {
-                    items(filteredBooks) { book ->
-                        LibraryItem(
-                            title = book.title,
-                            author = book.author,
-                            imageUrl = book.imageUrl,
-                            isAudio = false,
-                            onRemove = { itemToConfirmRemove = book },
-                            onAction = { viewModel.openBook(book) }
-                        )
-                    }
-                }
-            } else {
-                val filteredAudio = audioBooks.filter { it.title.contains(searchQuery, ignoreCase = true) }
-                if (filteredAudio.isEmpty()) {
-                    item { LibraryEmptyState("No audiobooks found in your library.") }
-                } else {
-                    items(filteredAudio) { ab ->
-                        LibraryItem(
-                            title = ab.title,
-                            author = ab.author,
-                            imageUrl = ab.imageUrl,
-                            isAudio = true,
-                            onRemove = { itemToConfirmRemove = ab },
-                            onAction = {
-                                // Directly play audio when clicking from library
-                                onPlayAudio(ab.toBook())
-                            }
-                        )
-                    }
-                }
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                placeholder = { Text("Search your library...") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("Books (${books.size})", fontWeight = if(selectedTab == 0) FontWeight.Black else FontWeight.Normal) }
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Audiobooks (${audioBooks.size})", fontWeight = if(selectedTab == 1) FontWeight.Black else FontWeight.Normal) }
+                )
             }
 
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Not found what you looking for?",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Button(
-                        onClick = {
-                            if (selectedTab == 0) {
-                                viewModel.setSection(TutorSection.BOOKS)
-                            } else {
-                                viewModel.setSection(TutorSection.AUDIOBOOKS)
-                            }
-                        },
-                        shape = MaterialTheme.shapes.medium,
-                        contentPadding = PaddingValues(horizontal = 24.dp)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (selectedTab == 0) {
+                    val filteredBooks = books.filter { it.title.contains(searchQuery, ignoreCase = true) }
+                    if (filteredBooks.isEmpty()) {
+                        item { LibraryEmptyState("No books found in your library.") }
+                    } else {
+                        items(filteredBooks) { book ->
+                            LibraryItem(
+                                title = book.title,
+                                author = book.author,
+                                imageUrl = book.imageUrl,
+                                category = book.category,
+                                isAudio = false,
+                                onRemove = { itemToConfirmRemove = book },
+                                onAction = { viewModel.openBook(book) }
+                            )
+                        }
+                    }
+                } else {
+                    val filteredAudio = audioBooks.filter { it.title.contains(searchQuery, ignoreCase = true) }
+                    if (filteredAudio.isEmpty()) {
+                        item { LibraryEmptyState("No audiobooks found in your library.") }
+                    } else {
+                        items(filteredAudio) { ab ->
+                            LibraryItem(
+                                title = ab.title,
+                                author = ab.author,
+                                imageUrl = ab.imageUrl,
+                                category = ab.category,
+                                isAudio = true,
+                                onRemove = { itemToConfirmRemove = ab },
+                                onAction = { onPlayAudio(ab.toBook()) }
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Default.ShoppingCart, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
+                        @Suppress("DEPRECATION")
                         Text(
-                            text = if (selectedTab == 0) "Explore More Books" else "Explore More Audiobooks",
-                            fontWeight = FontWeight.Bold
+                            text = "Not found what you looking for?",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
                         )
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            onClick = {
+                                if (selectedTab == 0) {
+                                    viewModel.setSection(TutorSection.BOOKS)
+                                } else {
+                                    viewModel.setSection(TutorSection.AUDIOBOOKS)
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 24.dp)
+                        ) {
+                            Icon(Icons.Default.ShoppingCart, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = if (selectedTab == 0) "Explore More Books" else "Explore More Audiobooks",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
-            }
 
-            item { Spacer(modifier = Modifier.height(80.dp)) }
+                item { Spacer(modifier = Modifier.height(80.dp)) }
+            }
         }
     }
 
@@ -219,15 +229,19 @@ fun LibraryItem(
     title: String,
     author: String,
     imageUrl: String,
+    category: String,
     isAudio: Boolean,
     onRemove: () -> Unit,
     onAction: () -> Unit
 ) {
     val dummyBook = Book(
+        id = "", // Not strictly needed for display
         title = title,
         author = author,
         imageUrl = imageUrl,
-        isAudioBook = isAudio
+        category = category,
+        isAudioBook = isAudio,
+        price = 0.0
     )
 
     BookItemCard(
@@ -243,14 +257,14 @@ fun LibraryItem(
             Button(
                 onClick = onAction,
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.small,
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isAudio) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
                 )
             ) {
-                Icon(if (isAudio) Icons.Default.PlayArrow else Icons.Default.LibraryBooks, null)
+                Icon(if (isAudio) Icons.Default.PlayArrow else Icons.Default.LibraryBooks, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (isAudio) "Listen Now" else "Read Now")
+                Text(if (isAudio) "Listen Now" else "Read Now", fontWeight = FontWeight.Bold)
             }
         }
     )
@@ -272,6 +286,7 @@ fun LibraryEmptyState(message: String) {
                 tint = MaterialTheme.colorScheme.outline
             )
             Spacer(Modifier.height(16.dp))
+            @Suppress("DEPRECATION")
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyLarge,

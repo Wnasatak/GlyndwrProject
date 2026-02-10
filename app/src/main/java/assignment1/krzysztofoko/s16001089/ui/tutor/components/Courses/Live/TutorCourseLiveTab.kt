@@ -1,139 +1,57 @@
 package assignment1.krzysztofoko.s16001089.ui.tutor.components.Courses.Live
 
-import android.view.ViewGroup
-import android.widget.FrameLayout
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
+import assignment1.krzysztofoko.s16001089.ui.components.adaptiveWidth
+import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-data class LiveChatMessage(val sender: String, val text: String, val isTeacher: Boolean = false)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorCourseLiveTab(
     viewModel: TutorViewModel
 ) {
     val course by viewModel.selectedCourse.collectAsState()
     val isLive by viewModel.isLive.collectAsState()
-    val isPaused by viewModel.isPaused.collectAsState()
     val assignedCourses by viewModel.assignedCourses.collectAsState()
     val selectedCourseModules by viewModel.selectedCourseModules.collectAsState()
     val selectedModuleId by viewModel.selectedModuleId.collectAsState()
+    val assignments by viewModel.selectedCourseAssignments.collectAsState()
+    val selectedAssignmentId by viewModel.selectedAssignmentId.collectAsState()
     val previousBroadcasts by viewModel.previousBroadcasts.collectAsState()
-    
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    
+
     var step by remember(course) { mutableIntStateOf(if (course == null) 1 else 2) }
-    
-    var isRecording by remember { mutableStateOf(false) }
-    var isMicOn by remember { mutableStateOf(true) }
-    var isCamOn by remember { mutableStateOf(true) }
-    var isChatVisible by remember { mutableStateOf(true) }
-    var isFullScreen by remember { mutableStateOf(false) }
-    
-    var viewerCount by remember { mutableIntStateOf(0) }
-    var chatMessages by remember { mutableStateOf<List<LiveChatMessage>>(emptyList()) }
-    var teacherMsg by remember { mutableStateOf("") }
-    
-    val listState = rememberLazyListState()
-
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            val mediaItem = MediaItem.fromUri("https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
-            setMediaItem(mediaItem)
-            repeatMode = Player.REPEAT_MODE_ALL
-            prepare()
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose { 
-            exoPlayer.release() 
-        }
-    }
-
-    LaunchedEffect(isLive, isPaused) {
-        if (isLive) {
-            if (isPaused) {
-                exoPlayer.pause()
-            } else {
-                exoPlayer.play()
-                viewerCount = 11 
-                if (chatMessages.isEmpty()) {
-                    chatMessages = listOf(LiveChatMessage("System", "Broadcast started successfully."))
-                }
-                
-                while (isLive && !isPaused) {
-                    delay((4000..8000).random().toLong())
-                    viewerCount += (-1..3).random()
-                    if (viewerCount < 0) viewerCount = 0
-                    
-                    val students = listOf("Alice", "Mark", "Sarah", "John", "Emma")
-                    val texts = listOf("Hello!", "Interesting topic", "Can you repeat that?", "Clear stream!", "Wrexham rules! 🎓")
-                    
-                    chatMessages = chatMessages + LiveChatMessage(students.random(), texts.random())
-                    scope.launch { 
-                        if (chatMessages.isNotEmpty()) {
-                            listState.animateScrollToItem(chatMessages.size - 1) 
-                        }
-                    }
-                }
-            }
-        } else {
-            viewerCount = 0
-            isRecording = false
-            exoPlayer.pause()
-        }
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (!isLive && !isFullScreen) {
-            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                // Progress Stepper
+        if (!isLive) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Progress Stepper - Full Width Header
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .padding(bottom = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -144,442 +62,188 @@ fun TutorCourseLiveTab(
                     LiveStepIndicator(number = 3, label = "Ready", active = step >= 3, completed = step > 3)
                 }
 
-                when (step) {
-                    1 -> {
-                        Text("Select Course for Live Stream", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(16.dp))
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(assignedCourses) { c ->
-                                LiveSelectionCard(
-                                    title = c.title,
-                                    subtitle = c.department,
-                                    icon = Icons.Default.School,
-                                    selected = course?.id == c.id,
-                                    onClick = {
-                                        viewModel.updateSelectedCourse(c.id)
-                                        step = 2
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    2 -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (course != null && assignedCourses.size > 1) {
-                                IconButton(onClick = { step = 1 }) { Icon(Icons.Default.ArrowBack, null) }
-                            }
-                            Text("Select Module topic", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        }
-                        course?.let {
-                            Text(
-                                text = "Course: ${it.title}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = if (assignedCourses.size > 1) 48.dp else 0.dp)
-                            )
-                        }
-                        
-                        Spacer(Modifier.height(16.dp))
-                        
-                        if (selectedCourseModules.isEmpty()) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.Inbox, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
-                                    Spacer(Modifier.height(16.dp))
-                                    Text("No modules found. Please create one to start a live session.", color = Color.Gray)
-                                }
-                            }
-                        } else {
-                            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                items(selectedCourseModules) { module ->
-                                    LiveSelectionCard(
-                                        title = module.title,
-                                        subtitle = "Topic: ${module.contentType}",
-                                        icon = Icons.Default.ViewModule,
-                                        selected = selectedModuleId == module.id,
-                                        onClick = {
-                                            viewModel.selectModule(module.id)
-                                            step = 3
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    3 -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { step = 2 }) { Icon(Icons.Default.ArrowBack, null) }
-                            Text("Ready to Stream", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        }
-                        
-                        Spacer(Modifier.height(32.dp))
-                        
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        ) {
-                            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Podcasts, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
-                                Spacer(Modifier.height(16.dp))
-                                Text(
-                                    text = "Live Broadcast",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Black
-                                )
-                                Text(
-                                    text = "You are about to start a live session for:",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Gray,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                )
-                                Spacer(Modifier.height(16.dp))
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        text = course?.title ?: "",
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                                Spacer(Modifier.height(8.dp))
-                                val module = selectedCourseModules.find { it.id == selectedModuleId }
-                                Text(
-                                    text = "Topic: ${module?.title}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                
-                                Spacer(Modifier.height(32.dp))
-                                
-                                Button(
-                                    onClick = {
-                                        viewModel.toggleLiveStream(true)
-                                    },
-                                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63))
-                                ) {
-                                    Icon(Icons.Default.VideoCall, null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Start Broadcasting Now", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // Archived Sessions List
-                if (previousBroadcasts.isNotEmpty()) {
-                    Spacer(Modifier.height(32.dp))
-                    Text("Previous Broadcasts", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(12.dp))
-                    previousBroadcasts.forEach { session ->
-                        ArchivedSessionItem(session, onDelete = { viewModel.deletePreviousBroadcast(session.id) })
-                        Spacer(Modifier.height(8.dp))
-                    }
-                }
-            }
-        } else {
-            Column(modifier = Modifier.fillMaxSize()) {
-                AnimatedVisibility(visible = !isFullScreen) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Broadcast Studio", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                            Text(course?.title ?: "Select Course", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                        }
-                        
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (isRecording) {
-                                BlinkingRecBadge()
-                                Spacer(Modifier.width(12.dp))
-                            }
-                            if (isLive) LiveBadge(viewerCount)
-                        }
-                    }
-                }
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = if (isFullScreen) 0.dp else 16.dp)
+                // Adaptive Content Area
+                Box(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentAlignment = Alignment.TopCenter
                 ) {
-                    val videoModifier = if (isFullScreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(240.dp)
-                    Card(
-                        modifier = videoModifier,
-                        shape = if (isFullScreen) RoundedCornerShape(0.dp) else RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.Black),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    Column(
+                        modifier = Modifier
+                            .adaptiveWidth(AdaptiveWidths.Wide)
+                            .padding(horizontal = 16.dp)
                     ) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            if (isLive && isCamOn && !isPaused) {
-                                AndroidView(
-                                    factory = { ctx ->
-                                        PlayerView(ctx).apply {
-                                            player = exoPlayer
-                                            useController = false
-                                            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                Column(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.Center,
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Icon(
-                                        imageVector = if (isPaused) Icons.Default.PauseCircle else if (!isCamOn) Icons.Default.VideocamOff else Icons.Default.Podcasts,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(64.dp)
-                                    )
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(
-                                        if (isPaused) "Broadcast Paused" else if (!isCamOn) "Camera Muted" else "Not Broadcasting",
-                                        color = Color.White.copy(alpha = 0.5f),
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                }
-                            }
-                            
-                            Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                                IconButton(
-                                    onClick = { isFullScreen = !isFullScreen },
-                                    modifier = Modifier.align(Alignment.TopEnd).background(Color.Black.copy(0.4f), CircleShape).size(36.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (isFullScreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                                        contentDescription = "Fullscreen",
-                                        tint = Color.White
-                                    )
-                                }
-
-                                if (isLive && isMicOn && !isPaused) {
-                                    SimulatedAudioVisualizer(Modifier.align(Alignment.BottomStart))
-                                }
-                                
-                                if (isFullScreen && isLive) {
-                                    Row(Modifier.align(Alignment.TopStart)) {
-                                        LiveBadge(viewerCount)
-                                        if (isRecording) {
-                                            Spacer(Modifier.width(8.dp))
-                                            BlinkingRecBadge()
-                                        }
+                        when (step) {
+                            1 -> {
+                                Text("Select Course for Live Stream", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(16.dp))
+                                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    items(assignedCourses) { c ->
+                                        LiveSelectionCard(
+                                            title = c.title,
+                                            subtitle = c.department,
+                                            icon = Icons.Default.School,
+                                            selected = course?.id == c.id,
+                                            onClick = {
+                                                viewModel.updateSelectedCourse(c.id)
+                                                step = 2
+                                            }
+                                        )
                                     }
                                 }
                             }
-                        }
-                    }
-                    
-                    if (!isFullScreen) {
-                        Spacer(Modifier.height(16.dp))
-                        
-                        Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            if (isChatVisible) {
-                                Card(
-                                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                                    shape = RoundedCornerShape(20.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                                    border = BorderStroke(width = 1.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-                                ) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.ChatBubble, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                                            Spacer(Modifier.width(8.dp))
-                                            Text("Live Chat", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                            2 -> {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (course != null && assignedCourses.size > 1) {
+                                        IconButton(onClick = { step = 1 }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
+                                    }
+                                    Text("Select Module topic", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                }
+                                course?.let {
+                                    Text(
+                                        text = "Course: ${it.title}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(start = if (assignedCourses.size > 1) 48.dp else 0.dp)
+                                    )
+                                }
+
+                                Spacer(Modifier.height(16.dp))
+
+                                if (selectedCourseModules.isEmpty()) {
+                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Icon(Icons.Default.Inbox, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
+                                            Spacer(Modifier.height(16.dp))
+                                            Text("No modules found. Please create one to start a live session.", color = Color.Gray)
                                         }
-                                        
-                                        LazyColumn(
-                                            state = listState,
-                                            modifier = Modifier.weight(1f).padding(vertical = 8.dp),
-                                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                                        ) {
-                                            items(chatMessages) { msg ->
-                                                ChatBubble(msg)
-                                            }
-                                        }
-                                        
-                                        if (isLive) {
-                                            OutlinedTextField(
-                                                value = teacherMsg,
-                                                onValueChange = { teacherMsg = it },
-                                                placeholder = { Text("Say something...", fontSize = 12.sp) },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                shape = RoundedCornerShape(16.dp),
-                                                trailingIcon = {
-                                                    IconButton(onClick = {
-                                                        if (teacherMsg.isNotBlank()) {
-                                                            chatMessages = chatMessages + LiveChatMessage("You (Tutor)", teacherMsg, true)
-                                                            teacherMsg = ""
-                                                            scope.launch { listState.animateScrollToItem(chatMessages.size - 1) }
-                                                        }
-                                                    }) {
-                                                        Icon(Icons.AutoMirrored.Filled.Send, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                                                    }
-                                                },
-                                                singleLine = true,
-                                                textStyle = TextStyle(fontSize = 13.sp),
-                                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                                                keyboardActions = KeyboardActions(onSend = {
-                                                    if (teacherMsg.isNotBlank()) {
-                                                        chatMessages = chatMessages + LiveChatMessage("You (Tutor)", teacherMsg, true)
-                                                        teacherMsg = ""
-                                                        scope.launch { listState.animateScrollToItem(chatMessages.size - 1) }
-                                                    }
-                                                })
+                                    }
+                                } else {
+                                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        items(selectedCourseModules) { module ->
+                                            LiveSelectionCard(
+                                                title = module.title,
+                                                subtitle = "Topic: ${module.contentType}",
+                                                icon = Icons.Default.ViewModule,
+                                                selected = selectedModuleId == module.id,
+                                                onClick = {
+                                                    viewModel.selectModule(module.id)
+                                                    step = 3
+                                                }
                                             )
                                         }
                                     }
                                 }
                             }
+                            3 -> {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { step = 2 }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
+                                    Text("Final Configuration", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                }
 
-                            Column(
-                                modifier = Modifier.width(64.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                ControlIcon(
-                                    icon = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                    isActive = isPaused,
-                                    label = if (isPaused) "Resume" else "Pause",
-                                    activeColor = Color(0xFFFFC107),
-                                    onClick = { viewModel.setLivePaused(!isPaused) }
-                                )
-                                ControlIcon(icon = if (isMicOn) Icons.Default.Mic else Icons.Default.MicOff, isActive = isMicOn, label = "Mic", onClick = { isMicOn = !isMicOn })
-                                ControlIcon(icon = if (isCamOn) Icons.Default.Videocam else Icons.Default.VideocamOff, isActive = isCamOn, label = "Cam", onClick = { isCamOn = !isCamOn })
-                                ControlIcon(icon = Icons.Default.FiberManualRecord, isActive = isRecording, label = "Rec", activeColor = Color.Red, onClick = { if(isLive) isRecording = !isRecording })
-                                ControlIcon(icon = Icons.Default.Chat, isActive = isChatVisible, label = "Chat", onClick = { isChatVisible = !isChatVisible })
+                                Spacer(Modifier.height(24.dp))
+
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                ) {
+                                    Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(Icons.Default.Podcasts, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
+                                        Spacer(Modifier.height(12.dp))
+                                        Text(text = "Link to Assignment (Optional)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        Text(text = "The replay will be attached to this assignment.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                        
+                                        Spacer(Modifier.height(24.dp))
+                                        
+                                        // Compact Dropdown Selector
+                                        var expanded by remember { mutableStateOf(false) }
+                                        val filteredAssignments = assignments.filter { it.moduleId == selectedModuleId }
+                                        val selectedTitle = if (selectedAssignmentId == null) "None (General Session)" 
+                                                           else filteredAssignments.find { it.id == selectedAssignmentId }?.title ?: "Select Assignment"
+
+                                        ExposedDropdownMenuBox(
+                                            expanded = expanded,
+                                            onExpandedChange = { expanded = !expanded },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            OutlinedTextField(
+                                                value = selectedTitle,
+                                                onValueChange = {},
+                                                readOnly = true,
+                                                label = { Text("Choose Assignment", fontSize = 12.sp) },
+                                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                                shape = RoundedCornerShape(12.dp),
+                                                textStyle = MaterialTheme.typography.bodyMedium
+                                            )
+
+                                            ExposedDropdownMenu(
+                                                expanded = expanded,
+                                                onDismissRequest = { expanded = false }
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("None (General Session)", style = MaterialTheme.typography.bodyMedium) },
+                                                    onClick = {
+                                                        viewModel.selectAssignment(null)
+                                                        expanded = false
+                                                    },
+                                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                                )
+                                                filteredAssignments.forEach { assignment ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(assignment.title, style = MaterialTheme.typography.bodyMedium) },
+                                                        onClick = {
+                                                            viewModel.selectAssignment(assignment.id)
+                                                            expanded = false
+                                                        },
+                                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Spacer(Modifier.height(32.dp))
+
+                                        Button(
+                                            onClick = {
+                                                viewModel.toggleLiveStream(true)
+                                            },
+                                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63))
+                                        ) {
+                                            Icon(Icons.Default.VideoCall, null)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Start Broadcasting Now", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                        }
+                                    }
+                                }
                             }
                         }
-                    }
-                }
-                
-                AnimatedVisibility(visible = !isFullScreen) {
-                    Box(modifier = Modifier.padding(16.dp)) {
-                        Button(
-                            onClick = { 
-                                viewModel.toggleLiveStream(!isLive)
-                            },
+
+                        // Archive Entry Point
+                        Spacer(Modifier.height(32.dp))
+                        OutlinedButton(
+                            onClick = { viewModel.setSection(TutorSection.COURSE_ARCHIVED_BROADCASTS) },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isLive) Color(0xFFE53935) else MaterialTheme.colorScheme.primary
-                            ),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                         ) {
-                            Icon(if (isLive) Icons.Default.Stop else Icons.Default.Podcasts, null)
+                            Icon(Icons.Default.History, null)
                             Spacer(Modifier.width(12.dp))
-                            Text(if (isLive) "End Broadcast" else "Go Live Now", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("View Session Archive (${previousBroadcasts.size})", fontWeight = FontWeight.Bold)
                         }
+                        Spacer(Modifier.height(32.dp))
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun ArchivedSessionItem(session: assignment1.krzysztofoko.s16001089.data.LiveSession, onDelete: () -> Unit) {
-    val sdf = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
-    val dateStr = sdf.format(Date(session.startTime))
-    
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(8.dp), modifier = Modifier.size(40.dp)) {
-                Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.History, null, tint = MaterialTheme.colorScheme.onSecondaryContainer) }
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(session.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                Text(dateStr, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            }
-            IconButton(onClick = onDelete) { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }
-        }
-    }
-}
-
-@Composable
-fun LiveBadge(viewers: Int) {
-    Surface(
-        color = Color(0xFFE53935), 
-        shape = RoundedCornerShape(8.dp),
-        shadowElevation = 4.dp
-    ) {
-        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(8.dp).background(Color.White, CircleShape))
-            Spacer(Modifier.width(8.dp))
-            Text("LIVE", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
-            Spacer(Modifier.width(8.dp))
-            Text("$viewers", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-        }
-    }
-}
-
-@Composable
-fun SimulatedAudioVisualizer(modifier: Modifier = Modifier) {
-    val infiniteTransition = rememberInfiniteTransition(label = "audio")
-    
-    Row(modifier = modifier.background(Color.Black.copy(0.3f), RoundedCornerShape(8.dp)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
-        repeat(5) { i ->
-            val height by infiniteTransition.animateFloat(
-                initialValue = 4f,
-                targetValue = (12..28).random().toFloat(),
-                animationSpec = infiniteRepeatable(
-                    animation = tween(400 + (i * 100), easing = LinearOutSlowInEasing),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "bar$i"
+        } else {
+            BroadcastStudio(
+                viewModel = viewModel,
+                courseTitle = course?.title
             )
-            Box(Modifier.width(4.dp).height(height.dp).background(Color(0xFF00E676), CircleShape))
         }
-    }
-}
-
-@Composable
-fun ControlIcon(icon: ImageVector, label: String, isActive: Boolean, activeColor: Color? = null, onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(
-            modifier = Modifier
-                .size(48.dp)
-                .clickable { onClick() },
-            shape = CircleShape,
-            color = if (isActive) (activeColor ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, if (isActive) (activeColor ?: MaterialTheme.colorScheme.primary) else Color.Gray.copy(alpha = 0.3f))
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon, 
-                    contentDescription = label, 
-                    tint = if (isActive) (activeColor ?: MaterialTheme.colorScheme.primary) else Color.Gray,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
-        Spacer(Modifier.height(4.dp))
-        @Suppress("DEPRECATION")
-        Text(
-            text = label, 
-            fontSize = 10.sp, 
-            color = if (isActive) (activeColor ?: MaterialTheme.colorScheme.primary) else Color.Gray, 
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
 
@@ -607,6 +271,7 @@ fun LiveStepIndicator(number: Int, label: String, active: Boolean, completed: Bo
                 }
             }
         }
+        @Suppress("DEPRECATION")
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
@@ -628,8 +293,8 @@ fun LiveSelectionCard(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
-                             else MaterialTheme.colorScheme.surface
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            else MaterialTheme.colorScheme.surface
         ),
         border = BorderStroke(
             width = if (selected) 2.dp else 1.dp,
@@ -647,8 +312,8 @@ fun LiveSelectionCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        icon, 
-                        null, 
+                        icon,
+                        null,
                         tint = if (selected) Color.White else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -657,12 +322,13 @@ fun LiveSelectionCard(
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = title, 
-                    fontWeight = FontWeight.Bold, 
+                    text = title,
+                    fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                @Suppress("DEPRECATION")
                 Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
             if (selected) {
@@ -670,52 +336,6 @@ fun LiveSelectionCard(
             } else {
                 Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
             }
-        }
-    }
-}
-
-@Composable
-fun BlinkingRecBadge() {
-    val infiniteTransition = rememberInfiniteTransition(label = "rec")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.2f,
-        animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Reverse),
-        label = "alpha"
-    )
-    Surface(
-        color = Color.Black.copy(0.5f),
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.graphicsLayer { this.alpha = alpha }
-    ) {
-        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(8.dp).background(Color.Red, CircleShape))
-            Spacer(Modifier.width(6.dp))
-            Text("REC", color = Color.Red, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
-        }
-    }
-}
-
-@Composable
-fun ChatBubble(msg: LiveChatMessage) {
-    Column {
-        Text(
-            text = msg.sender, 
-            fontWeight = FontWeight.Bold, 
-            fontSize = 11.sp, 
-            color = if (msg.isTeacher) MaterialTheme.colorScheme.primary else Color.Gray,
-            modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
-        )
-        Box(
-            modifier = Modifier
-                .background(
-                    if (msg.isTeacher) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) 
-                    else Color.White.copy(alpha = 0.6f),
-                    RoundedCornerShape(topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
-                )
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            Text(msg.text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }

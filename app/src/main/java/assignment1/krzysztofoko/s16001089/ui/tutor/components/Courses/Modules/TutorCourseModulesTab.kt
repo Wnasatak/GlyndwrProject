@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.data.ModuleContent
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import java.util.*
 
@@ -40,49 +41,54 @@ fun TutorCourseModulesTab(
     var showCreateDialog by remember { mutableStateOf(false) }
     var moduleToDelete by remember { mutableStateOf<ModuleContent?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Spacer(Modifier.height(24.dp))
-        
-        HeaderSection(
-            title = "Course Modules",
-            subtitle = course?.title ?: "Curriculum Management",
-            icon = Icons.Default.ViewModule
-        )
-        
-        Spacer(Modifier.height(24.dp))
+    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) { isTablet ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(horizontal = AdaptiveSpacing.contentPadding())) {
+                // Matching the padding from Class Attendance
+                Spacer(Modifier.height(12.dp))
+                
+                AdaptiveDashboardHeader(
+                    title = "Course Modules",
+                    subtitle = course?.title ?: "Curriculum Management",
+                    icon = Icons.Default.ViewModule
+                )
+                
+                Spacer(Modifier.height(20.dp))
 
-        if (modules.isEmpty()) {
-            EmptyModulesState { showCreateDialog = true }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 100.dp)
-            ) {
-                items(modules) { module ->
-                    ModuleItemCard(
-                        module = module,
-                        onEdit = { editingModule = module },
-                        onDelete = { moduleToDelete = module }
-                    )
+                if (modules.isEmpty()) {
+                    EmptyModulesState { showCreateDialog = true }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 100.dp)
+                    ) {
+                        items(modules) { module ->
+                            ModuleItemCard(
+                                module = module,
+                                onEdit = { editingModule = module },
+                                onDelete = { moduleToDelete = module }
+                            )
+                        }
+                    }
                 }
             }
+
+            ExtendedFloatingActionButton(
+                onClick = { showCreateDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp),
+                icon = { Icon(Icons.Default.Add, null) },
+                text = { Text("New Module", fontWeight = FontWeight.Bold) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(AdaptiveSpacing.contentPadding())
+                    .padding(bottom = 16.dp)
+            )
         }
     }
 
-    // Floating Action Button
-    Box(modifier = Modifier.fillMaxSize()) {
-        ExtendedFloatingActionButton(
-            onClick = { showCreateDialog = true },
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = Color.White,
-            shape = RoundedCornerShape(16.dp),
-            icon = { Icon(Icons.Default.Add, null) },
-            text = { Text("New Module", fontWeight = FontWeight.Bold) },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
-        )
-    }
-
-    // Create / Edit Dialog
     if (showCreateDialog || editingModule != null) {
         ModuleEditDialog(
             module = editingModule,
@@ -100,7 +106,6 @@ fun TutorCourseModulesTab(
         )
     }
 
-    // Delete Confirmation
     if (moduleToDelete != null) {
         AlertDialog(
             onDismissRequest = { moduleToDelete = null },
@@ -118,6 +123,7 @@ fun TutorCourseModulesTab(
                 ) { Text("Delete") }
             },
             dismissButton = {
+                @Suppress("DEPRECATION")
                 TextButton(onClick = { moduleToDelete = null }) { Text("Cancel") }
             }
         )
@@ -125,44 +131,30 @@ fun TutorCourseModulesTab(
 }
 
 @Composable
-fun HeaderSection(title: String, subtitle: String, icon: ImageVector) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Surface(
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.size(48.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
-            }
-        }
-        Spacer(Modifier.width(16.dp))
-        Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
 fun EmptyModulesState(onAction: () -> Unit) {
+    val isTablet = isTablet()
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.PostAdd, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            Icon(
+                Icons.Default.PostAdd, 
+                null, 
+                modifier = Modifier.size(if (isTablet) 120.dp else 80.dp), 
+                tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            )
             Spacer(Modifier.height(16.dp))
-            Text("Your syllabus is empty", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.outline)
+            @Suppress("DEPRECATION")
+            Text(
+                text = "Your syllabus is empty", 
+                style = if (isTablet) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold, 
+                color = MaterialTheme.colorScheme.outline
+            )
             Spacer(Modifier.height(24.dp))
-            Button(onClick = onAction, shape = RoundedCornerShape(12.dp)) {
+            Button(
+                onClick = onAction, 
+                shape = RoundedCornerShape(12.dp),
+                modifier = if (isTablet) Modifier.adaptiveButtonWidth() else Modifier
+            ) {
                 Text("Create First Module")
             }
         }
@@ -175,111 +167,104 @@ fun ModuleItemCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    modifier = Modifier.size(40.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = when(module.contentType) {
-                                "VIDEO" -> Icons.Default.PlayCircle
-                                "PDF" -> Icons.Default.Description
-                                "QUIZ" -> Icons.Default.Quiz
-                                else -> Icons.Default.Article
-                            },
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-                
-                Spacer(Modifier.width(16.dp))
-                
-                Column(modifier = Modifier.weight(1f)) {
-                    @Suppress("DEPRECATION")
-                    Text(
-                        text = module.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+    AdaptiveDashboardCard { isTablet ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                modifier = Modifier.size(if (isTablet) 48.dp else 40.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(if (isTablet) 12.dp else 10.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = when(module.contentType) {
+                            "VIDEO" -> Icons.Default.PlayCircle
+                            "PDF" -> Icons.Default.Description
+                            "QUIZ" -> Icons.Default.Quiz
+                            else -> Icons.Default.Article
+                        },
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(if (isTablet) 28.dp else 22.dp)
                     )
-                    Text(
-                        text = "Sequence: #${module.order}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalIconButton(
-                        onClick = onEdit,
-                        modifier = Modifier.size(32.dp),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(Icons.Default.Edit, null, modifier = Modifier.size(16.dp))
-                    }
-                    FilledTonalIconButton(
-                        onClick = onDelete,
-                        modifier = Modifier.size(32.dp),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(Icons.Default.DeleteOutline, null, modifier = Modifier.size(16.dp))
-                    }
                 }
             }
             
-            if (module.description.isNotBlank()) {
-                Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.width(if (isTablet) 20.dp else 16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = module.title,
+                    style = if (isTablet) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
                 @Suppress("DEPRECATION")
                 Text(
-                    text = module.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                    maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    lineHeight = 18.sp
+                    text = "Sequence: #${module.order}",
+                    style = if (isTablet) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
                 )
             }
-            
-            Spacer(Modifier.height(16.dp))
-            
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val typeLabel = when(module.contentType) {
-                    "VIDEO" -> "Video Lecture"
-                    "PDF" -> "Reading Material"
-                    "QUIZ" -> "Knowledge Check"
-                    else -> "General Content"
-                }
-                Surface(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = typeLabel,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalIconButton(
+                    onClick = onEdit,
+                    modifier = Modifier.size(if (isTablet) 40.dp else 32.dp),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.primary
                     )
+                ) {
+                    Icon(Icons.Default.Edit, null, modifier = Modifier.size(if (isTablet) 20.dp else 16.dp))
                 }
+                FilledTonalIconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(if (isTablet) 40.dp else 32.dp),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(Icons.Default.DeleteOutline, null, modifier = Modifier.size(if (isTablet) 20.dp else 16.dp))
+                }
+            }
+        }
+        
+        if (module.description.isNotBlank()) {
+            Spacer(Modifier.height(12.dp))
+            @Suppress("DEPRECATION")
+            Text(
+                text = module.description,
+                style = if (isTablet) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                lineHeight = if (isTablet) 22.sp else 18.sp
+            )
+        }
+        
+        Spacer(Modifier.height(16.dp))
+        
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val typeLabel = when(module.contentType) {
+                "VIDEO" -> "Video Lecture"
+                "PDF" -> "Reading Material"
+                "QUIZ" -> "Knowledge Check"
+                else -> "General Content"
+            }
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                @Suppress("DEPRECATION")
+                Text(
+                    text = typeLabel,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = if (isTablet) MaterialTheme.typography.bodySmall else MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
@@ -294,6 +279,7 @@ fun ModuleEditDialog(
     onDismiss: () -> Unit,
     onSave: (ModuleContent) -> Unit
 ) {
+    val isTablet = isTablet()
     var title by remember { mutableStateOf(module?.title ?: "") }
     var description by remember { mutableStateOf(module?.description ?: "") }
     var contentType by remember { mutableStateOf(module?.contentType ?: "VIDEO") }
@@ -303,17 +289,20 @@ fun ModuleEditDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier.padding(24.dp).fillMaxWidth(),
+        modifier = Modifier
+            .padding(AdaptiveSpacing.contentPadding())
+            .adaptiveWidth(AdaptiveWidths.Standard),
         content = {
             Surface(
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 6.dp
             ) {
-                Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
+                Column(modifier = Modifier.padding(AdaptiveSpacing.medium()).verticalScroll(rememberScrollState())) {
+                    @Suppress("DEPRECATION")
                     Text(
                         text = if (module == null) "Add Curriculum Module" else "Edit Module",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Black
                     )
                     
@@ -372,7 +361,7 @@ fun ModuleEditDialog(
                     Spacer(Modifier.height(32.dp))
                     
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = onDismiss) { Text("Cancel") }
+                        TextButton(onClick = onDismiss, modifier = Modifier.height(if (isTablet) 48.dp else 36.dp)) { Text("Cancel") }
                         Spacer(Modifier.width(12.dp))
                         Button(
                             onClick = {
@@ -387,7 +376,8 @@ fun ModuleEditDialog(
                                 ))
                             },
                             enabled = title.isNotBlank() && contentUrl.isNotBlank(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.height(if (isTablet) 48.dp else 40.dp)
                         ) {
                             Text("Save Module", fontWeight = FontWeight.Bold)
                         }
@@ -400,16 +390,28 @@ fun ModuleEditDialog(
 
 @Composable
 fun TypeSelectionIcon(icon: ImageVector, label: String, isSelected: Boolean, onClick: () -> Unit) {
+    val isTablet = isTablet()
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onClick() }.padding(8.dp)) {
         Surface(
             shape = CircleShape,
             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier.size(if (isTablet) 56.dp else 48.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = if (isSelected) Color.White else Color.Gray)
+                Icon(
+                    icon, 
+                    null, 
+                    tint = if (isSelected) Color.White else Color.Gray,
+                    modifier = Modifier.size(if (isTablet) 28.dp else 24.dp)
+                )
             }
         }
-        Text(label, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp), color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray)
+        @Suppress("DEPRECATION")
+        Text(
+            text = label, 
+            style = if (isTablet) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall, 
+            modifier = Modifier.padding(top = 4.dp), 
+            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray
+        )
     }
 }

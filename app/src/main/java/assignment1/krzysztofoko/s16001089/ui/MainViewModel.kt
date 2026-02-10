@@ -188,7 +188,10 @@ class MainViewModel(
         showLogoutConfirm = false
         auth.signOut()
         showSignedOutPopup = true
-        navController.navigate("home") { popUpTo(0) }
+        // Important: Navigate to home and clear the backstack
+        navController.navigate("home") {
+            popUpTo(0) { inclusive = true }
+        }
     }
 
     override fun onCleared() {

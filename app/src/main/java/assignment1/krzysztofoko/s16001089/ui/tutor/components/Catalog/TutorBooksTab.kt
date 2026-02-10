@@ -5,24 +5,20 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.ui.components.AppPopups
-import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorResourceDetailDialog
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorResourceItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorBooksTab(viewModel: TutorViewModel) {
     val allBooks by viewModel.allBooks.collectAsState()
@@ -37,40 +33,42 @@ fun TutorBooksTab(viewModel: TutorViewModel) {
     var bookToConfirmAdd by remember { mutableStateOf<Book?>(null) }
     var bookToConfirmRemove by remember { mutableStateOf<Book?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            placeholder = { Text("Search books...") },
-            leadingIcon = { Icon(Icons.Default.Search, null) },
-            shape = MaterialTheme.shapes.medium
-        )
+    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = AdaptiveSpacing.contentPadding())) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                placeholder = { Text("Search books...") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                shape = MaterialTheme.shapes.medium
+            )
 
-        val filteredBooks = allBooks.filter { it.title.contains(searchQuery, ignoreCase = true) }
+            val filteredBooks = allBooks.filter { it.title.contains(searchQuery, ignoreCase = true) }
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(filteredBooks) { book ->
-                val isAdded = purchasedIds.contains(book.id)
-                TutorResourceItem(
-                    title = book.title,
-                    imageUrl = book.imageUrl,
-                    isAdded = isAdded,
-                    isAudio = false,
-                    onAddClick = { bookToConfirmAdd = book },
-                    onRemoveClick = { bookToConfirmRemove = book },
-                    onItemClick = { detailBook = book }
-                )
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(if (isTablet) 3 else 2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(filteredBooks) { book ->
+                    val isAdded = purchasedIds.contains(book.id)
+                    TutorResourceItem(
+                        title = book.title,
+                        imageUrl = book.imageUrl,
+                        isAdded = isAdded,
+                        isAudio = false,
+                        onAddClick = { bookToConfirmAdd = book },
+                        onRemoveClick = { bookToConfirmRemove = book },
+                        onItemClick = { detailBook = book }
+                    )
+                }
+                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
-            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
 

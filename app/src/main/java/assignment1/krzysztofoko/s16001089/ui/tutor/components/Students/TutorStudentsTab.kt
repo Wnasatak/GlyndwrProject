@@ -2,7 +2,6 @@ package assignment1.krzysztofoko.s16001089.ui.tutor.components.Students
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,25 +13,23 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import assignment1.krzysztofoko.s16001089.ui.messages.RoleTag
-import coil.compose.AsyncImage
+import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorStudentsTab(
     viewModel: TutorViewModel
@@ -66,64 +63,76 @@ fun TutorStudentsTab(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        OutlinedTextField(
-            value = searchTxt,
-            onValueChange = { searchTxt = it },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            placeholder = {
-                Text(
-                    text = "Search students across university...",
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            },
-            leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp)) },
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = AdaptiveSpacing.contentPadding())) {
+            Spacer(Modifier.height(12.dp))
+            
+            AdaptiveDashboardHeader(
+                title = "Student Directory",
+                subtitle = "Manage and connect with learners",
+                icon = Icons.Default.People
             )
-        )
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (myResults.isNotEmpty()) {
-                item {
-                    SectionHeader(
-                        title = if (searchTxt.isEmpty()) "Students in My Classes" else "Matches in My Classes",
-                        count = myResults.size,
-                        icon = Icons.Default.Group
+            OutlinedTextField(
+                value = searchTxt,
+                onValueChange = { searchTxt = it },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                placeholder = {
+                    Text(
+                        text = "Search students across university...",
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                }
-                items(myResults) { student ->
-                    StudentItemCard(student, viewModel, allEnrollments, allCourses, myCourseIds)
-                }
-            }
+                },
+                leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp)) },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                )
+            )
 
-            if (otherResults.isNotEmpty()) {
-                item {
-                    SectionHeader(
-                        title = "Global University Search",
-                        count = otherResults.size,
-                        icon = Icons.Default.Public
-                    )
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 100.dp)
+            ) {
+                if (myResults.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = if (searchTxt.isEmpty()) "Students in My Classes" else "Matches in My Classes",
+                            count = myResults.size,
+                            icon = Icons.Default.Group
+                        )
+                    }
+                    items(myResults) { student ->
+                        StudentItemCard(student, viewModel, allEnrollments, allCourses, myCourseIds)
+                    }
                 }
-                items(otherResults) { student ->
-                    StudentItemCard(student, viewModel, allEnrollments, allCourses, myCourseIds)
-                }
-            }
 
-            if (myResults.isEmpty() && otherResults.isEmpty()) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Text("No students found matching your search.", color = Color.Gray)
+                if (otherResults.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "Global University Search",
+                            count = otherResults.size,
+                            icon = Icons.Default.Public
+                        )
+                    }
+                    items(otherResults) { student ->
+                        StudentItemCard(student, viewModel, allEnrollments, allCourses, myCourseIds)
+                    }
+                }
+
+                if (myResults.isEmpty() && otherResults.isEmpty()) {
+                    item {
+                        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Text("No students found matching your search.", color = Color.Gray)
+                        }
                     }
                 }
             }
-
-            item { Spacer(Modifier.height(80.dp)) }
         }
     }
 }
@@ -136,6 +145,7 @@ fun SectionHeader(title: String, count: Int, icon: ImageVector) {
     ) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
+        @Suppress("DEPRECATION")
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
@@ -173,20 +183,11 @@ fun StudentItemCard(
             .joinToString(", ")
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { viewModel.setSection(TutorSection.STUDENT_PROFILE, student) },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    AdaptiveDashboardCard(onClick = { viewModel.setSection(TutorSection.STUDENT_PROFILE, student) }) { isTablet ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
             UserAvatar(
                 photoUrl = student.photoUrl,
-                modifier = Modifier.size(54.dp)
+                modifier = Modifier.size(if (isTablet) 60.dp else 54.dp)
             )
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -213,7 +214,7 @@ fun StudentItemCard(
                 Text(
                     text = student.name,
                     fontWeight = FontWeight.Black,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = if (isTablet) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -235,7 +236,12 @@ fun StudentItemCard(
                 }
             }
             IconButton(onClick = { viewModel.setSection(TutorSection.CHAT, student) }) {
-                Icon(Icons.AutoMirrored.Filled.Chat, null, tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    Icons.AutoMirrored.Filled.Chat, 
+                    null, 
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(if (isTablet) 28.dp else 24.dp)
+                )
             }
         }
     }

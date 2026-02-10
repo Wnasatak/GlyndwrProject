@@ -8,7 +8,7 @@ import assignment1.krzysztofoko.s16001089.data.Book
  */
 object AppConstants {
     // --- Application Branding ---
-    const val VERSION_NAME = "0.17.948 Under Development"
+    const val VERSION_NAME = "0.25.315 Under Development"
     const val INSTITUTION = "Wrexham Glyndŵr University"
     const val DEVELOPER_NAME = "Krzysztof Oko"
     const val STUDENT_ID = "S16001089"
@@ -41,6 +41,13 @@ object AppConstants {
     const val LABEL_PAID = "Paid"
     const val LABEL_NEW = "NEW"
     const val LABEL_MY_COURSES = "MY COURSES"
+    
+    // --- Dashboard Filters ---
+    const val FILTER_ALL = "All"
+    const val FILTER_BOOKS = "Books"
+    const val FILTER_AUDIOBOOKS = "Audiobooks"
+    const val FILTER_GEAR = "Gear"
+    const val FILTER_COURSES = "Courses"
     
     // --- UI Strings: Titles ---
     const val TITLE_MEMBER_LOGIN = "Member Login"
@@ -120,6 +127,7 @@ object AppConstants {
     const val BTN_GOOGLE_LOGIN = "Google Login"
     const val BTN_GOOGLE_SIGNUP = "Google Sign up"
     const val BTN_VERIFY_IDENTITY = "Verify Identity"
+    const val BTN_VERIFY_SAVE = "Verify & Save"
     const val BTN_RESEND_CODE = "Resend Code"
     const val BTN_VERIFICATION_DONE = "Verification Done"
     const val BTN_BACK_TO_LOGIN = "Back to Login"
@@ -219,6 +227,10 @@ object AppConstants {
     const val LABEL_FINAL = "Final"
     const val LABEL_BALANCE = "Balance"
     
+    // --- ID & Routes ---
+    const val ID_TOPUP = "topup_product"
+    const val ROUTE_ADMIN_USER_DETAILS = "admin_user_details"
+
     // --- System & Error Messages ---
     const val MSG_INVOICE_NOT_FOUND = "Invoice record not found."
     const val MSG_THANK_YOU_STORE = "Thank you for supporting our university store!"
@@ -325,54 +337,27 @@ object AppConstants {
     const val ROUTE_ADMIN_PANEL = "admin_panel"
     const val ROUTE_TUTOR_PANEL = "tutor_panel"
     const val ROUTE_CLASSROOM = "classroom"
-    const val ROUTE_BOOK_DETAILS = "bookDetails"
-    const val ROUTE_PDF_READER = "pdfReader"
-    const val ROUTE_INVOICE_CREATING = "invoiceCreating"
+    const val ROUTE_BOOK_DETAILS = "book_details"
     const val ROUTE_INVOICE = "invoice"
-    const val ROUTE_LATEST = "latest"
-    const val ROUTE_MY_APPLICATIONS = "my_applications"
-    const val ROUTE_ADMIN_USER_DETAILS = "admin_user_details"
+    const val ROUTE_INVOICE_CREATING = "invoice_creating"
+    const val ROUTE_PDF_READER = "pdf_reader"
     const val ROUTE_COURSE_ENROLLMENT = "course_enrollment"
+    const val ROUTE_MY_APPLICATIONS = "my_applications"
 
-    // --- Filter Labels ---
-    const val FILTER_ALL = "All"
-    const val FILTER_BOOKS = "Books"
-    const val FILTER_AUDIOBOOKS = "Audiobooks"
-    const val FILTER_GEAR = "Gear"
-    const val FILTER_COURSES = "Courses"
-
-    // --- Technical IDs ---
-    const val ID_TOPUP = "TOPUP"
-
-    /**
-     * Centralized logic to determine the status label for a book/item.
-     */
-    fun getItemStatusLabel(book: Book): String {
-        return when {
-            book.mainCategory == CAT_COURSES -> LABEL_ENROLLED
-            book.price > 0.0 -> LABEL_PURCHASED
-            book.mainCategory == CAT_GEAR -> LABEL_PICKED_UP
-            else -> LABEL_IN_LIBRARY
+    // --- Utility Functions ---
+    fun getDefaultSubcategory(category: String): String {
+        return when (category) {
+            CAT_COURSES -> "All Departments"
+            CAT_BOOKS, CAT_AUDIOBOOKS -> "All Genres"
+            else -> "All"
         }
     }
 
-    /**
-     * Returns the default subcategory name based on the main category.
-     */
-    fun getDefaultSubcategory(mainCat: String): String {
-        return if (mainCat == CAT_COURSES) "All Departments" else "All Genres"
-    }
-
-    /**
-     * Maps Filter Names to Store Categories
-     */
-    fun mapFilterToCategory(filter: String): String {
-        return when (filter) {
-            FILTER_BOOKS -> CAT_BOOKS
-            FILTER_AUDIOBOOKS -> CAT_AUDIOBOOKS
-            FILTER_GEAR -> CAT_GEAR
-            FILTER_COURSES -> CAT_COURSES
-            else -> CAT_ALL
+    fun getItemStatusLabel(book: Book): String {
+        return when (book.mainCategory) {
+            CAT_COURSES -> LABEL_ENROLLED
+            CAT_GEAR -> if (book.price > 0.0) LABEL_PURCHASED else LABEL_PICKED_UP
+            else -> LABEL_PURCHASED
         }
     }
 }

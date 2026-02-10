@@ -79,6 +79,7 @@ class DashboardViewModel(
         val userEnrollments = enrollments.filter { it.userId == userId }
         val pIds = purchasedIdsList.toSet()
         
+        // Only show items owned/enrolled by THIS SPECIFIC USER
         val owned = books.filter { book ->
             pIds.contains(book.id) || userEnrollments.any { it.courseId == book.id }
         }

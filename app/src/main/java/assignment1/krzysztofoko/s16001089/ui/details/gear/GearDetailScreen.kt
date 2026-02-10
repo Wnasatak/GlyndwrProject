@@ -167,6 +167,25 @@ fun GearDetailScreen(
                                             }
                                         }
                                         
+                                        if (effectiveDiscount > 0 && item.price > 0) {
+                                            Spacer(Modifier.height(8.dp))
+                                            Surface(
+                                                color = Color(0xFFE8F5E9),
+                                                shape = RoundedCornerShape(6.dp),
+                                                border = BorderStroke(0.5.dp, Color(0xFF2E7D32).copy(alpha = 0.3f))
+                                            ) {
+                                                val roleLabel = localUser?.role?.uppercase() ?: "USER"
+                                                Text(
+                                                    text = "$roleLabel DISCOUNT (-${effectiveDiscount.toInt()}% )",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = Color(0xFF2E7D32),
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                    letterSpacing = 0.5.sp
+                                                )
+                                            }
+                                        }
+
                                         Spacer(Modifier.height(16.dp))
                                         GearTagsSection(item.productTags)
                                         Spacer(Modifier.height(24.dp))

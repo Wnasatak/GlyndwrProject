@@ -19,6 +19,7 @@ enum class TutorSection {
     COURSE_ASSIGNMENTS,
     COURSE_GRADES,
     COURSE_LIVE,
+    COURSE_ARCHIVED_BROADCASTS,
     STUDENTS, 
     MESSAGES, 
     CHAT, 
@@ -69,6 +70,9 @@ class TutorViewModel(
     private val _selectedModuleId = MutableStateFlow<String?>(null)
     val selectedModuleId: StateFlow<String?> = _selectedModuleId.asStateFlow()
 
+    private val _selectedAssignmentId = MutableStateFlow<String?>(null)
+    val selectedAssignmentId: StateFlow<String?> = _selectedAssignmentId.asStateFlow()
+
     private val _activeBook = MutableStateFlow<Book?>(null)
     val activeBook: StateFlow<Book?> = _activeBook.asStateFlow()
 
@@ -85,6 +89,14 @@ class TutorViewModel(
     private val _attendanceDate = MutableStateFlow(System.currentTimeMillis())
     val attendanceDate: StateFlow<Long> = _attendanceDate.asStateFlow()
 
+    // Grades Tab State
+    private val _selectedGradesTab = MutableStateFlow(0)
+    val selectedGradesTab: StateFlow<Int> = _selectedGradesTab.asStateFlow()
+
+    fun setGradesTab(index: Int) {
+        _selectedGradesTab.value = index
+    }
+
     fun setAttendanceDate(date: Long) {
         _attendanceDate.value = date
     }
@@ -94,11 +106,15 @@ class TutorViewModel(
         if (student != null) {
             _selectedStudent.value = student
         }
+        // Robust cleanup: Clear active book if we are no longer in the reader section
+        if (section != TutorSection.READ_BOOK) {
+            _activeBook.value = null
+        }
     }
 
     fun selectCourse(courseId: String) {
         _selectedCourseId.value = courseId
-        _currentSection.value = TutorSection.SELECTED_COURSE
+        setSection(TutorSection.SELECTED_COURSE)
     }
     
     fun updateSelectedCourse(courseId: String?) {
@@ -107,6 +123,10 @@ class TutorViewModel(
 
     fun selectModule(moduleId: String?) {
         _selectedModuleId.value = moduleId
+    }
+
+    fun selectAssignment(assignmentId: String?) {
+        _selectedAssignmentId.value = assignmentId
     }
 
     fun openBook(book: Book) {
@@ -120,7 +140,7 @@ class TutorViewModel(
 
     fun openAudioBook(ab: AudioBook) {
         _activeAudioBook.value = ab
-        _currentSection.value = TutorSection.LISTEN_AUDIOBOOK
+        setSection(TutorSection.LISTEN_AUDIOBOOK)
     }
 
     // --- Data Streams ---
@@ -449,6 +469,7 @@ class TutorViewModel(
     fun toggleLiveStream(isLive: Boolean) {
         val courseId = _selectedCourseId.value ?: return
         val moduleId = _selectedModuleId.value ?: ""
+        val assignmentId = _selectedAssignmentId.value
         viewModelScope.launch {
             _isLive.value = isLive
             if (!isLive) _isPaused.value = false // Ensure it's not paused when ending
@@ -462,6 +483,7 @@ class TutorViewModel(
                 id = if (isLive) "live_${courseId}" else UUID.randomUUID().toString(),
                 courseId = courseId,
                 moduleId = moduleId,
+                assignmentId = assignmentId,
                 title = if (isLive) "Live Broadcast" else "Archived Broadcast",
                 tutorId = tutorId,
                 tutorName = tutorName,
@@ -484,6 +506,42 @@ class TutorViewModel(
         viewModelScope.launch {
             classroomDao.deleteSession(sessionId)
             addLog("DELETE_PREVIOUS_BROADCAST", sessionId, "Tutor deleted an archived broadcast")
+        }
+    }
+
+    fun updateBroadcastTitle(sessionId: String, newTitle: String) {
+        viewModelScope.launch {
+            classroomDao.updateSessionTitle(sessionId, newTitle)
+            addLog("UPDATE_BROADCAST_TITLE", sessionId, "Tutor renamed broadcast to: $newTitle")
+        }
+    }
+
+    fun shareBroadcastWithAll(session: LiveSession) {
+        viewModelScope.launch {
+            val students = enrolledStudentsInSelectedCourse.value
+            shareWithIds(session, students.map { it.id })
+            addLog("SHARE_BROADCAST_ALL", session.id, "Tutor shared broadcast replay with all students in course")
+        }
+    }
+
+    fun shareBroadcastWithSpecificStudents(session: LiveSession, studentIds: List<String>) {
+        viewModelScope.launch {
+            shareWithIds(session, studentIds)
+            addLog("SHARE_BROADCAST_SPECIFIC", session.id, "Tutor shared broadcast replay with ${studentIds.size} specific students")
+        }
+    }
+
+    private suspend fun shareWithIds(session: LiveSession, studentIds: List<String>) {
+        studentIds.forEach { studentId ->
+            userDao.addNotification(NotificationLocal(
+                id = UUID.randomUUID().toString(),
+                userId = studentId,
+                productId = session.id,
+                title = "Broadcast Shared",
+                message = "Tutor shared a replay: ${session.title}",
+                timestamp = System.currentTimeMillis(),
+                type = "BROADCAST"
+            ))
         }
     }
 

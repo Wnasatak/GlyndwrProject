@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.data.Course
 import assignment1.krzysztofoko.s16001089.data.CourseEnrollmentDetails
 import assignment1.krzysztofoko.s16001089.data.UserLocal
-import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.messages.RoleTag
 import assignment1.krzysztofoko.s16001089.ui.tutor.ConversationPreview
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
@@ -63,62 +63,64 @@ fun TutorMessagesTab(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Spacer(Modifier.height(24.dp))
-        
-        HeaderSection(
-            title = "Messages",
-            subtitle = "Academic Communication",
-            icon = Icons.Default.QuestionAnswer
-        )
-        
-        OutlinedTextField(
-            value = searchTxt,
-            onValueChange = { searchTxt = it },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            placeholder = { Text("Search users or messages...", color = Color.Gray) },
-            leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = AdaptiveSpacing.contentPadding())) {
+            Spacer(Modifier.height(12.dp))
+            
+            AdaptiveDashboardHeader(
+                title = "Messages",
+                subtitle = "Academic Communication",
+                icon = Icons.Default.QuestionAnswer
             )
-        )
-        
-        if (searchResults.isEmpty()) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.ChatBubbleOutline, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
-                    Spacer(Modifier.height(16.dp))
-                    Text("No results found", color = Color.Gray)
+            
+            OutlinedTextField(
+                value = searchTxt,
+                onValueChange = { searchTxt = it },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                placeholder = { Text("Search users or messages...", color = Color.Gray) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                )
+            )
+            
+            if (searchResults.isEmpty()) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.ChatBubbleOutline, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
+                        Spacer(Modifier.height(16.dp))
+                        Text("No results found", color = Color.Gray)
+                    }
                 }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 100.dp)
-            ) {
-                items(searchResults) { result ->
-                    when (result) {
-                        is SearchResult.Existing -> {
-                            val user = result.preview.student
-                            val userCourses = getUserCourses(user.id, allEnrollments, allCourses)
-                            ConversationItem(
-                                conversation = result.preview,
-                                courses = userCourses,
-                                onClick = { viewModel.setSection(TutorSection.CHAT, user) },
-                                timeStr = sdf.format(Date(result.preview.lastMessage.timestamp))
-                            )
-                        }
-                        is SearchResult.New -> {
-                            val userCourses = getUserCourses(result.user.id, allEnrollments, allCourses)
-                            NewConversationItem(
-                                user = result.user,
-                                courses = userCourses,
-                                onClick = { viewModel.setSection(TutorSection.CHAT, result.user) }
-                            )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(bottom = 100.dp)
+                ) {
+                    items(searchResults) { result ->
+                        when (result) {
+                            is SearchResult.Existing -> {
+                                val user = result.preview.student
+                                val userCourses = getUserCourses(user.id, allEnrollments, allCourses)
+                                ConversationItem(
+                                    conversation = result.preview,
+                                    courses = userCourses,
+                                    onClick = { viewModel.setSection(TutorSection.CHAT, user) },
+                                    timeStr = sdf.format(Date(result.preview.lastMessage.timestamp))
+                                )
+                            }
+                            is SearchResult.New -> {
+                                val userCourses = getUserCourses(result.user.id, allEnrollments, allCourses)
+                                NewConversationItem(
+                                    user = result.user,
+                                    courses = userCourses,
+                                    onClick = { viewModel.setSection(TutorSection.CHAT, result.user) }
+                                )
+                            }
                         }
                     }
                 }
@@ -146,18 +148,12 @@ fun ConversationItem(
     onClick: () -> Unit,
     timeStr: String
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-    ) {
+    AdaptiveDashboardCard(onClick = onClick) { isTablet ->
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UserAvatar(photoUrl = conversation.student.photoUrl, modifier = Modifier.size(54.dp))
+            UserAvatar(photoUrl = conversation.student.photoUrl, modifier = Modifier.size(if (isTablet) 60.dp else 54.dp))
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 // Row 1: Name and Role Tag
@@ -168,7 +164,7 @@ fun ConversationItem(
                     Text(
                         text = conversation.student.name, 
                         fontWeight = FontWeight.Bold, 
-                        fontSize = 17.sp,
+                        style = if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -225,25 +221,19 @@ fun NewConversationItem(
     courses: String,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-    ) {
+    AdaptiveDashboardCard(onClick = onClick) { isTablet ->
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UserAvatar(photoUrl = user.photoUrl, modifier = Modifier.size(54.dp))
+            UserAvatar(photoUrl = user.photoUrl, modifier = Modifier.size(if (isTablet) 60.dp else 54.dp))
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = user.name, 
                         fontWeight = FontWeight.Bold, 
-                        fontSize = 17.sp,
+                        style = if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -273,38 +263,6 @@ fun NewConversationItem(
             }
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Default.ChevronRight, null, tint = Color.Gray.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
-        }
-    }
-}
-
-@Composable
-private fun HeaderSection(title: String, subtitle: String, icon: ImageVector) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Surface(
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.size(48.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
-            }
-        }
-        Spacer(Modifier.width(16.dp))
-        Column {
-            @Suppress("DEPRECATION")
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black
-            )
-            @Suppress("DEPRECATION")
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }
