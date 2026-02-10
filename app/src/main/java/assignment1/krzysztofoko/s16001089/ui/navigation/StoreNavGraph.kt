@@ -13,6 +13,7 @@ import assignment1.krzysztofoko.s16001089.ui.details.book.BookDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.details.course.CourseDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.details.course.CourseEnrollmentScreen
 import assignment1.krzysztofoko.s16001089.ui.details.gear.GearDetailScreen
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.StateFlow
 
@@ -20,8 +21,8 @@ fun NavGraphBuilder.storeNavGraph(
     navController: NavController,
     currentUserFlow: StateFlow<FirebaseUser?>,
     allBooks: List<Book>,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit,
     onPlayAudio: (Book) -> Unit
 ) {
     composable("${AppConstants.ROUTE_BOOK_DETAILS}/{bookId}") { backStackEntry ->
@@ -36,8 +37,8 @@ fun NavGraphBuilder.storeNavGraph(
                     user = currentUser,
                     onLoginRequired = { navController.navigate(AppConstants.ROUTE_AUTH) },
                     onBack = { navController.popBackStack() },
-                    isDarkTheme = isDarkTheme,
-                    onToggleTheme = onToggleTheme,
+                    currentTheme = currentTheme,
+                    onThemeChange = onThemeChange,
                     onPlayAudio = onPlayAudio,
                     onNavigateToProfile = { navController.navigate(AppConstants.ROUTE_PROFILE) },
                     onViewInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/$it") }
@@ -50,8 +51,8 @@ fun NavGraphBuilder.storeNavGraph(
                     user = currentUser,
                     onLoginRequired = { navController.navigate(AppConstants.ROUTE_AUTH) },
                     onBack = { navController.popBackStack() },
-                    isDarkTheme = isDarkTheme,
-                    onToggleTheme = onToggleTheme,
+                    currentTheme = currentTheme,
+                    onThemeChange = onThemeChange,
                     onNavigateToProfile = { navController.navigate(AppConstants.ROUTE_PROFILE) },
                     onViewInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/$it") }
                 )
@@ -62,8 +63,8 @@ fun NavGraphBuilder.storeNavGraph(
                     user = currentUser,
                     onLoginRequired = { navController.navigate(AppConstants.ROUTE_AUTH) },
                     onBack = { navController.popBackStack() },
-                    isDarkTheme = isDarkTheme,
-                    onToggleTheme = onToggleTheme,
+                    currentTheme = currentTheme,
+                    onThemeChange = onThemeChange,
                     onNavigateToProfile = { navController.navigate(AppConstants.ROUTE_PROFILE) },
                     onViewInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/$it") },
                     onEnterClassroom = { navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$it") },
@@ -77,8 +78,8 @@ fun NavGraphBuilder.storeNavGraph(
                     user = currentUser,
                     onLoginRequired = { navController.navigate(AppConstants.ROUTE_AUTH) },
                     onBack = { navController.popBackStack() },
-                    isDarkTheme = isDarkTheme,
-                    onToggleTheme = onToggleTheme,
+                    currentTheme = currentTheme,
+                    onThemeChange = onThemeChange,
                     onReadBook = { navController.navigate("${AppConstants.ROUTE_PDF_READER}/$it") },
                     onNavigateToProfile = { navController.navigate(AppConstants.ROUTE_PROFILE) },
                     onViewInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/$it") }
@@ -97,8 +98,8 @@ fun NavGraphBuilder.storeNavGraph(
                     popUpTo("${AppConstants.ROUTE_BOOK_DETAILS}/$courseId") { inclusive = true }
                 }
             },
-            isDarkTheme = isDarkTheme,
-            onToggleTheme = onToggleTheme
+            currentTheme = currentTheme,
+            onThemeChange = onThemeChange
         )
     }
 
@@ -106,8 +107,8 @@ fun NavGraphBuilder.storeNavGraph(
         PdfReaderScreen(
             bookId = backStackEntry.arguments?.getString("bookId") ?: "",
             onBack = { navController.popBackStack() },
-            isDarkTheme = isDarkTheme,
-            onToggleTheme = onToggleTheme
+            currentTheme = currentTheme,
+            onThemeChange = onThemeChange
         ) 
     }
 }

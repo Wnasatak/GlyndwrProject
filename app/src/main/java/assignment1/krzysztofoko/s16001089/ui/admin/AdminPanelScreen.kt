@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +32,7 @@ import assignment1.krzysztofoko.s16001089.ui.admin.components.Dashboard.AdminDas
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.UserManagementTab
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.UsersLogsTab
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
 enum class AdminSection { DASHBOARD, APPLICATIONS, USERS, CATALOG, COURSES, LOGS }
 
@@ -39,8 +41,10 @@ enum class AdminSection { DASHBOARD, APPLICATIONS, USERS, CATALOG, COURSES, LOGS
 fun AdminPanelScreen(
     onBack: () -> Unit,
     onNavigateToUserDetails: (String) -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit,
+    onLogoutClick: () -> Unit = {},
     viewModel: AdminViewModel = viewModel(factory = AdminViewModelFactory(
         db = AppDatabase.getDatabase(LocalContext.current)
     ))
@@ -52,6 +56,11 @@ fun AdminPanelScreen(
     var showAddProductDialog by remember { mutableStateOf(false) }
     var showAddCourseDialog by remember { mutableStateOf(false) }
     var showAddUserDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showThemeSubMenu by remember { mutableStateOf(false) }
+    
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || (currentTheme == Theme.CUSTOM)
+    val isTablet = isTablet()
 
     val isShowingOverlay = selectedAppForReview != null || selectedCourseForModules != null || selectedModuleForTasks != null
 
@@ -101,8 +110,45 @@ fun AdminPanelScreen(
                                     Icon(Icons.Default.Add, "Add User")
                                 }
                             }
-                            IconButton(onClick = onToggleTheme) { 
-                                Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) 
+                            
+                            if (isTablet) {
+                                ThemeToggleButton(
+                                    currentTheme = currentTheme,
+                                    onThemeChange = onThemeChange,
+                                    isLoggedIn = true // Admins are always logged in
+                                )
+                            }
+
+                            Box {
+                                IconButton(onClick = { showMenu = true }) {
+                                    Icon(Icons.Default.MoreVert, "More")
+                                }
+                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                    DropdownMenuItem(
+                                        text = { Text("Edit Profile") },
+                                        onClick = { showMenu = false; onNavigateToProfile() },
+                                        leadingIcon = { Icon(Icons.Default.Person, null) }
+                                    )
+                                    
+                                    DropdownMenuItem(
+                                        text = { Text("Theme Options") },
+                                        onClick = { showMenu = false; showThemeSubMenu = true },
+                                        leadingIcon = { Icon(Icons.Default.Palette, null) }
+                                    )
+
+                                    DropdownMenuItem(
+                                        text = { Text("Log Off", color = MaterialTheme.colorScheme.error) },
+                                        onClick = { showMenu = false; onLogoutClick() },
+                                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) }
+                                    )
+                                }
+                                
+                                ThemeSelectionDropdown(
+                                    expanded = showThemeSubMenu,
+                                    onDismissRequest = { showThemeSubMenu = false },
+                                    onThemeChange = onThemeChange,
+                                    isLoggedIn = true // Ensure "My Theme" is visible for Admins
+                                )
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
@@ -155,7 +201,6 @@ fun AdminPanelScreen(
                 }
             }
         } else {
-            // Render only the active overlay
             Box(modifier = Modifier.fillMaxSize()) {
                 if (selectedAppForReview != null) {
                     ApplicationDetailScreen(

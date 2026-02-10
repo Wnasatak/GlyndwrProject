@@ -129,8 +129,50 @@ data class UserLocal(
     val selectedPaymentMethod: String? = null,
     val balance: Double = 0.0,
     val role: String = "student",
-    val discountPercent: Double = 0.0 // Added field for individual user discounts
+    val discountPercent: Double = 0.0
 )
+
+/**
+ * Separated entity for User Theme preferences.
+ */
+@Entity(tableName = "user_themes")
+data class UserTheme(
+    @PrimaryKey val userId: String,
+    val isCustomThemeEnabled: Boolean = false,
+    val lastSelectedTheme: String = "DARK",
+    val customPrimary: Long? = null,
+    val customOnPrimary: Long? = null,
+    val customPrimaryContainer: Long? = null,
+    val customOnPrimaryContainer: Long? = null,
+    val customSecondary: Long? = null,
+    val customOnSecondary: Long? = null,
+    val customSecondaryContainer: Long? = null,
+    val customOnSecondaryContainer: Long? = null,
+    val customTertiary: Long? = null,
+    val customOnTertiary: Long? = null,
+    val customTertiaryContainer: Long? = null,
+    val customOnTertiaryContainer: Long? = null,
+    val customBackground: Long? = null,
+    val customOnBackground: Long? = null,
+    val customSurface: Long? = null,
+    val customOnSurface: Long? = null,
+    val customIsDark: Boolean = true
+)
+
+@Dao
+interface UserThemeDao {
+    @Query("SELECT * FROM user_themes WHERE userId = :userId")
+    fun getThemeFlow(userId: String): Flow<UserTheme?>
+
+    @Query("SELECT * FROM user_themes WHERE userId = :userId")
+    suspend fun getThemeById(userId: String): UserTheme?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertTheme(theme: UserTheme)
+
+    @Query("DELETE FROM user_themes WHERE userId = :userId")
+    suspend fun deleteTheme(userId: String)
+}
 
 @Entity(tableName = "wishlist", primaryKeys = ["userId", "productId"])
 data class WishlistItem(val userId: String, val productId: String, val addedAt: Long = System.currentTimeMillis())

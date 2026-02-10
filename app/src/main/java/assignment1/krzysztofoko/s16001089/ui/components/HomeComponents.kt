@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
 import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.flowOf
@@ -44,9 +45,9 @@ import kotlin.math.abs
 fun HomeTopBar(
     isSearchVisible: Boolean,
     isLoggedIn: Boolean,
-    isDarkTheme: Boolean,
+    currentTheme: Theme,
     onSearchClick: () -> Unit,
-    onToggleTheme: () -> Unit,
+    onThemeChange: (Theme) -> Unit,
     onAboutClick: () -> Unit,
     onAuthClick: () -> Unit,
     onDashboardClick: () -> Unit
@@ -55,7 +56,6 @@ fun HomeTopBar(
         windowInsets = WindowInsets(0, 0, 0, 0),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Branded Logo with adaptive flash effect (centered glow)
                 AdaptiveBrandedLogo(
                     model = formatAssetUrl("images/media/GlyndwrUniversity.jpg"),
                     contentDescription = "Logo",
@@ -67,19 +67,26 @@ fun HomeTopBar(
         },
         actions = {
             TopBarSearchAction(isSearchVisible = isSearchVisible) { onSearchClick() }
-            IconButton(onClick = onToggleTheme) { 
-                Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, "Theme") 
+
+            // Show Theme Toggle ONLY for guest users to prevent duplication for members
+            if (!isLoggedIn) {
+                ThemeToggleButton(
+                    currentTheme = currentTheme,
+                    onThemeChange = onThemeChange,
+                    isLoggedIn = false
+                )
             }
-            IconButton(onClick = onAboutClick) { 
-                Icon(Icons.Default.Info, "About") 
+
+            IconButton(onClick = onAboutClick) {
+                Icon(Icons.Default.Info, "About")
             }
             if (!isLoggedIn) {
-                IconButton(onClick = onAuthClick) { 
-                    Icon(Icons.AutoMirrored.Filled.Login, "Login") 
+                IconButton(onClick = onAuthClick) {
+                    Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = "Sign In / Register")
                 }
             } else {
-                IconButton(onClick = onDashboardClick) { 
-                    Icon(Icons.Default.Dashboard, "Dashboard") 
+                IconButton(onClick = onDashboardClick) {
+                    Icon(imageVector = Icons.Default.Dashboard, contentDescription = "Dashboard")
                 }
             }
         },
@@ -87,15 +94,12 @@ fun HomeTopBar(
     )
 }
 
-// REMOVED duplicate EnrolledCourseHeader and FreeCourseHeader from here.
-// They are now centrally managed in CourseComponents.kt.
-
 @Composable
 fun HomeBookItem(
     book: Book,
     isLoggedIn: Boolean,
     isPendingReview: Boolean = false,
-    userRole: String?, 
+    userRole: String?,
     isLiked: Boolean,
     isPurchased: Boolean,
     isAudioPlaying: Boolean,
@@ -157,6 +161,7 @@ fun HomeBookItem(
                         shape = RoundedCornerShape(8.dp),
                         border = BorderStroke(1.dp, Color(0xFFFBC02D).copy(alpha = 0.5f))
                     ) {
+                        @Suppress("DEPRECATION")
                         Text(
                             text = "REVIEWING",
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -189,7 +194,7 @@ private fun HomePurchasedLabel(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         val label = AppConstants.getItemStatusLabel(book)
-        
+
         if (book.price > 0) {
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
@@ -198,10 +203,11 @@ private fun HomePurchasedLabel(
             ) {
                 Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        if (book.mainCategory == AppConstants.CAT_COURSES) Icons.Default.School else Icons.AutoMirrored.Filled.ReceiptLong, 
+                        if (book.mainCategory == AppConstants.CAT_COURSES) Icons.Default.School else Icons.AutoMirrored.Filled.ReceiptLong,
                         null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(6.6.dp))
+                    @Suppress("DEPRECATION")
                     Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                 }
             }
@@ -217,10 +223,11 @@ private fun HomePurchasedLabel(
             ) {
                 Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        if (book.mainCategory == AppConstants.CAT_COURSES) Icons.Default.School else Icons.Default.LibraryAddCheck, 
+                        if (book.mainCategory == AppConstants.CAT_COURSES) Icons.Default.School else Icons.Default.LibraryAddCheck,
                         null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(6.6.dp))
+                    @Suppress("DEPRECATION")
                     Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                 }
             }
@@ -241,7 +248,7 @@ private fun HomePriceLabel(book: Book, effectiveDiscount: Double, userRole: Stri
     } else if (effectiveDiscount > 0) {
         val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
         val discountPrice = "£" + String.format(Locale.US, "%.2f", book.price * discountMultiplier)
-        
+
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -257,9 +264,9 @@ private fun HomePriceLabel(book: Book, effectiveDiscount: Double, userRole: Stri
                     fontWeight = FontWeight.Black
                 )
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Surface(
-                color = Color(0xFFE8F5E9), 
+                color = Color(0xFFE8F5E9),
                 shape = RoundedCornerShape(6.dp),
                 border = BorderStroke(0.5.dp, Color(0xFF2E7D32).copy(alpha = 0.3f))
             ) {
@@ -275,6 +282,7 @@ private fun HomePriceLabel(book: Book, effectiveDiscount: Double, userRole: Stri
             }
         }
     } else {
+        @Suppress("DEPRECATION")
         Text(
             text = "£" + String.format(Locale.US, "%.2f", book.price),
             style = MaterialTheme.typography.titleLarge,
@@ -290,6 +298,7 @@ fun HomeLoadingState() {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator()
             Spacer(Modifier.height(16.dp))
+            @Suppress("DEPRECATION")
             Text("Loading Data...", style = MaterialTheme.typography.labelSmall)
         }
     }
@@ -334,7 +343,7 @@ fun MemberWelcomeBanner(user: UserLocal?) {
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
     val roleDiscounts by db.userDao().getAllRoleDiscounts().collectAsState(initial = emptyList<RoleDiscount>())
-    
+
     val effectiveDiscount = remember(user, roleDiscounts) {
         val userRole = user?.role ?: "user"
         val roleRate = roleDiscounts.find { it.role == userRole }?.discountPercent ?: 0.0
@@ -343,7 +352,7 @@ fun MemberWelcomeBanner(user: UserLocal?) {
     }
 
     val displayRole = role.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-    
+
     val displayName = buildString {
         if (!user?.title.isNullOrEmpty()) {
             append(user?.title)
@@ -361,6 +370,7 @@ fun MemberWelcomeBanner(user: UserLocal?) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(12.dp))
+            @Suppress("DEPRECATION")
             Column {
                 Text(text = "Welcome, $displayName", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 if (effectiveDiscount > 0) {
@@ -377,9 +387,8 @@ fun MemberWelcomeBanner(user: UserLocal?) {
 fun MainCategoryFilterBar(categories: List<String>, selectedCategory: String, onCategorySelected: (String) -> Unit) {
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
-    
+
     if (isTablet) {
-        // Standard Row for Tablets (No duplicates)
         val listState = rememberLazyListState()
         LazyRow(
             state = listState,
@@ -398,11 +407,10 @@ fun MainCategoryFilterBar(categories: List<String>, selectedCategory: String, on
             }
         }
     } else {
-        // Infinite Row for Phones
         val infiniteCategories = Int.MAX_VALUE
         val startPosition = infiniteCategories / 2 - (infiniteCategories / 2 % categories.size)
         val listState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
-        
+
         LazyRow(
             state = listState,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
@@ -412,13 +420,13 @@ fun MainCategoryFilterBar(categories: List<String>, selectedCategory: String, on
             items(infiniteCategories) { index ->
                 val categoryIndex = index % categories.size
                 val category = categories[categoryIndex]
-                
+
                 val scale by remember {
                     derivedStateOf {
                         val layoutInfo = listState.layoutInfo
                         val visibleItemsInfo = layoutInfo.visibleItemsInfo
                         val itemInfo = visibleItemsInfo.find { it.index == index }
-                        
+
                         if (itemInfo != null) {
                             val center = layoutInfo.viewportEndOffset / 2
                             val itemCenter = itemInfo.offset + (itemInfo.size / 2)

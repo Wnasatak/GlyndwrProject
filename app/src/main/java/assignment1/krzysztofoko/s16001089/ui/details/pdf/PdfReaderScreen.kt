@@ -25,8 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.AppConstants
-import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
-import assignment1.krzysztofoko.s16001089.ui.components.PdfReadingMode
+import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import kotlinx.coroutines.launch
 
 /**
@@ -37,15 +37,15 @@ import kotlinx.coroutines.launch
 fun PdfReaderScreen(
     bookId: String,                   
     onBack: () -> Unit,               
-    isDarkTheme: Boolean,             
-    onToggleTheme: () -> Unit,        
-    // Fix: Key the ViewModel to the bookId to ensure a fresh instance for every book
+    currentTheme: Theme,             
+    onThemeChange: (Theme) -> Unit,        
     viewModel: PdfViewModel = viewModel(key = "pdf_reader_$bookId")
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val readingMode by viewModel.readingMode.collectAsState()
     val brightness by viewModel.brightness.collectAsState()
     val zoomScale by viewModel.zoomScale.collectAsState()
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
     
     var showSettings by remember { mutableStateOf(false) }
     var isFullScreen by remember { mutableStateOf(false) }
@@ -109,9 +109,12 @@ fun PdfReaderScreen(
                             IconButton(onClick = { isFullScreen = true }) {
                                 Icon(Icons.Default.Fullscreen, "Enter Full Screen")
                             }
-                            IconButton(onClick = onToggleTheme) {
-                                Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null)
-                            }
+                            
+                            ThemeToggleButton(
+                                currentTheme = currentTheme,
+                                onThemeChange = onThemeChange
+                            )
+
                             IconButton(onClick = { showSettings = true }) {
                                 Icon(Icons.Default.Settings, null)
                             }

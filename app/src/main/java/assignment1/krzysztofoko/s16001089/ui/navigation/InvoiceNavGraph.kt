@@ -9,24 +9,24 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.components.InvoiceCreatingScreen
 import assignment1.krzysztofoko.s16001089.ui.info.InvoiceScreen
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
 /**
  * Navigation graph dedicated to the Invoicing feature.
- * 
- * Updated to support deep-linking via order references, ensuring that
- * users view the specific receipt for each transaction.
  */
 fun NavGraphBuilder.invoiceNavGraph(
     navController: NavController,
     allBooks: List<Book>,
     currentUserDisplayName: String,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit
 ) {
-    /**
-     * ROUTE: Invoice Creating
-     * Now accepts an optional 'ref' query parameter.
-     */
+    val isDarkTheme = currentTheme == Theme.DARK
+    val onToggleTheme = {
+        val next = if (isDarkTheme) Theme.LIGHT else Theme.DARK
+        onThemeChange(next)
+    }
+
     composable(
         route = "${AppConstants.ROUTE_INVOICE_CREATING}/{bookId}?ref={ref}",
         arguments = listOf(
@@ -47,12 +47,10 @@ fun NavGraphBuilder.invoiceNavGraph(
             InvoiceCreatingScreen(
                 book = book,
                 onCreationComplete = {
-                    // Carry over the reference to the final viewer
                     val finalRoute = if (orderRef != null) "${AppConstants.ROUTE_INVOICE}/$bookId?ref=$orderRef"
                                      else "${AppConstants.ROUTE_INVOICE}/$bookId"
                     
                     navController.navigate(finalRoute) {
-                        // Pop the 'creating' screen so back navigation goes to the Dashboard/History
                         popUpTo("${AppConstants.ROUTE_INVOICE_CREATING}/$bookId") { inclusive = true }
                     }
                 },
@@ -63,10 +61,6 @@ fun NavGraphBuilder.invoiceNavGraph(
         }
     }
 
-    /**
-     * ROUTE: Final Invoice Viewer
-     * Now accepts an optional 'ref' query parameter to lookup unique transactions.
-     */
     composable(
         route = "${AppConstants.ROUTE_INVOICE}/{bookId}?ref={ref}",
         arguments = listOf(
@@ -90,7 +84,7 @@ fun NavGraphBuilder.invoiceNavGraph(
                 onBack = { navController.popBackStack() },
                 isDarkTheme = isDarkTheme,
                 onToggleTheme = onToggleTheme,
-                orderRef = orderRef // Pass the reference to force a specific record lookup
+                orderRef = orderRef
             )
         }
     }

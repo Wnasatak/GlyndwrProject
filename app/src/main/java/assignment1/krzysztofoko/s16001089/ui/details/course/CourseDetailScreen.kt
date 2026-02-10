@@ -25,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
@@ -33,7 +34,6 @@ import java.util.Locale
 
 /**
  * Detailed Screen for University Course products.
- * Optimized for both phone and tablet using centralized Adaptive utilities.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,8 +42,8 @@ fun CourseDetailScreen(
     user: FirebaseUser?,
     onBack: () -> Unit,
     onLoginRequired: () -> Unit,
-    onToggleTheme: () -> Unit,
-    isDarkTheme: Boolean,
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit,
     onNavigateToProfile: () -> Unit,
     onViewInvoice: (String) -> Unit,
     onEnterClassroom: (String) -> Unit,
@@ -58,6 +58,7 @@ fun CourseDetailScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
 
     val isTablet = isTablet()
 
@@ -107,9 +108,7 @@ fun CourseDetailScreen(
                                 )
                             }
                         }
-                        IconButton(onClick = onToggleTheme) {
-                            Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null)
-                        }
+                        // Local ThemeToggleButton removed - centrally managed by Scaffold
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                 )
@@ -122,6 +121,7 @@ fun CourseDetailScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
                         Spacer(Modifier.height(16.dp)); Text(AppConstants.MSG_COURSE_NOT_FOUND)
+                        @Suppress("DEPRECATION")
                         TextButton(onClick = onBack) { Text(AppConstants.BTN_GO_BACK) }
                     }
                 }
@@ -152,6 +152,7 @@ fun CourseDetailScreen(
                                 ) {
                                     Column(modifier = Modifier.padding(if (isTablet) 32.dp else 20.dp)) {
                                         Text(text = currentCourse.title, style = if (isTablet) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                                        @Suppress("DEPRECATION")
                                         Text(text = "${AppConstants.TEXT_DEPARTMENT}: ${currentCourse.department}", style = if (isTablet) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
 
                                         Spacer(modifier = Modifier.height(16.dp))
@@ -178,6 +179,7 @@ fun CourseDetailScreen(
                                                             Text(AppConstants.BTN_ENTER_CLASSROOM, fontWeight = FontWeight.Bold)
                                                         }
                                                         if (currentCourse.price <= 0) {
+                                                            @Suppress("DEPRECATION")
                                                             OutlinedButton(onClick = { showRemoveConfirmation = true }, modifier = Modifier.height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))) {
                                                                 Icon(Icons.Default.DeleteOutline, null)
                                                             }
@@ -188,7 +190,7 @@ fun CourseDetailScreen(
                                                 Card(modifier = if (isTablet) Modifier.widthIn(max = 500.dp).align(Alignment.Center) else Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
                                                     Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                                         Icon(Icons.Default.LockPerson, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-                                                        Spacer(Modifier.height(12.dp)); Text(AppConstants.TITLE_ENROLLMENT_LOCKED, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                                        Spacer(Modifier.height(12.dp)); @Suppress("DEPRECATION") Text(AppConstants.TITLE_ENROLLMENT_LOCKED, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                                                         Text(AppConstants.MSG_SIGN_IN_PROMPT_COURSE, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
                                                         Spacer(Modifier.height(20.dp)); Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                                                             Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp))
@@ -202,6 +204,7 @@ fun CourseDetailScreen(
                                                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                                                         Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
                                                         Spacer(Modifier.width(16.dp))
+                                                        @Suppress("DEPRECATION")
                                                         Column {
                                                             Text(text = "Already Enrolled", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                                                             Text(text = "You are currently enrolled in: '$enrolledPaidCourseTitle'. You can only be enrolled in one paid course at a time.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -240,6 +243,7 @@ fun CourseDetailScreen(
                                                                 }
                                                                 Spacer(modifier = Modifier.height(16.dp))
                                                                 Button(onClick = { showOrderFlow = true }, modifier = if (isTablet) Modifier.width(400.dp).height(56.dp) else Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                                                                    @Suppress("DEPRECATION")
                                                                     Text("Pay & Enroll Now", fontWeight = FontWeight.Bold)
                                                                 }
                                                             }

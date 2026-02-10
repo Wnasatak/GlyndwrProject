@@ -1,13 +1,18 @@
 package assignment1.krzysztofoko.s16001089.data
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.*
 
+/**
+ * A high-performance repository for all product-like data.
+ * Optimized to provide a single, unified stream of data from multiple tables.
+ */
 class BookRepository(private val db: AppDatabase) {
 
-    fun getAllCombinedData(userId: String = ""): Flow<List<Book>?> {
+    /**
+     * Returns a live flow of all combined products.
+     * This is the "Source of Truth" for the entire application.
+     */
+    fun getAllCombinedData(userId: String = ""): Flow<List<Book>> {
         val booksFlow = db.bookDao().getAllBooks()
         val gearFlow = db.gearDao().getAllGear()
         val coursesFlow = db.courseDao().getAllCourses()
@@ -18,24 +23,22 @@ class BookRepository(private val db: AppDatabase) {
         } else flowOf(emptyList<PurchaseItem>())
 
         return combine(booksFlow, gearFlow, coursesFlow, audioBooksFlow, purchasesFlow) { books, gear, courses, audioBooks, purchaseRecords ->
-            if (books.isEmpty() && gear.isEmpty() && courses.isEmpty() && audioBooks.isEmpty()) {
-                null
-            } else {
-                val gearAsBooks = gear.map { it.toBook(purchaseRecords.find { p -> p.productId == it.id }?.orderConfirmation) }
-                val coursesAsBooks = courses.map { it.toBook(purchaseRecords.find { p -> p.productId == it.id }?.orderConfirmation) }
-                val audioBooksAsBooks = audioBooks.map { it.toBook(purchaseRecords.find { p -> p.productId == it.id }?.orderConfirmation) }
-                
-                val regularBooks = books.map { b ->
-                    b.withOrderConf(purchaseRecords.find { it.productId == b.id }?.orderConfirmation)
-                }
-                
-                regularBooks + gearAsBooks + coursesAsBooks + audioBooksAsBooks
+            val gearAsBooks = gear.map { it.toBook(purchaseRecords.find { p -> p.productId == it.id }?.orderConfirmation) }
+            val coursesAsBooks = courses.map { it.toBook(purchaseRecords.find { p -> p.productId == it.id }?.orderConfirmation) }
+            val audioBooksAsBooks = audioBooks.map { it.toBook(purchaseRecords.find { p -> p.productId == it.id }?.orderConfirmation) }
+            
+            val regularBooks = books.map { b ->
+                b.withOrderConf(purchaseRecords.find { it.productId == b.id }?.orderConfirmation)
             }
+            
+            regularBooks + gearAsBooks + coursesAsBooks + audioBooksAsBooks
         }
     }
 
+    /**
+     * High-speed lookup for a single item.
+     */
     suspend fun getItemById(id: String, userId: String = ""): Book? {
-        val books = getAllCombinedData(userId).first()
-        return books?.find { it.id == id }
+        return getAllCombinedData(userId).firstOrNull()?.find { it.id == id }
     }
 }

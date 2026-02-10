@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -55,6 +58,7 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.CreateAs
 import assignment1.krzysztofoko.s16001089.ui.tutor.components.Students.TutorStudentProfileScreen
 import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationScreen
 import assignment1.krzysztofoko.s16001089.ui.info.AboutScreen
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
 import coil.compose.AsyncImage
 
@@ -67,13 +71,15 @@ fun TutorPanelScreen(
     onLogout: () -> Unit,
     onNavigateToDeveloper: () -> Unit,
     onNavigateToInstruction: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
+    onOpenThemeBuilder: () -> Unit, // Added missing parameter
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit,
     onPlayAudio: (Book) -> Unit,
     externalPlayer: Player? = null,
     onStopPlayer: () -> Unit = {},
     currentPlayingBookId: String? = null,
     isAudioPlaying: Boolean = false,
+    initialSection: String? = null,
     viewModel: TutorViewModel = viewModel(factory = TutorViewModelFactory(
         db = AppDatabase.getDatabase(LocalContext.current),
         tutorId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
@@ -86,9 +92,22 @@ fun TutorPanelScreen(
     val selectedCourse by viewModel.selectedCourse.collectAsState()
     val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
     val selectedGradesTab by viewModel.selectedGradesTab.collectAsState()
+
+    // Sync section if navigated with a specific section argument
+    LaunchedEffect(initialSection) {
+        if (initialSection != null) {
+            try {
+                val section = TutorSection.valueOf(initialSection)
+                viewModel.setSection(section)
+            } catch (e: Exception) {
+                // Ignore invalid sections
+            }
+        }
+    }
     
     val isChatOpen = currentSection == TutorSection.CHAT
     val isReaderOpen = currentSection == TutorSection.READ_BOOK
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
     var showMenu by remember { mutableStateOf(false) }
 
     val infiniteTransitionBell = rememberInfiniteTransition(label = "bellRing")
@@ -194,19 +213,19 @@ fun TutorPanelScreen(
                             },
                             navigationIcon = {
                                 if (isChatOpen) {
-                                    IconButton(onClick = { viewModel.setSection(TutorSection.MESSAGES) }) { Icon(Icons.Default.ArrowBack, "Back to Messages") }
+                                    IconButton(onClick = { viewModel.setSection(TutorSection.MESSAGES) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Messages") }
                                 } else if (currentSection in listOf(TutorSection.COURSE_STUDENTS, TutorSection.COURSE_MODULES, TutorSection.COURSE_ASSIGNMENTS, TutorSection.COURSE_GRADES, TutorSection.COURSE_LIVE, TutorSection.COURSE_ARCHIVED_BROADCASTS)) {
-                                    IconButton(onClick = { viewModel.setSection(TutorSection.SELECTED_COURSE) }) { Icon(Icons.Default.ArrowBack, "Back to Course Detail") }
+                                    IconButton(onClick = { viewModel.setSection(TutorSection.SELECTED_COURSE) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Course Detail") }
                                 } else if (currentSection == TutorSection.SELECTED_COURSE) {
-                                    IconButton(onClick = { viewModel.setSection(TutorSection.MY_COURSES) }) { Icon(Icons.Default.ArrowBack, "Back to My Classes") }
+                                    IconButton(onClick = { viewModel.setSection(TutorSection.MY_COURSES) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to My Classes") }
                                 } else if (currentSection == TutorSection.TEACHER_DETAIL || currentSection == TutorSection.CREATE_ASSIGNMENT || currentSection == TutorSection.START_LIVE_STREAM) {
-                                    IconButton(onClick = { viewModel.setSection(TutorSection.DASHBOARD) }) { Icon(Icons.Default.ArrowBack, "Back to Dashboard") }
+                                    IconButton(onClick = { viewModel.setSection(TutorSection.DASHBOARD) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Dashboard") }
                                 } else if (currentSection == TutorSection.STUDENT_PROFILE) {
-                                    IconButton(onClick = { viewModel.setSection(TutorSection.STUDENTS) }) { Icon(Icons.Default.ArrowBack, "Back to Student Directory") }
+                                    IconButton(onClick = { viewModel.setSection(TutorSection.STUDENTS) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Student Directory") }
                                 } else if (currentSection == TutorSection.READ_BOOK) {
-                                    IconButton(onClick = { viewModel.setSection(TutorSection.LIBRARY) }) { Icon(Icons.Default.ArrowBack, "Back to Library") }
+                                    IconButton(onClick = { viewModel.setSection(TutorSection.LIBRARY) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Library") }
                                 } else if (currentSection !in listOf(TutorSection.DASHBOARD, TutorSection.MY_COURSES, TutorSection.LIBRARY, TutorSection.STUDENTS, TutorSection.MESSAGES)) {
-                                    IconButton(onClick = { viewModel.setSection(TutorSection.DASHBOARD) }) { Icon(Icons.Default.ArrowBack, null) }
+                                    IconButton(onClick = { viewModel.setSection(TutorSection.DASHBOARD) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
                                 }
                             },
                             actions = {
@@ -231,12 +250,20 @@ fun TutorPanelScreen(
                                             }
                                         }
                                     }
+                                    
+                                    ThemeToggleButton(
+                                        currentTheme = currentTheme,
+                                        onThemeChange = onThemeChange,
+                                        onOpenCustomBuilder = onOpenThemeBuilder, // Pass designer callback
+                                        isLoggedIn = true 
+                                    )
+
                                     Box {
                                         IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, AppConstants.TITLE_MORE_OPTIONS) }
                                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                                             DropdownMenuItem(text = { Text("Teacher Profile") }, onClick = { showMenu = false; viewModel.setSection(TutorSection.TEACHER_DETAIL) }, leadingIcon = { Icon(Icons.Default.AccountBox, null) })
                                             DropdownMenuItem(text = { Text(AppConstants.TITLE_PROFILE_SETTINGS) }, onClick = { showMenu = false; onNavigateToProfile() }, leadingIcon = { Icon(Icons.Default.Settings, null) })
-                                            DropdownMenuItem(text = { Text(if (isDarkTheme) AppConstants.TITLE_LIGHT_MODE else AppConstants.TITLE_DARK_MODE) }, onClick = { showMenu = false; onToggleTheme() }, leadingIcon = { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) })
+                                            
                                             DropdownMenuItem(text = { Text("App Info") }, onClick = { showMenu = false; viewModel.setSection(TutorSection.ABOUT) }, leadingIcon = { Icon(Icons.Default.Info, null) })
                                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                             DropdownMenuItem(text = { Text(AppConstants.BTN_LOG_OUT, color = MaterialTheme.colorScheme.error) }, onClick = { showMenu = false; onLogout() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) })
@@ -313,9 +340,9 @@ fun TutorPanelScreen(
                     ) {
                         TutorNavButton(selected = currentSection == TutorSection.DASHBOARD, onClick = { viewModel.setSection(TutorSection.DASHBOARD) }, icon = Icons.Default.Dashboard, label = "Home")
                         TutorNavButton(selected = currentSection == TutorSection.MY_COURSES, onClick = { viewModel.setSection(TutorSection.MY_COURSES) }, icon = Icons.Default.School, label = "Classes")
-                        TutorNavButton(selected = currentSection == TutorSection.LIBRARY, onClick = { viewModel.setSection(TutorSection.LIBRARY) }, icon = Icons.Default.LibraryBooks, label = "Library")
+                        TutorNavButton(selected = currentSection == TutorSection.LIBRARY, onClick = { viewModel.setSection(TutorSection.LIBRARY) }, icon = Icons.AutoMirrored.Filled.LibraryBooks, label = "Library")
                         TutorNavButton(selected = currentSection == TutorSection.STUDENTS, onClick = { viewModel.setSection(TutorSection.STUDENTS) }, icon = Icons.Default.People, label = "Students")
-                        TutorNavButton(selected = currentSection == TutorSection.MESSAGES, onClick = { viewModel.setSection(TutorSection.MESSAGES) }, icon = Icons.Default.Chat, label = "Messages")
+                        TutorNavButton(selected = currentSection == TutorSection.MESSAGES, onClick = { viewModel.setSection(TutorSection.MESSAGES) }, icon = Icons.AutoMirrored.Filled.Chat, label = "Messages")
                     }
                 }
             }
@@ -351,8 +378,8 @@ fun TutorPanelScreen(
                             TutorSection.START_LIVE_STREAM -> TutorCourseLiveTab(viewModel)
                             TutorSection.STUDENT_PROFILE -> TutorStudentProfileScreen(viewModel)
                             TutorSection.NOTIFICATIONS -> NotificationScreen(onNavigateToItem = {}, onNavigateToInvoice = {}, onNavigateToMessages = { viewModel.setSection(TutorSection.MESSAGES) }, onBack = { viewModel.setSection(TutorSection.DASHBOARD) }, isDarkTheme = isDarkTheme)
-                            TutorSection.ABOUT -> AboutScreen(onBack = { viewModel.setSection(TutorSection.DASHBOARD) }, onDeveloperClick = onNavigateToDeveloper, onInstructionClick = onNavigateToInstruction, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme)
-                            TutorSection.READ_BOOK -> activeBook?.let { book -> PdfReaderScreen(bookId = book.id, onBack = { viewModel.setSection(TutorSection.LIBRARY) }, isDarkTheme = isDarkTheme, onToggleTheme = onToggleTheme) }
+                            TutorSection.ABOUT -> AboutScreen(onBack = { viewModel.setSection(TutorSection.DASHBOARD) }, onDeveloperClick = onNavigateToDeveloper, onInstructionClick = onNavigateToInstruction, onOpenThemeBuilder = onOpenThemeBuilder, currentTheme = currentTheme, onThemeChange = onThemeChange)
+                            TutorSection.READ_BOOK -> activeBook?.let { book -> PdfReaderScreen(bookId = book.id, onBack = { viewModel.setSection(TutorSection.LIBRARY) }, currentTheme = currentTheme, onThemeChange = onThemeChange) }
                             TutorSection.LISTEN_AUDIOBOOK -> {
                                 LaunchedEffect(Unit) { activeAudioBook?.let { ab -> onPlayAudio(ab.toBook()); viewModel.setSection(TutorSection.LIBRARY) } }
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }

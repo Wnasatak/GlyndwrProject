@@ -9,7 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,18 +17,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
 /**
  * Screen displaying the version history and "What's New" information.
- * Refactored to use centralized Adaptive utilities for consistency and cleaner code.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VersionInfoScreen(
     onBack: () -> Unit,             
-    isDarkTheme: Boolean,           
-    onToggleTheme: () -> Unit       
+    currentTheme: Theme,           
+    onThemeChange: (Theme) -> Unit       
 ) {
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
+
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
@@ -50,12 +52,10 @@ fun VersionInfoScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = onToggleTheme) {
-                            Icon(
-                                imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                contentDescription = "Toggle Theme"
-                            )
-                        }
+                        ThemeToggleButton(
+                            currentTheme = currentTheme,
+                            onThemeChange = onThemeChange
+                        )
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
@@ -74,6 +74,7 @@ fun VersionInfoScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    @Suppress("DEPRECATION")
                     Text(
                         text = AppConstants.TITLE_LATEST_UPDATES,
                         style = MaterialTheme.typography.headlineSmall,

@@ -31,7 +31,6 @@ fun ClassroomScreen(
     courseId: String,
     onBack: () -> Unit,
     isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
     viewModel: ClassroomViewModel = viewModel(factory = ClassroomViewModelFactory(
         db = AppDatabase.getDatabase(LocalContext.current),
         courseId = courseId,
@@ -102,9 +101,7 @@ fun ClassroomScreen(
                             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                         },
                         actions = {
-                            IconButton(onClick = onToggleTheme) {
-                                Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null)
-                            }
+                            // Local ThemeToggleButton removed - centrally managed by Scaffold
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)

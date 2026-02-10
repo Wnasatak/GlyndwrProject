@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
@@ -32,7 +33,6 @@ import java.util.Locale
 
 /**
  * Detailed Information Screen for a Book item.
- * Optimized with centralized Adaptive utilities for a cleaner, consistent UI.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,8 +42,8 @@ fun BookDetailScreen(
     user: FirebaseUser?,              
     onLoginRequired: () -> Unit,      
     onBack: () -> Unit,               
-    isDarkTheme: Boolean,             
-    onToggleTheme: () -> Unit,        
+    currentTheme: Theme,             
+    onThemeChange: (Theme) -> Unit,        
     onReadBook: (String) -> Unit,     
     onNavigateToProfile: () -> Unit,  
     onViewInvoice: (String) -> Unit,  
@@ -58,6 +58,7 @@ fun BookDetailScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
 
     val book by viewModel.book.collectAsState()
     val loading by viewModel.loading.collectAsState()
@@ -113,9 +114,7 @@ fun BookDetailScreen(
                                 ) 
                             }
                         }
-                        IconButton(onClick = onToggleTheme) { 
-                            Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) 
-                        }
+                        // ThemeToggleButton removed - centrally managed
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                 )
@@ -178,6 +177,7 @@ fun BookDetailScreen(
                                                         Button(onClick = { onReadBook(currentBook.id) }, modifier = Modifier.weight(1f).height(56.dp), shape = RoundedCornerShape(16.dp)) {
                                                             Icon(Icons.Default.AutoStories, null)
                                                             Spacer(Modifier.width(12.dp))
+                                                            @Suppress("DEPRECATION")
                                                             Text(AppConstants.BTN_READ_NOW, fontWeight = FontWeight.Bold)
                                                         }
                                                         if (currentBook.price <= 0) {
@@ -189,9 +189,9 @@ fun BookDetailScreen(
                                                 Card(modifier = Modifier.adaptiveButtonWidth().align(Alignment.Center), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
                                                     Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                                         Icon(Icons.Default.LockPerson, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-                                                        Spacer(Modifier.height(12.dp)); Text(AppConstants.TITLE_SIGN_IN_REQUIRED, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                                        Spacer(Modifier.height(12.dp)); @Suppress("DEPRECATION") Text(AppConstants.TITLE_SIGN_IN_REQUIRED, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                                                         Text(AppConstants.MSG_SIGN_IN_PROMPT_BOOK, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
-                                                        Spacer(Modifier.height(20.dp)); Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(AppConstants.BTN_SIGN_IN_REGISTER) }
+                                                        Spacer(Modifier.height(20.dp)); Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(AppConstants.BTN_SIGN_IN_REGISTER) }
                                                     }
                                                 }
                                             } else {
@@ -209,12 +209,14 @@ fun BookDetailScreen(
                                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                                             val pPrice = String.format(Locale.US, "%.2f", currentBook.price)
                                                             val dPrice = String.format(Locale.US, "%.2f", discountedPrice)
+                                                            @Suppress("DEPRECATION")
                                                             Text(text = "£$pPrice", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
                                                             Spacer(Modifier.width(12.dp)); Text(text = "£$dPrice", style = if (isTablet) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                                         }
                                                         if (effectiveDiscount > 0) {
                                                             val roleName = localUser?.role?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "User"
                                                             Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { 
+                                                                @Suppress("DEPRECATION")
                                                                 Text(
                                                                     text = "${roleName.uppercase()} DISCOUNT (-${effectiveDiscount.toInt()}%)", 
                                                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), 

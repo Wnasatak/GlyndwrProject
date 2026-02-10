@@ -1,6 +1,5 @@
 package assignment1.krzysztofoko.s16001089.ui.components
 
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -35,7 +34,7 @@ import assignment1.krzysztofoko.s16001089.data.Book
 import coil.compose.AsyncImage
 
 /**
- * ProductComponents handles the core visual representation of items in the store.
+ * Handles the core visual representation of products in the university ecosystem.
  */
 
 @Composable
@@ -45,14 +44,14 @@ fun UniversalProductSlider(
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(ProDesign.StandardPadding)
     ) {
         items(products) { item ->
             Card(
                 modifier = Modifier
                     .width(140.dp)
                     .clickable { onProductClick(item) },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(ProDesign.CompactPadding),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
                 Column {
@@ -65,7 +64,6 @@ fun UniversalProductSlider(
                         contentScale = ContentScale.Crop
                     )
                     Column(modifier = Modifier.padding(8.dp)) {
-                        @Suppress("DEPRECATION")
                         Text(
                             text = item.title,
                             style = MaterialTheme.typography.labelMedium,
@@ -74,7 +72,6 @@ fun UniversalProductSlider(
                             overflow = TextOverflow.Ellipsis
                         )
                         val priceText = if (item.price == 0.0) AppConstants.LABEL_FREE else "£${formatPrice(item.price)}"
-                        @Suppress("DEPRECATION")
                         Text(
                             text = priceText,
                             style = MaterialTheme.typography.labelSmall,
@@ -137,9 +134,13 @@ fun ProductHeaderImage(
             }
             
             if (isOwned) {
-                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    if (book.price > 0) { StatusBadge(text = AppConstants.LABEL_PAID, icon = Icons.Default.Paid) } else { Spacer(Modifier.width(1.dp)) }
-                    StatusBadge(text = AppConstants.getItemStatusLabel(book).uppercase(), icon = Icons.Default.LibraryAddCheck)
+                Row(modifier = Modifier.fillMaxWidth().padding(ProDesign.StandardPadding), horizontalArrangement = Arrangement.SpaceBetween) {
+                    if (book.price > 0) { 
+                        EnrollmentStatusBadge(status = "APPROVED") 
+                    } else { 
+                        Spacer(Modifier.width(1.dp)) 
+                    }
+                    EnrollmentStatusBadge(status = if (book.mainCategory == AppConstants.CAT_COURSES) "ENROLLED" else "APPROVED")
                 }
             }
         }
@@ -220,15 +221,10 @@ fun QuickViewDialog(
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = RoundedCornerShape(12.dp)) { Text(text = book.description, modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp, textAlign = TextAlign.Justify) }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                    if (book.price == 0.0) { Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50)) }
-                    else { Text(text = "£${formatPrice(book.price)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black) }
-                    Spacer(Modifier.width(8.dp))
-                    @Suppress("DEPRECATION")
-                    AssistChip(onClick = {}, label = { Text(book.category) })
+                    val priceText = if (book.price == 0.0) AppConstants.LABEL_FREE else "£${formatPrice(book.price)}"
+                    Text(text = priceText, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                 }
             }
-        },
-        shape = RoundedCornerShape(28.dp),
-        tonalElevation = 8.dp
+        }
     )
 }

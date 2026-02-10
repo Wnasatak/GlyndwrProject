@@ -21,6 +21,7 @@ import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import kotlinx.coroutines.launch
 
 /**
@@ -37,8 +38,8 @@ fun HomeScreen(
     error: String?,                   
     onRefresh: () -> Unit,            
     onAboutClick: () -> Unit,         
-    isDarkTheme: Boolean,             
-    onToggleTheme: () -> Unit,        
+    currentTheme: Theme,             
+    onThemeChange: (Theme) -> Unit,        
     onPlayAudio: (Book) -> Unit,      
     currentPlayingBookId: String?,    
     isAudioPlaying: Boolean,          
@@ -70,7 +71,7 @@ fun HomeScreen(
                 if (uiState.isSearchVisible) viewModel.setSearchVisible(false) 
             }
     ) {
-        VerticalWavyBackground(isDarkTheme = isDarkTheme)
+        VerticalWavyBackground(isDarkTheme = currentTheme == Theme.DARK)
         
         Scaffold(
             containerColor = Color.Transparent,
@@ -79,9 +80,9 @@ fun HomeScreen(
                 HomeTopBar(
                     isSearchVisible = uiState.isSearchVisible,
                     isLoggedIn = isLoggedIn,
-                    isDarkTheme = isDarkTheme,
+                    currentTheme = currentTheme,
                     onSearchClick = { viewModel.setSearchVisible(true) },
-                    onToggleTheme = { viewModel.setSearchVisible(false); onToggleTheme() },
+                    onThemeChange = { viewModel.setSearchVisible(false); onThemeChange(it) },
                     onAboutClick = { viewModel.setSearchVisible(false); onAboutClick() },
                     onAuthClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_AUTH) },
                     onDashboardClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_DASHBOARD) }

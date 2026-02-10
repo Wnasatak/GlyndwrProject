@@ -73,7 +73,7 @@ fun SpinningLogo(modifier: Modifier = Modifier) {
 
 /**
  * Renders a dynamic, animated background with horizontal waves.
- * Updated to use Theme background instead of hardcoded white.
+ * Updated to use Theme background and specific wave colors for each theme.
  */
 @Composable
 fun HorizontalWavyBackground(
@@ -96,7 +96,17 @@ fun HorizontalWavyBackground(
     )
 
     val bgColor = MaterialTheme.colorScheme.background
-    val waveColor1 = if (isDarkTheme) WaveSlateDark1 else WaveBlueLight1
+    val currentTheme = LocalAppTheme.current
+    
+    val waveColor1 = when(currentTheme) {
+        Theme.DARK -> WaveSlateDark1
+        Theme.SKY -> WaveSky1
+        Theme.FOREST -> WaveForest1
+        Theme.GRAY -> WaveGray1
+        Theme.DARK_BLUE -> WaveDarkBlue1
+        Theme.CUSTOM -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
+        else -> WaveBlueLight1
+    }
 
     ComposeCanvas(modifier = Modifier.fillMaxSize()) {
         drawRect(color = bgColor)
@@ -132,7 +142,7 @@ fun HorizontalWavyBackground(
 
 /**
  * Renders a dynamic, animated background with vertical waves.
- * Updated to use Theme background instead of hardcoded white.
+ * Updated to use Theme background and specific wave colors for each theme.
  */
 @Composable
 fun VerticalWavyBackground(
@@ -155,8 +165,27 @@ fun VerticalWavyBackground(
     )
 
     val bgColor = MaterialTheme.colorScheme.background
-    val waveColor1 = if (isDarkTheme) WaveSlateDark1 else WaveBlueLight1
-    val waveColor2 = if (isDarkTheme) WaveSlateDark2 else WaveBlueLight2
+    val currentTheme = LocalAppTheme.current
+
+    val waveColor1 = when(currentTheme) {
+        Theme.DARK -> WaveSlateDark1
+        Theme.SKY -> WaveSky1
+        Theme.FOREST -> WaveForest1
+        Theme.GRAY -> WaveGray1
+        Theme.DARK_BLUE -> WaveDarkBlue1
+        Theme.CUSTOM -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+        else -> WaveBlueLight1
+    }
+    
+    val waveColor2 = when(currentTheme) {
+        Theme.DARK -> WaveSlateDark2
+        Theme.SKY -> WaveSky2
+        Theme.FOREST -> WaveForest2
+        Theme.GRAY -> WaveGray2
+        Theme.DARK_BLUE -> WaveDarkBlue2
+        Theme.CUSTOM -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
+        else -> WaveBlueLight2
+    }
 
     ComposeCanvas(modifier = Modifier.fillMaxSize()) {
         drawRect(color = bgColor)

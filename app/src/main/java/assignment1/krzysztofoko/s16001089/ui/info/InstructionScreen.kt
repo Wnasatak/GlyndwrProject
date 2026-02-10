@@ -7,14 +7,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,20 +20,22 @@ import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.InfoCard
+import assignment1.krzysztofoko.s16001089.ui.components.ThemeToggleButton
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
 /**
  * Instruction Screen providing a user guide for the application.
- * Optimized for both phone (original layout) and tablet (centered/squeezed).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstructionScreen(
     onBack: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
@@ -48,6 +46,7 @@ fun InstructionScreen(
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { 
+                        @Suppress("DEPRECATION")
                         Text(
                             text = AppConstants.TITLE_HOW_TO_USE, 
                             style = MaterialTheme.typography.titleLarge, 
@@ -60,12 +59,10 @@ fun InstructionScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = onToggleTheme) {
-                            Icon(
-                                imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                contentDescription = "Toggle Theme"
-                            )
-                        }
+                        ThemeToggleButton(
+                            currentTheme = currentTheme,
+                            onThemeChange = onThemeChange
+                        )
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
@@ -73,7 +70,6 @@ fun InstructionScreen(
                 )
             }
         ) { padding ->
-            // Box for global content alignment: Centered on tablet, start-aligned on phone
             Box(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = if (isTablet) Alignment.TopCenter else Alignment.TopStart
@@ -86,6 +82,7 @@ fun InstructionScreen(
                     horizontalAlignment = if (isTablet) Alignment.CenterHorizontally else Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(if (isTablet) 12.dp else 0.dp)
                 ) {
+                    @Suppress("DEPRECATION")
                     Text(
                         text = AppConstants.TITLE_WELCOME_STORE,
                         style = MaterialTheme.typography.headlineSmall,
@@ -97,7 +94,7 @@ fun InstructionScreen(
                     if (isTablet) Spacer(modifier = Modifier.height(12.dp))
                     
                     InfoCard(
-                        icon = Icons.Default.MenuBook,
+                        icon = Icons.AutoMirrored.Filled.MenuBook,
                         title = "Browse Items",
                         content = "Use the home screen to browse through various books, audio books, and university gear. You can filter by category using the top bar.",
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
@@ -126,7 +123,7 @@ fun InstructionScreen(
                     InfoCard(
                         icon = Icons.Default.Settings,
                         title = "Customization",
-                        content = "Toggle between Light and Dark mode using the sun/moon icon in the top bar to suit your preference.",
+                        content = "Change between six professional themes from the palette icon in the top bar.",
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                         modifier = Modifier.padding(vertical = 4.dp),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
@@ -141,6 +138,7 @@ fun InstructionScreen(
                             .height(56.dp),
                         shape = RoundedCornerShape(16.dp)
                     ) {
+                        @Suppress("DEPRECATION")
                         Text(AppConstants.BTN_GOT_IT, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }

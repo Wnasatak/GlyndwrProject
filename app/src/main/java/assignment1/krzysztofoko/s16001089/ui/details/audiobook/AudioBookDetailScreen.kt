@@ -25,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
@@ -33,7 +34,6 @@ import java.util.Locale
 
 /**
  * Detailed Screen for Audiobook products.
- * Refactored to use centralized Adaptive utilities for consistency and cleaner code.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,8 +43,8 @@ fun AudioBookDetailScreen(
     user: FirebaseUser?,              
     onLoginRequired: () -> Unit,      
     onBack: () -> Unit,               
-    isDarkTheme: Boolean,             
-    onToggleTheme: () -> Unit,        
+    currentTheme: Theme,             
+    onThemeChange: (Theme) -> Unit,        
     onPlayAudio: (Book) -> Unit,      
     onNavigateToProfile: () -> Unit,  
     onViewInvoice: (String) -> Unit,  
@@ -59,6 +59,7 @@ fun AudioBookDetailScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
     
     val isTablet = isTablet()
 
@@ -116,9 +117,7 @@ fun AudioBookDetailScreen(
                                 ) 
                             }
                         }
-                        IconButton(onClick = onToggleTheme) { 
-                            Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) 
-                        }
+                        // ThemeToggleButton removed as it's now global
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                 )
@@ -131,6 +130,7 @@ fun AudioBookDetailScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
                         Spacer(Modifier.height(16.dp)); Text(AppConstants.MSG_AUDIOBOOK_NOT_FOUND)
+                        @Suppress("DEPRECATION")
                         TextButton(onClick = onBack) { Text(AppConstants.BTN_GO_BACK) }
                     }
                 }
@@ -194,6 +194,7 @@ fun AudioBookDetailScreen(
                                                             Text(AppConstants.BTN_LISTEN_NOW, fontWeight = FontWeight.Bold)
                                                         }
                                                         if (currentBook.price <= 0) {
+                                                            @Suppress("DEPRECATION")
                                                             OutlinedButton(
                                                                 onClick = { showRemoveConfirmation = true },
                                                                 modifier = Modifier.height(56.dp),
@@ -210,11 +211,12 @@ fun AudioBookDetailScreen(
                                                 Card(modifier = Modifier.adaptiveButtonWidth().align(Alignment.Center), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
                                                     Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                                         Icon(Icons.Default.LockPerson, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-                                                        Spacer(Modifier.height(12.dp)); Text(AppConstants.TITLE_SIGN_IN_REQUIRED, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                                        Spacer(Modifier.height(12.dp)); @Suppress("DEPRECATION") Text(AppConstants.TITLE_SIGN_IN_REQUIRED, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                                                         Text(AppConstants.MSG_SIGN_IN_PROMPT_AUDIO, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
                                                         Spacer(Modifier.height(20.dp)); Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { 
                                                             Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp))
                                                             Spacer(Modifier.width(8.dp))
+                                                            @Suppress("DEPRECATION")
                                                             Text(AppConstants.BTN_SIGN_IN_REGISTER) 
                                                         }
                                                     }
@@ -240,12 +242,14 @@ fun AudioBookDetailScreen(
                                                     
                                                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                                                         Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            @Suppress("DEPRECATION")
                                                             Text(text = "£${String.format(Locale.US, "%.2f", currentBook.price)}", style = MaterialTheme.typography.titleMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
                                                             Spacer(Modifier.width(12.dp)); Text(text = "£${String.format(Locale.US, "%.2f", discountedPrice)}", style = if (isTablet) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                                         }
                                                         if (effectiveDiscount > 0) {
                                                             val roleName = localUser?.role?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "User"
                                                             Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(8.dp)) { 
+                                                                @Suppress("DEPRECATION")
                                                                 Text(
                                                                     text = "${roleName.uppercase()} DISCOUNT (-${effectiveDiscount.toInt()}%)", 
                                                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), 
@@ -255,7 +259,7 @@ fun AudioBookDetailScreen(
                                                                 ) 
                                                             }
                                                         }
-                                                        Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.adaptiveButtonWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text(AppConstants.BTN_BUY_NOW, fontWeight = FontWeight.Bold) }
+                                                        Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.adaptiveButtonWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { @Suppress("DEPRECATION") Text(AppConstants.BTN_BUY_NOW, fontWeight = FontWeight.Bold) }
                                                     }
                                                 }
                                             }

@@ -28,11 +28,8 @@ import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.*
-import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveScreenContainer
-import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
-import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
-import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
-import assignment1.krzysztofoko.s16001089.ui.components.isTablet
+import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.*
 
 /**
  * Screen for Administrators to view and manage specific student details.
@@ -44,8 +41,8 @@ fun AdminUserDetailsScreen(
     userId: String,
     onBack: () -> Unit,
     navController: NavController,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit,
     viewModel: AdminUserDetailsViewModel = viewModel(factory = AdminUserDetailsViewModelFactory(
         userId = userId,
         db = AppDatabase.getDatabase(LocalContext.current)
@@ -63,7 +60,10 @@ fun AdminUserDetailsScreen(
     val allCourses by viewModel.allCourses.collectAsState()
     val purchasedBooks by viewModel.purchasedBooks.collectAsState()
     val commentedBooks by viewModel.commentedBooks.collectAsState()
-    
+
+    val isDarkTheme = currentTheme == Theme.DARK
+    var showThemeMenu by remember { mutableStateOf(false) }
+
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf(
         TabItem("Info", Icons.Default.Info),
@@ -118,9 +118,10 @@ fun AdminUserDetailsScreen(
                                 } 
                             },
                             actions = { 
-                                IconButton(onClick = onToggleTheme) { 
-                                    Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) 
-                                } 
+                                ThemeToggleButton(
+                                    currentTheme = currentTheme,
+                                    onThemeChange = onThemeChange
+                                )
                             },
                             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                         )

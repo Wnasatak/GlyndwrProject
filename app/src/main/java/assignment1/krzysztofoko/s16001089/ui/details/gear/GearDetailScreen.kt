@@ -25,6 +25,7 @@ import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
@@ -33,7 +34,6 @@ import java.util.Locale
 
 /**
  * Detailed Information Screen for University Gear.
- * Fixed tablet layout and bottom bar positioning.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,8 +44,8 @@ fun GearDetailScreen(
     user: FirebaseUser?,
     onLoginRequired: () -> Unit,
     onBack: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit,
     onNavigateToProfile: () -> Unit,
     onViewInvoice: (String) -> Unit,
     viewModel: GearViewModel = viewModel(factory = GearViewModelFactory(
@@ -59,6 +59,7 @@ fun GearDetailScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
     
     val isTablet = isTablet()
 
@@ -95,9 +96,12 @@ fun GearDetailScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
+                    windowInsets = WindowInsets(0, 0, 0, 0), // Fixed: Removed top padding
                     title = { Text(gear?.title ?: "Details", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
-                    actions = { IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) } },
+                    actions = {
+                        // Local ThemeToggleButton removed - centrally managed by Scaffold
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 )
             },
@@ -149,6 +153,7 @@ fun GearDetailScreen(
                                     Column(modifier = Modifier.padding(24.dp)) {
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Column(Modifier.weight(1f)) {
+                                                @Suppress("DEPRECATION")
                                                 Text("Wrexham University", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                                                 Text(item.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
                                             }
@@ -156,6 +161,7 @@ fun GearDetailScreen(
                                                 val discountPrice = item.price * ((100.0 - effectiveDiscount) / 100.0)
                                                 if (item.price > 0) {
                                                     if (effectiveDiscount > 0) {
+                                                        @Suppress("DEPRECATION")
                                                         Text("£${String.format("%.2f", item.price)}", style = MaterialTheme.typography.bodySmall.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
                                                         Text("£${String.format("%.2f", discountPrice)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                                     } else {
@@ -175,6 +181,7 @@ fun GearDetailScreen(
                                                 border = BorderStroke(0.5.dp, Color(0xFF2E7D32).copy(alpha = 0.3f))
                                             ) {
                                                 val roleLabel = localUser?.role?.uppercase() ?: "USER"
+                                                @Suppress("DEPRECATION")
                                                 Text(
                                                     text = "$roleLabel DISCOUNT (-${effectiveDiscount.toInt()}% )",
                                                     style = MaterialTheme.typography.labelSmall,

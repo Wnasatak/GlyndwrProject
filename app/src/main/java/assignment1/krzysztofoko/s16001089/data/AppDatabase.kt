@@ -16,9 +16,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         Assignment::class, AssignmentSubmission::class, Grade::class, LiveSession::class, 
         ClassroomMessage::class, TutorProfile::class, WalletTransaction::class,
         CourseEnrollmentDetails::class, SystemLog::class, AssignedCourse::class,
-        Attendance::class, RoleDiscount::class
+        Attendance::class, RoleDiscount::class, UserTheme::class
     ], 
-    version = 27, 
+    version = 31, // Bumped to 31 for Theme Persistence
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -30,56 +30,92 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun classroomDao(): ClassroomDao
     abstract fun auditDao(): AuditDao
     abstract fun assignedCourseDao(): AssignedCourseDao
+    abstract fun userThemeDao(): UserThemeDao
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        /**
+         * Migration 30 to 31: Adds lastSelectedTheme column to user_themes.
+         */
+        private val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `user_themes` ADD COLUMN `lastSelectedTheme` TEXT NOT NULL DEFAULT 'DARK'")
+            }
+        }
+
+        // Migration 29 to 30: Cleans up users_local and ensures user_themes exists
+        private val MIGRATION_29_30 = object : Migration(29, 30) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Recreate users_local to remove unwanted theme columns
+                db.execSQL("CREATE TABLE IF NOT EXISTS `users_local_new` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `email` TEXT NOT NULL, `photoUrl` TEXT, `title` TEXT, `address` TEXT, `phoneNumber` TEXT, `selectedPaymentMethod` TEXT, `balance` REAL NOT NULL, `role` TEXT NOT NULL, `discountPercent` REAL NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("INSERT INTO users_local_new (id, name, email, photoUrl, title, address, phoneNumber, selectedPaymentMethod, balance, role, discountPercent) SELECT id, name, email, photoUrl, title, address, phoneNumber, selectedPaymentMethod, balance, role, discountPercent FROM users_local")
+                db.execSQL("DROP TABLE users_local")
+                db.execSQL("ALTER TABLE users_local_new RENAME TO users_local")
+
+                // 2. Ensure user_themes exists
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `user_themes` (
+                        `userId` TEXT NOT NULL, 
+                        `isCustomThemeEnabled` INTEGER NOT NULL DEFAULT 0, 
+                        `customPrimary` INTEGER, 
+                        `customOnPrimary` INTEGER, 
+                        `customPrimaryContainer` INTEGER, 
+                        `customOnPrimaryContainer` INTEGER, 
+                        `customSecondary` INTEGER, 
+                        `customOnSecondary` INTEGER, 
+                        `customSecondaryContainer` INTEGER, 
+                        `customOnSecondaryContainer` INTEGER, 
+                        `customTertiary` INTEGER, 
+                        `customOnTertiary` INTEGER, 
+                        `customTertiaryContainer` INTEGER, 
+                        `customOnTertiaryContainer` INTEGER, 
+                        `customBackground` INTEGER, 
+                        `customOnBackground` INTEGER, 
+                        `customSurface` INTEGER, 
+                        `customOnSurface` INTEGER, 
+                        `customIsDark` INTEGER NOT NULL DEFAULT 1, 
+                        PRIMARY KEY(`userId`)
+                    )
+                """.trimIndent())
+            }
+        }
+
+        private val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `user_themes` (`userId` TEXT NOT NULL, `isCustomThemeEnabled` INTEGER NOT NULL DEFAULT 0, `customPrimary` INTEGER, `customOnPrimary` INTEGER, `customPrimaryContainer` INTEGER, `customOnPrimaryContainer` INTEGER, `customSecondary` INTEGER, `customOnSecondary` INTEGER, `customSecondaryContainer` INTEGER, `customOnSecondaryContainer` INTEGER, `customTertiary` INTEGER, `customOnTertiary` INTEGER, `customTertiaryContainer` INTEGER, `customOnTertiaryContainer` INTEGER, `customBackground` INTEGER, `customOnBackground` INTEGER, `customSurface` INTEGER, `customOnSurface` INTEGER, `customIsDark` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`userId`))")
+            }
+        }
+
+        private val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // This migration is now redundant but kept for history
+                db.execSQL("ALTER TABLE users_local ADD COLUMN isCustomThemeEnabled INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customPrimary INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customOnPrimary INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customPrimaryContainer INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customOnPrimaryContainer INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customSecondary INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customOnSecondary INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customSecondaryContainer INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customOnSecondaryContainer INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customTertiary INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customOnTertiary INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customTertiaryContainer INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customOnTertiaryContainer INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customBackground INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customOnBackground INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customSurface INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customOnSurface INTEGER")
+                db.execSQL("ALTER TABLE users_local ADD COLUMN customIsDark INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         private val MIGRATION_26_27 = object : Migration(26, 27) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE TABLE IF NOT EXISTS `global_discounts` (`role` TEXT NOT NULL, `discountPercent` REAL NOT NULL, PRIMARY KEY(`role`))")
                 db.execSQL("ALTER TABLE users_local ADD COLUMN discountPercent REAL NOT NULL DEFAULT 0.0")
-            }
-        }
-
-        private val MIGRATION_25_26 = object : Migration(25, 26) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                // Ensure columns exist before adding them, thoughRoom usually handles this if version is bumped
-                // But for manual migrations we need to be careful.
-                // Based on previous history, we check if these were already added.
-                // Added title to support renaming broadcasts
-                // Handled in Room version bump usually, but adding for completeness if needed.
-            }
-        }
-
-        private val MIGRATION_24_25 = object : Migration(24, 25) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE assignments ADD COLUMN allowedFileTypes TEXT NOT NULL DEFAULT 'PDF,DOCX,ZIP'")
-            }
-        }
-
-        private val MIGRATION_23_24 = object : Migration(23, 24) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("CREATE TABLE IF NOT EXISTS `attendance` (`userId` TEXT NOT NULL, `courseId` TEXT NOT NULL, `date` INTEGER NOT NULL, `isPresent` INTEGER NOT NULL, PRIMARY KEY(`userId`, `courseId`, `date`))")
-            }
-        }
-
-        private val MIGRATION_22_23 = object : Migration(22, 23) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE assignments ADD COLUMN moduleId TEXT NOT NULL DEFAULT ''")
-            }
-        }
-
-        private val MIGRATION_21_22 = object : Migration(21, 22) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE users_local ADD COLUMN title TEXT DEFAULT NULL")
-                db.execSQL("ALTER TABLE tutor_profiles ADD COLUMN title TEXT DEFAULT NULL")
-            }
-        }
-
-        private val MIGRATION_20_21 = object : Migration(20, 21) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("CREATE TABLE IF NOT EXISTS `assigned_courses` (`tutorId` TEXT NOT NULL, `courseId` TEXT NOT NULL, `assignedAt` INTEGER NOT NULL, PRIMARY KEY(`tutorId`, `courseId`))")
             }
         }
 
@@ -101,8 +137,14 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_15_16 = object : Migration(15, 16) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE wallet_history ADD COLUMN purchaseId TEXT DEFAULT NULL") } }
         private val MIGRATION_16_17 = object : Migration(16, 17) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE IF NOT EXISTS `course_enrollment_details` (`id` TEXT NOT NULL, `userId` TEXT NOT NULL, `courseId` TEXT NOT NULL, `lastQualification` TEXT NOT NULL, `institution` TEXT NOT NULL, `graduationYear` TEXT NOT NULL, `englishProficiencyLevel` TEXT NOT NULL, `dateOfBirth` TEXT NOT NULL, `nationality` TEXT NOT NULL, `gender` TEXT NOT NULL, `emergencyContactName` TEXT NOT NULL, `emergencyContactPhone` TEXT NOT NULL, `motivationalText` TEXT NOT NULL, `cvFileName` TEXT, `portfolioUrl` TEXT, `specialSupportRequirements` TEXT, `status` TEXT NOT NULL, `submittedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))") } }
         private val MIGRATION_17_18 = object : Migration(17, 18) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE IF NOT EXISTS `system_logs` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `userId` TEXT NOT NULL, `userName` TEXT NOT NULL, `action` TEXT NOT NULL, `targetId` TEXT NOT NULL, `details` TEXT NOT NULL, `logType` TEXT NOT NULL, `timestamp` INTEGER NOT NULL)") } }
-        private val MIGRATION_18_19 = object : Migration(18, 19) { override fun migrate(db: SupportSQLiteDatabase) { /* Version adjustment */ } }
-        private val MIGRATION_19_20 = object : Migration(19, 20) { override fun migrate(db: SupportSQLiteDatabase) { /* Backup restoration adjustment */ } }
+        private val MIGRATION_18_19 = object : Migration(18, 19) { override fun migrate(db: SupportSQLiteDatabase) { } }
+        private val MIGRATION_19_20 = object : Migration(19, 20) { override fun migrate(db: SupportSQLiteDatabase) { } }
+        private val MIGRATION_20_21 = object : Migration(20, 21) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE IF NOT EXISTS `assigned_courses` (`tutorId` TEXT NOT NULL, `courseId` TEXT NOT NULL, `assignedAt` INTEGER NOT NULL, PRIMARY KEY(`tutorId`, `courseId`))") } }
+        private val MIGRATION_21_22 = object : Migration(21, 22) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE users_local ADD COLUMN title TEXT DEFAULT NULL"); db.execSQL("ALTER TABLE tutor_profiles ADD COLUMN title TEXT DEFAULT NULL") } }
+        private val MIGRATION_22_23 = object : Migration(22, 23) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE assignments ADD COLUMN moduleId TEXT NOT NULL DEFAULT ''") } }
+        private val MIGRATION_23_24 = object : Migration(23, 24) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("CREATE TABLE IF NOT EXISTS `attendance` (`userId` TEXT NOT NULL, `courseId` TEXT NOT NULL, `date` INTEGER NOT NULL, `isPresent` INTEGER NOT NULL, PRIMARY KEY(`userId`, `courseId`, `date`))") } }
+        private val MIGRATION_24_25 = object : Migration(24, 25) { override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE assignments ADD COLUMN allowedFileTypes TEXT NOT NULL DEFAULT 'PDF,DOCX,ZIP'") } }
+        private val MIGRATION_25_26 = object : Migration(25, 26) { override fun migrate(db: SupportSQLiteDatabase) { } }
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -119,7 +161,8 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
                     MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
                     MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
-                    MIGRATION_25_26, MIGRATION_26_27
+                    MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29,
+                    MIGRATION_29_30, MIGRATION_30_31
                 )
                 .fallbackToDestructiveMigration()
                 .build()

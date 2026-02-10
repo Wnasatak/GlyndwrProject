@@ -13,6 +13,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,6 +47,7 @@ import java.util.*
 
 /**
  * Centralized Popup Controller.
+ * Fully optimized to follow the Pro Signature Design System.
  */
 object AppPopups {
 
@@ -56,40 +62,23 @@ object AppPopups {
     ) {
         if (!show) return
 
-        val icon = when {
-            isAudioBook -> Icons.Default.Headphones
-            category == AppConstants.CAT_GEAR -> Icons.Default.Checkroom
-            category == AppConstants.CAT_COURSES -> Icons.Default.School
-            else -> Icons.Default.LibraryAdd
-        }
-
-        val title = when {
-            category == AppConstants.CAT_COURSES -> AppConstants.TITLE_COURSE_ENROLLMENT
-            category == AppConstants.CAT_GEAR -> AppConstants.TITLE_ITEM_RESERVATION
-            else -> AppConstants.TITLE_ADD_TO_LIBRARY
-        }
-
-        val prompt = when {
-            isAudioBook -> "Do you want to add the digital audiobook '$itemTitle' to your library collection?"
-            category == AppConstants.CAT_GEAR -> "Would you like to reserve '$itemTitle' for free pick-up at the Student Hub?"
-            category == AppConstants.CAT_COURSES -> "Are you ready to enroll in the academic course '$itemTitle' for free?"
-            else -> "Do you want to add the digital book '$itemTitle' to your collection for free?"
-        }
-
-        val confirmText = when {
-            category == AppConstants.CAT_GEAR -> AppConstants.BTN_PICKUP_FREE
-            category == AppConstants.CAT_COURSES -> AppConstants.BTN_ENROLL_FREE
-            else -> AppConstants.BTN_ADD_TO_LIBRARY
-        }
-
         AlertDialog(
             onDismissRequest = onDismiss,
-            icon = { Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp)) },
-            title = { Text(title, fontWeight = FontWeight.ExtraBold) },
-            text = { Text(prompt, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium) },
+            shape = RoundedCornerShape(ProDesign.CardRadius),
+            containerColor = MaterialTheme.colorScheme.surface,
+            icon = { 
+                Icon(
+                    imageVector = Icons.Default.LibraryAdd, 
+                    contentDescription = null, 
+                    tint = MaterialTheme.colorScheme.primary, 
+                    modifier = Modifier.size(32.dp)
+                ) 
+            },
+            title = { Text(AppConstants.TITLE_ADD_TO_LIBRARY, fontWeight = FontWeight.Black) },
+            text = { Text("Do you want to add '$itemTitle' to your collection for free?", textAlign = TextAlign.Center) },
             confirmButton = {
                 Button(onClick = onConfirm, shape = RoundedCornerShape(12.dp)) {
-                    Text(confirmText, fontWeight = FontWeight.Bold)
+                    Text(AppConstants.BTN_ADD_TO_LIBRARY, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -103,29 +92,12 @@ object AppPopups {
     @Composable
     fun AddingToLibraryLoading(show: Boolean, category: String, isAudioBook: Boolean = false) {
         if (!show) return
-        val icon = when { 
-            isAudioBook -> Icons.Default.CloudDownload 
-            category == AppConstants.CAT_GEAR -> Icons.Default.ShoppingBag
-            category == AppConstants.CAT_COURSES -> Icons.Default.School 
-            else -> Icons.Default.LibraryAdd 
-        }
-        val loadingText = when { 
-            category == AppConstants.CAT_GEAR -> "Reserving your item..." 
-            category == AppConstants.CAT_COURSES -> "Processing enrollment..." 
-            else -> "Syncing with library..." 
-        }
-
         Dialog(onDismissRequest = {}, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
-            Surface(modifier = Modifier.size(200.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
+            Surface(modifier = Modifier.size(200.dp), shape = RoundedCornerShape(ProDesign.CardRadius), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
                 Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    val infiniteTransition = rememberInfiniteTransition(label = "loading")
-                    val rotation by infiniteTransition.animateFloat(initialValue = 0f, targetValue = 360f, animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Restart), label = "rotation")
-                    Box(contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(modifier = Modifier.size(80.dp).rotate(rotation), color = MaterialTheme.colorScheme.primary, strokeWidth = 4.dp, trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f), strokeCap = StrokeCap.Round)
-                        Icon(icon, null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
-                    }
+                    CircularProgressIndicator(modifier = Modifier.size(60.dp), color = MaterialTheme.colorScheme.primary, strokeCap = StrokeCap.Round)
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text(loadingText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("Processing...", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -135,16 +107,11 @@ object AppPopups {
     fun RemovingFromLibraryLoading(show: Boolean) {
         if (!show) return
         Dialog(onDismissRequest = {}, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
-            Surface(modifier = Modifier.size(200.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
+            Surface(modifier = Modifier.size(200.dp), shape = RoundedCornerShape(ProDesign.CardRadius), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
                 Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    val infiniteTransition = rememberInfiniteTransition(label = "removing")
-                    val rotation by infiniteTransition.animateFloat(initialValue = 0f, targetValue = 360f, animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Restart), label = "rotation")
-                    Box(contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(modifier = Modifier.size(80.dp).rotate(rotation), color = MaterialTheme.colorScheme.error, strokeWidth = 4.dp, trackColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f), strokeCap = StrokeCap.Round)
-                        Icon(Icons.Default.DeleteOutline, null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.error)
-                    }
+                    CircularProgressIndicator(modifier = Modifier.size(60.dp), color = MaterialTheme.colorScheme.error, strokeCap = StrokeCap.Round)
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text("Removing from library...", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text("Removing...", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -154,16 +121,11 @@ object AppPopups {
     fun AuthLoading(show: Boolean, message: String = "Securing your session...") {
         if (!show) return
         Dialog(onDismissRequest = {}, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
-            Surface(modifier = Modifier.size(200.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
+            Surface(modifier = Modifier.size(200.dp), shape = RoundedCornerShape(ProDesign.CardRadius), color = MaterialTheme.colorScheme.surface, tonalElevation = 6.dp) {
                 Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    val infiniteTransition = rememberInfiniteTransition(label = "authLoading")
-                    val rotation by infiniteTransition.animateFloat(initialValue = 0f, targetValue = 360f, animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Restart), label = "rotation")
-                    Box(contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(modifier = Modifier.size(80.dp).rotate(rotation), color = MaterialTheme.colorScheme.primary, strokeWidth = 4.dp, trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f), strokeCap = StrokeCap.Round)
-                        Icon(Icons.Default.Security, null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
-                    }
+                    CircularProgressIndicator(modifier = Modifier.size(60.dp), color = MaterialTheme.colorScheme.primary, strokeCap = StrokeCap.Round)
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text(message, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
+                    Text(message, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                 }
             }
         }
@@ -171,157 +133,112 @@ object AppPopups {
 
     @Composable
     fun LogoutConfirmation(onDismiss: () -> Unit, onConfirm: () -> Unit) {
-        AlertDialog(onDismissRequest = onDismiss, title = { Text(AppConstants.TITLE_LOG_OFF, fontWeight = FontWeight.Bold) }, text = { Text(AppConstants.MSG_LOG_OFF_DESC) }, confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(AppConstants.BTN_LOG_OUT, fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) } })
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            shape = RoundedCornerShape(ProDesign.CardRadius),
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text(AppConstants.TITLE_LOG_OFF, fontWeight = FontWeight.Black) },
+            text = { Text(AppConstants.MSG_LOG_OFF_DESC) },
+            confirmButton = { 
+                Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { 
+                    Text("Sign Off", fontWeight = FontWeight.Bold) 
+                } 
+            },
+            dismissButton = { 
+                TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) } 
+            }
+        )
     }
 
     @Composable
     fun SignedOutSuccess(show: Boolean, onDismiss: () -> Unit) {
-        if (show) {
-            var timeLeft by remember { mutableStateOf(5) }
-            LaunchedEffect(Unit) { while (timeLeft > 0) { delay(1000); timeLeft-- }; onDismiss() }
-            AlertDialog(onDismissRequest = onDismiss, icon = { Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(48.dp)) }, title = { Text(AppConstants.TITLE_SIGNED_OUT) }, text = { Text("${AppConstants.MSG_SIGNED_OUT_DESC} $timeLeft seconds.", textAlign = TextAlign.Center) }, confirmButton = { TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CLOSE) } })
+        if (!show) return
+        var timeLeft by remember { mutableStateOf(3) }
+        LaunchedEffect(Unit) { while (timeLeft > 0) { delay(1000); timeLeft-- }; onDismiss() }
+        
+        Dialog(onDismissRequest = onDismiss) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                shape = RoundedCornerShape(ProDesign.CardRadius),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
+            ) {
+                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Rounded.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(64.dp))
+                    Spacer(Modifier.height(16.dp))
+                    Text(AppConstants.TITLE_SIGNED_OUT, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                    Spacer(Modifier.height(8.dp))
+                    Text("You have been securely signed out.", textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(24.dp))
+                    LinearProgressIndicator(
+                        progress = { timeLeft.toFloat() / 3f },
+                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    )
+                }
+            }
         }
     }
 
     @Composable
     fun AuthDemoCode(show: Boolean, code: String, onDismiss: () -> Unit) {
-        if (show) {
-            Dialog(onDismissRequest = onDismiss) {
-                Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(24.dp)) {
-                    Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Security, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.height(16.dp)); Text(AppConstants.TITLE_DEMO_MODE, fontWeight = FontWeight.Bold)
-                        Text(AppConstants.MSG_DEMO_MODE_DESC, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(text = code, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Black, letterSpacing = 8.sp)
-                        Spacer(modifier = Modifier.height(24.dp)); Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(AppConstants.BTN_GOT_IT) }
-                    }
+        if (!show) return
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            shape = RoundedCornerShape(ProDesign.CardRadius),
+            containerColor = MaterialTheme.colorScheme.surface,
+            icon = { Icon(Icons.Default.Security, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp)) },
+            title = { Text(AppConstants.TITLE_DEMO_MODE, fontWeight = FontWeight.Black) },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(AppConstants.MSG_DEMO_MODE_DESC, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(16.dp))
+                    Text(text = code, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Black, letterSpacing = 8.sp, color = MaterialTheme.colorScheme.primary)
                 }
-            }
-        }
+            },
+            confirmButton = { Button(onClick = onDismiss) { Text(AppConstants.BTN_GOT_IT) } }
+        )
     }
 
     @Composable
     fun AuthSuccess(show: Boolean, isDarkTheme: Boolean, onDismiss: () -> Unit) {
-        if (show) {
-            val configuration = LocalConfiguration.current
-            val isTablet = configuration.screenWidthDp >= 600
-            
-            val totalTime = 10000 
-            var timeLeftMs by remember { mutableStateOf(totalTime) }
-            
-            LaunchedEffect(Unit) {
-                val start = System.currentTimeMillis()
-                while (timeLeftMs > 0) {
-                    val elapsed = (System.currentTimeMillis() - start).toInt()
-                    timeLeftMs = (totalTime - elapsed).coerceAtLeast(0)
-                    delay(50)
-                }
-                onDismiss()
+        if (!show) return
+        val totalTime = 5000 
+        var timeLeftMs by remember { mutableStateOf(totalTime) }
+        
+        LaunchedEffect(Unit) {
+            val start = System.currentTimeMillis()
+            while (timeLeftMs > 0) {
+                val elapsed = (System.currentTimeMillis() - start).toInt()
+                timeLeftMs = (totalTime - elapsed).coerceAtLeast(0)
+                delay(50)
             }
+            onDismiss()
+        }
 
-            Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-                        HorizontalWavyBackground(
-                            isDarkTheme = isDarkTheme,
-                            wave1HeightFactor = 0.3f,
-                            wave2HeightFactor = 0.4f,
-                            wave1Amplitude = 120f,
-                            wave2Amplitude = 80f
+        Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    HorizontalWavyBackground(isDarkTheme = isDarkTheme)
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Rounded.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(100.dp))
+                        Spacer(Modifier.height(24.dp))
+                        Text(AppConstants.TITLE_IDENTITY_VERIFIED, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
+                        Spacer(Modifier.height(40.dp))
+                        CircularProgressIndicator(
+                            progress = { timeLeftMs.toFloat() / totalTime.toFloat() },
+                            modifier = Modifier.size(64.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeCap = StrokeCap.Round
                         )
-
-                        // Centered Column for Tablet, squeezed to center
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .then(if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxSize())
-                                    .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator(
-                                        progress = { timeLeftMs.toFloat() / totalTime.toFloat() },
-                                        modifier = Modifier.size(if (isTablet) 120.dp else 160.dp),
-                                        color = Color(0xFF4CAF50),
-                                        strokeWidth = 8.dp,
-                                        trackColor = Color(0xFF4CAF50).copy(alpha = 0.1f),
-                                        strokeCap = StrokeCap.Round
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(if (isTablet) 80.dp else 100.dp),
-                                        tint = Color(0xFF4CAF50)
-                                    )
-                                }
-                                
-                                Spacer(Modifier.height(40.dp))
-                                
-                                Text(
-                                    text = AppConstants.TITLE_IDENTITY_VERIFIED,
-                                    style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineLarge,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                
-                                Spacer(Modifier.height(12.dp))
-                                
-                                Text(
-                                    text = "Your security check was successful.\nYou are now fully logged in to the Glyndwr University portal.",
-                                    textAlign = TextAlign.Center,
-                                    style = if (isTablet) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                                )
-                                
-                                Spacer(Modifier.height(24.dp))
-                                
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.3f else 0.6f),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "${AppConstants.TEXT_REDIRECTING} ",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                        Text(
-                                            text = "${(timeLeftMs / 1000) + 1}",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            text = " ${AppConstants.TEXT_SECONDS}",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    }
-                                }
-
-                                Spacer(Modifier.height(if (isTablet) 48.dp else 64.dp))
-                                
-                                Button(
-                                    onClick = onDismiss,
-                                    modifier = Modifier
-                                        .then(if (isTablet) Modifier.width(400.dp) else Modifier.fillMaxWidth())
-                                        .height(56.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                                    shape = RoundedCornerShape(16.dp),
-                                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
-                                ) {
-                                    Text(AppConstants.BTN_CONTINUE_HOME, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
-                                }
-                            }
+                        Spacer(Modifier.height(24.dp))
+                        Button(onClick = onDismiss, shape = RoundedCornerShape(ProDesign.MenuRadius)) {
+                            Text(AppConstants.BTN_CONTINUE_HOME, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -331,9 +248,23 @@ object AppPopups {
 
     @Composable
     fun RemoveFromLibraryConfirmation(show: Boolean, bookTitle: String, isCourse: Boolean = false, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-        if (show) {
-            AlertDialog(onDismissRequest = onDismiss, icon = { Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error) }, title = { Text(AppConstants.TITLE_REMOVE_LIBRARY, fontWeight = FontWeight.Bold) }, text = { Text(AppConstants.MSG_REMOVE_LIBRARY_DESC) }, confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(AppConstants.BTN_REMOVE, fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) } })
-        }
+        if (!show) return
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            shape = RoundedCornerShape(ProDesign.CardRadius),
+            containerColor = MaterialTheme.colorScheme.surface,
+            icon = { Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Remove from Library", fontWeight = FontWeight.Black) },
+            text = { Text("Are you sure you want to remove '$bookTitle' from your collection?") },
+            confirmButton = { 
+                Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { 
+                    Text("Remove", fontWeight = FontWeight.Bold) 
+                } 
+            },
+            dismissButton = { 
+                TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) } 
+            }
+        )
     }
 
     @Composable
@@ -348,7 +279,14 @@ object AppPopups {
 
     @Composable
     fun WalletTopUp(show: Boolean, user: UserLocal?, onDismiss: () -> Unit, onTopUpComplete: (Double) -> Unit, onManageProfile: () -> Unit) {
-        if (show) { IntegratedTopUpDialog(user = user, onDismiss = onDismiss, onTopUpComplete = onTopUpComplete, onManageProfile = onManageProfile) }
+        if (show) { 
+            IntegratedTopUpDialog(
+                user = user, 
+                onDismiss = onDismiss, 
+                onTopUpComplete = onTopUpComplete, 
+                onManageProfile = onManageProfile
+            ) 
+        }
     }
 
     @Composable
@@ -368,12 +306,32 @@ object AppPopups {
 
     @Composable
     fun DeleteReviewConfirmation(show: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-        if (show) { AlertDialog(onDismissRequest = onDismiss, title = { Text(AppConstants.TITLE_DELETE_REVIEW, fontWeight = FontWeight.Bold) }, text = { Text(AppConstants.MSG_DELETE_REVIEW_DESC) }, confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(AppConstants.BTN_DELETE, fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) } }) }
+        if (show) { 
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                shape = RoundedCornerShape(ProDesign.CardRadius),
+                containerColor = MaterialTheme.colorScheme.surface,
+                title = { Text("Delete Review", fontWeight = FontWeight.Black) },
+                text = { Text("Permanently delete this comment? This action cannot be undone.") },
+                confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Delete", fontWeight = FontWeight.Bold) } },
+                dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+            )
+        }
     }
 
     @Composable
     fun SaveReviewChangesConfirmation(show: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-        if (show) { AlertDialog(onDismissRequest = onDismiss, title = { Text(AppConstants.TITLE_SAVE_CHANGES, fontWeight = FontWeight.Bold) }, text = { Text(AppConstants.MSG_SAVE_CHANGES_DESC) }, confirmButton = { Button(onClick = onConfirm) { Text(AppConstants.BTN_SAVE, fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = onDismiss) { Text(AppConstants.BTN_DISCARD) } }) }
+        if (show) { 
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                shape = RoundedCornerShape(ProDesign.CardRadius),
+                containerColor = MaterialTheme.colorScheme.surface,
+                title = { Text("Save Changes", fontWeight = FontWeight.Black) },
+                text = { Text("Do you want to save the edits to your review?") },
+                confirmButton = { Button(onClick = onConfirm) { Text("Save", fontWeight = FontWeight.Bold) } },
+                dismissButton = { TextButton(onClick = onDismiss) { Text("Discard") } }
+            )
+        }
     }
 
     @Composable
@@ -381,19 +339,11 @@ object AppPopups {
         if (!show) return
         AlertDialog(
             onDismissRequest = onDismiss,
+            shape = RoundedCornerShape(ProDesign.CardRadius),
+            containerColor = MaterialTheme.colorScheme.surface,
             icon = { 
-                Surface(
-                    modifier = Modifier.size(64.dp),
-                    shape = CircleShape,
-                    color = Color.White,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                ) {
-                    AsyncImage(
-                        model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
-                        contentDescription = "App Logo",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                Surface(modifier = Modifier.size(64.dp), shape = CircleShape, color = Color.White, border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
+                    AsyncImage(model = "file:///android_asset/images/media/GlyndwrUniversity.jpg", contentDescription = "App Logo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 }
             },
             title = { Text("Wrexham University Portal", fontWeight = FontWeight.Black) },
@@ -401,25 +351,10 @@ object AppPopups {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Text("Version 1.0.0 (Stable)", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(16.dp))
-                    Text(
-                        "This integrated academic ecosystem provides a seamless experience for students and tutors at Wrexham University. Developed as a part of the Mobile App Development module.",
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "Developer: Krzysztof Oko (S16001089)",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
+                    Text("Developed as part of the Mobile App Development module.", textAlign = TextAlign.Center)
                 }
             },
-            confirmButton = {
-                Button(onClick = onDismiss, shape = RoundedCornerShape(12.dp)) {
-                    Text("Close")
-                }
-            },
-            shape = RoundedCornerShape(28.dp)
+            confirmButton = { Button(onClick = onDismiss) { Text("Close") } }
         )
     }
 
@@ -428,19 +363,18 @@ object AppPopups {
         if (show) {
             AlertDialog(
                 onDismissRequest = onDismiss,
-                modifier = Modifier.border(1.2.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), RoundedCornerShape(28.dp)),
-                title = { Text("Project Documentation", fontWeight = FontWeight.Bold) },
+                shape = RoundedCornerShape(ProDesign.CardRadius),
+                containerColor = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.border(1.2.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), RoundedCornerShape(ProDesign.CardRadius)),
+                title = { Text("Project Documentation", fontWeight = FontWeight.Black) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        PopupItem(Icons.Default.Info, "Description", AppConstants.PROJECT_INFO)
-                        PopupItem(Icons.Default.AssignmentInd, "Student Name", AppConstants.DEVELOPER_NAME)
-                        PopupItem(Icons.Default.Numbers, "ID Number", AppConstants.STUDENT_ID)
-                        PopupItem(Icons.Default.AccountBalance, "University", AppConstants.INSTITUTION)
-                        PopupItem(Icons.Default.Build, "Build Version", AppConstants.VERSION_NAME)
+                        PopupItem(Icons.Rounded.Info, "Description", AppConstants.PROJECT_INFO)
+                        PopupItem(Icons.Rounded.AccountCircle, "Student Name", AppConstants.DEVELOPER_NAME)
+                        PopupItem(Icons.Rounded.Settings, "Build Version", AppConstants.VERSION_NAME)
                     }
                 },
-                confirmButton = { Button(onClick = onDismiss) { Text("Close") } },
-                shape = RoundedCornerShape(28.dp)
+                confirmButton = { Button(onClick = onDismiss) { Text("Close") } }
             )
         }
     }
@@ -450,11 +384,12 @@ object AppPopups {
         if (show) {
             AlertDialog(
                 onDismissRequest = onDismiss,
-                icon = { Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(48.dp)) },
-                title = { Text("Success", fontWeight = FontWeight.Bold) },
-                text = { Text("Role discounts have been updated successfully across the system.", textAlign = TextAlign.Center) },
-                confirmButton = { Button(onClick = onDismiss) { Text("Great!") } },
-                shape = RoundedCornerShape(28.dp)
+                shape = RoundedCornerShape(ProDesign.CardRadius),
+                containerColor = MaterialTheme.colorScheme.surface,
+                icon = { Icon(Icons.Rounded.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(48.dp)) },
+                title = { Text("Update Successful", fontWeight = FontWeight.Black) },
+                text = { Text("Role-based discounts have been applied across the university system.", textAlign = TextAlign.Center) },
+                confirmButton = { Button(onClick = onDismiss) { Text("Perfect") } }
             )
         }
     }

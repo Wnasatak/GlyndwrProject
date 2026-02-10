@@ -9,12 +9,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Upcoming
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -28,11 +25,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import coil.compose.AsyncImage
 
 /**
  * Screen displaying the developer's credentials and project metadata.
- * Refactored to use centralized AdaptiveScreenContainer for a cleaner tablet experience.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,11 +37,12 @@ fun DeveloperScreen(
     onBack: () -> Unit,               
     onVersionClick: () -> Unit,       
     onFutureFeaturesClick: () -> Unit, 
-    isDarkTheme: Boolean,             
-    onToggleTheme: () -> Unit         
+    currentTheme: Theme,             
+    onThemeChange: (Theme) -> Unit         
 ) {
     val (glowScale, glowAlpha) = rememberGlowAnimation()
     val vibrantVioletColor = Color(0xFF9D4EDD)
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
@@ -67,12 +65,10 @@ fun DeveloperScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = onToggleTheme) {
-                            Icon(
-                                imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                contentDescription = "Switch appearance"
-                            )
-                        }
+                        ThemeToggleButton(
+                            currentTheme = currentTheme,
+                            onThemeChange = onThemeChange
+                        )
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
@@ -91,7 +87,6 @@ fun DeveloperScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Profile section: Always centered
                     Box(
                         contentAlignment = Alignment.Center, 
                         modifier = Modifier.size(if (isTablet) 220.dp else 180.dp)
@@ -132,7 +127,6 @@ fun DeveloperScreen(
                         }
                     }
                     
-                    // Name Card
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                         shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
@@ -159,7 +153,6 @@ fun DeveloperScreen(
                         }
                     }
                     
-                    // Institution & Assignment Card
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                         shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
@@ -187,7 +180,6 @@ fun DeveloperScreen(
                         }
                     }
 
-                    // Action Buttons
                     Button(
                         onClick = onVersionClick,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -199,6 +191,7 @@ fun DeveloperScreen(
                     ) {
                         Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(12.dp))
+                        @Suppress("DEPRECATION")
                         Text("Version Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                     }
 
@@ -213,6 +206,7 @@ fun DeveloperScreen(
                     ) {
                         Icon(Icons.Default.Upcoming, contentDescription = null, modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(12.dp))
+                        @Suppress("DEPRECATION")
                         Text(AppConstants.TITLE_FUTURE_ROADMAP, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                     }
                 }

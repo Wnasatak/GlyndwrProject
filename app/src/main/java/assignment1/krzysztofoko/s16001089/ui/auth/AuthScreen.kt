@@ -31,6 +31,7 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.R
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -40,15 +41,14 @@ import kotlinx.coroutines.launch
 
 /**
  * The primary entry point for User Authentication.
- * Optimized for both phone and tablet using centralized Adaptive utilities and constants.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
     onAuthSuccess: (role: String) -> Unit,
     onBack: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit,
     snackbarHostState: SnackbarHostState
 ) {
     val context = LocalContext.current
@@ -56,7 +56,7 @@ fun AuthScreen(
     val viewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(db))
     val scope = rememberCoroutineScope()
     
-    val isTablet = isTablet()
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
 
     val glowAnim = rememberGlowAnimation()
     val glowScale = glowAnim.first
@@ -127,7 +127,14 @@ fun AuthScreen(
                             }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                         },
                         actions = {
-                            IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) }
+                            // Fixed: Wrapped in Box to ensure correct menu positioning
+                            Box {
+                                ThemeToggleButton(
+                                    currentTheme = currentTheme,
+                                    onThemeChange = onThemeChange,
+                                    isLoggedIn = false // Guests can change themes
+                                )
+                            }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                     )
@@ -172,6 +179,7 @@ fun AuthScreen(
                                 if (viewModel.isTwoFactorStep) {
                                     Icon(Icons.Default.VpnKey, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                                     Spacer(modifier = Modifier.height(24.dp))
+                                    @Suppress("DEPRECATION")
                                     Text(AppConstants.TITLE_SECURITY_VERIFICATION, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                                     Text("A code has been sent to your email. Please enter it below to verify your identity.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
                                     
@@ -192,6 +200,7 @@ fun AuthScreen(
                                             viewModel.error = "Invalid code. Please try again."
                                         }
                                     }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) {
+                                        @Suppress("DEPRECATION")
                                         Text(AppConstants.BTN_VERIFY_IDENTITY)
                                     }
                                     TextButton(onClick = { viewModel.trigger2FA(context, viewModel.email) { scope.launch { snackbarHostState.showSnackbar("New code sent") } } }) { Text(AppConstants.BTN_RESEND_CODE) }
@@ -200,7 +209,9 @@ fun AuthScreen(
                                 else if (viewModel.isVerifyingEmail) {
                                     Icon(Icons.Default.MarkEmailRead, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                                     Spacer(modifier = Modifier.height(24.dp))
+                                    @Suppress("DEPRECATION")
                                     Text(AppConstants.TITLE_CHECK_INBOX, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                                    @Suppress("DEPRECATION")
                                     Text("We've sent a verification link to:", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
                                     Text(viewModel.email, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                     Spacer(Modifier.height(32.dp))
@@ -217,13 +228,16 @@ fun AuthScreen(
                                             }
                                         }
                                     }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) { Text(AppConstants.BTN_VERIFICATION_DONE) }
+                                    @Suppress("DEPRECATION")
                                     TextButton(onClick = { viewModel.signOut(viewModel.pendingAuthResult?.second); viewModel.isVerifyingEmail = false }) { Text(AppConstants.BTN_BACK_TO_LOGIN) }
                                 } 
                                 
                                 else if (viewModel.isResettingPassword) {
                                     Icon(Icons.Default.LockReset, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                                     Spacer(modifier = Modifier.height(24.dp))
+                                    @Suppress("DEPRECATION")
                                     Text(AppConstants.TITLE_RESET_PASSWORD, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                                    @Suppress("DEPRECATION")
                                     Text("Enter your email to receive a password reset link.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp, bottom = 24.dp))
                                     
                                     OutlinedTextField(
@@ -236,8 +250,10 @@ fun AuthScreen(
                                     )
                                     Spacer(modifier = Modifier.height(24.dp))
                                     Button(onClick = { viewModel.resetPassword() }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) {
+                                        @Suppress("DEPRECATION")
                                         Text(AppConstants.BTN_SEND_RESET_LINK)
                                     }
+                                    @Suppress("DEPRECATION")
                                     TextButton(onClick = { viewModel.isResettingPassword = false }) { Text(AppConstants.BTN_RETURN_TO_LOGIN) }
                                 }
 
@@ -251,6 +267,7 @@ fun AuthScreen(
                                     
                                     Spacer(modifier = Modifier.height(32.dp))
                                     
+                                    @Suppress("DEPRECATION")
                                     Text(
                                         text = if (viewModel.isLogin) AppConstants.TITLE_WELCOME_BACK else "Create Account", 
                                         style = MaterialTheme.typography.headlineMedium, 
@@ -297,6 +314,7 @@ fun AuthScreen(
                                     )
 
                                     if (viewModel.isLogin) {
+                                        @Suppress("DEPRECATION")
                                         TextButton(
                                             onClick = { viewModel.isResettingPassword = true },
                                             modifier = Modifier.align(Alignment.End)
@@ -319,6 +337,7 @@ fun AuthScreen(
                                         if (viewModel.isLoading) {
                                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                                         } else {
+                                            @Suppress("DEPRECATION")
                                             Text(if (viewModel.isLogin) AppConstants.BTN_SIGN_IN else "Create Account", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                         }
                                     }
@@ -328,6 +347,7 @@ fun AuthScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(if (viewModel.isLogin) "New to Glyndŵr?" else "Already a member?", style = MaterialTheme.typography.bodyMedium)
                                         TextButton(onClick = { viewModel.isLogin = !viewModel.isLogin }) {
+                                            @Suppress("DEPRECATION")
                                             Text(if (viewModel.isLogin) "Register Now" else "Login instead", fontWeight = FontWeight.Bold)
                                         }
                                     }
@@ -353,6 +373,7 @@ fun AuthScreen(
                                             modifier = Modifier.size(20.dp)
                                         )
                                         Spacer(Modifier.width(12.dp))
+                                        @Suppress("DEPRECATION")
                                         Text(if (viewModel.isLogin) AppConstants.BTN_GOOGLE_LOGIN else AppConstants.BTN_GOOGLE_SIGNUP)
                                     }
                                 }

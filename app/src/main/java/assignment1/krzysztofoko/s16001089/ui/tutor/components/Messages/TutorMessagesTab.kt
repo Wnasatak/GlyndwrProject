@@ -48,16 +48,16 @@ fun TutorMessagesTab(
             conversations.map { SearchResult.Existing(it) }
         } else {
             val results = mutableListOf<SearchResult>()
-            conversations.filter { 
-                it.student.name.contains(searchTxt, ignoreCase = true) || 
-                it.lastMessage.message.contains(searchTxt, ignoreCase = true) 
+            conversations.filter {
+                it.student.name.contains(searchTxt, ignoreCase = true) ||
+                        it.lastMessage.message.contains(searchTxt, ignoreCase = true)
             }.forEach { results.add(SearchResult.Existing(it)) }
-            
+
             val existingIds = conversations.map { it.student.id }.toSet()
-            allUsers.filter { 
-                it.id != viewModel.tutorId && 
-                !existingIds.contains(it.id) && 
-                it.name.contains(searchTxt, ignoreCase = true)
+            allUsers.filter {
+                it.id != viewModel.tutorId &&
+                        !existingIds.contains(it.id) &&
+                        it.name.contains(searchTxt, ignoreCase = true)
             }.forEach { results.add(SearchResult.New(it)) }
             results
         }
@@ -66,13 +66,13 @@ fun TutorMessagesTab(
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = AdaptiveSpacing.contentPadding())) {
             Spacer(Modifier.height(12.dp))
-            
+
             AdaptiveDashboardHeader(
                 title = "Messages",
                 subtitle = "Academic Communication",
                 icon = Icons.Default.QuestionAnswer
             )
-            
+
             OutlinedTextField(
                 value = searchTxt,
                 onValueChange = { searchTxt = it },
@@ -86,7 +86,7 @@ fun TutorMessagesTab(
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                 )
             )
-            
+
             if (searchResults.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -162,8 +162,8 @@ fun ConversationItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = conversation.student.name, 
-                        fontWeight = FontWeight.Bold, 
+                        text = conversation.student.name,
+                        fontWeight = FontWeight.Bold,
                         style = if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -172,7 +172,7 @@ fun ConversationItem(
                     Spacer(Modifier.width(8.dp))
                     RoleTag(conversation.student.role)
                 }
-                
+
                 // Row 2: Courses (if any)
                 if (courses.isNotEmpty()) {
                     Text(
@@ -202,8 +202,8 @@ fun ConversationItem(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = timeStr, 
-                        style = MaterialTheme.typography.labelSmall, 
+                        text = timeStr,
+                        style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray,
                         fontSize = 10.sp
                     )
@@ -231,8 +231,8 @@ fun NewConversationItem(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = user.name, 
-                        fontWeight = FontWeight.Bold, 
+                        text = user.name,
+                        fontWeight = FontWeight.Bold,
                         style = if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -241,7 +241,7 @@ fun NewConversationItem(
                     Spacer(Modifier.width(8.dp))
                     RoleTag(user.role)
                 }
-                
+
                 if (courses.isNotEmpty()) {
                     Text(
                         text = courses,

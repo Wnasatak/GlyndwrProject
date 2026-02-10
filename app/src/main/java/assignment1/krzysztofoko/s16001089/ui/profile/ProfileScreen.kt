@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,12 +27,13 @@ import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 /**
  * Composable representing the User Profile and Settings screen.
- * Updated with AdaptiveScreenContainer to look good on tablets.
+ * Optimized to remove redundant theme controls.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,9 +41,9 @@ fun ProfileScreen(
     navController: NavController,
     onLogout: () -> Unit,             
     isDarkTheme: Boolean,             
-    onToggleTheme: () -> Unit,        
     viewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
+        userThemeDao = AppDatabase.getDatabase(LocalContext.current).userThemeDao(),
         auditDao = AppDatabase.getDatabase(LocalContext.current).auditDao(),
         userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     ))
@@ -53,9 +55,10 @@ fun ProfileScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val localUser by viewModel.localUser.collectAsState(initial = null)
+    val userTheme by viewModel.userTheme.collectAsState(initial = null)
 
-    LaunchedEffect(localUser) {
-        localUser?.let { viewModel.initFields(it) }
+    LaunchedEffect(localUser, userTheme) {
+        localUser?.let { viewModel.initFields(it, userTheme) }
     }
 
     var showSelectionPopup by remember { mutableStateOf(false) }
@@ -93,11 +96,9 @@ fun ProfileScreen(
                     } 
                 },
                 actions = {
-                    IconButton(onClick = onToggleTheme) { 
-                        Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) 
-                    }
+                    // Local theme toggle removed - using global control from scaffold
                     IconButton(onClick = onLogout) { 
-                        Icon(Icons.AutoMirrored.Filled.Logout, AppConstants.BTN_LOG_OUT, tint = MaterialTheme.colorScheme.error) 
+                        Icon(Icons.AutoMirrored.Rounded.Logout, AppConstants.BTN_LOG_OUT, tint = MaterialTheme.colorScheme.error) 
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(

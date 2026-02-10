@@ -5,7 +5,9 @@ import androidx.compose.runtime.getValue
 import androidx.media3.common.Player
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.dashboard.DashboardScreen
@@ -16,6 +18,7 @@ import assignment1.krzysztofoko.s16001089.ui.admin.AdminPanelScreen
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminUserDetailsScreen
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorPanelScreen
 import assignment1.krzysztofoko.s16001089.ui.messages.MessagesScreen
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.StateFlow
 
@@ -26,13 +29,27 @@ fun NavGraphBuilder.dashboardNavGraph(
     navController: NavController,
     currentUserFlow: StateFlow<FirebaseUser?>,
     allBooks: List<Book>,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit,
+    onOpenThemeBuilder: () -> Unit,
     onPlayAudio: (Book) -> Unit,
     isAudioPlaying: Boolean,
     currentPlayingBookId: String?,
     onLogoutClick: () -> Unit
 ) {
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
+    
+    // Centralized theme change logic
+    val onThemeToggle = { 
+        val nextTheme = if (isDarkTheme) Theme.LIGHT else Theme.DARK
+        onThemeChange(nextTheme)
+    }
+    
+    val onFullThemeChange = { theme: Theme ->
+        onThemeChange(theme)
+        if (theme == Theme.CUSTOM) onOpenThemeBuilder()
+    }
+
     composable(AppConstants.ROUTE_DASHBOARD) {
         DashboardScreen(
             navController = navController,
@@ -40,11 +57,13 @@ fun NavGraphBuilder.dashboardNavGraph(
             onBack = { navController.popBackStack() },
             onLogout = onLogoutClick,
             isDarkTheme = isDarkTheme,
-            onToggleTheme = onToggleTheme,
+            onThemeChange = onFullThemeChange, 
             onViewInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/${it.id}") },
             onPlayAudio = onPlayAudio,
             currentPlayingBookId = currentPlayingBookId,
-            isAudioPlaying = isAudioPlaying
+            isAudioPlaying = isAudioPlaying,
+            currentTheme = currentTheme,
+            onOpenThemeBuilder = onOpenThemeBuilder
         )
     }
 
@@ -52,14 +71,12 @@ fun NavGraphBuilder.dashboardNavGraph(
         ProfileScreen(
             navController = navController,
             onLogout = onLogoutClick,
-            isDarkTheme = isDarkTheme,
-            onToggleTheme = onToggleTheme
+            isDarkTheme = isDarkTheme
         )
     }
 
     composable(AppConstants.ROUTE_NOTIFICATIONS) {
         val currentUser by currentUserFlow.collectAsState()
-        // Determine role to handle the back navigation target
         val isAdmin = currentUser?.email == "prokocomp@gmail.com"
 
         NotificationScreen(
@@ -91,43 +108,45 @@ fun NavGraphBuilder.dashboardNavGraph(
         ClassroomScreen(
             courseId = courseId,
             onBack = { navController.popBackStack() },
-            isDarkTheme = isDarkTheme,
-            onToggleTheme = onToggleTheme
+            isDarkTheme = isDarkTheme
         )
     }
 
-    /**
-     * ROUTE: Admin Panel
-     */
     composable(AppConstants.ROUTE_ADMIN_PANEL) {
         AdminPanelScreen(
             onBack = { navController.popBackStack() },
             onNavigateToUserDetails = { userId ->
                 navController.navigate("${AppConstants.ROUTE_ADMIN_USER_DETAILS}/$userId")
             },
-            isDarkTheme = isDarkTheme,
-            onToggleTheme = onToggleTheme
+            onNavigateToProfile = { navController.navigate(AppConstants.ROUTE_PROFILE) },
+            currentTheme = currentTheme,
+            onThemeChange = onFullThemeChange,
+            onLogoutClick = { onLogoutClick() }
         )
     }
 
-    /**
-     * ROUTE: Admin User Details
-     */
     composable("${AppConstants.ROUTE_ADMIN_USER_DETAILS}/{userId}") { backStackEntry ->
         val userId = backStackEntry.arguments?.getString("userId") ?: ""
         AdminUserDetailsScreen(
             userId = userId,
             onBack = { navController.popBackStack() },
             navController = navController,
-            isDarkTheme = isDarkTheme,
-            onToggleTheme = onToggleTheme
+            currentTheme = currentTheme,
+            onThemeChange = onFullThemeChange
         )
     }
 
-    /**
-     * ROUTE: Tutor Panel
-     */
-    composable(AppConstants.ROUTE_TUTOR_PANEL) {
+    composable(
+        route = "${AppConstants.ROUTE_TUTOR_PANEL}?section={section}",
+        arguments = listOf(
+            navArgument("section") { 
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            }
+        )
+    ) { backStackEntry ->
+        val section = backStackEntry.arguments?.getString("section")
         TutorPanelScreen(
             onBack = { navController.popBackStack() },
             onNavigateToStore = { navController.navigate(AppConstants.ROUTE_HOME) },
@@ -135,11 +154,13 @@ fun NavGraphBuilder.dashboardNavGraph(
             onLogout = onLogoutClick,
             onNavigateToDeveloper = { navController.navigate(AppConstants.ROUTE_DEVELOPER) },
             onNavigateToInstruction = { navController.navigate(AppConstants.ROUTE_INSTRUCTIONS) },
-            isDarkTheme = isDarkTheme,
-            onToggleTheme = onToggleTheme,
+            onOpenThemeBuilder = onOpenThemeBuilder,
+            currentTheme = currentTheme,
+            onThemeChange = onFullThemeChange,
             onPlayAudio = onPlayAudio,
             currentPlayingBookId = currentPlayingBookId,
-            isAudioPlaying = isAudioPlaying
+            isAudioPlaying = isAudioPlaying,
+            initialSection = section
         )
     }
 }

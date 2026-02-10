@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.home.HomeScreen
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.StateFlow
 
@@ -21,8 +22,9 @@ fun NavGraphBuilder.homeNavGraph(
     currentUserFlow: StateFlow<FirebaseUser?>, 
     isDataLoading: Boolean,                 
     loadError: String?,                     
-    isDarkTheme: Boolean,                   
-    onToggleTheme: () -> Unit,              
+    currentTheme: Theme,                   
+    onThemeChange: (Theme) -> Unit,
+    onOpenThemeBuilder: () -> Unit, // Added
     onRefresh: () -> Unit,                  
     onPlayAudio: (Book) -> Unit,            
     currentPlayingBookId: String?,          
@@ -53,8 +55,11 @@ fun NavGraphBuilder.homeNavGraph(
             error = loadError, 
             onRefresh = onRefresh, 
             onAboutClick = { navController.navigate(AppConstants.ROUTE_ABOUT) }, 
-            isDarkTheme = isDarkTheme, 
-            onToggleTheme = onToggleTheme,
+            currentTheme = currentTheme, 
+            onThemeChange = { theme ->
+                onThemeChange(theme)
+                if (theme == Theme.CUSTOM) onOpenThemeBuilder()
+            },
             onPlayAudio = onPlayAudio,
             currentPlayingBookId = currentPlayingBookId,
             isAudioPlaying = isAudioPlaying

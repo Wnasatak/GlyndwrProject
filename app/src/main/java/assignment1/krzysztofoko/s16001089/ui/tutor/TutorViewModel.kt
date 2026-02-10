@@ -10,24 +10,24 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.UUID
 
-enum class TutorSection { 
-    DASHBOARD, 
-    MY_COURSES, 
-    SELECTED_COURSE, 
+enum class TutorSection {
+    DASHBOARD,
+    MY_COURSES,
+    SELECTED_COURSE,
     COURSE_MODULES,
     COURSE_STUDENTS,
     COURSE_ASSIGNMENTS,
     COURSE_GRADES,
     COURSE_LIVE,
     COURSE_ARCHIVED_BROADCASTS,
-    STUDENTS, 
-    MESSAGES, 
-    CHAT, 
-    LIBRARY, 
-    BOOKS, 
-    AUDIOBOOKS, 
-    READ_BOOK, 
-    LISTEN_AUDIOBOOK, 
+    STUDENTS,
+    MESSAGES,
+    CHAT,
+    LIBRARY,
+    BOOKS,
+    AUDIOBOOKS,
+    READ_BOOK,
+    LISTEN_AUDIOBOOK,
     TEACHER_DETAIL,
     CREATE_ASSIGNMENT,
     START_LIVE_STREAM,
@@ -116,7 +116,7 @@ class TutorViewModel(
         _selectedCourseId.value = courseId
         setSection(TutorSection.SELECTED_COURSE)
     }
-    
+
     fun updateSelectedCourse(courseId: String?) {
         _selectedCourseId.value = courseId
     }
@@ -144,7 +144,7 @@ class TutorViewModel(
     }
 
     // --- Data Streams ---
-    
+
     val currentUserLocal: StateFlow<UserLocal?> = userDao.getUserFlow(tutorId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
@@ -396,12 +396,12 @@ class TutorViewModel(
                 bio = bio
             )
             classroomDao.upsertTutorProfile(profile)
-            
+
             // Also update the main user record title if changed
             if (title != null && title != current.title) {
                 userDao.upsertUser(current.copy(title = title))
             }
-            
+
             addLog("UPDATE_TUTOR_PROFILE", tutorId, "Tutor updated professional profile details")
         }
     }
@@ -441,7 +441,7 @@ class TutorViewModel(
                 timestamp = System.currentTimeMillis()
             )
             classroomDao.sendMessage(message)
-            
+
             // Notify Student
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
@@ -465,7 +465,7 @@ class TutorViewModel(
     }
 
     // --- Live Stream ---
-    
+
     fun toggleLiveStream(isLive: Boolean) {
         val courseId = _selectedCourseId.value ?: return
         val moduleId = _selectedModuleId.value ?: ""
@@ -473,12 +473,12 @@ class TutorViewModel(
         viewModelScope.launch {
             _isLive.value = isLive
             if (!isLive) _isPaused.value = false // Ensure it's not paused when ending
-            
+
             // Robust name retrieval
             val profile = classroomDao.getTutorProfile(tutorId)
             val userLocal = userDao.getUserById(tutorId)
             val tutorName = profile?.name ?: userLocal?.name ?: "Tutor"
-            
+
             val session = LiveSession(
                 id = if (isLive) "live_${courseId}" else UUID.randomUUID().toString(),
                 courseId = courseId,
@@ -546,7 +546,7 @@ class TutorViewModel(
     }
 
     // --- Messaging ---
-    
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val chatMessages: StateFlow<List<ClassroomMessage>> = _selectedStudent
         .flatMapLatest { student ->

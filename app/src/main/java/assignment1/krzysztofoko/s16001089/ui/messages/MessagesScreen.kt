@@ -58,6 +58,13 @@ fun MessagesScreen(
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val sdf = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
+    val myUser = allUsers.find { it.id == currentUserId }
+    val isAdmin = myUser?.role?.lowercase() == "admin"
+    val isTutor = myUser?.role?.lowercase() in listOf("teacher", "tutor")
+
+    // Use theme colors directly for better consistency
+    val contentColor = MaterialTheme.colorScheme.onSurface
+
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
 
@@ -82,23 +89,23 @@ fun MessagesScreen(
                                         }
                                         append(selectedUser?.name ?: "")
                                     }
-                                    Text(text = displayName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = if (isDarkTheme) Color.White else Color.Black)
+                                    Text(text = displayName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = contentColor)
                                     Spacer(Modifier.width(8.dp))
                                     RoleTag(role = selectedUser?.role)
                                 }
                                 val sharedCourse by viewModel.getSharedCourse(selectedUser?.id ?: "").collectAsState(initial = "")
                                 if (sharedCourse.isNotEmpty()) {
                                     Text(
-                                        text = sharedCourse, 
-                                        style = MaterialTheme.typography.labelSmall, 
-                                        color = if (isDarkTheme) Color.White.copy(alpha = 0.6f) else Color.Gray, 
+                                        text = sharedCourse,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = contentColor.copy(alpha = 0.6f),
                                         fontSize = 9.sp,
                                         modifier = Modifier.offset(y = (-3).dp)
                                     )
                                 }
                             }
                         } else {
-                            Text(text = AppConstants.TITLE_MESSAGES, fontWeight = FontWeight.Black, color = if (isDarkTheme) Color.White else Color.Black)
+                            Text(text = AppConstants.TITLE_MESSAGES, fontWeight = FontWeight.Black, color = contentColor)
                         }
                     }
                 },
@@ -106,10 +113,10 @@ fun MessagesScreen(
                     IconButton(onClick = {
                         if (selectedUser != null) viewModel.selectConversation(null)
                         else onBack()
-                    }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = if (isDarkTheme) Color.White else Color.Black) }
+                    }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = contentColor) }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = if (isDarkTheme) Color.Black.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
                 )
             )
 
@@ -120,15 +127,17 @@ fun MessagesScreen(
                     AnimatedContent(targetState = selectedUser, label = "ChatTransition") { targetUser ->
                         if (targetUser == null) {
                             ConversationListView(
-                                conversations = conversations, 
+                                conversations = conversations,
                                 allUsers = allUsers,
                                 searchQuery = searchQuery,
                                 onSearchChange = { viewModel.updateSearchQuery(it) },
-                                onUserClick = { viewModel.selectConversation(it) }, 
+                                onUserClick = { viewModel.selectConversation(it) },
                                 sdf = sdf,
                                 currentUserId = currentUserId,
                                 viewModel = viewModel,
-                                isDarkTheme = isDarkTheme
+                                isDarkTheme = isDarkTheme,
+                                isAdmin = isAdmin,
+                                isTutor = isTutor
                             )
                         } else {
                             ChatInterface(messages = messages, currentUserId = currentUserId, sdf = sdf, isDarkTheme = isDarkTheme)
@@ -136,13 +145,13 @@ fun MessagesScreen(
                     }
                 }
             }
-            
+
             if (selectedUser != null) {
                 Box(
-                    contentAlignment = Alignment.Center, 
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(if (isDarkTheme) Color.Black.copy(alpha = 0.2f) else Color.Transparent)
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
                         .padding(bottom = 12.dp)
                 ) {
                     Surface(
@@ -163,13 +172,13 @@ fun MessagesScreen(
                                 value = messageText,
                                 onValueChange = { messageText = it },
                                 modifier = Modifier.weight(1f),
-                                placeholder = { Text("Type a message...", color = if (isDarkTheme) Color.White.copy(alpha = 0.4f) else Color.Gray) },
+                                placeholder = { Text("Type a message...", color = contentColor.copy(alpha = 0.4f)) },
                                 shape = RoundedCornerShape(32.dp),
-                                textStyle = TextStyle(color = if (isDarkTheme) Color.White else Color.Black),
+                                textStyle = TextStyle(color = contentColor),
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    unfocusedContainerColor = if (isDarkTheme) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.9f),
-                                    focusedContainerColor = if (isDarkTheme) Color.White.copy(alpha = 0.1f) else Color.White,
-                                    unfocusedBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.1f) else Color.Gray.copy(alpha = 0.3f),
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                                     focusedBorderColor = MaterialTheme.colorScheme.primary
                                 )
                             )
@@ -178,7 +187,7 @@ fun MessagesScreen(
                                 onClick = { if (messageText.isNotBlank()) { viewModel.sendMessage(messageText); messageText = "" } },
                                 shape = CircleShape,
                                 containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = Color.White,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(48.dp),
                                 elevation = FloatingActionButtonDefaults.elevation(0.dp)
                             ) {
@@ -202,46 +211,60 @@ fun ConversationListView(
     sdf: SimpleDateFormat,
     currentUserId: String,
     viewModel: MessagesViewModel,
-    isDarkTheme: Boolean
+    isDarkTheme: Boolean,
+    isAdmin: Boolean,
+    isTutor: Boolean
 ) {
-    val searchResults = remember(conversations, allUsers, searchQuery) {
+    val contentColor = MaterialTheme.colorScheme.onSurface
+    
+    val searchResults = remember(conversations, allUsers, searchQuery, isAdmin, isTutor) {
         if (searchQuery.isEmpty()) {
             conversations.map { ConversationItemType.Existing(it) }
         } else {
             val results = mutableListOf<ConversationItemType>()
-            
-            conversations.filter { 
-                it.otherUser.name.contains(searchQuery, ignoreCase = true) || 
-                it.lastMessage.message.contains(searchQuery, ignoreCase = true) 
+
+            conversations.filter {
+                it.otherUser.name.contains(searchQuery, ignoreCase = true) ||
+                it.lastMessage.message.contains(searchQuery, ignoreCase = true)
             }.forEach { results.add(ConversationItemType.Existing(it)) }
-            
+
             val existingIds = conversations.map { it.otherUser.id }.toSet()
-            allUsers.filter { 
-                it.id != currentUserId && 
-                !existingIds.contains(it.id) && 
-                (it.role == "teacher" || it.role == "tutor" || it.role == "admin") &&
-                it.name.contains(searchQuery, ignoreCase = true)
+            val staffRoles = listOf("teacher", "tutor", "admin")
+
+            allUsers.filter {
+                val baseFilter = it.id != currentUserId && !existingIds.contains(it.id) && it.name.contains(searchQuery, ignoreCase = true)
+                when {
+                    isAdmin -> baseFilter // Admins see everyone
+                    isTutor -> baseFilter && (it.role.lowercase() == "student" || it.role.lowercase() == "admin")
+                    else -> baseFilter && it.role.lowercase() in staffRoles
+                }
             }.forEach { results.add(ConversationItemType.NewUser(it)) }
-            
+
             results
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        val searchPlaceholder = when {
+            isAdmin -> "Search All Users"
+            isTutor -> "Search Students / Admin"
+            else -> "Search Teacher / Admin"
+        }
+
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
-            placeholder = { Text("Search Teacher / Admin", color = if (isDarkTheme) Color.White.copy(alpha = 0.4f) else Color.Gray) },
-            leadingIcon = { Icon(Icons.Default.Search, null, tint = if (isDarkTheme) Color.White.copy(alpha = 0.7f) else Color.Gray) },
-            trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { onSearchChange("") }) { Icon(Icons.Default.Close, null, tint = if (isDarkTheme) Color.White else Color.Black) } },
+            placeholder = { Text(searchPlaceholder, color = contentColor.copy(alpha = 0.4f)) },
+            leadingIcon = { Icon(Icons.Default.Search, null, tint = contentColor.copy(alpha = 0.7f)) },
+            trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { onSearchChange("") }) { Icon(Icons.Default.Close, null, tint = contentColor) } },
             shape = RoundedCornerShape(16.dp),
             singleLine = true,
-            textStyle = TextStyle(color = if (isDarkTheme) Color.White else Color.Black),
+            textStyle = TextStyle(color = contentColor),
             colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = if (isDarkTheme) Color.White.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-                focusedContainerColor = if (isDarkTheme) Color.White.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface,
-                unfocusedBorderColor = if (isDarkTheme) Color.White.copy(alpha = 0.1f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
             )
         )
 
@@ -250,6 +273,7 @@ fun ConversationListView(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.AutoMirrored.Filled.Chat, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
                     Spacer(Modifier.height(16.dp))
+                    @Suppress("DEPRECATION")
                     Text("No results found", color = Color.Gray)
                 }
             }
@@ -288,7 +312,7 @@ fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick:
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDarkTheme) DarkSurface else MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -306,26 +330,26 @@ fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick:
                         append(conv.otherUser.name)
                     }
                     Text(
-                        text = displayName, 
-                        fontWeight = FontWeight.Bold, 
-                        fontSize = 17.sp, 
-                        maxLines = 1, 
-                        overflow = TextOverflow.Ellipsis, 
+                        text = displayName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
-                        color = if (isDarkTheme) Color.White else Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.width(8.dp))
                     RoleTag(role = conv.otherUser.role)
                 }
-                
+
                 // Row 2: Course
                 if (course.isNotEmpty()) {
                     Text(
-                        text = course, 
-                        style = MaterialTheme.typography.labelSmall, 
-                        color = MaterialTheme.colorScheme.primary, 
-                        fontSize = 11.sp, 
-                        maxLines = 1, 
+                        text = course,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 11.sp,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         fontWeight = FontWeight.Bold
                     )
@@ -333,32 +357,33 @@ fun ExistingConversationCard(conv: ConversationPreview, course: String, onClick:
 
                 // Row 3: Message and Time
                 Row(
-                    modifier = Modifier.fillMaxWidth(), 
-                    horizontalArrangement = Arrangement.SpaceBetween, 
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val messageColor = if (conv.lastMessage.message.contains("Hi, Emma", ignoreCase = true)) {
                          if (isDarkTheme) CyanAccent else VoucherViolet
                     } else if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) {
-                        MaterialTheme.colorScheme.primary 
+                        MaterialTheme.colorScheme.primary
                     } else {
                         Color.Gray
                     }
 
+                    @Suppress("DEPRECATION")
                     Text(
-                        text = conv.lastMessage.message, 
-                        style = MaterialTheme.typography.bodySmall, 
-                        color = messageColor, 
-                        maxLines = 1, 
+                        text = conv.lastMessage.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = messageColor,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         fontWeight = if (!conv.lastMessage.isRead && conv.lastMessage.senderId != FirebaseAuth.getInstance().currentUser?.uid) FontWeight.Black else FontWeight.Normal,
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = sdf.format(Date(conv.lastMessage.timestamp)), 
-                        style = MaterialTheme.typography.labelSmall, 
-                        color = Color.Gray, 
+                        text = sdf.format(Date(conv.lastMessage.timestamp)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray,
                         fontSize = 10.sp
                     )
                 }
@@ -375,7 +400,7 @@ fun NewUserCard(user: UserLocal, course: String, onClick: () -> Unit, isDarkThem
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDarkTheme) DarkSurface else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -392,12 +417,12 @@ fun NewUserCard(user: UserLocal, course: String, onClick: () -> Unit, isDarkThem
                         append(user.name)
                     }
                     Text(
-                        text = displayName, 
-                        fontWeight = FontWeight.Bold, 
-                        fontSize = 17.sp, 
-                        maxLines = 1, 
+                        text = displayName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = if (isDarkTheme) Color.White else Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.width(8.dp))
                     RoleTag(role = user.role)
@@ -405,6 +430,7 @@ fun NewUserCard(user: UserLocal, course: String, onClick: () -> Unit, isDarkThem
                 if (course.isNotEmpty()) {
                     Text(text = course, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
                 }
+                @Suppress("DEPRECATION")
                 Text("Start a new conversation...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
             }
             Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
@@ -420,7 +446,7 @@ fun RoleTag(role: String?) {
         "student" -> "STUDENT"
         else -> role?.uppercase() ?: "USER"
     }
-    
+
     val tagColor = when (roleText) {
         "ADMIN", "TEACHER" -> Color(0xFF1E88E5)
         "STUDENT" -> Color(0xFF43A047)
@@ -452,7 +478,7 @@ fun ChatInterface(messages: List<assignment1.krzysztofoko.s16001089.data.Classro
             val isMe = msg.senderId == currentUserId
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = if (isMe) Alignment.End else Alignment.Start) {
                 Surface(
-                    color = if (isMe) MaterialTheme.colorScheme.primary else if (isDarkTheme) Color.White.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant,
+                    color = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (isMe) 16.dp else 4.dp, bottomEnd = if (isMe) 4.dp else 16.dp),
                     modifier = Modifier.widthIn(max = 480.dp),
                     border = if (!isMe && isDarkTheme) BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)) else null
@@ -462,16 +488,17 @@ fun ChatInterface(messages: List<assignment1.krzysztofoko.s16001089.data.Classro
                         verticalAlignment = Alignment.Bottom,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        @Suppress("DEPRECATION")
                         Text(
                             text = msg.message, 
-                            color = if (isMe) Color.White else if (isDarkTheme) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (isMe) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f, fill = false),
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
                             text = sdf.format(Date(msg.timestamp)), 
                             style = MaterialTheme.typography.labelSmall, 
-                            color = if (isMe) Color.White.copy(alpha = 0.7f) else Color.Gray,
+                            color = if (isMe) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) else Color.Gray,
                             fontSize = 10.sp
                         )
                     }

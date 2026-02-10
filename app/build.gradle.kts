@@ -73,6 +73,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.ui.text)
+    implementation(libs.androidx.compose.ui.unit)
     ksp(libs.room.compiler)
     
     // Google Auth

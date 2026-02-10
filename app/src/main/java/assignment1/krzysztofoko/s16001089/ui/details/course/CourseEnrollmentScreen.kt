@@ -24,7 +24,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
-import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
+import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
@@ -34,8 +35,8 @@ fun CourseEnrollmentScreen(
     courseId: String,
     onBack: () -> Unit,
     onEnrollmentSuccess: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit,
     viewModel: CourseDetailViewModel = viewModel(factory = CourseDetailViewModelFactory(
         courseDao = AppDatabase.getDatabase(LocalContext.current).courseDao(),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
@@ -44,7 +45,7 @@ fun CourseEnrollmentScreen(
     ))
 ) {
     val course by viewModel.course.collectAsState()
-    val scope = rememberCoroutineScope()
+    val isDarkTheme = currentTheme == Theme.DARK
     
     var currentStep by remember { mutableIntStateOf(1) }
     val totalSteps = 4
@@ -71,17 +72,23 @@ fun CourseEnrollmentScreen(
             containerColor = Color.Transparent,
             topBar = {
                 CenterAlignedTopAppBar(
+                    windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { Text("Course Application", fontWeight = FontWeight.Black) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
-                    actions = { IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) } },
+                    actions = {
+                        ThemeToggleButton(
+                            currentTheme = currentTheme,
+                            onThemeChange = onThemeChange
+                        )
+                    },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 )
             }
-        ) { padding ->
+        ) { paddingValues ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
+                    .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
                     .padding(20.dp)
             ) {
@@ -123,6 +130,7 @@ fun CourseEnrollmentScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             if (currentStep > 1) {
                                 OutlinedButton(onClick = { currentStep-- }, modifier = Modifier.height(50.dp).weight(1f)) {
+                                    @Suppress("DEPRECATION")
                                     Text("Previous")
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
@@ -151,7 +159,7 @@ fun CourseEnrollmentScreen(
                                                 motivationalText = motivation,
                                                 portfolioUrl = portfolioUrl,
                                                 specialSupportRequirements = supportReqs,
-                                                cvFileName = if (cvAttached) "simulated_cv.pdf" else null
+                                                cvFileName = if (cvAttached) "student_cv.pdf" else null
                                             )
                                         ) {
                                             onEnrollmentSuccess()
@@ -160,6 +168,7 @@ fun CourseEnrollmentScreen(
                                 },
                                 modifier = Modifier.height(50.dp).weight(1f)
                             ) {
+                                @Suppress("DEPRECATION")
                                 Text(if (currentStep == totalSteps) "Submit Application" else "Next")
                             }
                         }
@@ -173,7 +182,9 @@ fun CourseEnrollmentScreen(
 @Composable
 fun PersonalDetailsStep(dob: String, onDob: (String) -> Unit, nat: String, onNat: (String) -> Unit, gen: String, onGen: (String) -> Unit) {
     Column {
+        @Suppress("DEPRECATION")
         Text("Personal Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        @Suppress("DEPRECATION")
         Text("Required for official university records.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(value = dob, onValueChange = onDob, label = { Text("Date of Birth (DD/MM/YYYY)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
@@ -187,7 +198,9 @@ fun PersonalDetailsStep(dob: String, onDob: (String) -> Unit, nat: String, onNat
 @Composable
 fun AcademicBackgroundStep(qual: String, onQual: (String) -> Unit, inst: String, onInst: (String) -> Unit, year: String, onYear: (String) -> Unit, eng: String, onEng: (String) -> Unit) {
     Column {
+        @Suppress("DEPRECATION")
         Text("Academic Background", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        @Suppress("DEPRECATION")
         Text("Help us assess your entry requirements.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(value = qual, onValueChange = onQual, label = { Text("Highest Qualification (e.g. A-Levels, BSc)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
@@ -204,6 +217,7 @@ fun AcademicBackgroundStep(qual: String, onQual: (String) -> Unit, inst: String,
 @Composable
 fun SupportContactStep(name: String, onName: (String) -> Unit, phone: String, onPhone: (String) -> Unit, support: String, onSupport: (String) -> Unit) {
     Column {
+        @Suppress("DEPRECATION")
         Text("Support & Contact", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(value = name, onValueChange = onName, label = { Text("Emergency Contact Name") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
@@ -216,7 +230,9 @@ fun SupportContactStep(name: String, onName: (String) -> Unit, phone: String, on
 
 @Composable
 fun MotivationStep(mot: String, onMot: (String) -> Unit, port: String, onPort: (String) -> Unit, cv: Boolean, onCv: (Boolean) -> Unit) {
+    @Suppress("DEPRECATION")
     Column {
+        @Suppress("DEPRECATION")
         Text("Motivation & Documents", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(value = mot, onValueChange = onMot, label = { Text("Motivational Statement") }, modifier = Modifier.fillMaxWidth(), minLines = 4, shape = RoundedCornerShape(12.dp))
@@ -233,6 +249,7 @@ fun MotivationStep(mot: String, onMot: (String) -> Unit, port: String, onPort: (
             Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(if (cv) Icons.Default.CheckCircle else Icons.Default.UploadFile, null, tint = if (cv) MaterialTheme.colorScheme.primary else Color.Gray)
                 Spacer(Modifier.width(12.dp))
+                @Suppress("DEPRECATION")
                 Text(if (cv) "CV Attached: student_cv.pdf" else "Click to Upload CV (Simulated)", fontWeight = FontWeight.Bold)
             }
         }

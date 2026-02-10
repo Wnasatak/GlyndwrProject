@@ -9,7 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,18 +18,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
 /**
  * Screen showcasing the development roadmap and planned upcoming features.
- * Refactored to use centralized Adaptive utilities for a cleaner, consistent UI.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FutureFeaturesScreen(
     onBack: () -> Unit,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit
 ) {
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
+
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
@@ -45,9 +47,10 @@ fun FutureFeaturesScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = onToggleTheme) {
-                            Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null)
-                        }
+                        ThemeToggleButton(
+                            currentTheme = currentTheme,
+                            onThemeChange = onThemeChange
+                        )
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
@@ -111,6 +114,7 @@ fun FutureFeaturesScreen(
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp)
                     ) {
+                        @Suppress("DEPRECATION")
                         Text("Exciting stuff!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
