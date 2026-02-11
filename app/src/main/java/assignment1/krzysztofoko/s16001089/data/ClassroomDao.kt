@@ -79,6 +79,9 @@ interface ClassroomDao {
     @Query("SELECT * FROM attendance WHERE courseId = :courseId")
     fun getAllAttendanceForCourse(courseId: String): Flow<List<Attendance>>
 
+    @Query("SELECT * FROM attendance WHERE userId = :userId")
+    fun getAttendanceForUser(userId: String): Flow<List<Attendance>>
+
     @Query("SELECT DISTINCT date FROM attendance WHERE courseId = :courseId")
     fun getRecordedAttendanceDates(courseId: String): Flow<List<Long>>
 

@@ -83,30 +83,27 @@ fun TutorDashboardTab(
         contentPadding = PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Welcome Card (Constrained Middle)
+        // 1. Welcome Card
         item {
             AdaptiveDashboardSection(maxWidth = AdaptiveWidths.Medium) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                ) {
+                AdaptiveDashboardCard(
+                    backgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                ) { cardIsTablet ->
                     Box(modifier = Modifier.fillMaxWidth()) {
                         IconButton(
                             onClick = { viewModel.setSection(TutorSection.TEACHER_DETAIL) },
-                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                            modifier = Modifier.align(Alignment.TopEnd)
                         ) {
                             Icon(Icons.Default.AccountBox, null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
                         }
 
                         Row(
-                            modifier = Modifier.padding(AdaptiveSpacing.medium()),
+                            modifier = Modifier.padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             UserAvatar(
                                 photoUrl = currentUser?.photoUrl,
-                                modifier = Modifier.size(if (isTablet) 64.dp else 52.dp)
+                                modifier = Modifier.size(if (cardIsTablet) 64.dp else 52.dp)
                             )
                             Spacer(Modifier.width(16.dp))
                             Column {
@@ -117,18 +114,10 @@ fun TutorDashboardTab(
                                     fontWeight = FontWeight.Bold
                                 )
                                 
-                                val displayGreeting = buildString {
-                                    if (!currentUser?.title.isNullOrEmpty()) {
-                                        append(currentUser?.title)
-                                        append(" ")
-                                    }
-                                    val firstName = currentUser?.name?.split(" ")?.firstOrNull() ?: "Tutor"
-                                    append(firstName)
-                                }
-                                
+                                val firstName = currentUser?.name?.split(" ")?.firstOrNull() ?: "Tutor"
                                 Text(
-                                    text = displayGreeting,
-                                    style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
+                                    text = "${currentUser?.title ?: ""} $firstName",
+                                    style = if (cardIsTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.Black
                                 )
                             }
@@ -138,7 +127,7 @@ fun TutorDashboardTab(
             }
         }
 
-        // 2. Stats (Constrained Middle)
+        // 2. Stats
         item {
             AdaptiveDashboardSection(maxWidth = AdaptiveWidths.Medium) {
                 Row(
@@ -165,17 +154,14 @@ fun TutorDashboardTab(
             }
         }
 
-        // 3. Pending Apps (Constrained Middle)
+        // 3. Pending
         if (pendingApps > 0) {
             item {
                 AdaptiveDashboardSection(maxWidth = AdaptiveWidths.Medium) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                    AdaptiveDashboardCard(
+                        backgroundColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
                     ) {
-                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.NotificationImportant, null, tint = MaterialTheme.colorScheme.error)
                             Spacer(Modifier.width(12.dp))
                             Column {
@@ -188,7 +174,7 @@ fun TutorDashboardTab(
             }
         }
 
-        // 4. RESOURCE LIBRARY (FULL WIDTH ROWS, CONSTRAINED HEADERS)
+        // 4. RESOURCE LIBRARY
         item {
             TutorResourceLibrarySection(
                 books = books.take(10),
@@ -205,13 +191,13 @@ fun TutorDashboardTab(
             )
         }
 
-        // 5. Quick Actions (Constrained Middle)
+        // 5. Quick Actions
         item {
             AdaptiveDashboardSection(maxWidth = AdaptiveWidths.Medium) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(text = "Quick Actions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     TutorActionCard(
-                        title = "Create New Assignment",
+                        title = "Create Assignment",
                         description = "Post a new task for your students to complete.",
                         icon = Icons.Default.Assignment,
                         onClick = { viewModel.setSection(TutorSection.CREATE_ASSIGNMENT) }
@@ -229,74 +215,44 @@ fun TutorDashboardTab(
         item { Spacer(modifier = Modifier.height(40.dp)) }
     }
 
-    // Confirmation Popups
+    // Confirmation Popups...
     bookToConfirmAdd?.let { book ->
         AppPopups.AddToLibraryConfirmation(
-            show = true,
-            itemTitle = book.title,
-            category = AppConstants.CAT_BOOKS,
+            show = true, itemTitle = book.title, category = AppConstants.CAT_BOOKS,
             onDismiss = { bookToConfirmAdd = null },
             onConfirm = {
                 bookToConfirmAdd = null
-                scope.launch {
-                    isAddingToLibrary = true
-                    delay(1200)
-                    viewModel.addToLibrary(book.id, AppConstants.CAT_BOOKS)
-                    isAddingToLibrary = false
-                }
+                scope.launch { isAddingToLibrary = true; delay(1200); viewModel.addToLibrary(book.id, AppConstants.CAT_BOOKS); isAddingToLibrary = false }
             }
         )
     }
-    
     bookToConfirmRemove?.let { book ->
         AppPopups.RemoveFromLibraryConfirmation(
-            show = true,
-            bookTitle = book.title,
+            show = true, bookTitle = book.title,
             onDismiss = { bookToConfirmRemove = null },
             onConfirm = {
                 bookToConfirmRemove = null
-                scope.launch {
-                    isRemovingFromLibrary = true
-                    delay(800)
-                    viewModel.removeFromLibrary(book.id)
-                    isRemovingFromLibrary = false
-                }
+                scope.launch { isRemovingFromLibrary = true; delay(800); viewModel.removeFromLibrary(book.id); isRemovingFromLibrary = false }
             }
         )
     }
-
     audioBookToConfirmAdd?.let { ab ->
         AppPopups.AddToLibraryConfirmation(
-            show = true,
-            itemTitle = ab.title,
-            category = AppConstants.CAT_AUDIOBOOKS,
-            isAudioBook = true,
+            show = true, itemTitle = ab.title, category = AppConstants.CAT_AUDIOBOOKS, isAudioBook = true,
             onDismiss = { audioBookToConfirmAdd = null },
             onConfirm = {
                 audioBookToConfirmAdd = null
-                scope.launch {
-                    isAddingToLibrary = true
-                    delay(1200)
-                    viewModel.addToLibrary(ab.id, AppConstants.CAT_AUDIOBOOKS)
-                    isAddingToLibrary = false
-                }
+                scope.launch { isAddingToLibrary = true; delay(1200); viewModel.addToLibrary(ab.id, AppConstants.CAT_AUDIOBOOKS); isAddingToLibrary = false }
             }
         )
     }
-    
     audioBookToConfirmRemove?.let { ab ->
         AppPopups.RemoveFromLibraryConfirmation(
-            show = true,
-            bookTitle = ab.title,
+            show = true, bookTitle = ab.title,
             onDismiss = { audioBookToConfirmRemove = null },
             onConfirm = {
                 audioBookToConfirmRemove = null
-                scope.launch {
-                    isRemovingFromLibrary = true
-                    delay(800)
-                    viewModel.removeFromLibrary(ab.id)
-                    isRemovingFromLibrary = false
-                }
+                scope.launch { isRemovingFromLibrary = true; delay(800); viewModel.removeFromLibrary(ab.id); isRemovingFromLibrary = false }
             }
         )
     }
@@ -306,40 +262,84 @@ fun TutorDashboardTab(
 
     detailBook?.let { book ->
         TutorResourceDetailDialog(
-            title = book.title,
-            author = book.author,
-            description = book.description,
-            imageUrl = book.imageUrl,
-            category = book.category,
-            isAudio = false,
-            isAdded = purchasedIds.contains(book.id),
-            onAddClick = { bookToConfirmAdd = book },
-            onRemoveClick = { bookToConfirmRemove = book },
-            onActionClick = { viewModel.openBook(book) },
-            onDismiss = { detailBook = null }
+            title = book.title, author = book.author, description = book.description, imageUrl = book.imageUrl, category = book.category, isAudio = false, isAdded = purchasedIds.contains(book.id),
+            onAddClick = { bookToConfirmAdd = book }, onRemoveClick = { bookToConfirmRemove = book }, onActionClick = { viewModel.openBook(book) }, onDismiss = { detailBook = null }
         )
     }
-
     detailAudioBook?.let { ab ->
         TutorResourceDetailDialog(
-            title = ab.title,
-            author = ab.author,
-            description = ab.description,
-            imageUrl = ab.imageUrl,
-            category = ab.category,
-            isAudio = true,
-            isAdded = purchasedIds.contains(ab.id),
-            onAddClick = { audioBookToConfirmAdd = ab },
-            onRemoveClick = { audioBookToConfirmRemove = ab },
-            onActionClick = { onPlayAudio(ab.toBook()) },
-            onDismiss = { detailAudioBook = null }
+            title = ab.title, author = ab.author, description = ab.description, imageUrl = ab.imageUrl, category = ab.category, isAudio = true, isAdded = purchasedIds.contains(ab.id),
+            onAddClick = { audioBookToConfirmAdd = ab }, onRemoveClick = { audioBookToConfirmRemove = ab }, onActionClick = { onPlayAudio(ab.toBook()) }, onDismiss = { detailAudioBook = null }
         )
     }
 }
 
-/**
- * Helper to wrap sections with a maximum width and standard horizontal padding.
- */
+@Composable
+fun TutorStatCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    value: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit
+) {
+    AdaptiveDashboardCard(
+        modifier = modifier,
+        onClick = onClick,
+        backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+    ) { isTablet ->
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Surface(
+                color = color.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.size(if (isTablet) 44.dp else 36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = color, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp))
+                }
+            }
+            Column {
+                Text(text = value, fontSize = if (isTablet) 28.sp else 22.sp, fontWeight = FontWeight.Black)
+                Text(text = title, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            }
+        }
+    }
+}
+
+@Composable
+fun TutorActionCard(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    AdaptiveDashboardCard(
+        onClick = onClick,
+        backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+    ) { isTablet ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                modifier = Modifier.size(if (isTablet) 56.dp else 48.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, fontWeight = FontWeight.Bold, style = if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge)
+                Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            }
+            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray.copy(alpha = 0.5f))
+        }
+    }
+}
+
 @Composable
 fun AdaptiveDashboardSection(
     maxWidth: androidx.compose.ui.unit.Dp,
@@ -367,18 +367,10 @@ fun TutorResourceLibrarySection(
     onRemoveAudio: (AudioBook) -> Unit
 ) {
     val hPadding = AdaptiveSpacing.contentPadding()
-    
     Column(modifier = Modifier.fillMaxWidth()) {
         AdaptiveDashboardSection(maxWidth = AdaptiveWidths.Medium) {
-            Text(
-                text = "Resource Library",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+            Text(text = "Resource Library", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, modifier = Modifier.padding(vertical = 8.dp))
         }
-        
-        // Books Row
         AdaptiveDashboardSection(maxWidth = AdaptiveWidths.Medium) {
             ResourceHeader(title = "Books", color = MaterialTheme.colorScheme.primary, onExplore = onViewAllBooks)
         }
@@ -388,18 +380,11 @@ fun TutorResourceLibrarySection(
         ) {
             items(books) { book ->
                 TutorResourceItem(
-                    title = book.title,
-                    imageUrl = book.imageUrl,
-                    isAdded = purchasedIds.contains(book.id),
-                    isAudio = false,
-                    onAddClick = { onAddBook(book) },
-                    onRemoveClick = { onRemoveBook(book) },
-                    onItemClick = { onBookClick(book) }
+                    title = book.title, imageUrl = book.imageUrl, isAdded = purchasedIds.contains(book.id), isAudio = false,
+                    onAddClick = { onAddBook(book) }, onRemoveClick = { onRemoveBook(book) }, onItemClick = { onBookClick(book) }
                 )
             }
         }
-
-        // Audio Row
         AdaptiveDashboardSection(maxWidth = AdaptiveWidths.Medium) {
             ResourceHeader(title = "Audio Books", color = MaterialTheme.colorScheme.secondary, onExplore = onViewAllAudio)
         }
@@ -409,13 +394,8 @@ fun TutorResourceLibrarySection(
         ) {
             items(audioBooks) { ab ->
                 TutorResourceItem(
-                    title = ab.title,
-                    imageUrl = ab.imageUrl,
-                    isAdded = purchasedIds.contains(ab.id),
-                    isAudio = true,
-                    onAddClick = { onAddAudio(ab) },
-                    onRemoveClick = { onRemoveAudio(ab) },
-                    onItemClick = { onAudioClick(ab) }
+                    title = ab.title, imageUrl = ab.imageUrl, isAdded = purchasedIds.contains(ab.id), isAudio = true,
+                    onAddClick = { onAddAudio(ab) }, onRemoveClick = { onRemoveAudio(ab) }, onItemClick = { onAudioClick(ab) }
                 )
             }
         }
@@ -424,152 +404,22 @@ fun TutorResourceLibrarySection(
 
 @Composable
 private fun ResourceHeader(title: String, color: Color, onExplore: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(text = title, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
-        TextButton(
-            onClick = onExplore,
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-            modifier = Modifier.height(30.dp)
-        ) {
-            Text("Explore More", fontSize = 12.sp)
-            Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(16.dp))
+        TextButton(onClick = onExplore, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp), modifier = Modifier.height(30.dp)) {
+            Text("Explore More", fontSize = 12.sp); Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(16.dp))
         }
     }
 }
 
 @Composable
-fun TutorResourceDetailDialog(
-    title: String,
-    author: String,
-    description: String,
-    imageUrl: String,
-    category: String,
-    isAudio: Boolean,
-    isAdded: Boolean,
-    onAddClick: () -> Unit,
-    onRemoveClick: () -> Unit,
-    onActionClick: () -> Unit = {},
-    onDismiss: () -> Unit
-) {
-    val isTablet = isTablet()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        modifier = Modifier.adaptiveWidth(AdaptiveWidths.Medium),
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (isAdded) {
-                    Button(
-                        onClick = { onActionClick(); onDismiss() },
-                        modifier = Modifier.height(36.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) {
-                        Icon(if (isAudio) Icons.Default.PlayArrow else Icons.Default.LibraryBooks, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(if (isAudio) "Listen" else "Read", fontSize = 12.sp)
-                    }
-                    
-                    Button(
-                        onClick = { onRemoveClick(); onDismiss() },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                        modifier = Modifier.height(36.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) {
-                        Icon(Icons.Default.Delete, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Remove", fontSize = 12.sp)
-                    }
-                } else {
-                    Button(
-                        onClick = { onAddClick(); onDismiss() },
-                        modifier = Modifier.height(36.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) {
-                        Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Add to Library", fontSize = 12.sp)
-                    }
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.height(36.dp)) {
-                Text("Close")
-            }
-        },
-        title = null,
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                AsyncImage(
-                    model = formatAssetUrl(imageUrl),
-                    contentDescription = title,
-                    modifier = Modifier
-                        .size(if (isTablet) 260.dp else 200.dp)
-                        .clip(RoundedCornerShape(16.dp)),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = if (isAudio) "Narrated by $author" else "By $author",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                SuggestionChip(
-                    onClick = {},
-                    label = { Text(category) },
-                    icon = {
-                        Icon(
-                            if (isAudio) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook,
-                            null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = description,
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        lineHeight = 18.sp
-                    )
-                }
-            }
-        },
-        shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius())
-    )
-}
-
-@Composable
 fun TutorResourceItem(
-    title: String,
-    imageUrl: String,
-    isAdded: Boolean,
-    isAudio: Boolean,
-    onAddClick: () -> Unit,
-    onRemoveClick: () -> Unit,
+    title: String, 
+    imageUrl: String, 
+    isAdded: Boolean, 
+    isAudio: Boolean, 
+    onAddClick: () -> Unit, 
+    onRemoveClick: () -> Unit, 
     onItemClick: () -> Unit
 ) {
     val isTablet = isTablet()
@@ -578,9 +428,10 @@ fun TutorResourceItem(
             .width(if (isTablet) 160.dp else 140.dp)
             .clickable { onItemClick() },
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column {
             Box(modifier = Modifier.height(if (isTablet) 180.dp else 160.dp).fillMaxWidth().clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))) {
@@ -593,161 +444,220 @@ fun TutorResourceItem(
                     )
                     Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.4f)))))
                 } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(imageVector = if (isAudio) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), modifier = Modifier.size(48.dp))
+                    }
+                }
+                if (isAdded) {
+                    Surface(color = Color(0xFF4CAF50), shape = RoundedCornerShape(bottomEnd = 12.dp), modifier = Modifier.align(Alignment.TopStart)) {
+                        Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.padding(4.dp).size(16.dp))
+                    }
+                }
+            }
+            Column(modifier = Modifier.padding(8.dp)) {
+                Text(text = title, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(4.dp))
+                if (!isAdded) {
+                    Button(
+                        onClick = onAddClick, 
+                        modifier = Modifier.fillMaxWidth().height(32.dp), 
+                        contentPadding = PaddingValues(0.dp), 
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        Icon(
-                            imageVector = if (isAudio) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                            modifier = Modifier.size(48.dp)
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Add to Library", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(), 
+                        verticalAlignment = Alignment.CenterVertically, 
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier.weight(1f).height(32.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                            border = BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Check, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("In Library", fontSize = 10.sp, color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        
+                        Surface(
+                            onClick = onRemoveClick,
+                            modifier = Modifier.size(32.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Delete, contentDescription = "Remove", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TutorResourceDetailDialog(
+    title: String, 
+    author: String, 
+    description: String, 
+    imageUrl: String, 
+    category: String, 
+    isAudio: Boolean, 
+    isAdded: Boolean, 
+    onAddClick: () -> Unit, 
+    onRemoveClick: () -> Unit, 
+    onActionClick: () -> Unit = {}, 
+    onDismiss: () -> Unit
+) {
+    val isTablet = isTablet()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.adaptiveWidth(AdaptiveWidths.Medium),
+        containerColor = MaterialTheme.colorScheme.surface,
+        confirmButton = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isAdded) {
+                    // Primary Action Button (Read/Listen Now)
+                    Button(
+                        onClick = { onActionClick(); onDismiss() },
+                        modifier = Modifier.height(44.dp).weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(if (isAudio) Icons.Default.PlayArrow else Icons.AutoMirrored.Filled.MenuBook, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isAudio) "Listen Now" else "Read Now", fontWeight = FontWeight.Bold)
+                    }
+                    
+                    // Delete Button - Styled professionally
+                    FilledIconButton(
+                        onClick = { onRemoveClick(); onDismiss() },
+                        modifier = Modifier.size(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f),
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(Icons.Default.Delete, null)
+                    }
+                } else {
+                    // Add to Library Button - Now on the LEFT of Close
+                    Button(
+                        onClick = { onAddClick(); onDismiss() },
+                        modifier = Modifier.height(44.dp).weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Add to Library", fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                // Close Button - Unified in the same Row, on the RIGHT
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.height(44.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                ) {
+                    Text("Close", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+        dismissButton = null, // Set to null because Close is unified in confirmButton row
+        title = null,
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Book Cover with Glow
+                Box(contentAlignment = Alignment.Center) {
+                    Surface(
+                        modifier = Modifier.size(if (isTablet) 240.dp else 180.dp).padding(8.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                    ) {
+                        AsyncImage(
+                            model = formatAssetUrl(imageUrl),
+                            contentDescription = title,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)),
+                            contentScale = ContentScale.Crop
                         )
                     }
                 }
                 
-                if (isAdded) {
-                    Surface(
-                        color = Color(0xFF4CAF50),
-                        shape = RoundedCornerShape(bottomEnd = 12.dp),
-                        modifier = Modifier.align(Alignment.TopStart)
-                    ) {
-                        Icon(
-                            Icons.Default.Check,
-                            null,
-                            tint = Color.White,
-                            modifier = Modifier.padding(4.dp).size(16.dp)
-                        )
-                    }
-                }
-            }
-            
-            Column(modifier = Modifier.padding(8.dp)) {
+                Spacer(modifier = Modifier.height(20.dp))
+                
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth()
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.primary
                 )
-                Spacer(Modifier.height(4.dp))
-                if (!isAdded) {
-                    Button(
-                        onClick = onAddClick,
-                        modifier = Modifier.fillMaxWidth().height(28.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Add to Library", fontSize = 10.sp, fontWeight = FontWeight.Black)
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = {},
-                            enabled = false,
-                            modifier = Modifier.weight(1f).height(28.dp),
-                            contentPadding = PaddingValues(0.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = 0.5f))
-                        ) {
-                            Text("In Library", fontSize = 10.sp, color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
-                        }
-                        
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                                .border(0.5.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                .clickable { onRemoveClick() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Remove",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
+                
+                Text(
+                    text = if (isAudio) "Narrated by $author" else "By $author",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(if (isAudio) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(6.dp))
+                        Text(text = category, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun TutorStatCard(
-    modifier: Modifier = Modifier,
-    title: String,
-    value: String,
-    icon: ImageVector,
-    color: Color,
-    onClick: () -> Unit
-) {
-    val isTablet = isTablet()
-    Card(
-        modifier = modifier.height(if (isTablet) 130.dp else 110.dp),
-        onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(if (isTablet) 32.dp else 24.dp))
-            Column {
-                Text(text = value, fontSize = if (isTablet) 28.sp else 22.sp, fontWeight = FontWeight.Black)
-                Text(text = title, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            }
-        }
-    }
-}
-
-@Composable
-fun TutorActionCard(
-    title: String,
-    description: String,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    val isTablet = isTablet()
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(if (isTablet) 56.dp else 48.dp),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Description Box - Professional and Integrated
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = description,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        lineHeight = 20.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-            Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, fontWeight = FontWeight.Bold, style = if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge)
-                Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-            }
-            Icon(Icons.Default.ChevronRight, null, tint = Color.Gray.copy(alpha = 0.5f))
-        }
-    }
+        },
+        shape = RoundedCornerShape(28.dp)
+    )
 }

@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -43,14 +44,14 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
 
     var step by remember { mutableIntStateOf(1) }
     var showCreateModuleDialog by remember { mutableStateOf(false) }
-    
+
     // Assignment Form State
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var dueDateText by remember { mutableStateOf("") }
     var dueDateMillis by remember { mutableLongStateOf(0L) }
     var totalPoints by remember { mutableStateOf("100") }
-    
+
     // File Type State
     var allowPdf by remember { mutableStateOf(true) }
     var allowDocx by remember { mutableStateOf(true) }
@@ -69,10 +70,11 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                 TextButton(onClick = {
                     showDatePicker = false
                     showTimePicker = true
-                }) { Text("Next") }
+                }) { Text("Next", color = MaterialTheme.colorScheme.primary) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+                @Suppress("DEPRECATION")
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
             }
         ) {
             DatePicker(state = datePickerState)
@@ -87,11 +89,11 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                 datePickerState.selectedDateMillis?.let { cal.timeInMillis = it }
                 cal.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
                 cal.set(Calendar.MINUTE, timePickerState.minute)
-                
+
                 dueDateMillis = cal.timeInMillis
                 val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
                 dueDateText = sdf.format(cal.time)
-                
+
                 showTimePicker = false
             }
         ) {
@@ -162,6 +164,7 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                     2 -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { step = 1 }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
+                            @Suppress("DEPRECATION")
                             Text("Select Module", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         }
                         Text(
@@ -170,9 +173,9 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(start = 48.dp)
                         )
-                        
+
                         Spacer(Modifier.height(16.dp))
-                        
+
                         LazyColumn(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -202,7 +205,7 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                                 }
                             }
                         }
-                        
+
                         Button(
                             onClick = { showCreateModuleDialog = true },
                             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
@@ -211,104 +214,113 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                         ) {
                             Icon(Icons.Default.Add, null)
                             Spacer(Modifier.width(8.dp))
-                            @Suppress("DEPRECATION")
                             Text("Create New Module", fontWeight = FontWeight.Bold)
                         }
                     }
                     3 -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { step = 2 }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
+                            @Suppress("DEPRECATION")
                             Text("Assignment Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         }
-                        
+
                         Spacer(Modifier.height(16.dp))
-                        
-                        Column(
-                            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+
+                        // Wrap form in a theme-aware Surface for visibility
+                        Surface(
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                         ) {
-                            OutlinedTextField(
-                                value = title,
-                                onValueChange = { title = it },
-                                label = { Text("Assignment Title") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            
-                            OutlinedTextField(
-                                value = description,
-                                onValueChange = { description = it },
-                                label = { Text("Description / Instructions") },
-                                modifier = Modifier.fillMaxWidth().height(120.dp),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            
-                            OutlinedTextField(
-                                value = dueDateText,
-                                onValueChange = { /* Read-only via picker */ },
-                                readOnly = true,
-                                label = { Text("Due Date & Time") },
-                                modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
-                                enabled = false,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                                    disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                trailingIcon = { 
-                                    IconButton(onClick = { showDatePicker = true }) {
-                                        Icon(Icons.Default.CalendarToday, null)
-                                    }
-                                }
-                            )
-                            
-                            OutlinedTextField(
-                                value = totalPoints,
-                                onValueChange = { totalPoints = it },
-                                label = { Text("Total Points") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            
-                            Text(
-                                text = "Allowed Submission Formats",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            Column(
+                                modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                FilterChip(
-                                    selected = allowPdf,
-                                    onClick = { allowPdf = !allowPdf },
-                                    label = { Text("PDF") },
-                                    leadingIcon = if (allowPdf) {
-                                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
-                                    } else null
+                                OutlinedTextField(
+                                    value = title,
+                                    onValueChange = { title = it },
+                                    label = { Text("Assignment Title") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
                                 )
-                                FilterChip(
-                                    selected = allowDocx,
-                                    onClick = { allowDocx = !allowDocx },
-                                    label = { Text("DOCX") },
-                                    leadingIcon = if (allowDocx) {
-                                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
-                                    } else null
+
+                                OutlinedTextField(
+                                    value = description,
+                                    onValueChange = { description = it },
+                                    label = { Text("Description / Instructions") },
+                                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                                    shape = RoundedCornerShape(12.dp)
                                 )
-                                FilterChip(
-                                    selected = allowZip,
-                                    onClick = { allowZip = !allowZip },
-                                    label = { Text("ZIP") },
-                                    leadingIcon = if (allowZip) {
-                                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
-                                    } else null
+
+                                OutlinedTextField(
+                                    value = dueDateText,
+                                    onValueChange = { /* Read-only via picker */ },
+                                    readOnly = true,
+                                    label = { Text("Due Date & Time") },
+                                    modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
+                                    enabled = false,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                        disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    trailingIcon = {
+                                        IconButton(onClick = { showDatePicker = true }) {
+                                            Icon(Icons.Default.CalendarToday, null)
+                                        }
+                                    }
                                 )
+
+                                OutlinedTextField(
+                                    value = totalPoints,
+                                    onValueChange = { totalPoints = it },
+                                    label = { Text("Total Points") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+
+                                @Suppress("DEPRECATION")
+                                Text(
+                                    text = "Allowed Submission Formats",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    FilterChip(
+                                        selected = allowPdf,
+                                        onClick = { allowPdf = !allowPdf },
+                                        label = { Text("PDF") },
+                                        leadingIcon = if (allowPdf) {
+                                            { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                        } else null
+                                    )
+                                    FilterChip(
+                                        selected = allowDocx,
+                                        onClick = { allowDocx = !allowDocx },
+                                        label = { Text("DOCX") },
+                                        leadingIcon = if (allowDocx) {
+                                            { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                        } else null
+                                    )
+                                    FilterChip(
+                                        selected = allowZip,
+                                        onClick = { allowZip = !allowZip },
+                                        label = { Text("ZIP") },
+                                        leadingIcon = if (allowZip) {
+                                            { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                        } else null
+                                    )
+                                }
                             }
                         }
 
@@ -319,7 +331,7 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                                     if (allowPdf) formats.add("PDF")
                                     if (allowDocx) formats.add("DOCX")
                                     if (allowZip) formats.add("ZIP")
-                                    
+
                                     val assignment = Assignment(
                                         id = UUID.randomUUID().toString(),
                                         courseId = selectedCourse!!.id,
@@ -337,7 +349,6 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                             modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 16.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            @Suppress("DEPRECATION")
                             Text("Create Assignment", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
@@ -355,17 +366,19 @@ fun TimePickerDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
+        containerColor = MaterialTheme.colorScheme.surface,
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text("OK") }
+            TextButton(onClick = onConfirm) { Text("OK", color = MaterialTheme.colorScheme.primary) }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) { Text("Cancel") }
+            TextButton(onClick = onDismissRequest) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
         },
         text = {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                 content()
             }
-        }
+        },
+        shape = RoundedCornerShape(28.dp)
     )
 }
 
@@ -374,6 +387,7 @@ fun CreateModuleDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
     var moduleTitle by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Create New Module", fontWeight = FontWeight.Bold) },
         text = {
             Column {
@@ -394,14 +408,15 @@ fun CreateModuleDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
             Button(
                 onClick = { onCreate(moduleTitle) },
                 enabled = moduleTitle.isNotBlank(),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("Create")
+                Text("Create", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = MaterialTheme.colorScheme.primary)
             }
         },
         shape = RoundedCornerShape(24.dp)
@@ -453,7 +468,7 @@ fun SelectionCard(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                              else MaterialTheme.colorScheme.surface
         ),
         border = BorderStroke(
@@ -472,8 +487,8 @@ fun SelectionCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        icon, 
-                        null, 
+                        icon,
+                        null,
                         tint = if (selected) Color.White else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -481,15 +496,13 @@ fun SelectionCard(
             }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                @Suppress("DEPRECATION")
                 Text(
-                    text = title, 
-                    fontWeight = FontWeight.Bold, 
+                    text = title,
+                    fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-                @Suppress("DEPRECATION")
                 Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
             if (selected) {

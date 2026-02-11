@@ -68,6 +68,13 @@ fun TutorCourseDetailScreen(
                         onClick = { viewModel.setSection(TutorSection.COURSE_MODULES) }
                     )
                     CourseOptionCard(
+                        title = "Attendance Registry",
+                        description = "Mark student attendance and track session records.",
+                        icon = Icons.Default.FactCheck,
+                        color = Color(0xFF009688),
+                        onClick = { viewModel.setSection(TutorSection.COURSE_ATTENDANCE) }
+                    )
+                    CourseOptionCard(
                         title = "Class Students",
                         description = "View and manage students enrolled in this course.",
                         icon = Icons.Default.People,

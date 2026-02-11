@@ -102,8 +102,13 @@ fun ThemeToggleButton(
         }
     }
 
+    // Adaptive container: Fixed width on phones (cover), Wrap content on tablets (push)
     Box(
-        modifier = modifier.size(width = 44.dp, height = 44.dp),
+        modifier = if (isTablet) {
+            modifier.height(44.dp).wrapContentWidth()
+        } else {
+            modifier.size(44.dp)
+        },
         contentAlignment = if (isTablet) Alignment.CenterStart else Alignment.CenterEnd
     ) {
         Surface(
@@ -114,7 +119,7 @@ fun ThemeToggleButton(
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = if (isExpanded) 0.5f else 0.2f)),
             modifier = Modifier.wrapContentWidth(
                 align = if (isTablet) Alignment.Start else Alignment.End, 
-                unbounded = !isTablet
+                unbounded = !isTablet // Allows expansion over content ONLY on phones
             )
         ) {
             Row(
@@ -149,14 +154,12 @@ fun ThemeToggleButton(
             }
         }
 
-        // FIX: Menu is now called INSIDE the Box to ensure correct anchoring
         ThemeSelectionDropdown(
             expanded = showThemeMenu,
             onDismissRequest = { showThemeMenu = false },
             onThemeChange = onThemeChange,
             onOpenCustomBuilder = onOpenCustomBuilder,
             isLoggedIn = isLoggedIn,
-            // Offset logic refined: Shifting left by the menu width minus button width on phones
             offset = if (isTablet) DpOffset(x = 0.dp, y = 4.dp) else DpOffset(x = (-160).dp, y = 4.dp)
         )
     }

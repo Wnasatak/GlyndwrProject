@@ -23,6 +23,7 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.details.course.MyApplicationsScreen
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import assignment1.krzysztofoko.s16001089.ui.theme.GlyndwrProjectTheme
+import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 
 /**
  * Root Navigation Controller for the Glyndŵr Project.
@@ -52,6 +53,25 @@ fun AppNavigation(
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    
+    // Extract section from arguments if present (for TutorPanel selection)
+    val currentTutorSection = remember(navBackStackEntry) {
+        val sectionStr = navBackStackEntry?.arguments?.getString("section")
+        if (sectionStr != null) {
+            try {
+                TutorSection.valueOf(sectionStr)
+            } catch (e: Exception) {
+                null
+            }
+        } else {
+            // Default to DASHBOARD if we are on the tutor panel route but no section param
+            if (currentRoute?.startsWith(AppConstants.ROUTE_TUTOR_PANEL) == true) {
+                TutorSection.DASHBOARD
+            } else {
+                null
+            }
+        }
+    }
     
     var showThemeBuilder by remember { mutableStateOf(false) }
     var liveTheme by remember(userThemeFromDb) { mutableStateOf(userThemeFromDb) }
@@ -85,24 +105,27 @@ fun AppNavigation(
         )
     }
 
-    // Sync theme from database on initial load only
-    var hasSyncedInitialTheme by remember { mutableStateOf(false) }
-    LaunchedEffect(userThemeFromDb) {
-        if (!hasSyncedInitialTheme && userThemeFromDb != null) {
+    // Sync theme from database when user logs in
+    var syncedUserId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(currentUser, userThemeFromDb) {
+        val userId = currentUser?.uid
+        if (userId != null && userThemeFromDb != null && syncedUserId != userId) {
             val savedThemeName = userThemeFromDb?.lastSelectedTheme
             if (savedThemeName != null) {
                 try {
                     val savedTheme = Theme.valueOf(savedThemeName)
-                    if (savedTheme != currentTheme) {
-                        onThemeChange(savedTheme)
-                    }
+                    onThemeChange(savedTheme)
                 } catch (e: Exception) {
-                    if (userThemeFromDb?.isCustomThemeEnabled == true && currentTheme != Theme.CUSTOM) {
+                    if (userThemeFromDb?.isCustomThemeEnabled == true) {
                         onThemeChange(Theme.CUSTOM)
                     }
                 }
             }
-            hasSyncedInitialTheme = true
+            syncedUserId = userId
+        } else if (userId == null && syncedUserId != null) {
+            // Reset to default Dark theme on logout
+            onThemeChange(Theme.DARK)
+            syncedUserId = null
         }
     }
 
@@ -134,6 +157,7 @@ fun AppNavigation(
             localUser = localUser,
             userTheme = liveTheme,
             currentRoute = currentRoute,
+            currentTutorSection = currentTutorSection,
             unreadCount = unreadCount,
             onDashboardClick = { 
                 val target = when (localUser?.role) {
@@ -144,7 +168,13 @@ fun AppNavigation(
                 navController.navigate(target) 
             },
             onHomeClick = { navController.navigate(AppConstants.ROUTE_HOME) },
-            onProfileClick = { navController.navigate(AppConstants.ROUTE_PROFILE) },
+            onProfileClick = { 
+                if (localUser?.role?.lowercase() in listOf("teacher", "tutor")) {
+                    navController.navigate("${AppConstants.ROUTE_TUTOR_PANEL}?section=TEACHER_DETAIL")
+                } else {
+                    navController.navigate(AppConstants.ROUTE_PROFILE) 
+                }
+            },
             onWalletClick = { mainVm.showWalletHistory = true },
             onNotificationsClick = { navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) },
             onMyApplicationsClick = { navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) },
@@ -158,7 +188,7 @@ fun AppNavigation(
             onLibraryClick = { navController.navigate("${AppConstants.ROUTE_TUTOR_PANEL}?section=LIBRARY") },
             onLiveSessionClick = { navController.navigate("${AppConstants.ROUTE_TUTOR_PANEL}?section=COURSE_LIVE") },
             onNewAssignmentClick = { navController.navigate("${AppConstants.ROUTE_TUTOR_PANEL}?section=CREATE_ASSIGNMENT") },
-            onLogoutClick = { mainVm.showLogoutConfirm = true },
+            onLogoutClick = { mainVm.showLogoutConfirm = true }, 
             onThemeChange = handleThemeChange,
             currentTheme = currentTheme,
             windowSizeClass = windowSizeClass,
@@ -170,7 +200,8 @@ fun AppNavigation(
                 if (currentTheme != Theme.CUSTOM) {
                     onThemeChange(Theme.CUSTOM)
                 }
-            }
+            },
+            onAboutClick = { navController.navigate(AppConstants.ROUTE_ABOUT) } // Pass navigation action
         ) { paddingValues ->
             AppNavigationPopups(
                 showLogoutConfirm = mainVm.showLogoutConfirm,
@@ -237,14 +268,14 @@ fun AppNavigation(
                         onPlayAudio = { mainVm.onPlayAudio(it, externalPlayer) },
                         isAudioPlaying = mainVm.isAudioPlaying,
                         currentPlayingBookId = mainVm.currentPlayingBook?.id,
-                        onLogoutClick = { mainVm.showLogoutConfirm = true }
+                        onLogoutClick = { mainVm.showLogoutConfirm = true } 
                     )
 
                     infoNavGraph(
                         navController = navController, 
                         currentTheme = currentTheme, 
                         onThemeChange = handleThemeChange,
-                        onOpenThemeBuilder = { showThemeBuilder = true } // Added parameter
+                        onOpenThemeBuilder = { showThemeBuilder = true } 
                     )
 
                     invoiceNavGraph(

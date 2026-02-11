@@ -159,7 +159,11 @@ fun CourseDetailScreen(
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             AssistChip(onClick = {}, label = { Text(currentCourse.category) })
                                             if (currentCourse.isInstallmentAvailable) {
-                                                AssistChip(onClick = {}, label = { Text(AppConstants.TEXT_INSTALLMENTS_AVAILABLE) }, leadingIcon = { Icon(Icons.Default.CalendarMonth, null, Modifier.size(16.dp)) })
+                                                AssistChip(
+                                                    onClick = {}, 
+                                                    label = { Text(AppConstants.TEXT_INSTALLMENTS_AVAILABLE, style = MaterialTheme.typography.labelSmall) }, 
+                                                    leadingIcon = { Icon(Icons.Default.CalendarMonth, null, Modifier.size(14.dp)) }
+                                                )
                                             }
                                         }
 

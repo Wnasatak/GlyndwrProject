@@ -132,7 +132,7 @@ fun LiveBroadcastCard(session: LiveSession?, onJoinClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isLive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+            containerColor = if (isLive) MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
         ),
         border = BorderStroke(
@@ -155,6 +155,7 @@ fun LiveBroadcastCard(session: LiveSession?, onJoinClick: () -> Unit) {
                             .background(if (isLive) Color.Red else Color.Gray, CircleShape)
                     )
                     Spacer(Modifier.width(10.dp))
+                    @Suppress("DEPRECATION")
                     Text(
                         text = if (isLive) "LIVE NOW" else "NEXT SESSION",
                         style = MaterialTheme.typography.labelLarge,
@@ -168,6 +169,7 @@ fun LiveBroadcastCard(session: LiveSession?, onJoinClick: () -> Unit) {
                         color = Color.Red,
                         shape = RoundedCornerShape(8.dp)
                     ) {
+                        @Suppress("DEPRECATION")
                         Text(
                             "JOIN",
                             color = Color.White,
@@ -185,7 +187,7 @@ fun LiveBroadcastCard(session: LiveSession?, onJoinClick: () -> Unit) {
                 text = session?.tutorName?.let { "Lecture with $it" } ?: "No active sessions",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.ExtraBold,
-                color = if (isLive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                color = if (isLive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface
             )
             
             Spacer(Modifier.height(4.dp))
@@ -194,7 +196,7 @@ fun LiveBroadcastCard(session: LiveSession?, onJoinClick: () -> Unit) {
                 text = if (isLive) "Tutor is currently broadcasting live. Click below to enter the interactive classroom."
                        else "Check your schedule for the next broadcast update.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (isLive) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) 
+                color = if (isLive) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f) 
                         else MaterialTheme.colorScheme.onSurfaceVariant
             )
             
@@ -377,6 +379,7 @@ fun AssignmentSubmissionView(
                 IconButton(onClick = onCancel, enabled = !isSubmitting) {
                     Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
                 }
+                @Suppress("DEPRECATION")
                 Text(
                     text = "SUBMIT ASSIGNMENT",
                     style = MaterialTheme.typography.labelLarge,
@@ -418,6 +421,7 @@ fun AssignmentSubmissionView(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(Modifier.width(8.dp))
+                        @Suppress("DEPRECATION")
                         Text(
                             text = "Due: ${sdf.format(Date(assignment.dueDate))}", 
                             color = MaterialTheme.colorScheme.primary, 
@@ -543,6 +547,7 @@ fun AssignmentSubmissionView(
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
+                                @Suppress("DEPRECATION")
                                 Text(
                                     text = "Ready to submit",
                                     style = MaterialTheme.typography.labelSmall,

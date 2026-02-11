@@ -43,6 +43,7 @@ import assignment1.krzysztofoko.s16001089.ui.dashboard.DashboardViewModel
 import assignment1.krzysztofoko.s16001089.ui.dashboard.DashboardViewModelFactory
 import assignment1.krzysztofoko.s16001089.data.BookRepository
 import assignment1.krzysztofoko.s16001089.ui.profile.components.ThemeBuilderDialog
+import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.launch
@@ -57,8 +58,9 @@ import java.util.Locale
 fun TopLevelScaffold(
     currentUser: FirebaseUser?,
     localUser: UserLocal?,
-    userTheme: UserTheme?, 
+    userTheme: UserTheme?,
     currentRoute: String?,
+    currentTutorSection: TutorSection?,
     unreadCount: Int,
     onDashboardClick: () -> Unit,
     onHomeClick: () -> Unit,
@@ -81,6 +83,7 @@ fun TopLevelScaffold(
     showThemeBuilder: Boolean = false,
     onOpenThemeBuilder: (Boolean) -> Unit = {},
     onLiveThemeUpdate: (UserTheme) -> Unit = {},
+    onAboutClick: () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
 ) {
     val userId = currentUser?.uid ?: ""
@@ -93,17 +96,20 @@ fun TopLevelScaffold(
         var showMoreMenu by remember { mutableStateOf(false) }
         var showThemePicker by remember { mutableStateOf(false) }
         var showClassroomPicker by remember { mutableStateOf(false) }
-        
+
         val isAdmin = localUser?.role?.lowercase(Locale.ROOT) == "admin"
         val isTutor = localUser?.role?.lowercase(Locale.ROOT) in listOf("teacher", "tutor")
-        val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
+        
+        val isDarkTheme = when(currentTheme) {
+            Theme.DARK, Theme.DARK_BLUE -> true
+            Theme.CUSTOM -> userTheme?.customIsDark ?: true
+            else -> false
+        }
 
-        // Helper to update the live preview state
         val updatePreview = { updated: UserTheme ->
             onLiveThemeUpdate(updated)
         }
 
-        // Helper to update theme in database
         val updateThemeEnabled = { enabled: Boolean, targetTheme: Theme ->
             scope.launch {
                 val currentT = userTheme
@@ -126,7 +132,7 @@ fun TopLevelScaffold(
                 userId = userId
             )
         )
-        
+
         val applicationCount by dashboardViewModel.applicationCount.collectAsState()
         val filteredOwnedBooks by dashboardViewModel.filteredOwnedBooks.collectAsState()
         val purchasedIds by dashboardViewModel.purchasedIds.collectAsState()
@@ -138,6 +144,15 @@ fun TopLevelScaffold(
         val hasActiveEnrolledCourse = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
         val showApplications = applicationCount > 0 && !hasActiveEnrolledCourse
         val hasCourses = enrolledCourses.isNotEmpty()
+
+        // Shared Rail Colors
+        val railColors = NavigationRailItemDefaults.colors(
+            selectedIconColor = MaterialTheme.colorScheme.primary,
+            selectedTextColor = MaterialTheme.colorScheme.primary,
+            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         Row(modifier = Modifier.fillMaxSize()) {
             if (useNavRail && currentUser != null && currentRoute != null && currentRoute != AppConstants.ROUTE_SPLASH && currentRoute != AppConstants.ROUTE_AUTH) {
@@ -153,32 +168,44 @@ fun TopLevelScaffold(
                     },
                     modifier = Modifier.fillMaxHeight()
                 ) {
-                    NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_HOME, onClick = onHomeClick, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") })
-                    NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_DASHBOARD || currentRoute == AppConstants.ROUTE_ADMIN_PANEL || currentRoute?.startsWith(AppConstants.ROUTE_TUTOR_PANEL) == true, onClick = onDashboardClick, icon = { Icon(imageVector = if (isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Dashboard, contentDescription = null) }, label = { Text(if (isAdmin) "Admin" else "Dashboard") })
+                    NavigationRailItem(
+                        selected = currentRoute == AppConstants.ROUTE_HOME || currentRoute?.startsWith("${AppConstants.ROUTE_HOME}?") == true, 
+                        onClick = onHomeClick, 
+                        icon = { Icon(Icons.Default.Home, null) }, 
+                        label = { Text("Home") },
+                        colors = railColors
+                    )
+                    NavigationRailItem(
+                        selected = currentRoute == AppConstants.ROUTE_DASHBOARD || currentRoute == AppConstants.ROUTE_ADMIN_PANEL || currentTutorSection == TutorSection.DASHBOARD, 
+                        onClick = onDashboardClick, 
+                        icon = { Icon(imageVector = if (isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Dashboard, contentDescription = null) }, 
+                        label = { Text(if (isAdmin) "Admin" else "Dashboard") },
+                        colors = railColors
+                    )
 
                     if (isTutor) {
-                        NavigationRailItem(selected = currentRoute?.contains("section=MESSAGES") == true, onClick = onMessagesClick, icon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }, label = { Text("Messages") })
-                        NavigationRailItem(selected = currentRoute?.contains("section=LIBRARY") == true, onClick = onLibraryClick, icon = { Icon(Icons.Default.LibraryBooks, null) }, label = { Text("Library") })
-                        NavigationRailItem(selected = currentRoute?.contains("section=COURSE_LIVE") == true, onClick = onLiveSessionClick, icon = { Icon(Icons.Default.LiveTv, null) }, label = { Text("Stream") })
-                        NavigationRailItem(selected = currentRoute?.contains("section=CREATE_ASSIGNMENT") == true, onClick = onNewAssignmentClick, icon = { Icon(Icons.Default.NoteAdd, null) }, label = { Text("New Task") })
+                        NavigationRailItem(selected = currentTutorSection == TutorSection.MESSAGES, onClick = onMessagesClick, icon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }, label = { Text("Messages") }, colors = railColors)
+                        NavigationRailItem(selected = currentTutorSection == TutorSection.LIBRARY, onClick = onLibraryClick, icon = { Icon(Icons.Default.LibraryBooks, null) }, label = { Text("Library") }, colors = railColors)
+                        NavigationRailItem(selected = currentTutorSection == TutorSection.COURSE_LIVE, onClick = onLiveSessionClick, icon = { Icon(Icons.Default.LiveTv, null) }, label = { Text("Stream") }, colors = railColors)
+                        NavigationRailItem(selected = currentTutorSection == TutorSection.CREATE_ASSIGNMENT, onClick = onNewAssignmentClick, icon = { Icon(Icons.Default.NoteAdd, null) }, label = { Text("New Task") }, colors = railColors)
                     } else if (!isAdmin) {
                         if (hasCourses) {
                             Box {
-                                NavigationRailItem(selected = currentRoute?.contains(AppConstants.ROUTE_CLASSROOM) == true, onClick = { showClassroomPicker = true }, icon = { Icon(Icons.Default.School, null) }, label = { Text("Classroom") })
-                                DropdownMenu(expanded = showClassroomPicker, onDismissRequest = { showClassroomPicker = false }, offset = androidx.compose.ui.unit.DpOffset(x = 80.dp, y = 0.dp), modifier = Modifier.width(280.dp).padding(vertical = 8.dp)) {
+                                NavigationRailItem(selected = currentRoute?.contains(AppConstants.ROUTE_CLASSROOM) == true, onClick = { showClassroomPicker = true }, icon = { Icon(Icons.Default.School, null) }, label = { Text("Classroom") }, colors = railColors)
+                                DropdownMenu(expanded = showClassroomPicker, onDismissRequest = { showClassroomPicker = false }, offset = androidx.compose.ui.unit.DpOffset(x = 80.dp, y = (-56).dp), modifier = Modifier.width(280.dp).padding(vertical = 8.dp)) {
                                     Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(12.dp)); Text("Select Classroom", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                                     enrolledCourses.forEach { course -> DropdownMenuItem(text = { Text(course.title, maxLines = 1, overflow = TextOverflow.Ellipsis) }, onClick = { showClassroomPicker = false; onClassroomClick(course.id) }, leadingIcon = { Surface(modifier = Modifier.size(32.dp), shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoStories, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary) } } }, modifier = Modifier.padding(vertical = 4.dp)) }
                                 }
                             }
                         }
-                        if (showApplications) { NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_MY_APPLICATIONS, onClick = onMyApplicationsClick, icon = { Icon(Icons.Default.Assignment, null) }, label = { Text("Apps") }) }
-                        NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_MESSAGES, onClick = onMessagesClick, icon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }, label = { Text("Chat") })
+                        if (showApplications) { NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_MY_APPLICATIONS, onClick = onMyApplicationsClick, icon = { Icon(Icons.Default.Assignment, null) }, label = { Text("Apps") }, colors = railColors) }
+                        NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_MESSAGES, onClick = onMessagesClick, icon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }, label = { Text("Chat") }, colors = railColors)
                     } else {
-                        NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_MESSAGES, onClick = onMessagesClick, icon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }, label = { Text("Chat") })
+                        NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_MESSAGES, onClick = onMessagesClick, icon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }, label = { Text("Chat") }, colors = railColors)
                     }
                     Spacer(Modifier.weight(1f))
-                    NavigationRailItem(selected = false, onClick = onLogoutClick, icon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) }, label = { Text("Logout") })
+                    NavigationRailItem(selected = false, onClick = onLogoutClick, icon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) }, label = { Text("Logout") }, colors = railColors)
                 }
             }
 
@@ -192,19 +219,16 @@ fun TopLevelScaffold(
                                     if (!useNavRail) { UserAvatar(photoUrl = localUser?.photoUrl ?: currentUser.photoUrl?.toString(), modifier = Modifier.size(36.dp)); Spacer(Modifier.width(12.dp)) }
                                     Text(text = "Hi, $firstName", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
-                                
+
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (!isAdmin) {
-                                        // Centralized Wallet Action
                                         ProWalletPill(balance = localUser?.balance ?: 0.0, onClick = onWalletClick)
                                         Spacer(Modifier.width(8.dp))
                                     }
 
-                                    // Centralized Notification Action
                                     ProNotificationIcon(count = unreadCount, isDarkTheme = isDarkTheme, onClick = onNotificationsClick)
-
                                     Spacer(Modifier.width(4.dp))
-                                    
+
                                     if (!useNavRail) {
                                         Box {
                                             IconButton(onClick = { showMoreMenu = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.MoreVert, "More", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(22.dp)) }
@@ -219,6 +243,7 @@ fun TopLevelScaffold(
                                                 }
                                                 DropdownMenuItem(text = { Text(AppConstants.TITLE_PROFILE_SETTINGS) }, onClick = { showMoreMenu = false; onProfileClick() }, leadingIcon = { Icon(Icons.Rounded.Settings, null) })
                                                 DropdownMenuItem(text = { Text("Appearance") }, onClick = { showMoreMenu = false; showThemePicker = true }, leadingIcon = { Icon(Icons.Rounded.Palette, null) })
+                                                DropdownMenuItem(text = { Text("About App") }, onClick = { showMoreMenu = false; onAboutClick() }, leadingIcon = { Icon(Icons.Rounded.Info, null) })
                                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                                 DropdownMenuItem(text = { Text("Sign Off", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }, onClick = { showMoreMenu = false; onLogoutClick() }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Logout, null, tint = MaterialTheme.colorScheme.error) })
                                             }
@@ -233,6 +258,7 @@ fun TopLevelScaffold(
                     }
                 },
                 modifier = Modifier.weight(1f),
+                containerColor = MaterialTheme.colorScheme.background,
                 content = content
             )
         }

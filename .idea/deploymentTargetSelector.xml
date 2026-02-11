@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="Glyndwr Store">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-02-10T21:45:40.743633800Z">
+        <DropdownSelection timestamp="2026-02-11T12:43:03.834301900Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\proko\.android\avd\Samsung_S24.avd" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\proko\.android\avd\Medium_Tablet.avd" />
             </handle>
           </Target>
         </DropdownSelection>

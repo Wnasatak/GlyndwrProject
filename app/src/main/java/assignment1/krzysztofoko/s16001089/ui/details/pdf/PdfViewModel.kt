@@ -31,7 +31,6 @@ import java.util.UUID
 
 /**
  * ViewModel for the PDF Reader. 
- * Redesigned for absolute stability by using localized resource lifecycle management.
  */
 class PdfViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = BookRepository(AppDatabase.getDatabase(application))
@@ -48,29 +47,20 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
     private val _zoomScale = MutableStateFlow(1.0f)
     val zoomScale: StateFlow<Float> = _zoomScale.asStateFlow()
 
-    // Resource trackers for this specific ViewModel instance
     private var renderer: PdfRenderer? = null
     private var fileDescriptor: ParcelFileDescriptor? = null
     private var tempFile: File? = null
     
-    private val pageCache = LruCache<Int, Bitmap>(15)
+    private val pageCache = LruCache<Int, Bitmap>(10)
     private var loadJob: Job? = null
 
-    /**
-     * Entry point to load a book's PDF content.
-     */
     fun loadBook(bookId: String, initialIsDark: Boolean) {
         loadJob?.cancel()
-        
         loadJob = viewModelScope.launch {
             _uiState.value = PdfUiState.Loading
             
-            // Critical safety delay: Ensures previous composables detach from old bitmaps
-            // before we destroy the native renderer.
-            yield()
-            delay(300)
-            
-            closeResources()
+            // Cleanup previous resources WITHOUT cancelling this job
+            closeResourcesInternal()
             
             _readingMode.value = if (initialIsDark) PdfReadingMode.INVERTED else PdfReadingMode.NORMAL
             
@@ -87,8 +77,8 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.value = PdfUiState.Error("Engine failed to start")
                 }
             } catch (e: Exception) {
-                Log.e("PdfViewModel", "Critical load fail", e)
-                _uiState.value = PdfUiState.Error("Renderer error: ${e.localizedMessage}")
+                Log.e("PdfViewModel", "Load failed", e)
+                _uiState.value = PdfUiState.Error("Error: ${e.localizedMessage}")
             }
         }
     }
@@ -119,14 +109,10 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Fetches a rendered bitmap of a specific page.
-     */
     fun getPage(index: Int, mode: PdfReadingMode): Bitmap? {
         val cacheKey = index * 10 + mode.ordinal
         pageCache.get(cacheKey)?.let { if (!it.isRecycled) return it }
 
-        // Synchronization prevents race conditions with closeResources()
         synchronized(this) {
             val r = renderer ?: return null
             if (index < 0 || index >= r.pageCount) return null
@@ -135,12 +121,6 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
                 val page = r.openPage(index)
                 val width = 1080
                 val height = (width.toFloat() / page.width * page.height).toInt()
-                
-                if (width <= 0 || height <= 0) {
-                    page.close()
-                    return null
-                }
-
                 val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                 page.close()
@@ -154,23 +134,28 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun closeResources() {
+    private fun closeResourcesInternal() {
         synchronized(this) {
             try {
                 renderer?.close()
                 fileDescriptor?.close()
-            } catch (e: Exception) {
-                // native pointers might already be invalid
-            } finally {
+            } catch (e: Exception) {} finally {
                 renderer = null
                 fileDescriptor = null
-                try {
-                    tempFile?.delete()
-                } catch (e: Exception) {}
+                try { tempFile?.delete() } catch (e: Exception) {}
                 tempFile = null
             }
         }
         pageCache.evictAll()
+    }
+
+    /**
+     * Publicly accessible reset to clear state and resources.
+     */
+    fun reset() {
+        loadJob?.cancel()
+        closeResourcesInternal()
+        _uiState.value = PdfUiState.Loading
     }
 
     fun updateReadingMode(mode: PdfReadingMode) { _readingMode.value = mode }
@@ -206,10 +191,7 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        loadJob?.cancel()
-        closeResources()
-        
-        // Sweep any left-over book files in background
+        reset()
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 getApplication<Application>().cacheDir.listFiles()

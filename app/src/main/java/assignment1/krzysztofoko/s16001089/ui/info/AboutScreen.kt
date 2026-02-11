@@ -113,15 +113,7 @@ fun AboutScreen(
                     Text(text = AppConstants.APP_NAME, style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Reusable Appearance Selector component
-                    if (currentUser != null) {
-                        AppAppearanceSelector(
-                            currentTheme = currentTheme,
-                            onThemeChange = onThemeChange,
-                            onOpenDesigner = onOpenThemeBuilder
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
+                    // App Appearance Selector removed from here as requested.
 
                     InfoCard(icon = Icons.Default.School, title = "INSTITUTION", content = AppConstants.INSTITUTION, containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                     Spacer(modifier = Modifier.height(16.dp))

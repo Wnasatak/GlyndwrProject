@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import assignment1.krzysztofoko.s16001089.data.Attendance
 import assignment1.krzysztofoko.s16001089.data.CourseEnrollmentDetails
 import assignment1.krzysztofoko.s16001089.data.Grade
 import assignment1.krzysztofoko.s16001089.ui.components.*
@@ -36,6 +37,7 @@ fun TutorStudentProfileScreen(viewModel: TutorViewModel) {
     val student by viewModel.selectedStudent.collectAsState()
     val enrollments by viewModel.selectedStudentEnrollments.collectAsState()
     val grades by viewModel.selectedStudentGrades.collectAsState()
+    val attendanceRecords by viewModel.selectedStudentAttendance.collectAsState()
     val allCourses by viewModel.allCourses.collectAsState()
 
     if (student == null) {
@@ -107,6 +109,32 @@ fun TutorStudentProfileScreen(viewModel: TutorViewModel) {
                 }
             }
 
+            // Attendance Analytics
+            item {
+                SectionTitle(title = "Attendance Analytics", icon = Icons.Default.FactCheck)
+            }
+
+            if (attendanceRecords.isEmpty()) {
+                item { 
+                    Text(
+                        text = "Pending recorded sessions.", 
+                        color = Color.Gray, 
+                        modifier = Modifier.padding(start = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    ) 
+                }
+            } else {
+                val groupedAttendance = attendanceRecords.groupBy { it.courseId }
+                items(groupedAttendance.keys.toList()) { courseId ->
+                    val courseName = allCourses.find { it.id == courseId }?.title ?: "Unknown Course"
+                    val records = groupedAttendance[courseId] ?: emptyList()
+                    AttendanceSummaryCard(courseName, records, onClick = {
+                        viewModel.updateSelectedCourse(courseId)
+                        viewModel.setSection(TutorSection.INDIVIDUAL_ATTENDANCE_DETAIL)
+                    })
+                }
+            }
+
             // Academic Performance
             item {
                 SectionTitle(title = "Academic Performance", icon = Icons.Default.Assessment)
@@ -129,6 +157,73 @@ fun TutorStudentProfileScreen(viewModel: TutorViewModel) {
             }
             
             item { Spacer(Modifier.height(80.dp)) }
+        }
+    }
+}
+
+@Composable
+fun AttendanceSummaryCard(courseName: String, records: List<Attendance>, onClick: () -> Unit) {
+    val totalSessions = records.size
+    val presentCount = records.count { it.isPresent }
+    val percentage = if (totalSessions > 0) (presentCount.toFloat() / totalSessions) * 100 else 0f
+    
+    AdaptiveDashboardCard(onClick = onClick) { isTablet ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = courseName, 
+                    fontWeight = FontWeight.Bold, 
+                    style = if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "$presentCount / $totalSessions Sessions Present", 
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = Color.Gray
+                )
+                
+                Spacer(Modifier.height(12.dp))
+                
+                // Recent activity row
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.History, null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(4.dp))
+                    val recent = records.sortedByDescending { it.date }.take(3).map { 
+                        SimpleDateFormat("MM/dd", Locale.getDefault()).format(Date(it.date)) 
+                    }
+                    Text(
+                        text = "Recent: ${recent.joinToString(", ")}", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    )
+                }
+            }
+            
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(if (isTablet) 72.dp else 64.dp)) {
+                val color = when {
+                    percentage >= 75f -> Color(0xFF4CAF50)
+                    percentage >= 50f -> Color(0xFFFFC107)
+                    else -> Color(0xFFF44336)
+                }
+                
+                CircularProgressIndicator(
+                    progress = { percentage / 100f },
+                    modifier = Modifier.fillMaxSize(),
+                    color = color,
+                    trackColor = color.copy(alpha = 0.1f),
+                    strokeWidth = 6.dp,
+                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+                
+                Text(
+                    text = "${percentage.toInt()}%",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Black,
+                    color = color
+                )
+            }
         }
     }
 }

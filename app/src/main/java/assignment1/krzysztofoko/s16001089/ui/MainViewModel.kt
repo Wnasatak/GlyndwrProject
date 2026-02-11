@@ -39,7 +39,7 @@ class MainViewModel(
             else flowOf(null)
         }
         .flowOn(Dispatchers.IO) 
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val userTheme: StateFlow<UserTheme?> = _currentUser
@@ -48,16 +48,16 @@ class MainViewModel(
             else flowOf(null)
         }
         .flowOn(Dispatchers.IO)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val allBooks: StateFlow<List<Book>> = _currentUser
         .flatMapLatest { user ->
             repository.getAllCombinedData(user?.uid ?: "")
         }
-        .onEach { _isDataLoading.value = false } // Signal splash screen to proceed
+        .onEach { _isDataLoading.value = false }
         .flowOn(Dispatchers.IO)
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _isDataLoading = MutableStateFlow(true)
     val isDataLoading = _isDataLoading.asStateFlow()
@@ -74,7 +74,7 @@ class MainViewModel(
         } else flowOf(0)
     }
     .flowOn(Dispatchers.IO)
-    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    .stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val walletHistory: StateFlow<List<WalletTransaction>> = _currentUser.flatMapLatest { user ->
@@ -82,7 +82,7 @@ class MainViewModel(
         else flowOf(emptyList())
     }
     .flowOn(Dispatchers.IO)
-    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     var currentPlayingBook by mutableStateOf<Book?>(null)
         private set
@@ -97,8 +97,15 @@ class MainViewModel(
     var showSignedOutPopup by mutableStateOf(false)  
     var showWalletHistory by mutableStateOf(false)
 
-    private val authListener = FirebaseAuth.AuthStateListener { 
-        _currentUser.value = it.currentUser 
+    private val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+        val user = firebaseAuth.currentUser
+        val wasLoggedIn = _currentUser.value != null
+        _currentUser.value = user
+        
+        // Trigger the Signed Out success popup only on explicit logout transitions
+        if (wasLoggedIn && user == null) {
+            showSignedOutPopup = true
+        }
     }
 
     init {
@@ -106,12 +113,9 @@ class MainViewModel(
     }
 
     fun refreshData() {
-        // Handled automatically by the allBooks flow
+        // Automatically handled by flows
     }
 
-    /**
-     * Updates the custom theme toggle and last selected theme in the database.
-     */
     fun updateThemePersistence(theme: Theme) {
         val user = auth.currentUser ?: return
         viewModelScope.launch(Dispatchers.IO) {
@@ -160,8 +164,7 @@ class MainViewModel(
 
     fun signOut(navController: NavController) {
         showLogoutConfirm = false
-        auth.signOut()
-        showSignedOutPopup = true
+        auth.signOut() 
         navController.navigate("home") {
             popUpTo(0) { inclusive = true }
         }

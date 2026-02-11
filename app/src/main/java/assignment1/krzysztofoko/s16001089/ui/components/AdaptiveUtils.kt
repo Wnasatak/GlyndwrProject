@@ -113,12 +113,13 @@ fun AdaptiveDashboardHeader(
 
 /**
  * Standardized Card for Dashboard items.
+ * Forced elevation to 0 to prevent the automatic Material 3 "lighter square" tint.
  */
 @Composable
 fun AdaptiveDashboardCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    backgroundColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+    backgroundColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f), // Solid themed background
     content: @Composable ColumnScope.(isTablet: Boolean) -> Unit
 ) {
     val isTablet = isTablet()
@@ -133,8 +134,11 @@ fun AdaptiveDashboardCard(
     Card(
         modifier = cardModifier,
         shape = shape,
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor
+        ),
+        // CRITICAL: Setting elevation to 0 prevents the lighter tonal tint square
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), 
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Column(

@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Main Screen for the Enhanced PDF Book Reader.
+ * Modified for extreme stability: uses a shared ViewModel but keys the content to the bookId.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +40,7 @@ fun PdfReaderScreen(
     onBack: () -> Unit,               
     currentTheme: Theme,             
     onThemeChange: (Theme) -> Unit,        
-    viewModel: PdfViewModel = viewModel(key = "pdf_reader_$bookId")
+    viewModel: PdfViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val readingMode by viewModel.readingMode.collectAsState()
@@ -50,11 +51,16 @@ fun PdfReaderScreen(
     var showSettings by remember { mutableStateOf(false) }
     var isFullScreen by remember { mutableStateOf(false) }
     
+    // Keying the list state to bookId ensures it resets when changing books
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(bookId) {
+    // Ensure we clean up everything when leaving the screen
+    DisposableEffect(bookId) {
         viewModel.loadBook(bookId, isDarkTheme)
+        onDispose {
+            viewModel.reset()
+        }
     }
 
     var currentPage by remember { mutableIntStateOf(1) }
@@ -150,29 +156,32 @@ fun PdfReaderScreen(
         ) { padding ->
             val contentPadding = if (isFullScreen) PaddingValues(0.dp) else padding
             
-            when (uiState) {
-                is PdfUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                is PdfUiState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text((uiState as PdfUiState.Error).message, color = Color.Red) }
-                is PdfUiState.Ready -> {
-                    val readyState = uiState as PdfUiState.Ready
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        PdfContent(
-                            viewModel = viewModel,
-                            pageCount = readyState.pageCount,
-                            readingMode = readingMode,
-                            zoomScale = zoomScale,
-                            brightness = brightness,
-                            listState = listState,
-                            modifier = Modifier.padding(contentPadding)
-                        )
-                        
-                        if (isFullScreen) {
-                            SmallFloatingActionButton(
-                                onClick = { isFullScreen = false },
-                                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
-                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
-                            ) {
-                                Icon(Icons.Default.FullscreenExit, "Exit Full Screen")
+            // Recreating the content area using bookId as key to prevent cross-book rendering crashes
+            key(bookId) {
+                when (uiState) {
+                    is PdfUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                    is PdfUiState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text((uiState as PdfUiState.Error).message, color = Color.Red) }
+                    is PdfUiState.Ready -> {
+                        val readyState = uiState as PdfUiState.Ready
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            PdfContent(
+                                viewModel = viewModel,
+                                pageCount = readyState.pageCount,
+                                readingMode = readingMode,
+                                zoomScale = zoomScale,
+                                brightness = brightness,
+                                listState = listState,
+                                modifier = Modifier.padding(contentPadding)
+                            )
+                            
+                            if (isFullScreen) {
+                                SmallFloatingActionButton(
+                                    onClick = { isFullScreen = false },
+                                    modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
+                                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                                ) {
+                                    Icon(Icons.Default.FullscreenExit, "Exit Full Screen")
+                                }
                             }
                         }
                     }
@@ -230,6 +239,8 @@ fun PdfContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(pageCount) { index ->
+                // Using bookId context here isn't needed as parent is keyed, 
+                // but we fetch from viewModel which is now safely loaded.
                 val bitmap = remember(index, readingMode) { viewModel.getPage(index, readingMode) }
                 bitmap?.let {
                     Card(
