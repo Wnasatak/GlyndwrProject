@@ -20,12 +20,19 @@ import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 
+/**
+ * TutorCoursesTab serves as the primary gateway for tutors to access their assigned academic load.
+ * It displays a categorized list of courses the tutor is currently instructing,
+ * providing immediate access to the detailed management interface for each class.
+ */
 @Composable
 fun TutorCoursesTab(
     viewModel: TutorViewModel
 ) {
+    // REACTIVE STATE: Monitors the list of courses officially assigned to this tutor
     val assignedCourses by viewModel.assignedCourses.collectAsState()
 
+    // ADAPTIVE CONTAINER: Centered width constraint for improved readability on tablets
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) { isTablet ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -35,6 +42,7 @@ fun TutorCoursesTab(
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // HEADER SECTION: Institutional context for the current tab
             item {
                 AdaptiveDashboardHeader(
                     title = "My Classes",
@@ -43,6 +51,7 @@ fun TutorCoursesTab(
                 )
             }
             
+            // EMPTY STATE: Displays if the tutor has no active course assignments
             if (assignedCourses.isEmpty()) {
                 item {
                     Box(
@@ -69,10 +78,12 @@ fun TutorCoursesTab(
                     }
                 }
             } else {
+                // COURSE LIST: Renders high-impact cards for each assigned class
                 items(assignedCourses) { course ->
                     AdaptiveDashboardCard(onClick = { viewModel.selectCourse(course.id) }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
+                                // Title and Department info with adaptive typography
                                 Text(
                                     text = course.title, 
                                     fontWeight = FontWeight.Black, 
@@ -87,6 +98,8 @@ fun TutorCoursesTab(
                                 )
                                 
                                 Spacer(Modifier.height(12.dp))
+                                
+                                // Action Indicator: Branded badge signifying management capability
                                 Surface(
                                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                     shape = RoundedCornerShape(8.dp),
@@ -102,6 +115,7 @@ fun TutorCoursesTab(
                                     )
                                 }
                             }
+                            // Visual cue for navigation interaction
                             Icon(
                                 Icons.Default.ChevronRight, 
                                 null, 
@@ -113,6 +127,7 @@ fun TutorCoursesTab(
                 }
             }
 
+            // Standard bottom spacer to prevent clipping by system navigation elements
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }

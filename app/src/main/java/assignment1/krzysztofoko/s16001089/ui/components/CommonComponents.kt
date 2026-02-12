@@ -102,10 +102,10 @@ fun ProNotificationIcon(
     )
 
     Box(modifier = modifier, contentAlignment = Alignment.TopEnd) {
-        val bellColor = if (count > 0 && isDarkTheme) Color(0xFFFFEB3B) 
-                        else if (count > 0) Color(0xFFFBC02D)
-                        else MaterialTheme.colorScheme.onPrimaryContainer
-        
+        val bellColor = if (count > 0 && isDarkTheme) Color(0xFFFFEB3B)
+        else if (count > 0) Color(0xFFFBC02D)
+        else MaterialTheme.colorScheme.onPrimaryContainer
+
         IconButton(onClick = onClick, modifier = Modifier.size(36.dp)) {
             Icon(
                 imageVector = if (count > 0) Icons.Default.NotificationsActive else Icons.Default.Notifications,
@@ -149,10 +149,10 @@ fun ProMessageIcon(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.TopEnd) {
-        val chatColor = if (count > 0 && isDarkTheme) Color(0xFFFFEB3B) 
-                        else if (count > 0) Color(0xFFFBC02D) 
-                        else MaterialTheme.colorScheme.onPrimaryContainer
-        
+        val chatColor = if (count > 0 && isDarkTheme) Color(0xFFFFEB3B)
+        else if (count > 0) Color(0xFFFBC02D)
+        else MaterialTheme.colorScheme.onPrimaryContainer
+
         IconButton(onClick = onClick, modifier = Modifier.size(36.dp)) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.Chat,
@@ -212,7 +212,7 @@ fun ProMenuHeader(title: String) {
         modifier = Modifier.padding(horizontal = ProDesign.StandardPadding, vertical = ProDesign.CompactPadding)
     )
     HorizontalDivider(
-        modifier = Modifier.padding(bottom = 4.dp), 
+        modifier = Modifier.padding(bottom = 4.dp),
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     )
 }
@@ -281,7 +281,7 @@ fun EnrollmentStatusBadge(status: String, modifier: Modifier = Modifier) {
         "ENROLLED" -> Triple(Color(0xFF673AB7), "ENROLLED", Icons.Default.School)
         else -> Triple(Color.Gray, status, Icons.Default.PendingActions)
     }
-    
+
     Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, color.copy(alpha = 0.5f)), modifier = modifier) {
         Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, modifier = Modifier.size(14.dp), tint = color)

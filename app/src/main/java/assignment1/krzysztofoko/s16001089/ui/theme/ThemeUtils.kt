@@ -7,8 +7,20 @@ import androidx.compose.ui.graphics.Color
 import assignment1.krzysztofoko.s16001089.data.UserTheme
 
 /**
- * Extension to determine if a color is "bright" or "dark".
- * Useful for determining contrasting text colors.
+ * ThemeUtils.kt
+ *
+ * This utility file provides helper functions for dynamic theme generation and 
+ * color manipulation. It is a core part of the application's personalization engine,
+ * allowing users to create and apply custom color schemes that persist across sessions.
+ */
+
+/**
+ * Extension function to determine the perceived brightness (luminance) of a color.
+ * This is used to dynamically select contrasting text colors (Black or White) 
+ * for custom-defined background or surface colors.
+ * 
+ * Logic: Uses standard ITU-R BT.601 coefficients for luminance calculation.
+ * @return True if the color is light (high luminance), False if it is dark.
  */
 fun Color.isLight(): Boolean {
     val luminance = 0.299 * red + 0.587 * green + 0.114 * blue
@@ -16,34 +28,48 @@ fun Color.isLight(): Boolean {
 }
 
 /**
- * Generates a full Material 3 ColorScheme based on user-defined colors from the database.
- * Includes intelligent fallbacks for missing (null) values.
+ * Generates a full Material 3 ColorScheme based on user-defined parameters from the database.
+ * 
+ * This function implements a robust fallback mechanism:
+ * 1. Primary choice: User's custom color from the [UserTheme] entity.
+ * 2. Secondary choice (if custom is null): Standard system theme defaults (e.g., [DarkPrimary]).
+ * 3. Text Contrast: Automatically calculates the best 'on-' color (Black/White) based 
+ *    on the luminance of its parent container if a specific 'on-' color isn't provided.
+ *
+ * @param userTheme The persistent theme entity containing custom ARGB color values.
+ * @return A complete [ColorScheme] ready for use in a [MaterialTheme].
  */
 fun createCustomColorScheme(userTheme: UserTheme): ColorScheme {
+    // RESOLVE PRIMARY: User choice -> Default fallback
     val primary = userTheme.customPrimary?.let { Color(it) } ?: DarkPrimary
     val onPrimary = userTheme.customOnPrimary?.let { Color(it) } ?: (if (primary.isLight()) Color.Black else Color.White)
     
+    // RESOLVE CONTAINERS: Use alpha-modified version of the primary if not explicitly defined
     val primaryContainer = userTheme.customPrimaryContainer?.let { Color(it) } ?: primary.copy(alpha = 0.3f)
     val onPrimaryContainer = userTheme.customOnPrimaryContainer?.let { Color(it) } ?: (if (primaryContainer.isLight()) Color.Black else Color.White)
     
+    // RESOLVE SECONDARY
     val secondary = userTheme.customSecondary?.let { Color(it) } ?: DarkSecondary
     val onSecondary = userTheme.customOnSecondary?.let { Color(it) } ?: (if (secondary.isLight()) Color.Black else Color.White)
     
     val secondaryContainer = userTheme.customSecondaryContainer?.let { Color(it) } ?: secondary.copy(alpha = 0.3f)
     val onSecondaryContainer = userTheme.customOnSecondaryContainer?.let { Color(it) } ?: (if (secondaryContainer.isLight()) Color.Black else Color.White)
 
+    // RESOLVE TERTIARY
     val tertiary = userTheme.customTertiary?.let { Color(it) } ?: DarkTertiary
     val onTertiary = userTheme.customOnTertiary?.let { Color(it) } ?: (if (tertiary.isLight()) Color.Black else Color.White)
     
     val tertiaryContainer = userTheme.customTertiaryContainer?.let { Color(it) } ?: tertiary.copy(alpha = 0.3f)
     val onTertiaryContainer = userTheme.customOnTertiaryContainer?.let { Color(it) } ?: (if (tertiaryContainer.isLight()) Color.Black else Color.White)
     
+    // RESOLVE BACKGROUND & SURFACE
     val background = userTheme.customBackground?.let { Color(it) } ?: DarkBg
     val onBackground = userTheme.customOnBackground?.let { Color(it) } ?: (if (background.isLight()) Color.Black else Color.White)
     
     val surface = userTheme.customSurface?.let { Color(it) } ?: DarkSurface
     val onSurface = userTheme.customOnSurface?.let { Color(it) } ?: (if (surface.isLight()) Color.Black else Color.White)
     
+    // Return either a dark or light color scheme based on user's 'dark mode' toggle
     return if (userTheme.customIsDark) {
         darkColorScheme(
             primary = primary,

@@ -21,23 +21,33 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * TutorStudentAttendanceDetailScreen provides a detailed view of a specific student's 
+ * attendance history for a selected course. It allows tutors to review individual 
+ * records of presence or absence in a clean, chronological list.
+ */
 @Composable
 fun TutorStudentAttendanceDetailScreen(viewModel: TutorViewModel) {
+    // Reactive state collection from the TutorViewModel
     val student by viewModel.selectedStudent.collectAsState()
     val attendanceRecords by viewModel.selectedStudentAttendance.collectAsState()
     val allCourses by viewModel.allCourses.collectAsState()
     val selectedCourseId by viewModel.selectedCourseId.collectAsState()
 
+    // Loading/Null state handling: Ensures a student is selected before rendering the detail view
     if (student == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
 
+    // Resolve the course name for the header and filter records by the selected course
     val courseName = allCourses.find { it.id == selectedCourseId }?.title ?: "Select Course"
     val filteredRecords = attendanceRecords.filter { it.courseId == selectedCourseId }.sortedByDescending { it.date }
 
+    // Adaptive container handles centering and width constraints on larger displays (tablets)
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) { isTablet ->
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp)) {
+            // Header component displaying the student's identity and course context
             AdaptiveDashboardHeader(
                 title = "Attendance Detail",
                 subtitle = "${student?.name} • $courseName",
@@ -46,11 +56,13 @@ fun TutorStudentAttendanceDetailScreen(viewModel: TutorViewModel) {
             
             Spacer(Modifier.height(24.dp))
             
+            // Empty state handling: Displays a placeholder if no records exist for the selection
             if (filteredRecords.isEmpty()) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text("No recorded attendance history for this course.", color = Color.Gray)
                 }
             } else {
+                // Main chronological list of attendance events
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -64,29 +76,38 @@ fun TutorStudentAttendanceDetailScreen(viewModel: TutorViewModel) {
     }
 }
 
+/**
+ * A specialized card component for displaying an individual attendance record.
+ * Uses dynamic coloring and iconography to clearly distinguish between 'Present' and 'Absent' states.
+ *
+ * @param record The attendance data including date and status.
+ */
 @Composable
 fun AttendanceDetailItem(record: Attendance) {
+    // Determine the status color based on presence
+    val statusColor = if (record.isPresent) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
+        // Soft background tinting for better visual categorization
         colors = CardDefaults.cardColors(
-            containerColor = if (record.isPresent) Color(0xFF4CAF50).copy(alpha = 0.05f) 
-                            else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.05f)
+            containerColor = statusColor.copy(alpha = 0.05f)
         ),
         border = BorderStroke(
             1.dp, 
-            if (record.isPresent) Color(0xFF4CAF50).copy(alpha = 0.2f) 
-            else MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
+            statusColor.copy(alpha = 0.2f)
         )
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Visual Status Indicator (Check or Close icon)
             Surface(
                 modifier = Modifier.size(40.dp),
                 shape = RoundedCornerShape(10.dp),
-                color = if (record.isPresent) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                color = statusColor
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -100,6 +121,7 @@ fun AttendanceDetailItem(record: Attendance) {
             
             Spacer(Modifier.width(16.dp))
             
+            // Date information formatted for high readability
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = SimpleDateFormat("EEEE, MMMM dd", Locale.getDefault()).format(Date(record.date)),
@@ -113,11 +135,12 @@ fun AttendanceDetailItem(record: Attendance) {
                 )
             }
             
+            // Textual status label (PRESENT / ABSENT)
             Text(
                 text = if (record.isPresent) "PRESENT" else "ABSENT",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Black,
-                color = if (record.isPresent) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                color = statusColor
             )
         }
     }

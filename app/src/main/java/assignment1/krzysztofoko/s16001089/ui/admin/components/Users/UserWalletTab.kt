@@ -19,10 +19,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import assignment1.krzysztofoko.s16001089.data.WalletTransaction
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
+import assignment1.krzysztofoko.s16001089.ui.components.adaptiveWidth
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * UserWalletTab provides an administrative ledger of a user's financial activity.
+ */
 @Composable
 fun UserWalletTab(transactions: List<WalletTransaction>) {
     var selectedTransaction by remember { mutableStateOf<WalletTransaction?>(null) }
@@ -39,6 +46,7 @@ fun UserWalletTab(transactions: List<WalletTransaction>) {
                     tint = Color.Gray.copy(alpha = 0.3f)
                 )
                 Spacer(Modifier.height(16.dp))
+                @Suppress("DEPRECATION")
                 Text("No wallet activity recorded.", color = Color.Gray)
             }
         }
@@ -61,7 +69,7 @@ fun UserWalletTab(transactions: List<WalletTransaction>) {
                         .clickable { selectedTransaction = tx },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     ),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 ) {
@@ -69,7 +77,6 @@ fun UserWalletTab(transactions: List<WalletTransaction>) {
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Icon Container
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
@@ -129,81 +136,112 @@ fun UserWalletTab(transactions: List<WalletTransaction>) {
         }
     }
 
-    // Transaction Detail Popup
+    // High-end Themed Transaction Detail Dialog
     if (selectedTransaction != null) {
         val tx = selectedTransaction!!
         val isTopUp = tx.type == "TOP_UP"
         val statusColor = if (isTopUp) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
 
-        AlertDialog(
+        Dialog(
             onDismissRequest = { selectedTransaction = null },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (isTopUp) Icons.Default.TrendingUp else Icons.Default.Receipt,
-                        null,
-                        tint = statusColor
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text("Transaction Detail", fontWeight = FontWeight.Black)
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Summary Card
-                    Card(
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .adaptiveWidth(AdaptiveWidths.Standard),
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    // HEADER section
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            color = statusColor.copy(alpha = 0.1f),
+                            shape = CircleShape,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (isTopUp) Icons.Default.TrendingUp else Icons.Default.Receipt, 
+                                    null, 
+                                    tint = statusColor, 
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Text("Transaction Detail", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // HIGH-CONTRAST SUMMARY CARD
+                    Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = statusColor.copy(alpha = 0.05f)),
+                        color = statusColor.copy(alpha = 0.05f),
+                        shape = RoundedCornerShape(20.dp),
                         border = BorderStroke(1.dp, statusColor.copy(alpha = 0.2f))
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(20.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
                                 text = if (isTopUp) "DEPOSIT" else "PURCHASE",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = statusColor,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp
                             )
+                            Spacer(Modifier.height(4.dp))
                             Text(
                                 text = "${if (isTopUp) "+" else "-"}£${String.format(Locale.US, "%.2f", tx.amount)}",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Black,
                                 color = statusColor
                             )
+                            Spacer(Modifier.height(8.dp))
                             Text(
                                 text = tx.description,
                                 style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    // Metadata
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Spacer(Modifier.height(24.dp))
+
+                    // METADATA LIST
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         TransactionMetadataRow("Date", sdfDate.format(Date(tx.timestamp)))
                         TransactionMetadataRow("Time", sdfTime.format(Date(tx.timestamp)))
-                        TransactionMetadataRow("Method", tx.paymentMethod)
+                        TransactionMetadataRow("Payment Method", tx.paymentMethod)
+                        
                         if (!tx.orderReference.isNullOrBlank()) {
-                            TransactionMetadataRow("Reference", tx.orderReference!!)
+                            TransactionMetadataRow("Order Reference", tx.orderReference!!)
                         }
                         if (!tx.productId.isNullOrBlank() && tx.productId != "TOPUP") {
-                            TransactionMetadataRow("Product ID", tx.productId!!)
+                            TransactionMetadataRow("Product Identifier", tx.productId!!)
                         }
                     }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { selectedTransaction = null },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Close")
+
+                    Spacer(Modifier.height(32.dp))
+
+                    // ACTION BUTTON
+                    Button(
+                        onClick = { selectedTransaction = null },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Close Detail", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
-        )
+        }
     }
 }
 
@@ -214,12 +252,12 @@ private fun TransactionMetadataRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+        Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.Gray, fontWeight = FontWeight.Medium)
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.End
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

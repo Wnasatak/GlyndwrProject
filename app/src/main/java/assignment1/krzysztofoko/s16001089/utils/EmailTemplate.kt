@@ -5,14 +5,21 @@ import assignment1.krzysztofoko.s16001089.ui.theme.HEX_BRAND_BLUE
 import assignment1.krzysztofoko.s16001089.ui.theme.HEX_BRAND_TEAL
 
 /**
- * Centralized Email Template Engine.
- * Separates the visual "Shell" (Template) from the specific "Body" (Content).
+ * EmailTemplate is a centralized engine for generating professionally branded HTML emails.
+ * It follows a "Shell & Body" architectural pattern:
+ * 1. Base Template (Shell): Provides the consistent institutional header, footer, and CSS styling.
+ * 2. Specialized Generators (Body): Injects specific content (2FA, Receipts, etc.) into the shell.
  */
 object EmailTemplate {
+    // Branded color palette derived from institutional design guidelines
     private const val PRIMARY_COLOR = HEX_BRAND_BLUE
     private const val ACCENT_COLOR = HEX_BRAND_TEAL
     private const val SUCCESS_COLOR = "#00b894"
 
+    /**
+     * Inline CSS styles optimized for modern email clients.
+     * Includes responsive layout wrappers, typography scales, and visual container styles.
+     */
     private const val CSS_STYLES = """
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f9; margin: 0; padding: 20px; color: #333; }
         .wrapper { width: 100%; table-layout: fixed; background-color: #f4f7f9; padding-bottom: 40px; }
@@ -63,7 +70,8 @@ object EmailTemplate {
 
     /**
      * The unified "Shell" for all emails.
-     * Everything passed to [bodyContent] will be wrapped in this layout.
+     * Wraps the provided [bodyContent] in institutional branding and metadata.
+     * Uses 'cid:logo' for the inline university emblem attached by EmailUtils.
      */
     private fun wrapInBaseTemplate(title: String, bodyContent: String): String {
         return """
@@ -103,7 +111,7 @@ object EmailTemplate {
     }
 
     /**
-     * Helper to generate a consistent info table for details.
+     * Helper to generate a structured data table for order summaries or student info.
      */
     private fun generateInfoTable(data: Map<String, String>): String {
         if (data.isEmpty()) return ""
@@ -118,6 +126,10 @@ object EmailTemplate {
 
     // --- Content Generators ---
 
+    /**
+     * CURRENTLY IN USE: Generates the 2FA security verification email.
+     * Features a high-contrast numeric display and a CTA to return to the app.
+     */
     fun get2FAHtml(code: String): String {
         val body = """
             <p>Hi there,</p>
@@ -138,6 +150,10 @@ object EmailTemplate {
         return wrapInBaseTemplate("Security Verification", body)
     }
 
+    /**
+     * CURRENTLY IN USE: Generates detailed purchase or enrollment receipts.
+     * Dynamically adjusts labels (Order vs Enrollment) based on the item category.
+     */
     fun getPurchaseHtml(
         userName: String, 
         itemTitle: String, 
@@ -204,6 +220,10 @@ object EmailTemplate {
         return wrapInBaseTemplate(title, body)
     }
 
+    /**
+     * FUTURE UPDATE: Used for official student onboarding once registration is fully integrated.
+     * Purpose: Welcomes the student to the institution and provides their first steps in the portal.
+     */
     fun getRegistrationHtml(userName: String): String {
         val body = """
             <p>Hi <strong>$userName</strong>,</p>
@@ -227,6 +247,11 @@ object EmailTemplate {
         return wrapInBaseTemplate("Welcome to the Community!", body)
     }
 
+    /**
+     * FUTURE UPDATE: Reserved for the institutional account recovery flow.
+     * Purpose: Delivers a secure link or notification when a password reset is requested, 
+     * including safety warnings for account protection.
+     */
     fun getPasswordResetHtml(): String {
         val body = """
             <p>Hello,</p>

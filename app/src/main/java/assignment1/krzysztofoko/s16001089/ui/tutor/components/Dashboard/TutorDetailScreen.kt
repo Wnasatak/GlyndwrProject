@@ -29,31 +29,47 @@ import androidx.compose.ui.window.DialogProperties
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 
+/**
+ * TutorDetailScreen provides a comprehensive interface for managing a tutor's professional profile.
+ * It serves as both a public-facing preview and a private management console where instructors
+ * can update their biography, department, office hours, and assigned courses.
+ *
+ * Key Features:
+ * 1. Professional Identity: Displays high-impact avatar, name, and institutional title.
+ * 2. In-place Editing: Seamlessly switches between view and edit modes for profile metadata.
+ * 3. Course Assignment: Integrated dialog for linking/unlinking institutional courses to the tutor.
+ * 4. Adaptive Layout: Optimized for tablets with centered containers and responsive card scaling.
+ * 5. Data Persistence: Directly synchronizes changes with the Room database via TutorViewModel.
+ */
 @Composable
 fun TutorDetailScreen(
     viewModel: TutorViewModel,
-    onNavigateToProfile: () -> Unit = {} // Added navigation parameter
+    onNavigateToProfile: () -> Unit = {} 
 ) {
+    // REACTIVE STATE: Synchronizes with the tutor's persistent profile and class load
     val tutorProfile by viewModel.tutorProfile.collectAsState()
     val userLocal by viewModel.currentUserLocal.collectAsState()
     val assignedCourses by viewModel.assignedCourses.collectAsState()
     val allCourses by viewModel.allCourses.collectAsState()
     
+    // UI STATE: Manages editing context and the course assignment overlay
     var isEditing by remember { mutableStateOf(false) }
     var showAssignmentDialog by remember { mutableStateOf(false) }
     
-    // Editable state
+    // EDITABLE LOCAL STATE: Temporary storage for profile changes before persistence
     var editBio by remember(tutorProfile) { mutableStateOf(tutorProfile?.bio ?: "") }
     var editDept by remember(tutorProfile) { mutableStateOf(tutorProfile?.department ?: "") }
     var editHours by remember(tutorProfile) { mutableStateOf(tutorProfile?.officeHours ?: "") }
     var editTitle by remember(tutorProfile) { mutableStateOf(tutorProfile?.title ?: "") }
 
+    // ADAPTIVE CONTAINER: Centered width constraint for improved readability on tablets
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Standard) { isTablet ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(AdaptiveSpacing.contentPadding()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // HEADER: Professional context for the profile view
             item {
                 AdaptiveDashboardHeader(
                     title = "Teacher Profile",
@@ -63,6 +79,7 @@ fun TutorDetailScreen(
                 )
             }
 
+            // PRIMARY PROFILE CARD: Identity summary and primary action buttons
             item {
                 AdaptiveDashboardCard { cardIsTablet ->
                     Column(
@@ -76,6 +93,7 @@ fun TutorDetailScreen(
                         )
                         Spacer(Modifier.height(16.dp))
                         
+                        // Construct display name with institutional title (Prof, Dr, etc.)
                         val displayName = buildString {
                             if (!tutorProfile?.title.isNullOrEmpty()) {
                                 append(tutorProfile?.title)
@@ -100,6 +118,7 @@ fun TutorDetailScreen(
                         
                         Spacer(Modifier.height(20.dp))
                         
+                        // VIEW MODE ACTIONS
                         if (!isEditing) {
                             Row(
                                 modifier = Modifier.adaptiveButtonWidth(),
@@ -118,6 +137,7 @@ fun TutorDetailScreen(
                                 
                                 Spacer(Modifier.width(8.dp))
                                 
+                                // Secondary link to account settings
                                 FilledIconButton(
                                     onClick = onNavigateToProfile,
                                     modifier = Modifier.size(44.dp),
@@ -131,6 +151,7 @@ fun TutorDetailScreen(
                                 }
                             }
                         } else {
+                            // EDIT MODE ACTIONS: Commit or Discard changes
                             Row(
                                 modifier = Modifier.adaptiveButtonWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -144,6 +165,7 @@ fun TutorDetailScreen(
                                 }
                                 Button(
                                     onClick = {
+                                        // PERSISTENCE: Updates the tutor profile in the database
                                         viewModel.updateTutorProfile(editBio, editDept, editHours, editTitle)
                                         isEditing = false
                                     },
@@ -160,44 +182,22 @@ fun TutorDetailScreen(
                 }
             }
 
+            // CONTENT DISPATCHER: Renders form fields in Edit mode or detail cards in View mode
             if (isEditing) {
+                // EDIT MODE: Form-based professional info entry
                 item {
                     AdaptiveDashboardCard {
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             Text("Professional Information", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
-                            OutlinedTextField(
-                                value = editTitle,
-                                onValueChange = { editTitle = it },
-                                label = { Text("Title (e.g. Prof, Dr)") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            OutlinedTextField(
-                                value = editDept,
-                                onValueChange = { editDept = it },
-                                label = { Text("Department") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            OutlinedTextField(
-                                value = editHours,
-                                onValueChange = { editHours = it },
-                                label = { Text("Office Hours") },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            OutlinedTextField(
-                                value = editBio,
-                                onValueChange = { editBio = it },
-                                label = { Text("Biography") },
-                                modifier = Modifier.fillMaxWidth(),
-                                minLines = 3,
-                                shape = RoundedCornerShape(12.dp)
-                            )
+                            OutlinedTextField(value = editTitle, onValueChange = { editTitle = it }, label = { Text("Title (e.g. Prof, Dr)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                            OutlinedTextField(value = editDept, onValueChange = { editDept = it }, label = { Text("Department") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                            OutlinedTextField(value = editHours, onValueChange = { editHours = it }, label = { Text("Office Hours") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                            OutlinedTextField(value = editBio, onValueChange = { editBio = it }, label = { Text("Biography") }, modifier = Modifier.fillMaxWidth(), minLines = 3, shape = RoundedCornerShape(12.dp))
                         }
                     }
                 }
             } else {
+                // VIEW MODE: Metadata detail cards
                 item {
                     TutorAdaptiveInfoCard(
                         icon = Icons.Default.Info,
@@ -223,6 +223,7 @@ fun TutorDetailScreen(
                     }
                 }
 
+                // ASSIGNED CLASSES SECTION: Visual list of courses taught by the tutor
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -235,6 +236,7 @@ fun TutorDetailScreen(
                             fontWeight = FontWeight.Black
                         )
                         
+                        // Trigger for the course assignment management dialog
                         IconButton(
                             onClick = { showAssignmentDialog = true },
                             modifier = Modifier.size(32.dp)
@@ -259,6 +261,7 @@ fun TutorDetailScreen(
                         )
                     }
                 } else {
+                    // List of simple class cards
                     items(assignedCourses) { course ->
                         AdaptiveDashboardCard {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -285,10 +288,12 @@ fun TutorDetailScreen(
                 }
             }
             
+            // Standard bottom spacer for navigation clarity
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
 
+    // DIALOG: Institutional course registry manager
     if (showAssignmentDialog) {
         CourseAssignmentDialog(
             viewModel = viewModel,
@@ -297,6 +302,9 @@ fun TutorDetailScreen(
     }
 }
 
+/**
+ * A specialized info card for displaying longer qualitative text like a biography.
+ */
 @Composable
 fun TutorAdaptiveInfoCard(icon: ImageVector, title: String, content: String) {
     AdaptiveDashboardCard {
@@ -325,6 +333,9 @@ fun TutorAdaptiveInfoCard(icon: ImageVector, title: String, content: String) {
     }
 }
 
+/**
+ * A compact info card for displaying single metadata values like Email or Hours.
+ */
 @Composable
 fun TutorAdaptiveMiniCard(modifier: Modifier, icon: ImageVector, label: String, value: String) {
     AdaptiveDashboardCard(modifier = modifier) {
@@ -345,6 +356,10 @@ fun TutorAdaptiveMiniCard(modifier: Modifier, icon: ImageVector, label: String, 
     }
 }
 
+/**
+ * A specialized dialog for managing the tutor's academic course assignments.
+ * Supports real-time filtering and quick link/unlink operations.
+ */
 @Composable
 fun CourseAssignmentDialog(
     viewModel: TutorViewModel,
@@ -353,6 +368,8 @@ fun CourseAssignmentDialog(
     val allCourses by viewModel.allCourses.collectAsState()
     val assignedCourses by viewModel.assignedCourses.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    
+    // Derived state for quick assignment lookup
     val assignedIds = assignedCourses.map { it.id }.toSet()
     val filteredCourses = allCourses.filter { it.title.contains(searchQuery, ignoreCase = true) }
 
@@ -372,9 +389,7 @@ fun CourseAssignmentDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("Manage Assignments", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, null)
-                        }
+                        IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, null) }
                     }
                     
                     OutlinedTextField(
@@ -386,6 +401,7 @@ fun CourseAssignmentDialog(
                         shape = RoundedCornerShape(12.dp)
                     )
 
+                    // COURSE LIST: Interactive cards for linking courses to the tutor
                     LazyColumn(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -396,6 +412,7 @@ fun CourseAssignmentDialog(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { 
+                                        // DATABASE UPDATE: Toggles the assignment status in the Room database
                                         if (isAssigned) viewModel.unassignCourseFromSelf(course.id)
                                         else viewModel.assignCourseToSelf(course.id)
                                     },
@@ -415,6 +432,7 @@ fun CourseAssignmentDialog(
                                         Text(course.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                                         Text(course.department, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     }
+                                    // Visual state confirmation
                                     if (isAssigned) {
                                         Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
                                     } else {

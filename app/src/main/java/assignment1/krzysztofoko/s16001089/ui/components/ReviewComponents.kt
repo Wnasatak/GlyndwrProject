@@ -53,9 +53,9 @@ fun ReviewSection(
 
     Column {
         Text(
-            text = "User Reviews", 
-            style = MaterialTheme.typography.titleLarge, 
-            fontWeight = FontWeight.Bold, 
+            text = "User Reviews",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
         )
 
@@ -139,7 +139,7 @@ fun ReviewItem(
     var showInteractionsDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showEditConfirm by remember { mutableStateOf(false) }
-    
+
     val scope = rememberCoroutineScope()
     val interactions by db.userDao().getInteractionsForReview(review.reviewId).collectAsState(initial = emptyList())
     val userInteraction = interactions.find { it.userId == currentLocalUser?.id }
@@ -148,7 +148,7 @@ fun ReviewItem(
     val isOwner = isLoggedIn && currentLocalUser != null && review.userId == currentLocalUser.id
 
     AppPopups.DeleteReviewConfirmation(show = showDeleteConfirm, onDismiss = { showDeleteConfirm = false }, onConfirm = {
-        scope.launch { 
+        scope.launch {
             db.userDao().deleteReview(review.reviewId)
             db.auditDao().insertLog(SystemLog(userId = currentLocalUser?.id ?: "unknown", userName = currentLocalUser?.name ?: "User", action = "USER_DELETED_REVIEW", targetId = review.reviewId.toString(), details = "User deleted their own review.", logType = "USER"))
         }
@@ -326,7 +326,7 @@ fun ReviewInteractionsDialog(
                     items(interactions) { interaction ->
                         val userFlow = db.userDao().getUserFlow(interaction.userId).collectAsState(initial = null)
                         val user = userFlow.value
-                        
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             UserAvatar(photoUrl = user?.photoUrl, modifier = Modifier.size(32.dp))
                             Spacer(Modifier.width(12.dp))

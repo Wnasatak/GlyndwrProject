@@ -21,19 +21,29 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import coil.compose.AsyncImage
 
 /**
- * Visual components for the SplashScreen.
+ * SplashComponents.kt
+ *
+ * This file contains the modular UI elements used to build the SplashScreen.
+ * Each component is highly optimized for performance (using drawBehind for animations)
+ * and responsiveness (supporting dynamic sizing for phone vs. tablet form factors).
  */
 
 /**
- * Renders an animated background using a linear gradient overlay on top of a campus image.
+ * Renders an animated background layer.
+ * It combines a high-quality campus asset with a dynamically shifting linear gradient.
+ * 
+ * @param progress A float (0..1) representing the current state of the infinite animation loop,
+ *                 used to shift the gradient's start and end offsets.
  */
 @Composable
 fun AnimatedSplashBackground(progress: Float) {
+    // Institutional blue color palette for the overlay
     val waterOverlay1 = Color(0xFF1E88E5).copy(alpha = 0.6f)
     val waterOverlay2 = Color(0xFF1565C0).copy(alpha = 0.7f)
     val waterOverlay3 = Color(0xFF0D47A1).copy(alpha = 0.8f)
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // STATIC LAYER: Official University Campus imagery
         AsyncImage(
             model = "file:///android_asset/images/media/GlyndwrUniversityCampus.jpg",
             contentDescription = null,
@@ -42,6 +52,7 @@ fun AnimatedSplashBackground(progress: Float) {
             alignment = Alignment.CenterEnd
         )
 
+        // ANIMATED LAYER: Moving gradient overlay to add depth and motion
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -49,6 +60,7 @@ fun AnimatedSplashBackground(progress: Float) {
                     val width = size.width
                     val height = size.height
 
+                    // Calculate a shifting linear gradient based on the progress parameter
                     val brush = Brush.linearGradient(
                         colors = listOf(waterOverlay1, waterOverlay2, waterOverlay3, waterOverlay2, waterOverlay1),
                         start = Offset(
@@ -67,8 +79,15 @@ fun AnimatedSplashBackground(progress: Float) {
 }
 
 /**
- * Renders the primary animated logo.
- * Optimized size for tablets to ensure it fits and remains centered.
+ * Renders the central University logo with a sophisticated multi-layered glow effect.
+ * The component uses adaptive logic to ensure the logo is perfectly legible on 
+ * devices ranging from small handsets to 12-inch tablets.
+ *
+ * @param scale The entry transition scale factor.
+ * @param alpha The entry transition opacity.
+ * @param pulseScale The ongoing "breathing" animation factor.
+ * @param shadeAlpha The cinematic fade-out factor for the initial shade.
+ * @param rainbowColor The dynamically shifting color used for the logo's ambient glow.
  */
 @Composable
 fun AnimatedSplashLogo(
@@ -85,18 +104,18 @@ fun AnimatedSplashLogo(
         val screenWidth = maxWidth
         val screenHeight = maxHeight
         
-        // Large but safe logo width for tablets
+        // RESPONSIVE SIZING: Caps logo width on tablets to maintain visual balance
         val logoWidth = if (isTablet) {
             when {
                 screenWidth > 1000.dp -> 520.dp 
                 screenWidth > 800.dp -> 480.dp 
                 else -> 420.dp    
-            }.coerceAtMost(screenHeight * 0.4f) 
+            }.coerceAtMost(screenHeight * 0.4f) // Ensure it never exceeds 40% of screen height
         } else {
             screenWidth * 0.85f
         }
 
-        // Reduced glow multiplier to prevent pushing other elements
+        // AMBIENT GLOW: A radial gradient that pulses and follows the rainbow color shift
         val glowSize = if (isTablet) logoWidth * 1.3f else 350.dp
 
         Box(
@@ -119,7 +138,7 @@ fun AnimatedSplashLogo(
                 }
         )
 
-        // INSTITUTION LOGO
+        // INSTITUTION LOGO: The primary branding asset
         AsyncImage(
             model = "file:///android_asset/images/media/Glyndwr_University_Logo.png",
             contentDescription = "Glyndŵr University Logo",
@@ -128,14 +147,18 @@ fun AnimatedSplashLogo(
                 .scale(scale * pulseScale)
                 .alpha(alpha),
             contentScale = ContentScale.Fit,
-            // Modulate filter for professional integrated look
+            // BLEND MODE: Modulate ensures the logo integrates naturally with the shifting rainbow glow
             colorFilter = ColorFilter.tint(rainbowColor.copy(alpha = 0.8f), BlendMode.Modulate)
         )
     }
 }
 
 /**
- * Footer component displaying data synchronization status and version info.
+ * A footer component that informs the user about the system's initialization status.
+ * It provides clear feedback during long-running data synchronization tasks.
+ *
+ * @param isLoadingData Boolean flag indicating if backend sync is still in progress.
+ * @param alpha Transition alpha for the entire footer section.
  */
 @Composable
 fun SplashFooter(
@@ -151,6 +174,7 @@ fun SplashFooter(
             .padding(bottom = if (isTablet) 40.dp else 60.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // DYNAMIC STATUS MESSAGE: Updates reactively based on synchronization state
         Text(
             text = if (isLoadingData) AppConstants.MSG_SYNC_DATABASE else AppConstants.MSG_SYNC_COMPLETE,
             color = Color.White.copy(alpha = 0.9f),
@@ -161,6 +185,7 @@ fun SplashFooter(
                 .alpha(alpha)
         )
 
+        // PROGRESS INDICATOR: Provides a spinning visual cue during database sync
         CircularProgressIndicator(
             color = Color.White,
             strokeWidth = 4.dp,
@@ -171,6 +196,7 @@ fun SplashFooter(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // VERSION INFO: Displays current build information centralized in AppConstants
         Text(
             text = "Version ${AppConstants.VERSION_NAME}",
             modifier = Modifier.alpha(alpha * 0.9f),

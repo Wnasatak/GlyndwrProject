@@ -2,10 +2,12 @@ package assignment1.krzysztofoko.s16001089.ui.admin.components.Users
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
@@ -23,16 +25,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Invoice
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
+import assignment1.krzysztofoko.s16001089.ui.components.adaptiveWidth
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * UserInvoicesTab provides an administrative interface for reviewing a user's transaction history.
+ * It displays a chronological list of academic receipts and provides a detailed drill-down 
+ * view for each specific transaction.
+ *
+ * Key Features:
+ * 1. Transaction Ledger: A clean, scrollable list of all invoices.
+ * 2. Category-Aware UI: Icons dynamically adjust based on the type of purchase (Courses, Audiobooks, etc.).
+ * 3. High-Fidelity Receipt: A professional, branded dialog for detailed financial oversight.
+ * 4. Data Consistency: Centralizes all billing and order metadata for administrative auditing.
+ */
 @Composable
 fun UserInvoicesTab(invoices: List<Invoice>) {
+    // UI STATE: Tracks the currently selected invoice for the detailed popup
     var selectedInvoice by remember { mutableStateOf<Invoice?>(null) }
+    
+    // UTILITY: Standard institutional date formatter
     val sdf = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
 
+    // CONTENT DISPATCHER: Handles empty vs. populated states
     if (invoices.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -47,6 +69,7 @@ fun UserInvoicesTab(invoices: List<Invoice>) {
             }
         }
     } else {
+        // LEDGER VIEW: Chronological list of transactions
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(16.dp), 
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -56,18 +79,20 @@ fun UserInvoicesTab(invoices: List<Invoice>) {
             }
             
             items(invoices) { inv ->
+                // TRANSACTION CARD: Summarized view of an individual purchase
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { selectedInvoice = inv }, 
                     shape = RoundedCornerShape(16.dp), 
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     ),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 ) {
                     ListItem(
                         leadingContent = {
+                            // ICON LOGIC: Visually classifies the resource type
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
@@ -95,6 +120,7 @@ fun UserInvoicesTab(invoices: List<Invoice>) {
                             Text("Inv: ${inv.invoiceNumber} • ${sdf.format(Date(inv.purchasedAt))}") 
                         },
                         trailingContent = { 
+                            // PRICING: Formatted currency display
                             Text(
                                 "£${String.format(Locale.US, "%.2f", inv.pricePaid)}", 
                                 fontWeight = FontWeight.Black,
@@ -105,97 +131,140 @@ fun UserInvoicesTab(invoices: List<Invoice>) {
                     )
                 }
             }
+            // Standard safety spacer
             item { Spacer(Modifier.height(80.dp)) }
         }
     }
 
-    // Invoice Detail Popup
+    // --- OVERLAY: OFFICIAL RECEIPT DIALOG ---
+    // A high-end, detailed financial breakdown using institutional branding
     if (selectedInvoice != null) {
         val inv = selectedInvoice!!
-        AlertDialog(
+        Dialog(
             onDismissRequest = { selectedInvoice = null },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.AutoMirrored.Filled.ReceiptLong, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Official Receipt", fontWeight = FontWeight.Black)
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Billing Info
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .adaptiveWidth(AdaptiveWidths.Standard),
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    // HEADER: Branded receipt context
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            shape = CircleShape,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Filled.ReceiptLong, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Text("Official Receipt", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // BILLING INFO: Themed container for student identity and location
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
                             .padding(16.dp)
                     ) {
-                        Text("ISSUED TO", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
-                        Text(inv.billingName, fontWeight = FontWeight.Bold)
+                        Text("ISSUED TO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                        Spacer(Modifier.height(4.dp))
+                        Text(inv.billingName, fontWeight = FontWeight.Black, style = MaterialTheme.typography.bodyLarge)
                         Text(inv.billingEmail, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                         if (!inv.billingAddress.isNullOrBlank()) {
                             Text(inv.billingAddress!!, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                         }
                     }
 
-                    // Item Details
+                    Spacer(Modifier.height(20.dp))
+
+                    // ITEM DETAILS: Specific metadata about the purchased resource
                     Column {
-                        Text("PURCHASED ITEM", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                        Text("PURCHASED ITEM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                         Spacer(Modifier.height(8.dp))
-                        Text(inv.itemTitle, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                        Text(inv.itemTitle, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium)
                         Text("${inv.itemCategory} ${if (inv.itemVariant != null) "• ${inv.itemVariant}" else ""}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    Spacer(Modifier.height(16.dp))
 
-                    // Totals
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Invoice Number", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                            Text(inv.invoiceNumber, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                        }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Payment Method", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                            Text(inv.paymentMethod, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                        }
+                    // FINANCIAL AUDIT: Invoice numbers, methods, and references
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        DetailRow("Invoice Number", inv.invoiceNumber)
+                        DetailRow("Payment Method", inv.paymentMethod)
                         if (!inv.orderReference.isNullOrBlank()) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Order Reference", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                Text(inv.orderReference!!, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                            }
+                            DetailRow("Order Reference", inv.orderReference!!)
                         }
-                        Spacer(Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-                                .padding(8.dp), 
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // SUMMARY BOX: High-visibility total amount
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                         ) {
-                            Text("TOTAL PAID", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                            Text("£${String.format(Locale.US, "%.2f", inv.pricePaid)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), 
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("TOTAL PAID", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                Text("£${String.format(Locale.US, "%.2f", inv.pricePaid)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                            }
                         }
                     }
                     
+                    Spacer(Modifier.height(24.dp))
+                    
+                    // TIMESTAMP: Temporal record of the processing event
                     Text(
-                        text = "Transaction Date: ${sdf.format(Date(inv.purchasedAt))}",
+                        text = "Processed on ${sdf.format(Date(inv.purchasedAt))}",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        fontWeight = FontWeight.Bold
                     )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { selectedInvoice = null },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Close Receipt")
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // ACTION: Closes the drill-down view
+                    Button(
+                        onClick = { selectedInvoice = null },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Close Receipt", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
-        )
+        }
+    }
+}
+
+/**
+ * UTILITY: A standardized row for metadata display within the receipt.
+ */
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(text = "$label:", style = MaterialTheme.typography.bodySmall, color = Color.Gray, fontWeight = FontWeight.Medium)
+        Text(text = value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
     }
 }

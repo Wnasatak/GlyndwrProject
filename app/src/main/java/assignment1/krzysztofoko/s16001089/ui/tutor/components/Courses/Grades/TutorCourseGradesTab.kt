@@ -34,6 +34,17 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * TutorCourseGradesTab provides an administrative dashboard for assessing student performance.
+ * It coordinates students, assignments, and grades into a unified grading queue, 
+ * supporting feedback submission, scoring, and digital material review.
+ *
+ * Key Features:
+ * - Dual-state filtering: Separates 'Pending Grading' from 'Graded' items.
+ * - Digital Review: Integrated capability to "download" and review student submissions.
+ * - Qualitative Feedback: Supports detailed text-based assessment for students.
+ * - Adaptive Visuals: Dynamic card styling that reflects submission status (Graded, Submitted, Pending).
+ */
 @Composable
 fun TutorCourseGradesTab(
     viewModel: TutorViewModel
@@ -43,6 +54,7 @@ fun TutorCourseGradesTab(
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
     
+    // REACTIVE DATA: Synchronizes with the institutional data model via TutorViewModel
     val course by viewModel.selectedCourse.collectAsState()
     val courseGrades by viewModel.selectedCourseGrades.collectAsState()
     val students by viewModel.enrolledStudentsInSelectedCourse.collectAsState()
@@ -50,6 +62,7 @@ fun TutorCourseGradesTab(
     val modules by viewModel.selectedCourseModules.collectAsState()
     val selectedGradesTab by viewModel.selectedGradesTab.collectAsState()
 
+    // UI STATE: Manages active assessment context and overlay triggers
     var editingStudent by remember { mutableStateOf<UserLocal?>(null) }
     var editingAssignment by remember { mutableStateOf<Assignment?>(null) }
     var editingGrade by remember { mutableStateOf<Grade?>(null) }
@@ -61,22 +74,22 @@ fun TutorCourseGradesTab(
         ) { padding ->
             Column(modifier = Modifier.fillMaxSize().padding(padding)) {
                 
+                // HEADER AREA: Branded title and course context
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = AdaptiveSpacing.contentPadding())
                 ) {
                     Spacer(Modifier.height(12.dp))
-                    
                     AdaptiveDashboardHeader(
                         title = "Grades & Performance",
                         subtitle = course?.title ?: "Manage Student Grades",
                         icon = Icons.Default.Grade
                     )
-
                     Spacer(Modifier.height(16.dp))
                 }
 
+                // CONTENT DISPATCHER: Renders empty state or the grading queue
                 if (students.isEmpty()) {
                     Box(Modifier.fillMaxSize().padding(AdaptiveSpacing.contentPadding()), contentAlignment = Alignment.Center) {
                         Text(
@@ -86,6 +99,7 @@ fun TutorCourseGradesTab(
                         )
                     }
                 } else {
+                    // GRADING LOGIC: Joins Students, Assignments, and Grades into an assessment-ready object list
                     val allItems = remember(students, assignments, courseGrades) {
                         students.flatMap { student ->
                             assignments.map { assignment ->
@@ -95,6 +109,7 @@ fun TutorCourseGradesTab(
                         }
                     }
 
+                    // FILTERING: Automatically segregates items based on the active tab (0: Pending, 1: Graded)
                     val filteredItems = remember(allItems, selectedGradesTab) {
                         if (selectedGradesTab == 0) {
                             allItems.filter { it.third == null } 
@@ -104,6 +119,7 @@ fun TutorCourseGradesTab(
                     }
 
                     if (filteredItems.isEmpty()) {
+                        // REWARDING STATE: Celebratory feedback if the grading queue is clear
                         Box(Modifier.fillMaxSize().padding(AdaptiveSpacing.contentPadding()), contentAlignment = Alignment.Center) {
                             Text(
                                 text = if (selectedGradesTab == 0) "Everything is graded! 🎉" else "No graded items found.",
@@ -112,6 +128,7 @@ fun TutorCourseGradesTab(
                             )
                         }
                     } else {
+                        // GRADING QUEUE: List of interactive cards for assessment
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -129,6 +146,7 @@ fun TutorCourseGradesTab(
                                     module = module,
                                     grade = grade,
                                     onDownload = {
+                                        // SUBMISSION REVIEW: Simulates the retrieval of digital student work
                                         scope.launch {
                                             val submission = db.classroomDao().getSubmission(assignment.id, student.id).first()
                                             val content = submission?.content ?: "Sample Assignment Content"
@@ -136,6 +154,7 @@ fun TutorCourseGradesTab(
                                         }
                                     },
                                     onEdit = {
+                                        // ASSESSMENT TRIGGER: Locks grading unless a submission exists or a grade is already present
                                         if (assignment.status == "SUBMITTED" || grade != null) {
                                             editingStudent = student
                                             editingAssignment = assignment
@@ -151,6 +170,7 @@ fun TutorCourseGradesTab(
         }
     }
 
+    // DIALOG: Institutional grading interface for score and feedback entry
     if (editingStudent != null && editingAssignment != null) {
         GradeEditDialog(
             student = editingStudent!!,
@@ -161,6 +181,7 @@ fun TutorCourseGradesTab(
                 editingAssignment = null
             },
             onSave = { score, feedback ->
+                // PERSISTENCE: Commits the new grade and feedback to the audit-enabled registry
                 viewModel.updateGrade(editingStudent!!.id, editingAssignment!!.id, score, feedback)
                 editingStudent = null
                 editingAssignment = null
@@ -169,6 +190,10 @@ fun TutorCourseGradesTab(
     }
 }
 
+/**
+ * A sophisticated card representing a single student's performance on an assignment.
+ * Features state-aware styling, qualitative feedback display, and assessment actions.
+ */
 @Composable
 fun GradeItemCard(
     student: UserLocal, 
@@ -178,6 +203,7 @@ fun GradeItemCard(
     onDownload: () -> Unit,
     onEdit: () -> Unit
 ) {
+    // VISUAL STATUS LOGIC: Determines opacity and badges based on the grading state
     val isLocked = assignment.status != "SUBMITTED" && grade == null
     val statusText = when {
         grade != null -> "GRADED"
@@ -193,6 +219,7 @@ fun GradeItemCard(
     AdaptiveDashboardCard(
         backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = if (isLocked) 0.5f else 0.95f)
     ) { isTablet ->
+        // STUDENT IDENTITY: Avatar and formatted name/ID display
         Row(verticalAlignment = Alignment.CenterVertically) {
             UserAvatar(photoUrl = student.photoUrl, modifier = Modifier.size(if (isTablet) 56.dp else 44.dp))
             Spacer(Modifier.width(if (isTablet) 16.dp else 12.dp))
@@ -213,6 +240,7 @@ fun GradeItemCard(
                 )
             }
             
+            // PERFORMANCE INDICATOR: Shows score percentage or textual status
             Surface(
                 color = if (grade != null) MaterialTheme.colorScheme.primaryContainer else statusColor.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(10.dp)
@@ -230,6 +258,7 @@ fun GradeItemCard(
         Spacer(Modifier.height(16.dp))
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
         
+        // CONTEXTUAL METADATA: Link to curriculum module and assignment title
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
             Icon(Icons.Default.Layers, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(if (isTablet) 18.dp else 14.dp))
             Spacer(Modifier.width(6.dp))
@@ -254,6 +283,7 @@ fun GradeItemCard(
             )
         }
 
+        // ASSESSMENT FEEDBACK: Displays tutor's qualitative remarks
         Spacer(Modifier.height(16.dp))
         Text(
             text = "TUTOR FEEDBACK", 
@@ -272,6 +302,7 @@ fun GradeItemCard(
         
         Spacer(Modifier.height(20.dp))
         
+        // INTERACTIVE SUBMISSION REVIEW: Visible only if a submission exists
         if (assignment.status == "SUBMITTED" || grade != null) {
             Button(
                 onClick = onDownload,
@@ -290,6 +321,7 @@ fun GradeItemCard(
             Spacer(Modifier.height(12.dp))
         }
 
+        // FOOTER AREA: Grading timestamp and primary action trigger
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             val dateText = if (grade != null) SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(grade.gradedAt))
                            else if (assignment.status == "SUBMITTED") "Ready to grade"
@@ -306,6 +338,7 @@ fun GradeItemCard(
                 )
             }
             
+            // LOCK INDICATOR: Prevents accidental grading of non-existent work
             if (isLocked) {
                 Surface(color = Color.Gray.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
                     Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -329,6 +362,9 @@ fun GradeItemCard(
     }
 }
 
+/**
+ * A professional grading dialog for submitting assessment scores and qualitative feedback.
+ */
 @Composable
 fun GradeEditDialog(
     student: UserLocal,
@@ -363,6 +399,7 @@ fun GradeEditDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // SCORE INPUT: Validated numeric entry for percentage-based scoring
                 OutlinedTextField(
                     value = score,
                     onValueChange = { if (it.length <= 3) score = it.filter { c -> c.isDigit() } },
@@ -372,6 +409,7 @@ fun GradeEditDialog(
                     placeholder = { Text("0-100") },
                     shape = RoundedCornerShape(12.dp)
                 )
+                // FEEDBACK INPUT: Multiline text for qualitative assessment
                 OutlinedTextField(
                     value = feedback,
                     onValueChange = { feedback = it },

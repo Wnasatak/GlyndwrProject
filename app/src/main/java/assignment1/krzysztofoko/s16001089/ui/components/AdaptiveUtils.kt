@@ -24,36 +24,49 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
 /**
- * Standard width constraints for different types of screens on tablets.
+ * AdaptiveUtils.kt
+ *
+ * This utility file provides a centralized set of constants and composables to handle
+ * responsive design across different form factors (Phone vs. Tablet). It ensures a
+ * consistent user experience by capping widths and adjusting spacing dynamically.
+ */
+
+/**
+ * Defines standard width constraints for various UI elements when displayed on larger screens.
+ * These values help prevent layouts from stretching too thin on tablets.
  */
 object AdaptiveWidths {
-    val Standard = 600.dp   
-    val Medium = 700.dp     
-    val Wide = 850.dp       
+    val Standard = 600.dp   // Default container width for most screens
+    val Medium = 700.dp     // Slightly wider container for content-heavy pages
+    val Wide = 850.dp       // Maximum width for very wide layouts
 
-    val HeroImage = 500.dp
-    val ActionButton = 400.dp
+    val HeroImage = 500.dp  // Ideal width for featured product images
+    val ActionButton = 400.dp // Maximum width for primary call-to-action buttons
 
-    val DashboardCompact = 480.dp
+    val DashboardCompact = 480.dp // used in future
     val DashboardUltraCompact = 420.dp
 }
 
 /**
- * Standard adaptive spacing and dimensions.
+ * Provides dynamic spacing and dimension values that automatically scale based on the device type.
  */
 object AdaptiveSpacing {
+    /** Returns 32dp for tablets and 24dp for phones. */
     @Composable
     fun medium(): Dp = if (isTablet()) 32.dp else 24.dp
 
+    /** Returns standard outer padding: 32dp for tablets, 20dp for phones. */
     @Composable
     fun contentPadding(): Dp = if (isTablet()) 32.dp else 20.dp
 
+    /** Returns standard corner radius: 32dp for tablets, 24dp for phones. */
     @Composable
     fun cornerRadius(): Dp = if (isTablet()) 32.dp else 24.dp
 }
 
 /**
- * Global utility to check if the current screen is a tablet.
+ * A global utility to determine if the device should be treated as a tablet.
+ * Based on the Material Design 600dp breakpoint.
  */
 @Composable
 fun isTablet(): Boolean {
@@ -62,7 +75,12 @@ fun isTablet(): Boolean {
 }
 
 /**
- * Standardized Header for Dashboard pages.
+ * A standardized header component for Dashboard-style pages.
+ * It automatically scales icons, spacing, and typography for mobile or tablet views.
+ *
+ * @param title The primary heading text.
+ * @param subtitle The secondary descriptive text.
+ * @param icon The ImageVector icon to display next to the text.
  */
 @Composable
 fun AdaptiveDashboardHeader(
@@ -76,6 +94,7 @@ fun AdaptiveDashboardHeader(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Icon Container: Scales based on device type
         Surface(
             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
             shape = RoundedCornerShape(if (isTablet) 16.dp else 12.dp),
@@ -91,14 +110,13 @@ fun AdaptiveDashboardHeader(
             }
         }
         Spacer(Modifier.width(if (isTablet) 24.dp else 16.dp))
+        // Text Container: Adjusts typography styles
         Column {
-            @Suppress("DEPRECATION")
             Text(
                 text = title,
                 style = if (isTablet) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black
             )
-            @Suppress("DEPRECATION")
             Text(
                 text = subtitle,
                 style = if (isTablet) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
@@ -111,7 +129,13 @@ fun AdaptiveDashboardHeader(
 }
 
 /**
- * Standardized Card for Dashboard items.
+ * A responsive card component for dashboard items.
+ * It manages adaptive corner radii, internal padding, and optional click behavior.
+ *
+ * @param modifier Custom modifier for the card.
+ * @param onClick Optional lambda for click interaction.
+ * @param backgroundColor Overridable surface color.
+ * @param content Slot for the card's body, providing the 'isTablet' flag for internal logic.
  */
 @Composable
 fun AdaptiveDashboardCard(
@@ -123,6 +147,7 @@ fun AdaptiveDashboardCard(
     val isTablet = isTablet()
     val shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius())
 
+    // Apply clickable modifier only if a callback is provided to maintain clean UI state
     val cardModifier = if (onClick != null) {
         modifier.fillMaxWidth().clip(shape).clickable(onClick = onClick)
     } else {
@@ -132,9 +157,7 @@ fun AdaptiveDashboardCard(
     Card(
         modifier = cardModifier,
         shape = shape,
-        colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
-        ),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), 
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
@@ -147,7 +170,12 @@ fun AdaptiveDashboardCard(
 }
 
 /**
- * Branded University Logo with a dynamic, high-visibility backflash integrated with the theme.
+ * A high-end branded logo component featuring an animated "glow" backflash.
+ * The glow effect uses infinite transitions to pulsate and scale, creating a premium feel.
+ *
+ * @param model The image source (URL, Resource, etc.) for the Coil AsyncImage.
+ * @param contentDescription Accessibility text.
+ * @param logoSize The diameter of the circular logo.
  */
 @Composable
 fun AdaptiveBrandedLogo(
@@ -158,6 +186,7 @@ fun AdaptiveBrandedLogo(
 ) {
     val infiniteTransition = rememberInfiniteTransition("logo_pulse")
 
+    // Pumping alpha animation for the glow
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.7f,
@@ -168,6 +197,7 @@ fun AdaptiveBrandedLogo(
         label = "glowAlpha"
     )
 
+    // Scaling animation for the glow expansion
     val glowScale by infiniteTransition.animateFloat(
         initialValue = 1.0f,
         targetValue = 1.3f,
@@ -178,7 +208,6 @@ fun AdaptiveBrandedLogo(
         label = "glowScale"
     )
 
-    // Capture theme colors for use in draw block
     val primaryColor = MaterialTheme.colorScheme.primary
     val secondaryColor = MaterialTheme.colorScheme.secondary
 
@@ -186,7 +215,7 @@ fun AdaptiveBrandedLogo(
         modifier = modifier.size(logoSize),
         contentAlignment = Alignment.Center
     ) {
-        // High-Visibility Adaptive Backflash
+        // BACKFLASH: Dynamic Canvas drawing for the radial gradient glow effect
         Canvas(modifier = Modifier.fillMaxSize()) {
             val radius = (size.minDimension / 1.3f) * glowScale
             drawCircle(
@@ -204,6 +233,7 @@ fun AdaptiveBrandedLogo(
             )
         }
 
+        // The actual logo image, clipped to a circle with a subtle primary border
         AsyncImage(
             model = model,
             contentDescription = contentDescription,
@@ -216,7 +246,7 @@ fun AdaptiveBrandedLogo(
 }
 
 /**
- * Applies a centered "Hero" width (e.g., for product images) on tablets.
+ * MODIFIER: Caps the width of hero elements on tablets to prevent them from becoming too large.
  */
 @Composable
 fun Modifier.adaptiveHeroWidth(): Modifier {
@@ -224,7 +254,7 @@ fun Modifier.adaptiveHeroWidth(): Modifier {
 }
 
 /**
- * Applies a centered "Action" width (e.g., for big buttons) on tablets.
+ * MODIFIER: Caps button width on tablets for better visual balance in large layouts.
  */
 @Composable
 fun Modifier.adaptiveButtonWidth(): Modifier {
@@ -232,7 +262,7 @@ fun Modifier.adaptiveButtonWidth(): Modifier {
 }
 
 /**
- * A shared modifier that applies tablet-specific width constraints.
+ * MODIFIER: Applies a custom or standard max width constraint only when running on a tablet.
  */
 @Composable
 fun Modifier.adaptiveWidth(maxWidth: Dp = AdaptiveWidths.Standard): Modifier {
@@ -244,7 +274,12 @@ fun Modifier.adaptiveWidth(maxWidth: Dp = AdaptiveWidths.Standard): Modifier {
 }
 
 /**
- * A reusable wrapper that centers content on tablets and caps its width.
+ * SCREEN CONTAINER: A top-level wrapper that centers content and applies width constraints on tablets.
+ * This is the primary tool for creating responsive screens that look good on both mobile and large devices.
+ *
+ * @param maxWidth The maximum width the content should take on tablets.
+ * @param contentAlignment Alignment of the content within the container.
+ * @param content Slot for the screen content.
  */
 @Composable
 fun AdaptiveScreenContainer(
@@ -256,6 +291,7 @@ fun AdaptiveScreenContainer(
     val isTablet = isTablet()
     Box(
         modifier = modifier.fillMaxSize(),
+        // Center content on tablets, align to start on phones
         contentAlignment = if (isTablet) Alignment.TopCenter else Alignment.TopStart
     ) {
         Box(

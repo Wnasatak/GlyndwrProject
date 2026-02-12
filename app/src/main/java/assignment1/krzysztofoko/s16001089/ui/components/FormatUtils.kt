@@ -13,7 +13,7 @@ fun formatPrice(price: Double): String = String.format(Locale.US, "%.2f", price)
  */
 fun formatAssetUrl(url: String): String {
     if (url.isEmpty()) return ""
-    
+
     var cleanUrl = url
     // Normalize path by stripping asset prefix if present
     if (cleanUrl.startsWith("file:///android_asset/")) {

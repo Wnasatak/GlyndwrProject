@@ -3,6 +3,7 @@ package assignment1.krzysztofoko.s16001089.ui.tutor
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -11,6 +12,9 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.UUID
 
+/**
+ * TutorSection represents the different navigation destinations within the Tutor portal.
+ */
 enum class TutorSection {
     DASHBOARD, MY_COURSES, SELECTED_COURSE, COURSE_MODULES, COURSE_STUDENTS,
     COURSE_ASSIGNMENTS, COURSE_GRADES, COURSE_LIVE, COURSE_ARCHIVED_BROADCASTS,
@@ -19,10 +23,20 @@ enum class TutorSection {
     STUDENT_PROFILE, ABOUT, NOTIFICATIONS, COURSE_ATTENDANCE, INDIVIDUAL_ATTENDANCE_DETAIL
 }
 
+/**
+ * ConversationPreview encapsulates basic student info and the last message exchanged.
+ */
 data class ConversationPreview(val student: UserLocal, val lastMessage: ClassroomMessage)
 
 /**
- * ViewModel for the Tutor Dashboard. Optimized for safety and performance.
+ * TutorViewModel manages the business logic and data streams for the institutional Tutoring portal.
+ * It coordinates course management, student interactions, live broadcasting, and administrative auditing.
+ * 
+ * Key Responsibilities:
+ * 1. Reactive Data Streams: Providing real-time updates for courses, attendance, grades, and chats.
+ * 2. Navigation Management: Tracking the active section and selected student/course context.
+ * 3. Auditing: Logging every significant tutor action (grading, attendance, course edits) to the System Audit.
+ * 4. Communication: Managing real-time student-tutor messaging and notifications.
  */
 class TutorViewModel(
     private val userDao: UserDao,
@@ -37,7 +51,8 @@ class TutorViewModel(
 
     private val auth = FirebaseAuth.getInstance()
 
-    // --- Navigation State ---
+    // --- NAVIGATION & CONTEXT STATE ---
+    // Tracks the current active screen and focused entities (student, course, etc.)
     private val _currentSection = MutableStateFlow(TutorSection.DASHBOARD)
     val currentSection: StateFlow<TutorSection> = _currentSection.asStateFlow()
 
@@ -71,6 +86,7 @@ class TutorViewModel(
     private val _selectedGradesTab = MutableStateFlow(0)
     val selectedGradesTab: StateFlow<Int> = _selectedGradesTab.asStateFlow()
 
+    // --- NAVIGATION ACTIONS ---
     fun setGradesTab(index: Int) { _selectedGradesTab.value = index }
     fun setAttendanceDate(date: Long) { _attendanceDate.value = date }
 
@@ -103,23 +119,28 @@ class TutorViewModel(
         return allCourses.value.find { it.id == courseId }
     }
 
-    // --- Optimized Data Streams ---
+    // --- REACTIVE DATA STREAMS (ROOM FLOWS) ---
+    // These streams provide real-time updates as the local database changes.
 
+    /** Fetches the tutor's own profile info. */
     val currentUserLocal: StateFlow<UserLocal?> = (if (tutorId.isNotEmpty()) {
         userDao.getUserFlow(tutorId)
     } else {
         flowOf<UserLocal?>(null)
     }).stateIn(viewModelScope, SharingStarted.Lazily, null)
 
+    /** Specialized tutor profile details (Department, Office Hours). */
     val tutorProfile: StateFlow<TutorProfile?> = (if (tutorId.isNotEmpty()) {
         classroomDao.getTutorProfileFlow(tutorId)
     } else {
         flowOf<TutorProfile?>(null)
     }).stateIn(viewModelScope, SharingStarted.Lazily, null)
 
+    /** All courses available in the institutional catalog. */
     val allCourses: StateFlow<List<Course>> = courseDao.getAllCourses()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Courses specifically assigned to this tutor. */
     val assignedCourses: StateFlow<List<Course>> = (if (tutorId.isNotEmpty()) {
         combine(courseDao.getAllCourses(), assignedCourseDao.getAssignedCoursesForTutor(tutorId)) { courses, assignments ->
             val assignedIds = assignments.map { it.courseId }.toSet()
@@ -129,6 +150,7 @@ class TutorViewModel(
         flowOf<List<Course>>(emptyList())
     }).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Reactive stream for the currently selected Course entity. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedCourse: StateFlow<Course?> = _selectedCourseId
         .flatMapLatest { id ->
@@ -136,6 +158,7 @@ class TutorViewModel(
             else flow { emit(courseDao.getCourseById(id)) }
         }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
+    /** List of students enrolled in the currently selected course. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val enrolledStudentsInSelectedCourse: StateFlow<List<UserLocal>> = combine(
         _selectedCourseId, userDao.getAllUsersFlow(), userDao.getAllEnrollmentsFlow()
@@ -147,6 +170,7 @@ class TutorViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Grading history for the selected course. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedCourseGrades: StateFlow<List<Grade>> = _selectedCourseId
         .flatMapLatest { id ->
@@ -154,6 +178,7 @@ class TutorViewModel(
             else classroomDao.getAllGradesForCourse(id)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Assignments created for the selected course. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedCourseAssignments: StateFlow<List<Assignment>> = _selectedCourseId
         .flatMapLatest { id ->
@@ -161,6 +186,7 @@ class TutorViewModel(
             else classroomDao.getAssignmentsForCourse(id)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Educational modules (PDFs, Videos, Text) for the selected course. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedCourseModules: StateFlow<List<ModuleContent>> = _selectedCourseId
         .flatMapLatest { id ->
@@ -168,6 +194,7 @@ class TutorViewModel(
             else classroomDao.getModulesForCourse(id)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Complete attendance history for the course. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val allCourseAttendance: StateFlow<List<Attendance>> = _selectedCourseId
         .flatMapLatest { id ->
@@ -175,6 +202,7 @@ class TutorViewModel(
             else classroomDao.getAllAttendanceForCourse(id)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Specific attendance records for the selected course and date. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedCourseAttendance: StateFlow<List<Attendance>> = combine(_selectedCourseId, _attendanceDate) { id, date -> id to date }
         .flatMapLatest { (id, date) ->
@@ -185,6 +213,7 @@ class TutorViewModel(
             }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Provides a list of unique timestamps for which attendance has been recorded. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val recordedAttendanceDates: StateFlow<List<Long>> = _selectedCourseId
         .flatMapLatest { id ->
@@ -195,6 +224,7 @@ class TutorViewModel(
     val allUsers: StateFlow<List<UserLocal>> = userDao.getAllUsersFlow().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val allEnrollments: StateFlow<List<CourseEnrollmentDetails>> = userDao.getAllEnrollmentsFlow().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Count of students awaiting enrollment approval. */
     val pendingApplications: StateFlow<Int> = userDao.getAllEnrollmentsFlow()
         .map { it.count { app -> app.status == "PENDING_REVIEW" } }
         .stateIn(viewModelScope, SharingStarted.Lazily, 0)
@@ -208,6 +238,7 @@ class TutorViewModel(
     val allBooks: StateFlow<List<Book>> = bookDao.getAllBooks().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val allAudioBooks: StateFlow<List<AudioBook>> = audioBookDao.getAllAudioBooks().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Set of product IDs owned by the tutor. */
     val purchasedIds: StateFlow<Set<String>> = (if (tutorId.isNotEmpty()) {
         userDao.getPurchaseIds(tutorId).map { it.toSet() }
     } else {
@@ -222,6 +253,7 @@ class TutorViewModel(
         books.filter { ids.contains(it.id) }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Archive of finished live lecture sessions. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val previousBroadcasts: StateFlow<List<LiveSession>> = _selectedCourseId
         .flatMapLatest { id ->
@@ -229,6 +261,7 @@ class TutorViewModel(
             else classroomDao.getPreviousSessionsForCourse(id)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Enrollment history for the currently selected student. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedStudentEnrollments: StateFlow<List<CourseEnrollmentDetails>> = _selectedStudent
         .flatMapLatest { student ->
@@ -236,6 +269,7 @@ class TutorViewModel(
             else userDao.getEnrollmentsForUserFlow(student.id)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Performance history for the currently selected student. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedStudentGrades: StateFlow<List<Grade>> = _selectedStudent
         .flatMapLatest { student ->
@@ -243,6 +277,7 @@ class TutorViewModel(
             else classroomDao.getAllGradesForUser(student.id)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Attendance history for the currently selected student. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val selectedStudentAttendance: StateFlow<List<Attendance>> = _selectedStudent
         .flatMapLatest { student ->
@@ -250,6 +285,7 @@ class TutorViewModel(
             else classroomDao.getAttendanceForUser(student.id)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Chat history between the tutor and the selected student. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val chatMessages: StateFlow<List<ClassroomMessage>> = _selectedStudent
         .flatMapLatest { student ->
@@ -257,6 +293,7 @@ class TutorViewModel(
             else classroomDao.getChatHistory("GENERAL", student.id, tutorId)
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Summaries of all active chat conversations for the Messages tab. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val recentConversations: StateFlow<List<ConversationPreview>> = (if (tutorId.isNotEmpty()) {
         classroomDao.getAllMessagesForUser(tutorId).combine(userDao.getAllUsersFlow()) { messages, users ->
@@ -270,8 +307,9 @@ class TutorViewModel(
         flowOf<List<ConversationPreview>>(emptyList())
     }).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // --- Actions ---
+    // --- ADMINISTRATIVE ACTIONS (WITH AUDITING) ---
 
+    /** Records a system log entry for every tutor action to ensure transparency. */
     private fun addLog(action: String, targetId: String, details: String) {
         if (tutorId.isEmpty()) return
         viewModelScope.launch {
@@ -280,6 +318,7 @@ class TutorViewModel(
         }
     }
 
+    /** Marks a student's presence for the current date and course. */
     fun toggleAttendance(userId: String, isPresent: Boolean) {
         val courseId = _selectedCourseId.value ?: return
         viewModelScope.launch {
@@ -289,6 +328,7 @@ class TutorViewModel(
         }
     }
 
+    /** Adds or updates a learning module. */
     fun upsertModule(module: ModuleContent) {
         viewModelScope.launch {
             classroomDao.upsertModule(module)
@@ -296,6 +336,7 @@ class TutorViewModel(
         }
     }
 
+    /** Removes a learning module. */
     fun deleteModule(moduleId: String) {
         viewModelScope.launch {
             classroomDao.deleteModule(moduleId)
@@ -303,6 +344,7 @@ class TutorViewModel(
         }
     }
 
+    /** Submits a score and qualitative feedback for a student's assignment. */
     fun updateGrade(userId: String, assignmentId: String, score: Double, feedback: String) {
         val courseId = _selectedCourseId.value ?: return
         viewModelScope.launch {
@@ -312,6 +354,7 @@ class TutorViewModel(
         }
     }
 
+    /** Adds or updates an assignment task. */
     fun upsertAssignment(assignment: Assignment) {
         viewModelScope.launch {
             classroomDao.upsertAssignment(assignment)
@@ -319,6 +362,7 @@ class TutorViewModel(
         }
     }
 
+    /** Removes an assignment. */
     fun deleteAssignment(assignmentId: String) {
         viewModelScope.launch {
             classroomDao.deleteAssignment(assignmentId)
@@ -326,6 +370,7 @@ class TutorViewModel(
         }
     }
 
+    /** Registers the current tutor as an instructor for a course. */
     fun assignCourseToSelf(courseId: String) {
         viewModelScope.launch {
             assignedCourseDao.assignCourse(AssignedCourse(tutorId, courseId))
@@ -333,6 +378,7 @@ class TutorViewModel(
         }
     }
 
+    /** Unregisters the current tutor from a course. */
     fun unassignCourseFromSelf(courseId: String) {
         viewModelScope.launch {
             assignedCourseDao.unassignCourse(tutorId, courseId)
@@ -340,6 +386,7 @@ class TutorViewModel(
         }
     }
 
+    /** Updates the tutor's professional credentials and contact info. */
     fun updateTutorProfile(bio: String, department: String, officeHours: String, title: String? = null) {
         viewModelScope.launch {
             val current = currentUserLocal.value ?: return@launch
@@ -350,14 +397,49 @@ class TutorViewModel(
         }
     }
 
+    /** Grants the tutor complementary access to a library resource. */
     fun addToLibrary(productId: String, category: String) {
         viewModelScope.launch {
-            val purchase = PurchaseItem(purchaseId = UUID.randomUUID().toString(), userId = tutorId, productId = productId, mainCategory = category, purchasedAt = System.currentTimeMillis(), paymentMethod = "Tutor Privilege", amountFromWallet = 0.0, amountPaidExternal = 0.0, totalPricePaid = 0.0, quantity = 1, orderConfirmation = "TUTOR-${UUID.randomUUID().toString().take(8).uppercase()}")
+            // Find item title for the notification
+            val itemTitle = when(category) {
+                AppConstants.CAT_BOOKS -> allBooks.value.find { it.id == productId }?.title
+                AppConstants.CAT_AUDIOBOOKS -> allAudioBooks.value.find { it.id == productId }?.title
+                else -> "Resource"
+            } ?: "Academic Resource"
+
+            val purchase = PurchaseItem(
+                purchaseId = UUID.randomUUID().toString(),
+                userId = tutorId,
+                productId = productId,
+                mainCategory = category,
+                purchasedAt = System.currentTimeMillis(),
+                paymentMethod = "Tutor Privilege",
+                amountFromWallet = 0.0,
+                amountPaidExternal = 0.0,
+                totalPricePaid = 0.0,
+                quantity = 1,
+                orderConfirmation = "TUTOR-${UUID.randomUUID().toString().take(8).uppercase()}"
+            )
             userDao.addPurchase(purchase)
-            addLog("TUTOR_ADD_TO_LIBRARY", productId, "Tutor added item to library")
+
+            // ADD LOCAL NOTIFICATION FOR TUTOR
+            val notifTitle = if (category == AppConstants.CAT_AUDIOBOOKS) AppConstants.NOTIF_TITLE_AUDIOBOOK_PICKED_UP else AppConstants.NOTIF_TITLE_BOOK_PICKED_UP
+            val notification = NotificationLocal(
+                id = UUID.randomUUID().toString(),
+                userId = tutorId,
+                productId = productId,
+                title = notifTitle,
+                message = "You have successfully picked up: $itemTitle. It is now available in your library.",
+                timestamp = System.currentTimeMillis(),
+                type = AppConstants.NOTIF_TYPE_PICKUP
+            )
+            userDao.addNotification(notification)
+
+            addLog("TUTOR_ADD_TO_LIBRARY", productId, "Tutor added item to library: $itemTitle")
         }
     }
 
+    /** Sends a private message to a student and triggers a local notification for them. */
     fun sendMessage(text: String) {
         val student = _selectedStudent.value ?: return
         if (text.isBlank()) return
@@ -369,6 +451,7 @@ class TutorViewModel(
         }
     }
 
+    /** Removes a resource from the tutor's library. */
     fun removeFromLibrary(productId: String) {
         viewModelScope.launch {
             userDao.deletePurchase(tutorId, productId)
@@ -376,6 +459,7 @@ class TutorViewModel(
         }
     }
 
+    /** Starts or stops a live lecture broadcast. Archives the session on completion. */
     fun toggleLiveStream(isLive: Boolean) {
         val courseId = _selectedCourseId.value ?: return
         val moduleId = _selectedModuleId.value ?: ""
@@ -392,11 +476,13 @@ class TutorViewModel(
         }
     }
 
+    /** Updates the pause state of a live broadcast. */
     fun setLivePaused(paused: Boolean) {
         _isPaused.value = paused
         addLog("PAUSE_STREAM", _selectedCourseId.value ?: "unknown", "Tutor updated live status")
     }
 
+    /** Permanently removes a recorded broadcast session. */
     fun deletePreviousBroadcast(sessionId: String) {
         viewModelScope.launch {
             classroomDao.deleteSession(sessionId)
@@ -404,6 +490,7 @@ class TutorViewModel(
         }
     }
 
+    /** Renames a recorded lecture for better clarity. */
     fun updateBroadcastTitle(sessionId: String, newTitle: String) {
         viewModelScope.launch {
             classroomDao.updateSessionTitle(sessionId, newTitle)
@@ -411,6 +498,7 @@ class TutorViewModel(
         }
     }
 
+    /** Sends a notification to every student in the course with a link to the broadcast replay. */
     fun shareBroadcastWithAll(session: LiveSession) {
         viewModelScope.launch {
             val studentIds = enrolledStudentsInSelectedCourse.value.map { it.id }
@@ -419,6 +507,7 @@ class TutorViewModel(
         }
     }
 
+    /** Sends a notification only to specific students with a link to the broadcast replay. */
     fun shareBroadcastWithSpecificStudents(session: LiveSession, studentIds: List<String>) {
         viewModelScope.launch {
             studentIds.forEach { studentId -> userDao.addNotification(NotificationLocal(id = UUID.randomUUID().toString(), userId = studentId, productId = session.id, title = "Broadcast Shared", message = "Tutor shared a replay: ${session.title}", timestamp = System.currentTimeMillis(), type = "BROADCAST")) }
@@ -427,6 +516,9 @@ class TutorViewModel(
     }
 }
 
+/**
+ * Factory for creating the [TutorViewModel] with all necessary database dependencies.
+ */
 class TutorViewModelFactory(private val db: AppDatabase, private val tutorId: String) : androidx.lifecycle.ViewModelProvider.Factory {
     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")

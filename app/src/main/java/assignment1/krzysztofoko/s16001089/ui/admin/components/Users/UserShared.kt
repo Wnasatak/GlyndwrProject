@@ -1,5 +1,7 @@
 package assignment1.krzysztofoko.s16001089.ui.admin.components.Users
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -21,6 +23,10 @@ import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.components.formatAssetUrl
 import coil.compose.AsyncImage
 
+/**
+ * Shared UI components for the User Management administrative views.
+ */
+
 @Composable
 fun InfoSectionDetails(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -34,7 +40,8 @@ fun InfoSectionDetails(title: String, content: @Composable ColumnScope.() -> Uni
         Card(
             modifier = Modifier.fillMaxWidth(), 
             shape = RoundedCornerShape(20.dp), 
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         ) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { 
                 content() 
@@ -46,10 +53,18 @@ fun InfoSectionDetails(title: String, content: @Composable ColumnScope.() -> Uni
 @Composable
 fun InfoRowDetails(icon: ImageVector, label: String, value: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Surface(
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.size(36.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+            }
+        }
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
             Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
         }
     }
@@ -66,31 +81,40 @@ fun ActivitySectionDetails(title: String, items: List<Book>, onItemClick: (Book)
         )
         Spacer(Modifier.height(12.dp))
         if (items.isEmpty()) {
-            Text("Empty", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+            Text("No activity recorded.", color = Color.Gray, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp))
         } else {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) {
                 items(items) { book ->
                     Card(
                         modifier = Modifier
-                            .width(110.dp)
+                            .width(115.dp)
                             .clickable { onItemClick(book) }, 
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(8.dp)) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(10.dp)) {
                             AsyncImage(
                                 model = formatAssetUrl(book.imageUrl), 
                                 contentDescription = null, 
-                                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)), 
+                                modifier = Modifier
+                                    .size(85.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)), 
                                 contentScale = ContentScale.Crop
                             )
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(8.dp))
                             Text(
                                 text = book.title, 
                                 style = MaterialTheme.typography.labelSmall, 
                                 maxLines = 1, 
                                 overflow = TextOverflow.Ellipsis, 
-                                fontWeight = FontWeight.Bold, 
-                                textAlign = TextAlign.Center
+                                fontWeight = FontWeight.ExtraBold, 
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }

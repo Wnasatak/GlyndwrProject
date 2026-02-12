@@ -68,6 +68,11 @@ import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
 import coil.compose.AsyncImage
 
+/**
+ * TutorPanelScreen is the primary layout orchestrator for the institutional tutoring portal.
+ * It manages the root-level navigation, top application bar, and bottom navigation menu,
+ * switching between various functional tabs like Dashboard, Courses, Library, and Students.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorPanelScreen(
@@ -91,6 +96,7 @@ fun TutorPanelScreen(
         tutorId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     ))
 ) {
+    // REACTIVE STATE COLLECTION: Syncs the UI with the ViewModel's central state
     val currentSection by viewModel.currentSection.collectAsState()
     val activeBook by viewModel.activeBook.collectAsState()
     val activeAudioBookState = viewModel.activeAudioBook.collectAsState()
@@ -101,6 +107,7 @@ fun TutorPanelScreen(
     val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
     val selectedGradesTab by viewModel.selectedGradesTab.collectAsState()
 
+    // DEEP LINKING / INITIAL NAVIGATION: Sets the starting section if provided via arguments
     LaunchedEffect(initialSection) {
         if (initialSection != null) {
             try {
@@ -110,11 +117,13 @@ fun TutorPanelScreen(
         }
     }
     
+    // UI CONDITIONALS: Adjusts layout properties based on the active screen type
     val isChatOpen = currentSection == TutorSection.CHAT
     val isReaderOpen = currentSection == TutorSection.READ_BOOK
     val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
     var showMenu by remember { mutableStateOf(false) }
 
+    // ANIMATION: Constant "ringing" effect for the notification bell when unread items exist
     val infiniteTransitionBell = rememberInfiniteTransition(label = "bellRing")
     val rotation by infiniteTransitionBell.animateFloat(
         initialValue = -15f,
@@ -124,6 +133,7 @@ fun TutorPanelScreen(
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // AMBIENT UI: Wavy background pattern shown on standard portal screens
         if (!isReaderOpen && currentSection != TutorSection.ABOUT && currentSection != TutorSection.NOTIFICATIONS) {
             HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         }
@@ -131,10 +141,12 @@ fun TutorPanelScreen(
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
+                // TOP BAR: Dynamically adapts its title and navigation actions based on the current section
                 if (!isReaderOpen && currentSection != TutorSection.LISTEN_AUDIOBOOK && currentSection != TutorSection.ABOUT && currentSection != TutorSection.NOTIFICATIONS) {
                     TopAppBar(
                         windowInsets = WindowInsets(0, 0, 0, 0),
                         title = { 
+                            // Specialized header for active Chat conversations
                             if (isChatOpen && selectedStudent != null) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     UserAvatar(photoUrl = selectedStudent?.photoUrl, modifier = Modifier.size(32.dp))
@@ -152,6 +164,7 @@ fun TutorPanelScreen(
                                     }
                                 }
                             } else {
+                                // Standard section headers with institutional branding
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                     AdaptiveBrandedLogo(model = "file:///android_asset/images/media/GlyndwrUniversity.jpg", contentDescription = "University Logo", logoSize = 32.dp)
                                     val sectionTitle = when(currentSection) {
@@ -184,6 +197,7 @@ fun TutorPanelScreen(
                             }
                         },
                         navigationIcon = {
+                            // CONTEXTUAL NAVIGATION: Back arrow logic that tracks the complex portal hierarchy
                             if (isChatOpen) {
                                 IconButton(onClick = { viewModel.setSection(TutorSection.MESSAGES) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Messages") }
                             } else if (currentSection == TutorSection.COURSE_ARCHIVED_BROADCASTS) {
@@ -205,7 +219,9 @@ fun TutorPanelScreen(
                             }
                         },
                         actions = {
+                            // TOP ACTIONS: Player controls, Notifications, Theme toggle, and Overflow menu
                             if (!isChatOpen) {
+                                // Global Player Controls (if audio is active)
                                 if (currentPlayingBookId != null) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         IconButton(onClick = { if (isAudioPlaying) externalPlayer?.pause() else externalPlayer?.play() }) {
@@ -215,6 +231,7 @@ fun TutorPanelScreen(
                                         VerticalDivider(modifier = Modifier.height(24.dp).padding(horizontal = 4.dp))
                                     }
                                 }
+                                // Reactive Notification Bell
                                 Box(contentAlignment = Alignment.TopEnd) {
                                     val bellColor = if (unreadCount > 0 && isDarkTheme) Color(0xFFFFEB3B) else if (unreadCount > 0) Color(0xFFFBC02D) else MaterialTheme.colorScheme.onSurface
                                     IconButton(onClick = { viewModel.setSection(TutorSection.NOTIFICATIONS) }, modifier = Modifier.size(36.dp)) {
@@ -227,6 +244,7 @@ fun TutorPanelScreen(
                                     }
                                 }
                                 ThemeToggleButton(currentTheme = currentTheme, onThemeChange = onThemeChange, onOpenCustomBuilder = onOpenThemeBuilder, isLoggedIn = true)
+                                // Institutional Overflow Menu
                                 Box {
                                     IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, AppConstants.TITLE_MORE_OPTIONS) }
                                     DropdownMenu(
@@ -267,13 +285,14 @@ fun TutorPanelScreen(
                 }
             },
             bottomBar = {
+                // BOTTOM NAVIGATION: Only visible on the five primary root-level sections
                 val hideBottomBar = isChatOpen || currentSection == TutorSection.BOOKS || currentSection == TutorSection.AUDIOBOOKS || currentSection == TutorSection.READ_BOOK || currentSection == TutorSection.LISTEN_AUDIOBOOK || currentSection == TutorSection.SELECTED_COURSE || currentSection == TutorSection.COURSE_STUDENTS || currentSection == TutorSection.COURSE_MODULES || currentSection == TutorSection.COURSE_ASSIGNMENTS || currentSection == TutorSection.COURSE_GRADES || currentSection == TutorSection.COURSE_LIVE || currentSection == TutorSection.COURSE_ARCHIVED_BROADCASTS || currentSection == TutorSection.TEACHER_DETAIL || currentSection == TutorSection.CREATE_ASSIGNMENT || currentSection == TutorSection.START_LIVE_STREAM || currentSection == TutorSection.STUDENT_PROFILE || currentSection == TutorSection.NOTIFICATIONS || currentSection == TutorSection.ABOUT || currentSection == TutorSection.COURSE_ATTENDANCE || currentSection == TutorSection.INDIVIDUAL_ATTENDANCE_DETAIL
                 if (!hideBottomBar) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                         tonalElevation = 0.dp,
-                        windowInsets = WindowInsets(0, 0, 0, 0), // Fixed: Removed insets to prevent icons from being pushed up/clipped
-                        modifier = Modifier.height(80.dp) // Professional standard height
+                        windowInsets = WindowInsets(0, 0, 0, 0), 
+                        modifier = Modifier.height(80.dp) 
                     ) {
                         TutorNavButton(selected = currentSection == TutorSection.DASHBOARD, onClick = { viewModel.setSection(TutorSection.DASHBOARD) }, icon = Icons.Default.Dashboard, label = "Home")
                         TutorNavButton(selected = currentSection == TutorSection.MY_COURSES, onClick = { viewModel.setSection(TutorSection.MY_COURSES) }, icon = Icons.Default.School, label = "Classes")
@@ -284,6 +303,7 @@ fun TutorPanelScreen(
                 }
             }
         ) { padding ->
+            // MAIN CONTENT DISPATCHER: Renders the appropriate composable based on currentSection
             Column(modifier = Modifier.fillMaxSize().padding(top = if (isReaderOpen) 0.dp else padding.calculateTopPadding())) {
                 Box(modifier = Modifier.weight(1f).padding(bottom = if (isChatOpen || currentSection == TutorSection.ABOUT || currentSection == TutorSection.NOTIFICATIONS || currentSection == TutorSection.COURSE_ATTENDANCE || currentSection == TutorSection.INDIVIDUAL_ATTENDANCE_DETAIL) 0.dp else padding.calculateBottomPadding())) {
                     AnimatedContent(targetState = currentSection, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "TutorSectionTransition") { section ->
@@ -313,6 +333,7 @@ fun TutorPanelScreen(
                             TutorSection.ABOUT -> AboutScreen(onBack = { viewModel.setSection(TutorSection.DASHBOARD) }, onDeveloperClick = onNavigateToDeveloper, onInstructionClick = onNavigateToInstruction, onOpenThemeBuilder = onOpenThemeBuilder, currentTheme = currentTheme, onThemeChange = onThemeChange)
                             TutorSection.READ_BOOK -> activeBook?.let { book -> PdfReaderScreen(bookId = book.id, onBack = { viewModel.setSection(TutorSection.LIBRARY) }, currentTheme = currentTheme, onThemeChange = onThemeChange) }
                             TutorSection.LISTEN_AUDIOBOOK -> {
+                                // AUTO-PLAY LOGIC: Switches to the library after initiating playback
                                 LaunchedEffect(Unit) { activeAudioBook?.let { ab -> onPlayAudio((ab as AudioBook).toBook()); viewModel.setSection(TutorSection.LIBRARY) } }
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                             }
@@ -324,6 +345,9 @@ fun TutorPanelScreen(
     }
 }
 
+/**
+ * Custom Navigation Bar Item with institutional styling.
+ */
 @Composable
 fun RowScope.TutorNavButton(selected: Boolean, onClick: () -> Unit, icon: ImageVector, label: String) {
     NavigationBarItem(

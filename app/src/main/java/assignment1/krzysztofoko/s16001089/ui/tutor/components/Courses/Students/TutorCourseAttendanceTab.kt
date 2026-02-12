@@ -24,24 +24,36 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * TutorCourseAttendanceTab manages the daily attendance registry for an academic course.
+ * It allows tutors to select specific dates and mark student presence/absence via an 
+ * interactive roll-call interface. All actions are persisted to the local database 
+ * through the TutorViewModel.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorCourseAttendanceTab(viewModel: TutorViewModel) {
+    // REACTIVE STATE: Tracks the active course, enrolled students, and current attendance records
     val course by viewModel.selectedCourse.collectAsState()
     val students by viewModel.enrolledStudentsInSelectedCourse.collectAsState()
     val attendanceRecords by viewModel.selectedCourseAttendance.collectAsState()
     val selectedDate by viewModel.attendanceDate.collectAsState()
     
+    // UI STATE: Manages the visibility and configuration of the Material 3 DatePicker
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
 
+    // Loading State: Placeholder while course context is resolved
     if (course == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
 
+    // ADAPTIVE CONTAINER: Ensures proper centering and width-capping on tablets
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) { isTablet ->
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp)) {
+            
+            // HEADER: Professional context for the attendance management view
             AdaptiveDashboardHeader(
                 title = "Attendance Registry",
                 subtitle = course?.title ?: "",
@@ -50,8 +62,10 @@ fun TutorCourseAttendanceTab(viewModel: TutorViewModel) {
             
             Spacer(Modifier.height(24.dp))
             
+            // DATE SELECTION: Card component that adapts its layout based on screen width
             AdaptiveDashboardCard { cardIsTablet ->
                 if (cardIsTablet) {
+                    // Layout for Tablet: Horizontal alignment
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -69,6 +83,7 @@ fun TutorCourseAttendanceTab(viewModel: TutorViewModel) {
                         }
                     }
                 } else {
+                    // Layout for Mobile: Vertical stacked alignment
                     Column(modifier = Modifier.fillMaxWidth()) {
                         DateDisplayInfo(selectedDate)
                         Spacer(Modifier.height(16.dp))
@@ -88,8 +103,13 @@ fun TutorCourseAttendanceTab(viewModel: TutorViewModel) {
             
             Spacer(Modifier.height(24.dp))
             
+            // SUMMARY BAR: High-level overview of presence for the selected day
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Student Roll Call", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                Text(
+                    text = "Student Roll Call", 
+                    style = MaterialTheme.typography.titleMedium, 
+                    fontWeight = FontWeight.Black
+                )
                 Spacer(Modifier.weight(1f))
                 val presentCount = attendanceRecords.count { it.isPresent }
                 Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(8.dp)) {
@@ -105,6 +125,7 @@ fun TutorCourseAttendanceTab(viewModel: TutorViewModel) {
             
             Spacer(Modifier.height(16.dp))
             
+            // ROLL CALL CONTENT: Renders either an empty state or the list of interactive student items
             if (students.isEmpty()) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text("No students enrolled in this course.", color = Color.Gray)
@@ -115,11 +136,15 @@ fun TutorCourseAttendanceTab(viewModel: TutorViewModel) {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(students) { student ->
+                        // Matches student ID with their attendance status for the current date
                         val record = attendanceRecords.find { it.userId == student.id }
                         AttendanceStudentItem(
                             student = student,
                             isPresent = record?.isPresent ?: false,
-                            onToggle = { isPresent -> viewModel.toggleAttendance(student.id, isPresent) }
+                            onToggle = { isPresent -> 
+                                // UPDATE LOGIC: Delegates database update to the ViewModel
+                                viewModel.toggleAttendance(student.id, isPresent) 
+                            }
                         )
                     }
                 }
@@ -127,6 +152,7 @@ fun TutorCourseAttendanceTab(viewModel: TutorViewModel) {
         }
     }
 
+    // DIALOG: Material 3 Date Picker for changing the attendance session date
     if (showDatePicker) {
         val datePickerColors = DatePickerDefaults.colors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -146,6 +172,7 @@ fun TutorCourseAttendanceTab(viewModel: TutorViewModel) {
             confirmButton = {
                 TextButton(
                     onClick = {
+                        // Persists the new date to the ViewModel's state
                         datePickerState.selectedDateMillis?.let { viewModel.setAttendanceDate(it) }
                         showDatePicker = false
                     },
@@ -170,6 +197,7 @@ fun TutorCourseAttendanceTab(viewModel: TutorViewModel) {
     }
 }
 
+/** Helper to display the currently selected session date with institutional formatting. */
 @Composable
 private fun DateDisplayInfo(selectedDate: Long) {
     Column {
@@ -182,6 +210,14 @@ private fun DateDisplayInfo(selectedDate: Long) {
     }
 }
 
+/**
+ * A specialized interactive item representing a student in the roll call.
+ * Features dual-action triggers for marking presence (Green) or absence (Red).
+ * 
+ * @param student The student identity data.
+ * @param isPresent Current presence status for the active registry date.
+ * @param onToggle Callback triggered when a tutor changes the presence status.
+ */
 @Composable
 fun AttendanceStudentItem(
     student: UserLocal,
@@ -191,6 +227,7 @@ fun AttendanceStudentItem(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
+        // Visual feedback: Tints the card background based on presence
         colors = CardDefaults.cardColors(
             containerColor = if (isPresent) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) 
                             else MaterialTheme.colorScheme.surface
@@ -205,8 +242,12 @@ fun AttendanceStudentItem(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // User identity avatar
             UserAvatar(photoUrl = student.photoUrl, modifier = Modifier.size(40.dp))
+            
             Spacer(Modifier.width(12.dp))
+            
+            // Textual student identity information
             @Suppress("DEPRECATION")
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -225,7 +266,9 @@ fun AttendanceStudentItem(
                 )
             }
             
+            // INTERACTIVE CONTROLS: Quick-toggle buttons for presence management
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // ABSENCE TRIGGER (Red)
                 IconButton(
                     onClick = { onToggle(false) },
                     colors = IconButtonDefaults.iconButtonColors(
@@ -239,6 +282,7 @@ fun AttendanceStudentItem(
                 
                 Spacer(Modifier.width(8.dp))
                 
+                // PRESENCE TRIGGER (Green)
                 IconButton(
                     onClick = { onToggle(true) },
                     colors = IconButtonDefaults.iconButtonColors(

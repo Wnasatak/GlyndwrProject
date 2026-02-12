@@ -32,11 +32,24 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * TutorCourseLiveTab acts as the pre-broadcast configuration center for course instructors.
+ * It features a guided "Stepper" interface that ensures the tutor selects a course,
+ * a specific module topic, and optional assignment linking before going live.
+ *
+ * Key Features:
+ * 1. Progress Stepper: Visual 3-step guide (Course -> Module -> Ready).
+ * 2. Dynamic Discovery: Automatically fetches and filters modules and assignments based on the selection.
+ * 3. Configuration Memory: Remembers the current step state during UI interaction.
+ * 4. Studio Integration: Seamlessly transitions to the 'BroadcastStudio' once configured.
+ * 5. Archive Access: Provides a quick navigation link to view previously recorded sessions.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorCourseLiveTab(
     viewModel: TutorViewModel
 ) {
+    // REACTIVE DATA: Synchronizes with the tutor's class registry and current session state
     val course by viewModel.selectedCourse.collectAsState()
     val isLive by viewModel.isLive.collectAsState()
     val assignedCourses by viewModel.assignedCourses.collectAsState()
@@ -45,7 +58,7 @@ fun TutorCourseLiveTab(
     val assignments by viewModel.selectedCourseAssignments.collectAsState()
     val selectedAssignmentId by viewModel.selectedAssignmentId.collectAsState()
 
-    // Correctly initialize step based on current ViewModel state, but don't reset automatically
+    // STEPPER LOGIC: Tracks progress through the live stream setup wizard
     var step by remember { 
         mutableIntStateOf(
             if (viewModel.selectedCourseId.value == null) 1 
@@ -56,8 +69,10 @@ fun TutorCourseLiveTab(
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (!isLive) {
+            // VIEW: CONFIGURATION WIZARD
             Column(modifier = Modifier.fillMaxSize()) {
-                // Progress Stepper
+                
+                // STEPPER UI: Horizontal progress indicator with institutional branding
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp).padding(bottom = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -73,6 +88,7 @@ fun TutorCourseLiveTab(
                 AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
                     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                         when (step) {
+                            // STEP 1: Identification of the target course
                             1 -> {
                                 Text("Select Course for Live Stream", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(16.dp))
@@ -97,6 +113,8 @@ fun TutorCourseLiveTab(
                                     }
                                 }
                             }
+                            
+                            // STEP 2: Selection of the module topic for the session
                             2 -> {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(onClick = { step = 1 }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
@@ -136,6 +154,8 @@ fun TutorCourseLiveTab(
                                     }
                                 }
                             }
+                            
+                            // STEP 3: Optional assignment linking and final launch
                             3 -> {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(onClick = { step = 2 }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
@@ -165,6 +185,7 @@ fun TutorCourseLiveTab(
                                         
                                         Spacer(Modifier.height(24.dp))
                                         
+                                        // ASSIGNMENT DROPDOWN: Filters assignments related to the selected module
                                         var expanded by remember { mutableStateOf(false) }
                                         val filteredAssignments = assignments.filter { it.moduleId == selectedModuleId }
                                         val selectedTitle = if (selectedAssignmentId == null) "None (General Session)" 
@@ -212,6 +233,7 @@ fun TutorCourseLiveTab(
 
                                         Spacer(Modifier.height(32.dp))
 
+                                        // LAUNCH TRIGGER: Opens the BroadcastStudio
                                         Button(
                                             onClick = { viewModel.toggleLiveStream(true) },
                                             modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -227,6 +249,7 @@ fun TutorCourseLiveTab(
                             }
                         }
 
+                        // SECONDARY NAVIGATION: Link to the session repository
                         Spacer(Modifier.height(32.dp))
                         AdaptiveDashboardCard(
                             onClick = { viewModel.setSection(TutorSection.COURSE_ARCHIVED_BROADCASTS) },
@@ -255,11 +278,16 @@ fun TutorCourseLiveTab(
                 }
             }
         } else {
+            // VIEW: ACTIVE BROADCAST STUDIO
             BroadcastStudio(viewModel = viewModel, courseTitle = course?.title)
         }
     }
 }
 
+/**
+ * Visual indicator for a single step in the setup wizard.
+ * Features different states for Active, Completed, and Inactive.
+ */
 @Composable
 fun LiveStepIndicator(number: Int, label: String, active: Boolean, completed: Boolean) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -277,6 +305,10 @@ fun LiveStepIndicator(number: Int, label: String, active: Boolean, completed: Bo
     }
 }
 
+/**
+ * A specialized selection card for choosing course entities.
+ * Highlights the selection with a primary border and checkmark icon.
+ */
 @Composable
 fun LiveSelectionCard(title: String, subtitle: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
     Card(

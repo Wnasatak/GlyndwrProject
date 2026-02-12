@@ -6,7 +6,17 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
+/**
+ * Type.kt
+ *
+ * This file defines the Typography scale for the application using Material Design 3 standards.
+ * It centralizes all text styles to ensure a consistent visual hierarchy and readability
+ * across the entire user interface.
+ */
+
 val Typography = Typography(
+    // --- DISPLAY STYLES ---
+    // Used for large, prominent text on screens like hero sections or large headers.
     displayLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
@@ -28,6 +38,9 @@ val Typography = Typography(
         lineHeight = 48.sp,
         letterSpacing = 0.sp
     ),
+
+    // --- HEADLINE STYLES ---
+    // High-emphasis text that marks significant sections of the app.
     headlineLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
@@ -49,6 +62,9 @@ val Typography = Typography(
         lineHeight = 36.sp,
         letterSpacing = 0.sp
     ),
+
+    // --- TITLE STYLES ---
+    // Used for medium-emphasis text like app bar titles, section headers, or card titles.
     titleLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
@@ -70,6 +86,9 @@ val Typography = Typography(
         lineHeight = 22.sp,
         letterSpacing = 0.1.sp
     ),
+
+    // --- BODY STYLES ---
+    // Optimized for long-form reading and general descriptive text.
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
@@ -91,6 +110,9 @@ val Typography = Typography(
         lineHeight = 18.sp,
         letterSpacing = 0.4.sp
     ),
+
+    // --- LABEL STYLES ---
+    // Used for small components like button text, tags, captions, and secondary information.
     labelLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,

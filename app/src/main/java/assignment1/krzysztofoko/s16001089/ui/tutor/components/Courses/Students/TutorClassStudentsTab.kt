@@ -28,15 +28,24 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 
+/**
+ * TutorClassStudentsTab displays a comprehensive list of all students currently enrolled
+ * in the selected academic course. It allows tutors to view high-level student information
+ * and navigate to individual profiles or initiate direct communication via chat.
+ */
 @Composable
 fun TutorClassStudentsTab(
     viewModel: TutorViewModel
 ) {
+    // REACTIVE DATA: Synchronizes with the course and enrollment streams from the ViewModel
     val students by viewModel.enrolledStudentsInSelectedCourse.collectAsState()
     val course by viewModel.selectedCourse.collectAsState()
 
+    // ADAPTIVE CONTAINER: Centered width constraint for improved readability on tablets and large screens
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) { isTablet ->
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp)) {
+            
+            // HEADER: Identifies the class context using institutional branding
             AdaptiveDashboardHeader(
                 title = "Class Students",
                 subtitle = course?.title ?: "Course Students",
@@ -45,10 +54,18 @@ fun TutorClassStudentsTab(
             
             Spacer(Modifier.height(24.dp))
 
+            // ENROLLMENT SUMMARY: Displays total student count in a high-contrast badge
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Enrolled Students", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                Text(
+                    text = "Enrolled Students", 
+                    style = MaterialTheme.typography.titleMedium, 
+                    fontWeight = FontWeight.Black
+                )
                 Spacer(Modifier.weight(1f))
-                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(8.dp)) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer, 
+                    shape = RoundedCornerShape(8.dp)
+                ) {
                     Text(
                         text = "${students.size} Total",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -61,6 +78,7 @@ fun TutorClassStudentsTab(
 
             Spacer(Modifier.height(16.dp))
 
+            // CONTENT DISPATCHER: Renders either an empty state placeholder or the student list
             if (students.isEmpty()) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(
@@ -70,6 +88,7 @@ fun TutorClassStudentsTab(
                     )
                 }
             } else {
+                // STUDENT LIST: Scrollable list of enrolled student cards
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -78,9 +97,11 @@ fun TutorClassStudentsTab(
                         CourseStudentCard(
                             student = student,
                             onClick = {
+                                // NAVIGATION: Redirects to the student's detailed profile
                                 viewModel.setSection(TutorSection.STUDENT_PROFILE, student)
                             },
                             onChatClick = {
+                                // COMMUNICATION: Opens the direct chat interface with the selected student
                                 viewModel.setSection(TutorSection.CHAT, student)
                             }
                         )
@@ -91,6 +112,14 @@ fun TutorClassStudentsTab(
     }
 }
 
+/**
+ * A responsive card component representing a single student within the class directory.
+ * It displays identity metadata (Avatar, Name, Title, Email) and quick-action triggers.
+ *
+ * @param student The local student data entity.
+ * @param onClick Triggered when the user taps on the card to view the student profile.
+ * @param onChatClick Triggered when the user initiates a private conversation.
+ */
 @Composable
 fun CourseStudentCard(
     student: UserLocal,
@@ -102,8 +131,12 @@ fun CourseStudentCard(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // IDENTITY: User Avatar with standard university styling
             UserAvatar(photoUrl = student.photoUrl, modifier = Modifier.size(48.dp))
+            
             Spacer(Modifier.width(16.dp))
+            
+            // METADATA: Constructing and displaying the student's full name and email
             Column(modifier = Modifier.weight(1f)) {
                 val displayName = buildString {
                     if (!student.title.isNullOrEmpty()) {
@@ -128,6 +161,7 @@ fun CourseStudentCard(
                 )
             }
             
+            // ACTIONS: Interactive triggers for secondary student management tasks
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
                     onClick = onChatClick,
@@ -141,6 +175,7 @@ fun CourseStudentCard(
                     )
                 }
                 
+                // Visual cue for primary navigation (Detail Profile)
                 Icon(
                     Icons.Default.ChevronRight, 
                     null, 

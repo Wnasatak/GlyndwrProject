@@ -3,19 +3,23 @@ package assignment1.krzysztofoko.s16001089
 import assignment1.krzysztofoko.s16001089.data.Book
 
 /**
- * Global Constants for the Glyndŵr Project.
- * Centralizes strings and configuration to ensure consistency across the UI and logic.
+ * AppConstants serves as the single source of truth for all hardcoded strings, 
+ * configuration values, and business logic constants within the Glyndŵr Project.
+ * Centralizing these values ensures UI consistency, simplifies localization, 
+ * and makes global updates (like versioning or branding) straightforward.
  */
 object AppConstants {
-    // --- Application Branding ---
-    const val VERSION_NAME = "0.34.162 Under Development"
+    // --- Application Branding & Metadata ---
+    // These constants define the app's identity and development status.
+    const val VERSION_NAME = "0.51.316 Under Development"
     const val INSTITUTION = "Wrexham Glyndŵr University"
     const val DEVELOPER_NAME = "Krzysztof Oko"
     const val STUDENT_ID = "S16001089"
     const val PROJECT_INFO = "Assignment 1 - CONL709 Mobile App Development"
     const val APP_NAME = "Glyndŵr Store"
 
-    // --- Unified Categories ---
+    // --- Product & Resource Categorization ---
+    // Standardized category names used for database filtering and UI labels.
     const val CAT_COURSES = "University Courses"
     const val CAT_GEAR = "University Gear"
     const val CAT_BOOKS = "Books"
@@ -24,15 +28,18 @@ object AppConstants {
     const val CAT_FREE = "Free"
     const val CAT_ALL = "All"
 
+    /** List of top-level categories displayed in the store's primary navigation. */
     val MainCategories = listOf(CAT_ALL, CAT_FREE, CAT_COURSES, CAT_GEAR, CAT_BOOKS, CAT_AUDIOBOOKS)
 
+    /** Mapping of sub-categories for fine-grained filtering within a specific main category. */
     val SubCategoriesMap = mapOf(
         CAT_BOOKS to listOf("All Genres", "Technology", "Cooking", "Fantasy", "Mystery", "Self-Help"),
         CAT_AUDIOBOOKS to listOf("All Genres", "Self-Help", "Technology", "Cooking", "Mystery"),
         CAT_COURSES to listOf("All Departments", "Science", "Business", "Technology")
     )
 
-    // --- Common Status Labels ---
+    // --- Status & State Labels ---
+    // Visual indicators for product ownership and availability.
     const val LABEL_ENROLLED = "Enrolled"
     const val LABEL_PICKED_UP = "Picked Up"
     const val LABEL_PURCHASED = "Purchased"
@@ -42,14 +49,16 @@ object AppConstants {
     const val LABEL_NEW = "NEW"
     const val LABEL_MY_COURSES = "MY COURSES"
     
-    // --- Dashboard Filters ---
+    // --- Filter Identifiers ---
+    // Constant keys used in ViewModel filtering logic.
     const val FILTER_ALL = "All"
     const val FILTER_BOOKS = "Books"
     const val FILTER_AUDIOBOOKS = "Audiobooks"
     const val FILTER_GEAR = "Gear"
     const val FILTER_COURSES = "Courses"
     
-    // --- UI Strings: Titles ---
+    // --- UI Strings: Screen & Dialog Titles ---
+    // Descriptive headings for various parts of the application.
     const val TITLE_MEMBER_LOGIN = "Member Login"
     const val TITLE_REGISTRATION = "Registration"
     const val TITLE_WELCOME_BACK = "Welcome Back"
@@ -121,7 +130,8 @@ object AppConstants {
     const val TITLE_CONFIRMATION_DETAILS = "Confirmation Details"
     const val TITLE_PAYMENT_PLAN = "Select Payment Plan"
 
-    // --- UI Strings: Buttons ---
+    // --- UI Strings: Buttons & Call-to-Actions ---
+    // Standard labels for interactive components.
     const val BTN_SIGN_IN = "Sign In"
     const val BTN_CREATE_ACCOUNT = "Create Account"
     const val BTN_GOOGLE_LOGIN = "Google Login"
@@ -173,7 +183,7 @@ object AppConstants {
     const val BTN_SIGN_IN_ENROLL = "Sign in to Enroll"
     const val BTN_SIGN_IN_SHOP = "Sign In to Shop"
     
-    // --- Text Content & Sections ---
+    // --- Body Text & Section Headers ---
     const val SECTION_ABOUT_ITEM = "About this item"
     const val SECTION_ABOUT_AUDIO = "About this audiobook"
     const val SECTION_DESCRIPTION_COURSE = "Course Description"
@@ -201,12 +211,12 @@ object AppConstants {
     const val TEXT_DIGITAL_AUDIO = "Digital Audio"
     const val TEXT_HARDCOPY = "Hardcopy"
 
-    // --- Classroom Tabs ---
+    // --- Specialized UI: Classroom Tabs ---
     const val TAB_MODULES = "Modules"
     const val TAB_ASSIGNMENTS = "Assignments"
     const val TAB_PERFORMANCE = "Grades"
     
-    // --- Invoicing & Labels ---
+    // --- Accounting, Invoicing & Financial Labels ---
     const val LABEL_SUBTOTAL = "Subtotal"
     const val LABEL_STUDENT_DISCOUNT_VAL = "Student Discount"
     const val LABEL_TOTAL_PAID = "Total Paid"
@@ -227,11 +237,12 @@ object AppConstants {
     const val LABEL_FINAL = "Final"
     const val LABEL_BALANCE = "Balance"
     
-    // --- ID & Routes ---
+    // --- Routing & Component IDs ---
     const val ID_TOPUP = "topup_product"
     const val ROUTE_ADMIN_USER_DETAILS = "admin_user_details"
 
-    // --- System & Error Messages ---
+    // --- System Notifications & User Feedback Messages ---
+    // These strings provide immediate feedback for user actions and system states.
     const val MSG_INVOICE_NOT_FOUND = "Invoice record not found."
     const val MSG_THANK_YOU_STORE = "Thank you for supporting our university store!"
     const val MSG_THANK_YOU_ACADEMIC = "Thank you for your academic purchase!"
@@ -284,7 +295,8 @@ object AppConstants {
     const val MSG_PAID_COURSE_LIMIT = "You can only be enrolled in one paid course at a time."
 
 
-    // --- Version Info Items ---
+    // --- Release Notes & Roadmap Content ---
+    // Informational strings for the 'What's New' and 'Roadmap' sections.
     const val VER_READER_TITLE = "ENHANCED PDF READER"
     const val VER_READER_DESC = "Introduced a high-performance PDF renderer with pinch-to-zoom, night mode, sepia mode, and full-screen reading capabilities."
     const val VER_FINAL_DEMO_TITLE = "VERSION 1.0.0 (FINAL DEMO)"
@@ -298,7 +310,7 @@ object AppConstants {
     const val VER_CATALOG_TITLE = "EXPANDED CATALOG"
     const val VER_CATALOG_DESC = "The store now includes University Courses, official Glyndŵr Gear, and Audio Books with student discounts automatically applied."
 
-    // --- Notification Metadata ---
+    // --- Notification & Messaging Metadata ---
     const val NOTIF_TITLE_BOOK_PICKED_UP = "Book Picked Up"
     const val NOTIF_TITLE_AUDIOBOOK_PICKED_UP = "Audiobook Picked Up"
     const val NOTIF_TITLE_COURSE_ENROLLED = "Course Enrollment Confirmed"
@@ -309,7 +321,7 @@ object AppConstants {
     const val NOTIF_TYPE_PURCHASE = "PURCHASE"
     const val NOTIF_TYPE_PICKUP = "PICKUP"
 
-    // --- Payment Methods ---
+    // --- Payment Gateway Identifiers ---
     const val METHOD_FREE_LIBRARY = "Free Library"
     const val METHOD_FREE_ENROLLMENT = "Free Enrollment"
     const val METHOD_FREE_PICKUP = "Free Pickup"
@@ -318,10 +330,11 @@ object AppConstants {
     const val METHOD_GOOGLE_PAY = "Google Pay"
     const val METHOD_CREDIT_CARD = "Credit Card"
 
-    // --- Menu Items ---
+    // --- Interactive Menu Options ---
     const val MENU_REMOVE_FROM_LIBRARY = "Remove from Library"
 
-    // --- Navigation Routes ---
+    // --- Application Navigation Routes ---
+    // Constant keys used by the NavHost to manage screen transitions.
     const val ROUTE_SPLASH = "splash"
     const val ROUTE_HOME = "home"
     const val ROUTE_AUTH = "auth"
@@ -344,7 +357,10 @@ object AppConstants {
     const val ROUTE_COURSE_ENROLLMENT = "course_enrollment"
     const val ROUTE_MY_APPLICATIONS = "my_applications"
 
-    // --- Utility Functions ---
+    // --- Helper Logic & Utility Functions ---
+    /**
+     * Resolves the default subcategory filter based on the primary category.
+     */
     fun getDefaultSubcategory(category: String): String {
         return when (category) {
             CAT_COURSES -> "All Departments"
@@ -353,6 +369,9 @@ object AppConstants {
         }
     }
 
+    /**
+     * Determines the appropriate status label for a product based on its classification.
+     */
     fun getItemStatusLabel(book: Book): String {
         return when (book.mainCategory) {
             CAT_COURSES -> LABEL_ENROLLED

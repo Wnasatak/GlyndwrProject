@@ -20,7 +20,15 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 /**
- * Global ViewModel for the application.
+ * MainViewModel serves as the application's central state hub.
+ * It manages the global lifecycle of the application, including user authentication,
+ * data synchronization, global media playback, and user-defined theme persistence.
+ *
+ * Key Responsibilities:
+ * 1. Session Management: Real-time tracking of Firebase Auth state.
+ * 2. Reactive Data Streams: Exposing Room database flows for user profile, theme, and catalog.
+ * 3. Media Coordination: Interfacing with Media3 for unified audio playback across the app.
+ * 4. Global UI Orchestration: Managing state for top-level dialogs, loading screens, and overlays.
  */
 class MainViewModel(
     private val repository: BookRepository, 
@@ -29,9 +37,16 @@ class MainViewModel(
 
     private val auth = FirebaseAuth.getInstance()
 
+    // --- AUTHENTICATION STATE ---
+    
+    /** Current Firebase User session. Triggers downstream flow updates upon change. */
     private val _currentUser = MutableStateFlow(auth.currentUser)
     val currentUser = _currentUser.asStateFlow()
 
+    /** 
+     * Local user profile data synchronized with the Firebase UID. 
+     * Automatically switches streams when the current user changes.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     val localUser: StateFlow<UserLocal?> = _currentUser
         .flatMapLatest { user ->
@@ -41,6 +56,10 @@ class MainViewModel(
         .flowOn(Dispatchers.IO) 
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
+    /** 
+     * User-defined theme settings (Custom colors, Dark mode preference). 
+     * Persisted in the local database.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     val userTheme: StateFlow<UserTheme?> = _currentUser
         .flatMapLatest { user ->
@@ -50,6 +69,12 @@ class MainViewModel(
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
+    // --- DATA & SYNC STATE ---
+
+    /** 
+     * The primary catalog stream. Combines institutional data (Books, Courses, Gear) 
+     * with the user's personal ownership and favorite status.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     val allBooks: StateFlow<List<Book>> = _currentUser
         .flatMapLatest { user ->
@@ -65,6 +90,7 @@ class MainViewModel(
     private val _loadError = MutableStateFlow<String?>(null)
     val loadError = _loadError.asStateFlow()
 
+    /** Count of unread notifications for the current user. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val unreadNotificationsCount: StateFlow<Int> = _currentUser.flatMapLatest { user ->
         if (user != null) {
@@ -76,6 +102,7 @@ class MainViewModel(
     .flowOn(Dispatchers.IO)
     .stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
+    /** Complete transaction history for the user's university wallet. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val walletHistory: StateFlow<List<WalletTransaction>> = _currentUser.flatMapLatest { user ->
         if (user != null) db.userDao().getWalletHistory(user.uid)
@@ -84,25 +111,37 @@ class MainViewModel(
     .flowOn(Dispatchers.IO)
     .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    // --- GLOBAL PLAYER STATE ---
+    
+    /** The book or audiobook currently loaded in the media player. */
     var currentPlayingBook by mutableStateOf<Book?>(null)
         private set
     
+    /** Indicates if the media player is currently in the 'Playing' state. */
     var isAudioPlaying by mutableStateOf(false)
         private set
     
+    /** Controls the visibility of the global audio player interface. */
     var showPlayer by mutableStateOf(false)
+    
+    /** Controls the toggle between the minimized bar and maximized overlay player. */
     var isPlayerMinimized by mutableStateOf(false)
 
+    // --- GLOBAL UI OVERLAYS ---
     var showLogoutConfirm by mutableStateOf(false)   
     var showSignedOutPopup by mutableStateOf(false)  
     var showWalletHistory by mutableStateOf(false)
 
+    /** 
+     * Internal listener to track authentication transitions. 
+     * Triggers UI feedback on successful sign-out.
+     */
     private val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
         val user = firebaseAuth.currentUser
         val wasLoggedIn = _currentUser.value != null
         _currentUser.value = user
         
-        // Trigger the Signed Out success popup only on explicit logout transitions
+        // Visual feedback for session termination
         if (wasLoggedIn && user == null) {
             showSignedOutPopup = true
         }
@@ -112,10 +151,18 @@ class MainViewModel(
         auth.addAuthStateListener(authListener)
     }
 
+    /** 
+     * Manually triggers a data refresh. 
+     * Implementation Note: Most data is already reactive via Flow. 
+     */
     fun refreshData() {
-        // Automatically handled by flows
+        // Handled automatically by Room Flows
     }
 
+    /** 
+     * Persists the user's selected theme choice to the local database.
+     * This ensures the application maintains its visual identity across sessions.
+     */
     fun updateThemePersistence(theme: Theme) {
         val user = auth.currentUser ?: return
         viewModelScope.launch(Dispatchers.IO) {
@@ -128,10 +175,18 @@ class MainViewModel(
         }
     }
 
+    /** 
+     * Initiates or toggles audio playback for a specific resource.
+     * 
+     * @param book The resource to play.
+     * @param player The Media3 Player instance (ExoPlayer).
+     */
     fun onPlayAudio(book: Book, player: Player?) {
         if (currentPlayingBook?.id == book.id) {
+            // Toggle playback for the current item
             if (player?.isPlaying == true) player.pause() else player?.play()
         } else {
+            // Load and play a new item
             currentPlayingBook = book
             showPlayer = true
             isPlayerMinimized = false
@@ -152,30 +207,39 @@ class MainViewModel(
         }
     }
 
+    /** Synchronizes local UI state with the Media3 player status. */
     fun syncPlayerState(isPlaying: Boolean) {
         isAudioPlaying = isPlaying
     }
 
+    /** Terminates playback and hides the player interface. */
     fun stopPlayer(player: Player?) {
         showPlayer = false
         player?.stop()
         currentPlayingBook = null
     }
 
+    /** 
+     * Securely terminates the current user session and clears the navigation stack.
+     */
     fun signOut(navController: NavController) {
         showLogoutConfirm = false
         auth.signOut() 
-        navController.navigate("home") {
+        navController.navigate(AppConstants.ROUTE_HOME) {
             popUpTo(0) { inclusive = true }
         }
     }
 
+    /** Lifecycle cleanup: Removes system-level listeners to prevent memory leaks. */
     override fun onCleared() {
         super.onCleared()
         auth.removeAuthStateListener(authListener)
     }
 }
 
+/**
+ * Factory for creating [MainViewModel] with required repository and database dependencies.
+ */
 class MainViewModelFactory(
     private val repository: BookRepository,
     private val db: AppDatabase

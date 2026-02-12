@@ -145,6 +145,7 @@ fun NotificationScreen(
             val isTopUp = selectedNotification!!.productId == AppConstants.ID_TOPUP
             val isAnnouncement = selectedNotification!!.type == "ANNOUNCEMENT"
             val isMessage = selectedNotification!!.type == "MESSAGE"
+            val isPickup = selectedNotification!!.type == AppConstants.NOTIF_TYPE_PICKUP
             
             ModalBottomSheet(
                 onDismissRequest = { showSheet = false },
@@ -182,7 +183,7 @@ fun NotificationScreen(
                                         isAnnouncement -> Icons.Default.Campaign
                                         isTopUp -> Icons.Default.AccountBalanceWallet
                                         selectedNotification!!.type == AppConstants.NOTIF_TYPE_PURCHASE -> Icons.Default.ShoppingBag
-                                        selectedNotification!!.type == AppConstants.NOTIF_TYPE_PICKUP -> Icons.Default.Storefront
+                                        isPickup -> Icons.Default.Storefront
                                         else -> Icons.Default.Notifications
                                     },
                                     contentDescription = null,
@@ -221,22 +222,36 @@ fun NotificationScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                         
+                        // ACTION BUTTON: Navigates to product or invoice
                         if (!isAnnouncement && !isMessage) {
-                            Button(onClick = { showSheet = false; if (isTopUp) onNavigateToInvoice(selectedNotification!!.productId) else onNavigateToItem(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
+                            // VIEW PRODUCT: Works if we have a valid productId
+                            Button(
+                                onClick = { 
+                                    showSheet = false
+                                    if (isTopUp) onNavigateToInvoice(selectedNotification!!.productId) 
+                                    else onNavigateToItem(selectedNotification!!.productId) 
+                                }, 
+                                modifier = Modifier.fillMaxWidth().height(56.dp), 
+                                shape = RoundedCornerShape(16.dp), 
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            ) {
                                 Icon(imageVector = if (isTopUp) Icons.AutoMirrored.Filled.ReceiptLong else Icons.Default.OpenInNew, contentDescription = null)
                                 Spacer(Modifier.width(12.dp)); Text(text = if (isTopUp) AppConstants.BTN_VIEW_INVOICE else AppConstants.BTN_VIEW_PRODUCT_DETAILS, fontWeight = FontWeight.Bold)
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                         
-                        if (!isTopUp && !isAnnouncement && !isMessage && relatedBook != null && relatedBook!!.price > 0) {
+                        // INVOICE BUTTON: Hidden for free items (Pickups) or specifically for free resources
+                        val isFree = (relatedBook?.price ?: 0.0) <= 0.0
+                        if (!isTopUp && !isAnnouncement && !isMessage && !isPickup && !isFree && relatedBook != null) {
                             OutlinedButton(onClick = { showSheet = false; onNavigateToInvoice(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))) {
                                 Icon(Icons.AutoMirrored.Filled.ReceiptLong, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_VIEW_INVOICE, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                         
-                        if (relatedBook != null && relatedBook!!.price <= 0 && relatedBook!!.mainCategory != AppConstants.CAT_GEAR && !isTopUp && !isAnnouncement && !isMessage) {
+                        // REMOVE FROM LIBRARY: Option for free resources
+                        if (relatedBook != null && isFree && relatedBook!!.mainCategory != AppConstants.CAT_GEAR && !isTopUp && !isAnnouncement && !isMessage) {
                             OutlinedButton(onClick = { showSheet = false; showRemoveConfirm = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))) {
                                 Icon(Icons.Default.DeleteOutline, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, fontWeight = FontWeight.Bold)
                             }
@@ -411,7 +426,7 @@ fun EmptyNotificationsView(modifier: Modifier = Modifier) {
         Box(modifier = Modifier.size(120.dp).background(Brush.linearGradient(colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f))), CircleShape), contentAlignment = Alignment.Center) {
             Icon(imageVector = Icons.Default.NotificationsNone, contentDescription = null, modifier = Modifier.size(60.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
         }
-        Spacer(modifier = Modifier.height(24.dp)); Text(AppConstants.TEXT_ALL_CAUGHT_UP, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-        Spacer(modifier = Modifier.height(8.dp)); Text(AppConstants.MSG_EMPTY_NOTIFICATIONS, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Spacer(modifier = modifier.height(24.dp)); Text(AppConstants.TEXT_ALL_CAUGHT_UP, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(modifier = modifier.height(8.dp)); Text(AppConstants.MSG_EMPTY_NOTIFICATIONS, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
 }

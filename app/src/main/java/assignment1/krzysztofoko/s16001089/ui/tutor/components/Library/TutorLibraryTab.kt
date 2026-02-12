@@ -32,15 +32,29 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorRes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * TutorLibraryTab provides a dedicated administrative view for managing the tutor's personal
+ * collection of academic resources. It separates materials into 'Books' and 'Audiobooks'
+ * and provides direct access to educational tools like the PDF Reader and Media Player.
+ *
+ * Key Features:
+ * 1. Categorized Navigation: Dual-tab interface for logical resource segregation.
+ * 2. Personal Library Filtering: Real-time search focusing exclusively on owned materials.
+ * 3. Library Maintenance: Integrated removal logic with confirmation safety checks.
+ * 4. Tool Integration: Orchestrates transitions to specialized viewing/listening components.
+ * 5. Adaptive Information Density: Responsive grid that adjusts column count based on screen width.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorLibraryTab(
     viewModel: TutorViewModel,
     onPlayAudio: (Book) -> Unit
 ) {
+    // REACTIVE DATA: Synchronizes with the tutor's persistent 'Owned' resource streams
     val books by viewModel.libraryBooks.collectAsState()
     val audioBooks by viewModel.libraryAudioBooks.collectAsState()
 
+    // UI STATE: Manages the active category, search filtering, and overlay triggers
     var searchQuery by remember { mutableStateOf("") }
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -49,12 +63,12 @@ fun TutorLibraryTab(
     var itemToConfirmRemove by remember { mutableStateOf<Any?>(null) } 
     var detailItem by remember { mutableStateOf<Any?>(null) }
 
-    val isTablet = isTablet()
-
+    // ADAPTIVE CONTAINER: Centered width constraint for improved readability on tablets
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { screenIsTablet ->
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(Modifier.height(12.dp))
             
+            // HEADER: Professional context for the personal library view
             AdaptiveDashboardHeader(
                 title = "Resource Library",
                 subtitle = "Access your educational materials",
@@ -62,6 +76,7 @@ fun TutorLibraryTab(
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
+            // SEARCH BAR: Targeted filtering for the personal collection
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -73,6 +88,7 @@ fun TutorLibraryTab(
                 shape = RoundedCornerShape(12.dp)
             )
 
+            // CATEGORY NAVIGATION: High-contrast TabRow for switching resource types
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.Transparent,
@@ -91,7 +107,7 @@ fun TutorLibraryTab(
                 )
             }
 
-            // Adaptive Grid: 1 column on phone, 2 on tablet
+            // RESOURCE GRID: Adaptive layout (1 column mobile / 2 columns tablet)
             LazyVerticalGrid(
                 columns = GridCells.Fixed(if (screenIsTablet) 2 else 1),
                 modifier = Modifier.fillMaxSize(),
@@ -100,6 +116,7 @@ fun TutorLibraryTab(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 if (selectedTab == 0) {
+                    // RENDER: Academic Books
                     val filteredBooks = books.filter { it.title.contains(searchQuery, ignoreCase = true) }
                     if (filteredBooks.isEmpty()) {
                         item(span = { GridItemSpan(maxLineSpan) }) { LibraryEmptyState("No books found in your library.") }
@@ -112,11 +129,15 @@ fun TutorLibraryTab(
                                 category = book.category,
                                 isAudio = false,
                                 onRemove = { itemToConfirmRemove = book },
-                                onAction = { viewModel.openBook(book) }
+                                onAction = { 
+                                    // TOOL TRIGGER: Opens the integrated PDF Reader
+                                    viewModel.openBook(book) 
+                                }
                             )
                         }
                     }
                 } else {
+                    // RENDER: Digital Audiobooks
                     val filteredAudio = audioBooks.filter { it.title.contains(searchQuery, ignoreCase = true) }
                     if (filteredAudio.isEmpty()) {
                         item(span = { GridItemSpan(maxLineSpan) }) { LibraryEmptyState("No audiobooks found in your library.") }
@@ -129,12 +150,16 @@ fun TutorLibraryTab(
                                 category = ab.category,
                                 isAudio = true,
                                 onRemove = { itemToConfirmRemove = ab },
-                                onAction = { onPlayAudio(ab.toBook()) }
+                                onAction = { 
+                                    // TOOL TRIGGER: Initiates the global Media Player
+                                    onPlayAudio(ab.toBook()) 
+                                }
                             )
                         }
                     }
                 }
 
+                // FOOTER: External link to explore the wider institutional catalog
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(
                         modifier = Modifier
@@ -142,7 +167,6 @@ fun TutorLibraryTab(
                             .padding(vertical = 32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        @Suppress("DEPRECATION")
                         Text(
                             text = "Not found what you looking for?",
                             style = MaterialTheme.typography.bodyMedium,
@@ -152,11 +176,9 @@ fun TutorLibraryTab(
                         Spacer(Modifier.height(12.dp))
                         Button(
                             onClick = {
-                                if (selectedTab == 0) {
-                                    viewModel.setSection(TutorSection.BOOKS)
-                                } else {
-                                    viewModel.setSection(TutorSection.AUDIOBOOKS)
-                                }
+                                // NAVIGATION: Redirects to the appropriate catalog tab
+                                if (selectedTab == 0) viewModel.setSection(TutorSection.BOOKS) 
+                                else viewModel.setSection(TutorSection.AUDIOBOOKS)
                             },
                             shape = RoundedCornerShape(12.dp),
                             contentPadding = PaddingValues(horizontal = 24.dp)
@@ -171,12 +193,15 @@ fun TutorLibraryTab(
                     }
                 }
 
+                // Safety spacer for navigation bar
                 item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
     }
 
-    // Confirmation Popup
+    // --- OVERLAYS: Library Management & Detail Logic ---
+
+    // CONFIRMATION DIALOG: Prevents accidental removal of academic assets
     itemToConfirmRemove?.let { item ->
         val title = if (item is Book) item.title else (item as AudioBook).title
         val id = if (item is Book) item.id else (item as AudioBook).id
@@ -189,7 +214,7 @@ fun TutorLibraryTab(
                 itemToConfirmRemove = null
                 scope.launch {
                     isRemovingFromLibrary = true
-                    delay(800)
+                    delay(800) // Simulated database processing delay
                     viewModel.removeFromLibrary(id)
                     isRemovingFromLibrary = false
                 }
@@ -197,10 +222,10 @@ fun TutorLibraryTab(
         )
     }
 
-    // Loading Popup
+    // STATUS FEEDBACK: Global overlay during removal operations
     AppPopups.RemovingFromLibraryLoading(show = isRemovingFromLibrary)
 
-    // Detail Popup
+    // DETAIL POPUP: Detailed metadata overview for library items
     detailItem?.let { item ->
         val isAudio = item is AudioBook
         val title = if (item is Book) item.title else (item as AudioBook).title
@@ -220,17 +245,18 @@ fun TutorLibraryTab(
             onAddClick = { },
             onRemoveClick = { itemToConfirmRemove = item },
             onActionClick = {
-                if (isAudio) {
-                    onPlayAudio((item as AudioBook).toBook())
-                } else {
-                    viewModel.openBook(item as Book)
-                }
+                if (isAudio) onPlayAudio((item as AudioBook).toBook())
+                else viewModel.openBook(item as Book)
             },
             onDismiss = { detailItem = null }
         )
     }
 }
 
+/**
+ * A specialized interactive item card for the personal library.
+ * Wraps the standard [BookItemCard] with library-specific actions (Remove, Read/Listen).
+ */
 @Composable
 fun LibraryItem(
     title: String,
@@ -242,25 +268,22 @@ fun LibraryItem(
     onAction: () -> Unit
 ) {
     val dummyBook = Book(
-        id = "", 
-        title = title,
-        author = author,
-        imageUrl = imageUrl,
-        category = category,
-        isAudioBook = isAudio,
-        price = 0.0
+        id = "", title = title, author = author, imageUrl = imageUrl, 
+        category = category, isAudioBook = isAudio, price = 0.0
     )
 
     BookItemCard(
         book = dummyBook,
         onClick = onAction,
         trailingContent = {
+            // Contextual action for library maintenance
             IconButton(onClick = onRemove) {
                 Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.error)
             }
         },
         bottomContent = {
             Spacer(modifier = Modifier.height(8.dp))
+            // Primary tool trigger button
             Button(
                 onClick = onAction,
                 modifier = Modifier.fillMaxWidth(),
@@ -277,29 +300,14 @@ fun LibraryItem(
     )
 }
 
+/** Placeholder component for empty library states. */
 @Composable
 fun LibraryEmptyState(message: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(48.dp),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                Icons.Default.LibraryBooks,
-                null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.outline
-            )
+            Icon(Icons.Default.LibraryBooks, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.outline)
             Spacer(Modifier.height(16.dp))
-            @Suppress("DEPRECATION")
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.outline,
-                fontWeight = FontWeight.Bold
-            )
+            Text(text = message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline, fontWeight = FontWeight.Bold)
         }
     }
 }

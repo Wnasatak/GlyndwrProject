@@ -30,11 +30,11 @@ import java.io.FileOutputStream
 import java.util.UUID
 
 /**
- * ViewModel for the PDF Reader. 
+ * ViewModel for the PDF Reader.
  */
 class PdfViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = BookRepository(AppDatabase.getDatabase(application))
-    
+
     private val _uiState = MutableStateFlow<PdfUiState>(PdfUiState.Loading)
     val uiState: StateFlow<PdfUiState> = _uiState.asStateFlow()
 
@@ -50,7 +50,7 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
     private var renderer: PdfRenderer? = null
     private var fileDescriptor: ParcelFileDescriptor? = null
     private var tempFile: File? = null
-    
+
     private val pageCache = LruCache<Int, Bitmap>(10)
     private var loadJob: Job? = null
 
@@ -58,12 +58,12 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             _uiState.value = PdfUiState.Loading
-            
+
             // Cleanup previous resources WITHOUT cancelling this job
             closeResourcesInternal()
-            
+
             _readingMode.value = if (initialIsDark) PdfReadingMode.INVERTED else PdfReadingMode.NORMAL
-            
+
             val book = repository.getItemById(bookId)
             if (book == null || book.pdfUrl.isEmpty()) {
                 _uiState.value = PdfUiState.Error("Invalid book data")
@@ -91,7 +91,7 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
             .replace("//", "/")
 
         val file = File(context.cacheDir, "book_${UUID.randomUUID()}.pdf")
-        
+
         return@withContext try {
             context.assets.open(assetPath).use { input ->
                 FileOutputStream(file).use { output -> input.copyTo(output) }
@@ -116,7 +116,7 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
         synchronized(this) {
             val r = renderer ?: return null
             if (index < 0 || index >= r.pageCount) return null
-            
+
             return try {
                 val page = r.openPage(index)
                 val width = 1080
@@ -124,7 +124,7 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
                 val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                 page.close()
-                
+
                 val finalBitmap = if (mode != PdfReadingMode.NORMAL) applyColorFilter(bitmap, mode) else bitmap
                 pageCache.put(cacheKey, finalBitmap)
                 finalBitmap

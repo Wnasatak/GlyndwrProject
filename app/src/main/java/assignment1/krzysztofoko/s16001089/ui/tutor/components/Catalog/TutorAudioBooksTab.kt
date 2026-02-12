@@ -20,13 +20,21 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TutorRes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * TutorAudioBooksTab provides a specialized interface for tutors to explore the 
+ * university's digital audio library. It mirrors the functionality of the books tab 
+ * but is optimized for audio-first content like lectures, narrations, and podcasts.
+ */
 @Composable
 fun TutorAudioBooksTab(
     viewModel: TutorViewModel,
     onPlayAudio: (Book) -> Unit
 ) {
+    // REACTIVE DATA: Collects all available audiobooks and current ownership status
     val allAudioBooks by viewModel.allAudioBooks.collectAsState()
     val purchasedIds by viewModel.purchasedIds.collectAsState()
+    
+    // UI STATE: Handles search queries, detail overlays, and asynchronous transaction feedback
     var searchQuery by remember { mutableStateOf("") }
     var detailAudioBook by remember { mutableStateOf<AudioBook?>(null) }
     
@@ -34,11 +42,15 @@ fun TutorAudioBooksTab(
     var isAddingToLibrary by remember { mutableStateOf(false) }
     var isRemovingFromLibrary by remember { mutableStateOf(false) }
     
+    // TARGET STATE: Identifies which audiobook is the subject of a confirmation action
     var abToConfirmAdd by remember { mutableStateOf<AudioBook?>(null) }
     var abToConfirmRemove by remember { mutableStateOf<AudioBook?>(null) }
 
+    // ADAPTIVE CONTAINER: Manages layout constraints for consistent mobile/tablet presentation
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = AdaptiveSpacing.contentPadding())) {
+            
+            // SEARCH INTERFACE: Dynamic filtering for the audiobook catalog
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -50,8 +62,10 @@ fun TutorAudioBooksTab(
                 shape = MaterialTheme.shapes.medium
             )
 
+            // FILTER LOGIC: Updates the displayed items based on the search term
             val filteredAudio = allAudioBooks.filter { it.title.contains(searchQuery, ignoreCase = true) }
 
+            // GRID VIEW: Displays audiobooks in an adaptive grid (3 columns for tablet, 2 for mobile)
             LazyVerticalGrid(
                 columns = GridCells.Fixed(if (isTablet) 3 else 2),
                 modifier = Modifier.fillMaxSize(),
@@ -71,12 +85,17 @@ fun TutorAudioBooksTab(
                         onItemClick = { detailAudioBook = ab }
                     )
                 }
+                // Floating Action Button safe zone spacer
                 item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
     }
 
-    // Confirmation Popups
+    // --- TRANSACTIONAL POPUPS: Logic for Library Synchronization ---
+
+    /**
+     * Confirmation for adding a digital audio resource to the tutor's personal collection.
+     */
     abToConfirmAdd?.let { ab ->
         AppPopups.AddToLibraryConfirmation(
             show = true,
@@ -88,7 +107,7 @@ fun TutorAudioBooksTab(
                 abToConfirmAdd = null
                 scope.launch {
                     isAddingToLibrary = true
-                    delay(1200)
+                    delay(1200) // Simulated synchronization with backend services
                     viewModel.addToLibrary(ab.id, AppConstants.CAT_AUDIOBOOKS)
                     isAddingToLibrary = false
                 }
@@ -96,6 +115,10 @@ fun TutorAudioBooksTab(
         )
     }
     
+    /**
+     * Confirmation for removing a resource.
+     * Use Case: Managing storage and professional catalog relevance.
+     */
     abToConfirmRemove?.let { ab ->
         AppPopups.RemoveFromLibraryConfirmation(
             show = true,
@@ -105,7 +128,7 @@ fun TutorAudioBooksTab(
                 abToConfirmRemove = null
                 scope.launch {
                     isRemovingFromLibrary = true
-                    delay(800)
+                    delay(800) // Simulated removal processing
                     viewModel.removeFromLibrary(ab.id)
                     isRemovingFromLibrary = false
                 }
@@ -113,9 +136,13 @@ fun TutorAudioBooksTab(
         )
     }
 
+    // GLOBAL STATUS OVERLAYS: Non-interactive feedback during background operations
     AppPopups.AddingToLibraryLoading(show = isAddingToLibrary, category = AppConstants.CAT_AUDIOBOOKS)
     AppPopups.RemovingFromLibraryLoading(show = isRemovingFromLibrary)
 
+    /**
+     * EXPANDED DETAIL VIEW: Focuses on the audiobook's metadata and initiates playback.
+     */
     detailAudioBook?.let { ab ->
         TutorResourceDetailDialog(
             title = ab.title,
@@ -128,7 +155,7 @@ fun TutorAudioBooksTab(
             onAddClick = { abToConfirmAdd = ab },
             onRemoveClick = { abToConfirmRemove = ab },
             onActionClick = { 
-                // Using the available openAudioBook method from viewModel
+                // Navigation/Playback Trigger: Delegates to the ViewModel to initiate the global player
                 viewModel.openAudioBook(ab) 
             },
             onDismiss = { detailAudioBook = null }

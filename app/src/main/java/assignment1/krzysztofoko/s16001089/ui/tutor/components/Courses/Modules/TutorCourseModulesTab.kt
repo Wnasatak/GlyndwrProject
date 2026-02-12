@@ -30,22 +30,37 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import java.util.*
 
+/**
+ * TutorCourseModulesTab provides a comprehensive management interface for course curriculum.
+ * It allows tutors to organize learning materials into sequential modules, including 
+ * support for video lectures, PDF documents, and knowledge-check quizzes.
+ *
+ * Key Features:
+ * - Sequential module management with custom display ordering.
+ * - Dynamic content type classification (Video, Reading, Quiz).
+ * - Full CRUD support (Create, Read, Update, Delete) via specialized dialogs.
+ * - Adaptive layout optimized for high information density on tablets.
+ */
 @Composable
 fun TutorCourseModulesTab(
     viewModel: TutorViewModel
 ) {
+    // REACTIVE DATA STREAMS: Observes the course context and its associated modules
     val course by viewModel.selectedCourse.collectAsState()
     val modules by viewModel.selectedCourseModules.collectAsState()
 
+    // UI STATE: Manages editing context, creation triggers, and deletion safety checks
     var editingModule by remember { mutableStateOf<ModuleContent?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var moduleToDelete by remember { mutableStateOf<ModuleContent?>(null) }
 
+    // ADAPTIVE CONTAINER: Ensures proper centering and width-capping on tablets
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) { isTablet ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().padding(horizontal = AdaptiveSpacing.contentPadding())) {
                 Spacer(Modifier.height(12.dp))
                 
+                // HEADER: Displays the course title and management context using institutional branding
                 AdaptiveDashboardHeader(
                     title = "Course Modules",
                     subtitle = course?.title ?: "Curriculum Management",
@@ -54,15 +69,16 @@ fun TutorCourseModulesTab(
                 
                 Spacer(Modifier.height(20.dp))
 
+                // CONTENT DISPATCHER: Renders either the empty state or the chronological module list
                 if (modules.isEmpty()) {
                     EmptyModulesState { showCreateDialog = true }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 100.dp)
+                        contentPadding = PaddingValues(bottom = 100.dp) // Prevents FAB occlusion
                     ) {
-                        items(modules) { module ->
+                        items(modules.sortedBy { it.order }) { module ->
                             ModuleItemCard(
                                 module = module,
                                 onEdit = { editingModule = module },
@@ -73,6 +89,7 @@ fun TutorCourseModulesTab(
                 }
             }
 
+            // PRIMARY ACTION: FAB for adding new curriculum content
             ExtendedFloatingActionButton(
                 onClick = { showCreateDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -88,6 +105,7 @@ fun TutorCourseModulesTab(
         }
     }
 
+    // DIALOG: Unified creation and editing interface for module data
     if (showCreateDialog || editingModule != null) {
         ModuleEditDialog(
             module = editingModule,
@@ -98,6 +116,7 @@ fun TutorCourseModulesTab(
                 editingModule = null
             },
             onSave = { updated ->
+                // PERSISTENCE: Commits the module change to the Room database via ViewModel
                 viewModel.upsertModule(updated)
                 showCreateDialog = false
                 editingModule = null
@@ -105,6 +124,7 @@ fun TutorCourseModulesTab(
         )
     }
 
+    // SAFETY DIALOG: Confirmation before destructive deletion of academic content
     if (moduleToDelete != null) {
         AlertDialog(
             onDismissRequest = { moduleToDelete = null },
@@ -132,6 +152,10 @@ fun TutorCourseModulesTab(
     }
 }
 
+/**
+ * Placeholder UI displayed when a course has no curriculum modules.
+ * Encourages the tutor to begin building the syllabus.
+ */
 @Composable
 fun EmptyModulesState(onAction: () -> Unit) {
     val isTablet = isTablet()
@@ -162,6 +186,10 @@ fun EmptyModulesState(onAction: () -> Unit) {
     }
 }
 
+/**
+ * A responsive card component representing a single learning module.
+ * Features content-type specific iconography and management actions.
+ */
 @Composable
 fun ModuleItemCard(
     module: ModuleContent,
@@ -170,6 +198,7 @@ fun ModuleItemCard(
 ) {
     AdaptiveDashboardCard { isTablet ->
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // Visual Type Indicator: Dynamic icon selection based on content classification
             Surface(
                 modifier = Modifier.size(if (isTablet) 48.dp else 40.dp),
                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
@@ -192,6 +221,7 @@ fun ModuleItemCard(
             
             Spacer(Modifier.width(if (isTablet) 20.dp else 16.dp))
             
+            // METADATA: Module Title and Sequential Sequence Number
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = module.title,
@@ -207,6 +237,7 @@ fun ModuleItemCard(
                 )
             }
 
+            // MANAGEMENT ACTIONS: Quick-edit and delete triggers
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalIconButton(
                     onClick = onEdit,
@@ -231,6 +262,7 @@ fun ModuleItemCard(
             }
         }
         
+        // Optional description field for module context
         if (module.description.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
             Text(
@@ -245,6 +277,7 @@ fun ModuleItemCard(
         
         Spacer(Modifier.height(16.dp))
         
+        // CONTENT TYPE BADGE: Visual classification for students and tutors
         Row(verticalAlignment = Alignment.CenterVertically) {
             val typeLabel = when(module.contentType) {
                 "VIDEO" -> "Video Lecture"
@@ -268,6 +301,10 @@ fun ModuleItemCard(
     }
 }
 
+/**
+ * A specialized dialog for entering or modifying module metadata.
+ * Manages complex state including content type selection and resource URLs.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModuleEditDialog(
@@ -278,6 +315,8 @@ fun ModuleEditDialog(
     onSave: (ModuleContent) -> Unit
 ) {
     val isTablet = isTablet()
+    
+    // LOCAL FORM STATE: Initialized from the existing module or defaults for a new one
     var title by remember { mutableStateOf(module?.title ?: "") }
     var description by remember { mutableStateOf(module?.description ?: "") }
     var contentType by remember { mutableStateOf(module?.contentType ?: "VIDEO") }
@@ -305,6 +344,7 @@ fun ModuleEditDialog(
                     
                     Spacer(Modifier.height(24.dp))
                     
+                    // TITLE INPUT: Required field for curriculum organization
                     OutlinedTextField(
                         value = title,
                         onValueChange = { title = it },
@@ -315,6 +355,7 @@ fun ModuleEditDialog(
                     
                     Spacer(Modifier.height(16.dp))
                     
+                    // DESCRIPTION INPUT: Qualitative context for the module content
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
@@ -326,6 +367,7 @@ fun ModuleEditDialog(
 
                     Spacer(Modifier.height(24.dp))
                     
+                    // CONTENT TYPE SELECTION: Visual picker for material classification
                     Text("Content Type", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         TypeSelectionIcon(icon = Icons.Default.PlayCircle, label = "VIDEO", isSelected = contentType == "VIDEO") { contentType = "VIDEO" }
@@ -335,6 +377,7 @@ fun ModuleEditDialog(
 
                     Spacer(Modifier.height(24.dp))
 
+                    // RESOURCE URL: External link to the actual learning asset (Stream or Cloud Document)
                     OutlinedTextField(
                         value = contentUrl,
                         onValueChange = { contentUrl = it },
@@ -346,6 +389,7 @@ fun ModuleEditDialog(
 
                     Spacer(Modifier.height(16.dp))
 
+                    // SEQUENTIAL ORDER: Numeric input to control the display sequence in the syllabus
                     OutlinedTextField(
                         value = order,
                         onValueChange = { if (it.all { c -> c.isDigit() }) order = it },
@@ -357,11 +401,13 @@ fun ModuleEditDialog(
 
                     Spacer(Modifier.height(32.dp))
                     
+                    // ACTION BAR: Commit or discard changes
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(onClick = onDismiss, modifier = Modifier.height(if (isTablet) 48.dp else 36.dp)) { Text("Cancel") }
                         Spacer(Modifier.width(12.dp))
                         Button(
                             onClick = {
+                                // VALIDATION & EMISSION: Constructs a new ModuleContent object and emits it via onSave
                                 onSave(ModuleContent(
                                     id = module?.id ?: UUID.randomUUID().toString(),
                                     courseId = courseId,
@@ -385,6 +431,10 @@ fun ModuleEditDialog(
     )
 }
 
+/**
+ * A branded interactive icon used for content type classification.
+ * Features high-contrast selection states and institutional typography.
+ */
 @Composable
 fun TypeSelectionIcon(icon: ImageVector, label: String, isSelected: Boolean, onClick: () -> Unit) {
     val isTablet = isTablet()

@@ -36,6 +36,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.sin
 
+/**
+ * AudioPlayerComponent is a versatile media player UI that supports both minimized (bar)
+ * and maximized (full-screen overlay) states. It integrates with Media3 (ExoPlayer)
+ * to provide real-time playback control, progress tracking, and animated visual feedback.
+ */
 @Composable
 fun AudioPlayerComponent(
     book: Book,
@@ -45,12 +50,13 @@ fun AudioPlayerComponent(
     isDarkTheme: Boolean,
     player: Player?
 ) {
+    // Local state for tracking player progress and status
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(false) }
     val density = LocalDensity.current
 
-    // Efficiently sync with player state
+    // Lifecycle-aware sync with the Media3 player instance
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
@@ -62,6 +68,7 @@ fun AudioPlayerComponent(
             }
         }
         player?.addListener(listener)
+        // Initial state capture
         isPlaying = player?.isPlaying ?: false
         duration = player?.duration?.coerceAtLeast(0L) ?: 0L
 
@@ -70,7 +77,7 @@ fun AudioPlayerComponent(
         }
     }
 
-    // Smooth position updates
+    // Coroutine-driven progress update (refreshes every second while playing)
     LaunchedEffect(player, isPlaying) {
         if (isPlaying && player != null) {
             while (isActive) {
@@ -80,7 +87,7 @@ fun AudioPlayerComponent(
         }
     }
 
-    // Moving gradient logic for both states
+    // Background animation: Shifting ambient gradient for a dynamic feel
     val infiniteTransition = rememberInfiniteTransition(label = "ambientGradient")
     val offsetAnim by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -92,9 +99,10 @@ fun AudioPlayerComponent(
         label = "offsetAnim"
     )
 
-    // Outer container - No padding when minimized for integrated look
+    // Layout structure depends on the minimization state
     Box(modifier = Modifier.padding(if (isMinimized) 0.dp else 16.dp)) {
         if (isMinimized) {
+            // VIEW: MINIMIZED (Bottom Bar)
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -105,7 +113,7 @@ fun AudioPlayerComponent(
                 tonalElevation = 0.dp,
                 border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
             ) {
-                // THEMED MINIMIZED GRADIENT
+                // Animated background gradient
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -123,6 +131,7 @@ fun AudioPlayerComponent(
                 )
 
                 Column {
+                    // Slim progress indicator at the very top of the bar
                     val progress = if (duration > 0) currentPosition.toFloat() / duration else 0f
                     LinearProgressIndicator(
                         progress = { progress },
@@ -131,6 +140,7 @@ fun AudioPlayerComponent(
                         trackColor = Color.Transparent
                     )
                     
+                    // Main content: Thumbnail, title, and simple controls
                     Row(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -145,7 +155,6 @@ fun AudioPlayerComponent(
                         )
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            @Suppress("DEPRECATION")
                             Text(
                                 text = book.title,
                                 style = MaterialTheme.typography.labelLarge,
@@ -153,7 +162,6 @@ fun AudioPlayerComponent(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            @Suppress("DEPRECATION")
                             Text(
                                 text = book.author,
                                 style = MaterialTheme.typography.labelSmall,
@@ -173,6 +181,7 @@ fun AudioPlayerComponent(
                 }
             }
         } else {
+            // VIEW: MAXIMIZED (Full-screen Card Style)
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -183,7 +192,7 @@ fun AudioPlayerComponent(
                 shadowElevation = 12.dp,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
             ) {
-                // THEMED MAXIMIZED GRADIENT
+                // Background Gradient (more pronounced in maximized state)
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -204,6 +213,7 @@ fun AudioPlayerComponent(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // Header: Controls to minimize or close
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -213,7 +223,6 @@ fun AudioPlayerComponent(
                             Icon(Icons.Default.KeyboardArrowDown, "Minimize")
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                            @Suppress("DEPRECATION")
                             Text(
                                 text = "Now Playing",
                                 style = MaterialTheme.typography.labelMedium,
@@ -228,6 +237,7 @@ fun AudioPlayerComponent(
 
                     Spacer(Modifier.height(16.dp))
                     
+                    // Large Cover Image with dynamic "shimmer" effect while playing
                     val imageSize = 200.dp
                     Box(
                         modifier = Modifier
@@ -241,6 +251,7 @@ fun AudioPlayerComponent(
                             contentScale = ContentScale.Crop
                         )
                         
+                        // Diagonal shimmer animation for active playback
                         if (isPlaying) {
                             val diagonalTransition = rememberInfiniteTransition(label = "diagonalShade")
                             val animProgress by diagonalTransition.animateFloat(
@@ -273,7 +284,7 @@ fun AudioPlayerComponent(
 
                     Spacer(Modifier.height(20.dp))
 
-                    @Suppress("DEPRECATION")
+                    // Title and Author information
                     Text(
                         text = book.title,
                         style = MaterialTheme.typography.titleLarge,
@@ -281,7 +292,6 @@ fun AudioPlayerComponent(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    @Suppress("DEPRECATION")
                     Text(
                         text = book.author,
                         style = MaterialTheme.typography.bodyMedium,
@@ -290,6 +300,7 @@ fun AudioPlayerComponent(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    // Custom animated "Squiggly" progress slider
                     SquigglySlider(
                         progress = if (duration > 0) currentPosition.toFloat() / duration else 0f,
                         isPlaying = isPlaying,
@@ -299,18 +310,18 @@ fun AudioPlayerComponent(
                         modifier = Modifier.fillMaxWidth().height(40.dp)
                     )
 
+                    // Time labels (current vs total)
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        @Suppress("DEPRECATION")
                         Text(text = formatTime(currentPosition.toInt()), style = MaterialTheme.typography.labelSmall)
-                        @Suppress("DEPRECATION")
                         Text(text = formatTime(duration.toInt()), style = MaterialTheme.typography.labelSmall)
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    // Playback Controls: Replay, Play/Pause, Fast Forward
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center,
@@ -346,6 +357,14 @@ fun AudioPlayerComponent(
     }
 }
 
+/**
+ * A custom slider component that renders a "squiggly" or wavy path for the active progress.
+ * The wave animates while playback is active.
+ *
+ * @param progress Float between 0 and 1 representing the current playback position.
+ * @param isPlaying Boolean to toggle the wave animation.
+ * @param onValueChange Lambda triggered when the user scrubs the slider.
+ */
 @Composable
 fun SquigglySlider(
     progress: Float,
@@ -356,6 +375,7 @@ fun SquigglySlider(
     val primaryColor = MaterialTheme.colorScheme.primary
     val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
     
+    // Phase animation for the wavy progress path
     val infiniteTransition = rememberInfiniteTransition(label = "wave")
     val phase by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -374,6 +394,7 @@ fun SquigglySlider(
             val centerY = height / 2
             val progressX = width * progress
             
+            // Draw the background (inactive) track
             drawLine(
                 color = trackColor,
                 start = Offset(progressX, centerY),
@@ -382,6 +403,7 @@ fun SquigglySlider(
                 cap = StrokeCap.Round
             )
             
+            // Generate the wavy path for active progress
             val path = Path()
             path.moveTo(0f, centerY)
             
@@ -403,6 +425,7 @@ fun SquigglySlider(
                 style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
             )
             
+            // Draw the thumb indicator
             drawCircle(
                 color = primaryColor,
                 radius = 6.dp.toPx(),
@@ -410,6 +433,7 @@ fun SquigglySlider(
             )
         }
         
+        // Invisible slider overlay for touch interaction
         Slider(
             value = progress,
             onValueChange = onValueChange,
@@ -425,6 +449,9 @@ fun SquigglySlider(
     }
 }
 
+/**
+ * Utility to format millisecond duration into a readable time string (HH:mm:ss or mm:ss).
+ */
 private fun formatTime(milliseconds: Int): String {
     val seconds = (milliseconds / 1000) % 60
     val minutes = (milliseconds / (1000 * 60)) % 60

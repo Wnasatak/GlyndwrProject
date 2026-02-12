@@ -50,8 +50,9 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
- * A shared Scaffold wrapper that provides the branded University TopBar.
- * Heavily optimized using centralized CommonComponents.
+ * TopLevelScaffold acts as the primary layout wrapper for the application.
+ * It manages the top-level navigation (Rail for tablets, Bottom/Menu for mobile),
+ * user identity display, theme management, and common UI elements like notifications and wallet.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,30 +88,37 @@ fun TopLevelScaffold(
     bottomContent: @Composable () -> Unit = {}, // Added bottomContent for Integrated Player
     content: @Composable (PaddingValues) -> Unit
 ) {
+    // Basic context and scope initialization
     val userId = currentUser?.uid ?: ""
     val useNavRail = windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val db = remember { AppDatabase.getDatabase(context) }
 
+    // Use 'key' to force recomposition when the user changes
     key(userId) {
+        // UI State management for various menus and pickers
         var showMoreMenu by remember { mutableStateOf(false) }
         var showThemePicker by remember { mutableStateOf(false) }
         var showClassroomPicker by remember { mutableStateOf(false) }
 
+        // Role-based access control logic
         val isAdmin = localUser?.role?.lowercase(Locale.ROOT) == "admin"
         val isTutor = localUser?.role?.lowercase(Locale.ROOT) in listOf("teacher", "tutor")
         
+        // Theme logic: Determines if the UI should be in dark mode based on global or custom theme
         val isDarkTheme = when(currentTheme) {
             Theme.DARK, Theme.DARK_BLUE -> true
             Theme.CUSTOM -> userTheme?.customIsDark ?: true
             else -> false
         }
 
+        // Helper to update theme preview during customization
         val updatePreview = { updated: UserTheme ->
             onLiveThemeUpdate(updated)
         }
 
+        // Persists theme preferences to the local database
         val updateThemeEnabled = { enabled: Boolean, targetTheme: Theme ->
             scope.launch {
                 val currentT = userTheme
@@ -123,6 +131,7 @@ fun TopLevelScaffold(
             }
         }
 
+        // ViewModel initialization for fetching user-specific dashboard data
         val dashboardViewModel: DashboardViewModel = viewModel(
             key = "dashboard_vm_$userId",
             factory = DashboardViewModelFactory(
@@ -134,19 +143,22 @@ fun TopLevelScaffold(
             )
         )
 
+        // Reactive states for counts and lists
         val applicationCount by dashboardViewModel.applicationCount.collectAsState()
         val filteredOwnedBooks by dashboardViewModel.filteredOwnedBooks.collectAsState()
         val purchasedIds by dashboardViewModel.purchasedIds.collectAsState()
 
+        // Filtering logic for enrolled courses to display in the classroom picker
         val enrolledPaidCourse = filteredOwnedBooks.find { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
         val enrolledFreeCourses = filteredOwnedBooks.filter { it.mainCategory == AppConstants.CAT_COURSES && it.price <= 0.0 && purchasedIds.contains(it.id) }
         val enrolledCourses = listOfNotNull(enrolledPaidCourse) + enrolledFreeCourses
 
+        // Determines visibility of certain navigation elements
         val hasActiveEnrolledCourse = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
         val showApplications = applicationCount > 0 && !hasActiveEnrolledCourse
         val hasCourses = enrolledCourses.isNotEmpty()
 
-        // Shared Rail Colors
+        // Centralized configuration for Navigation Rail colors
         val railColors = NavigationRailItemDefaults.colors(
             selectedIconColor = MaterialTheme.colorScheme.primary,
             selectedTextColor = MaterialTheme.colorScheme.primary,
@@ -156,6 +168,7 @@ fun TopLevelScaffold(
         )
 
         Row(modifier = Modifier.fillMaxSize()) {
+            // SIDE NAVIGATION: Navigation Rail (shown on large screens/Expanded width)
             if (useNavRail && currentUser != null && currentRoute != null && currentRoute != AppConstants.ROUTE_SPLASH && currentRoute != AppConstants.ROUTE_AUTH) {
                 NavigationRail(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -169,6 +182,7 @@ fun TopLevelScaffold(
                     },
                     modifier = Modifier.fillMaxHeight()
                 ) {
+                    // Main navigation items
                     NavigationRailItem(
                         selected = currentRoute == AppConstants.ROUTE_HOME || currentRoute?.startsWith("${AppConstants.ROUTE_HOME}?") == true, 
                         onClick = onHomeClick, 
@@ -184,6 +198,7 @@ fun TopLevelScaffold(
                         colors = railColors
                     )
 
+                    // Role-specific navigation items (Tutor vs Student/Admin)
                     if (isTutor) {
                         NavigationRailItem(selected = currentTutorSection == TutorSection.MESSAGES, onClick = onMessagesClick, icon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }, label = { Text("Messages") }, colors = railColors)
                         NavigationRailItem(selected = currentTutorSection == TutorSection.LIBRARY, onClick = onLibraryClick, icon = { Icon(Icons.Default.LibraryBooks, null) }, label = { Text("Library") }, colors = railColors)
@@ -193,6 +208,7 @@ fun TopLevelScaffold(
                         if (hasCourses) {
                             Box {
                                 NavigationRailItem(selected = currentRoute?.contains(AppConstants.ROUTE_CLASSROOM) == true, onClick = { showClassroomPicker = true }, icon = { Icon(Icons.Default.School, null) }, label = { Text("Classroom") }, colors = railColors)
+                                // Popup menu for classroom selection in Rail
                                 DropdownMenu(expanded = showClassroomPicker, onDismissRequest = { showClassroomPicker = false }, offset = androidx.compose.ui.unit.DpOffset(x = 80.dp, y = (-56).dp), modifier = Modifier.width(280.dp).padding(vertical = 8.dp)) {
                                     Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(12.dp)); Text("Select Classroom", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -206,15 +222,19 @@ fun TopLevelScaffold(
                         NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_MESSAGES, onClick = onMessagesClick, icon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }, label = { Text("Chat") }, colors = railColors)
                     }
                     Spacer(Modifier.weight(1f))
+                    // Logout action at the bottom of the rail
                     NavigationRailItem(selected = false, onClick = onLogoutClick, icon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) }, label = { Text("Logout") }, colors = railColors)
                 }
             }
 
+            // MAIN CONTENT AREA: Standard Scaffold containing the TopBar and Screen Content
             Scaffold(
                 topBar = {
+                    // Conditional rendering for the TopBar: Hidden on splash, auth, and specific full-screen views
                     if (currentUser != null && currentRoute != null && !isAdmin && currentRoute != AppConstants.ROUTE_SPLASH && currentRoute != AppConstants.ROUTE_AUTH && currentRoute != AppConstants.ROUTE_DASHBOARD && currentRoute != AppConstants.ROUTE_ADMIN_PANEL && !currentRoute.startsWith(AppConstants.ROUTE_TUTOR_PANEL) && currentRoute != AppConstants.ROUTE_PROFILE && currentRoute != AppConstants.ROUTE_NOTIFICATIONS && currentRoute != AppConstants.ROUTE_ABOUT && currentRoute != AppConstants.ROUTE_DEVELOPER && currentRoute != AppConstants.ROUTE_INSTRUCTIONS && currentRoute != AppConstants.ROUTE_VERSION_INFO && currentRoute != AppConstants.ROUTE_FUTURE_FEATURES && !currentRoute.contains(AppConstants.ROUTE_PDF_READER) && !currentRoute.contains(AppConstants.ROUTE_INVOICE) && !currentRoute.contains(AppConstants.ROUTE_INVOICE_CREATING)) {
                         Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
                             Row(modifier = Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                                // User Greeting and Avatar
                                 val firstName = localUser?.name?.split(" ")?.firstOrNull() ?: currentUser.displayName?.split(" ")?.firstOrNull() ?: "User"
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onDashboardClick() }.padding(4.dp)) {
                                     if (!useNavRail) { UserAvatar(photoUrl = localUser?.photoUrl ?: currentUser.photoUrl?.toString(), modifier = Modifier.size(36.dp)); Spacer(Modifier.width(12.dp)) }
@@ -222,6 +242,7 @@ fun TopLevelScaffold(
                                     Text(text = "Hi, $firstName", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
 
+                                // Header Icons: Wallet, Notifications, and Settings/Theme
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (!isAdmin) {
                                         ProWalletPill(balance = localUser?.balance ?: 0.0, onClick = onWalletClick)
@@ -231,6 +252,7 @@ fun TopLevelScaffold(
                                     ProNotificationIcon(count = unreadCount, isDarkTheme = isDarkTheme, onClick = onNotificationsClick)
                                     Spacer(Modifier.width(4.dp))
 
+                                    // Overflow menu for mobile or theme toggle for tablet
                                     if (!useNavRail) {
                                         Box {
                                             IconButton(onClick = { showMoreMenu = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.MoreVert, "More", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(22.dp)) }
@@ -259,7 +281,7 @@ fun TopLevelScaffold(
                         }
                     }
                 },
-                // Pass bottomContent to Scaffold's bottomBar slot to integrate player properly
+                // Pass bottomContent to Scaffold's bottomBar slot (e.g., for an integrated media player)
                 bottomBar = bottomContent,
                 modifier = Modifier.weight(1f),
                 containerColor = MaterialTheme.colorScheme.background,
@@ -267,6 +289,7 @@ fun TopLevelScaffold(
             )
         }
 
+        // DIALOG: Theme Builder for real-time UI color customization
         ThemeBuilderDialog(
             show = showThemeBuilder,
             onDismiss = { onOpenThemeBuilder(false) },
@@ -303,6 +326,7 @@ fun TopLevelScaffold(
             onSurfaceVal = userTheme?.customOnSurface ?: 0xFFF1F5F9
         )
 
+        // SHEET: Modal Bottom Sheet for selecting a Classroom on mobile devices
         if (showClassroomPicker && !useNavRail) {
             ModalBottomSheet(onDismissRequest = { showClassroomPicker = false }, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 40.dp)) {
@@ -315,4 +339,7 @@ fun TopLevelScaffold(
     }
 }
 
+/**
+ * Extension function to capitalize the first character of a string.
+ */
 private fun String.capitalizeWord(): String = this.lowercase().replaceFirstChar { it.uppercase() }

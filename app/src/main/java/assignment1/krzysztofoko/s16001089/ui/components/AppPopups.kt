@@ -66,13 +66,13 @@ object AppPopups {
             onDismissRequest = onDismiss,
             shape = RoundedCornerShape(ProDesign.CardRadius),
             containerColor = MaterialTheme.colorScheme.surface,
-            icon = { 
+            icon = {
                 Icon(
-                    imageVector = Icons.Default.LibraryAdd, 
-                    contentDescription = null, 
-                    tint = MaterialTheme.colorScheme.primary, 
+                    imageVector = Icons.Default.LibraryAdd,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(32.dp)
-                ) 
+                )
             },
             title = { Text(AppConstants.TITLE_ADD_TO_LIBRARY, fontWeight = FontWeight.Black) },
             text = { Text("Do you want to add '$itemTitle' to your collection for free?", textAlign = TextAlign.Center) },
@@ -139,13 +139,13 @@ object AppPopups {
             containerColor = MaterialTheme.colorScheme.surface,
             title = { Text(AppConstants.TITLE_LOG_OFF, fontWeight = FontWeight.Black) },
             text = { Text(AppConstants.MSG_LOG_OFF_DESC) },
-            confirmButton = { 
-                Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { 
-                    Text("Sign Off", fontWeight = FontWeight.Bold) 
-                } 
+            confirmButton = {
+                Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                    Text("Sign Off", fontWeight = FontWeight.Bold)
+                }
             },
-            dismissButton = { 
-                TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) } 
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) }
             }
         )
     }
@@ -155,7 +155,7 @@ object AppPopups {
         if (!show) return
         var timeLeft by remember { mutableStateOf(3) }
         LaunchedEffect(Unit) { while (timeLeft > 0) { delay(1000); timeLeft-- }; onDismiss() }
-        
+
         Dialog(onDismissRequest = onDismiss) {
             Surface(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -204,9 +204,9 @@ object AppPopups {
     @Composable
     fun AuthSuccess(show: Boolean, isDarkTheme: Boolean, onDismiss: () -> Unit) {
         if (!show) return
-        val totalTime = 5000 
+        val totalTime = 5000
         var timeLeftMs by remember { mutableStateOf(totalTime) }
-        
+
         LaunchedEffect(Unit) {
             val start = System.currentTimeMillis()
             while (timeLeftMs > 0) {
@@ -256,13 +256,13 @@ object AppPopups {
             icon = { Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Remove from Library", fontWeight = FontWeight.Black) },
             text = { Text("Are you sure you want to remove '$bookTitle' from your collection?") },
-            confirmButton = { 
-                Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { 
-                    Text("Remove", fontWeight = FontWeight.Bold) 
-                } 
+            confirmButton = {
+                Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                    Text("Remove", fontWeight = FontWeight.Bold)
+                }
             },
-            dismissButton = { 
-                TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) } 
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text(AppConstants.BTN_CANCEL) }
             }
         )
     }
@@ -279,13 +279,13 @@ object AppPopups {
 
     @Composable
     fun WalletTopUp(show: Boolean, user: UserLocal?, onDismiss: () -> Unit, onTopUpComplete: (Double) -> Unit, onManageProfile: () -> Unit) {
-        if (show) { 
+        if (show) {
             IntegratedTopUpDialog(
-                user = user, 
-                onDismiss = onDismiss, 
-                onTopUpComplete = onTopUpComplete, 
+                user = user,
+                onDismiss = onDismiss,
+                onTopUpComplete = onTopUpComplete,
                 onManageProfile = onManageProfile
-            ) 
+            )
         }
     }
 
@@ -306,7 +306,7 @@ object AppPopups {
 
     @Composable
     fun DeleteReviewConfirmation(show: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-        if (show) { 
+        if (show) {
             AlertDialog(
                 onDismissRequest = onDismiss,
                 shape = RoundedCornerShape(ProDesign.CardRadius),
@@ -321,7 +321,7 @@ object AppPopups {
 
     @Composable
     fun SaveReviewChangesConfirmation(show: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-        if (show) { 
+        if (show) {
             AlertDialog(
                 onDismissRequest = onDismiss,
                 shape = RoundedCornerShape(ProDesign.CardRadius),
@@ -341,7 +341,7 @@ object AppPopups {
             onDismissRequest = onDismiss,
             shape = RoundedCornerShape(ProDesign.CardRadius),
             containerColor = MaterialTheme.colorScheme.surface,
-            icon = { 
+            icon = {
                 Surface(modifier = Modifier.size(64.dp), shape = CircleShape, color = Color.White, border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
                     AsyncImage(model = "file:///android_asset/images/media/GlyndwrUniversity.jpg", contentDescription = "App Logo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 }

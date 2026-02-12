@@ -36,24 +36,34 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * ArchivedBroadcastsScreen provides a repository for previously recorded live lecture sessions.
+ * It allows tutors to manage their digital legacy by reviewing, renaming, deleting, 
+ * or sharing broadcast replays with students.
+ */
 @Composable
 fun ArchivedBroadcastsScreen(
     viewModel: TutorViewModel
 ) {
+    // REACTIVE STATE: Synchronizes with course context, broadcast history, and student rosters
     val course by viewModel.selectedCourse.collectAsState()
     val previousBroadcasts by viewModel.previousBroadcasts.collectAsState()
     val modules by viewModel.selectedCourseModules.collectAsState()
     val assignments by viewModel.selectedCourseAssignments.collectAsState()
     val students by viewModel.enrolledStudentsInSelectedCourse.collectAsState()
 
+    // UI STATE: Manages playback state and various administrative overlay triggers
     var playingSessionId by remember { mutableStateOf<String?>(null) }
     var renamingSession by remember { mutableStateOf<LiveSession?>(null) }
     var sessionToDelete by remember { mutableStateOf<LiveSession?>(null) }
     var sharingSession by remember { mutableStateOf<LiveSession?>(null) }
 
+    // ADAPTIVE CONTAINER: Centered width constraint for improved readability on tablets
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
             Spacer(Modifier.height(12.dp))
+            
+            // HEADER: Professional context for the archived sessions view
             AdaptiveDashboardHeader(
                 title = "Session Archive",
                 subtitle = course?.title ?: "All Broadcasts",
@@ -62,16 +72,17 @@ fun ArchivedBroadcastsScreen(
 
             Spacer(Modifier.height(24.dp))
 
+            // CONTENT DISPATCHER: Renders either the empty state or the list of archived broadcasts
             if (previousBroadcasts.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.Podcasts, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
                         Spacer(Modifier.height(16.dp))
-                        @Suppress("DEPRECATION")
                         Text("No archived broadcasts found.", color = Color.Gray)
                     }
                 }
             } else {
+                // ARCHIVE LIST: Chronological list of recorded session cards
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(bottom = 100.dp)
@@ -86,6 +97,7 @@ fun ArchivedBroadcastsScreen(
                             onShareRequest = { sharingSession = session },
                             onRename = { renamingSession = session },
                             onPlayToggle = {
+                                // PLAYBACK LOGIC: Toggles the inline video player for the selected session
                                 playingSessionId = if (playingSessionId == session.id) null else session.id
                             }
                         )
@@ -95,6 +107,9 @@ fun ArchivedBroadcastsScreen(
         }
     }
 
+    // --- OVERLAYS: Administrative Management Dialogs ---
+
+    // RENAME DIALOG: Updates the descriptive title of a recorded lecture
     if (renamingSession != null) {
         var newTitle by remember { mutableStateOf(renamingSession!!.title) }
         AlertDialog(
@@ -117,19 +132,17 @@ fun ArchivedBroadcastsScreen(
                         viewModel.updateBroadcastTitle(renamingSession!!.id, newTitle)
                         renamingSession = null
                     },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    shape = RoundedCornerShape(12.dp)
                 ) { Text("Save", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { renamingSession = null }) { 
-                    Text("Cancel", color = MaterialTheme.colorScheme.primary) 
-                }
+                TextButton(onClick = { renamingSession = null }) { Text("Cancel") }
             },
             shape = RoundedCornerShape(24.dp)
         )
     }
 
+    // DELETE DIALOG: Destructive action confirmation with mandatory "DELETE" typing for safety
     if (sessionToDelete != null) {
         DeleteBroadcastConfirmationDialog(
             sessionTitle = sessionToDelete!!.title,
@@ -141,6 +154,7 @@ fun ArchivedBroadcastsScreen(
         )
     }
 
+    // SHARE DIALOG: Distributes the session replay link to students via notifications
     if (sharingSession != null) {
         ShareBroadcastDialog(
             session = sharingSession!!,
@@ -158,6 +172,10 @@ fun ArchivedBroadcastsScreen(
     }
 }
 
+/**
+ * A sophisticated dialog for sharing archived sessions. 
+ * Supports both class-wide broadcasting and targeted student selection via a filtered list.
+ */
 @Composable
 fun ShareBroadcastDialog(
     session: LiveSession,
@@ -170,6 +188,7 @@ fun ShareBroadcastDialog(
     var shareWithAll by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
 
+    // REAL-TIME SEARCH: Filters the student roster for targeted sharing
     val filteredStudents = remember(students, searchQuery) {
         if (searchQuery.isBlank()) students
         else students.filter { it.name.contains(searchQuery, ignoreCase = true) || it.email.contains(searchQuery, ignoreCase = true) }
@@ -181,9 +200,9 @@ fun ShareBroadcastDialog(
         title = { Text("Share Replay", fontWeight = FontWeight.Black) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                @Suppress("DEPRECATION")
                 Text("Select who should receive a notification about this replay.", style = MaterialTheme.typography.bodySmall)
                 
+                // Toggle: Select all students vs specific selection
                 Surface(
                     onClick = { shareWithAll = !shareWithAll },
                     color = if (shareWithAll) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) 
@@ -199,11 +218,11 @@ fun ShareBroadcastDialog(
                             colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                         )
                         Spacer(Modifier.width(8.dp))
-                        @Suppress("DEPRECATION")
                         Text("Whole Class (${students.size} students)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
 
+                // TARGETED SELECTION: List of students with checkboxes, visible only if 'Whole Class' is unticked
                 if (!shareWithAll) {
                     OutlinedTextField(
                         value = searchQuery,
@@ -212,11 +231,9 @@ fun ShareBroadcastDialog(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp)) },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyMedium
+                        singleLine = true
                     )
 
-                    @Suppress("DEPRECATION")
                     Text("Results (${filteredStudents.size})", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     
                     LazyColumn(modifier = Modifier.heightIn(max = 250.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -237,9 +254,7 @@ fun ShareBroadcastDialog(
                                     UserAvatar(photoUrl = student.photoUrl, modifier = Modifier.size(32.dp))
                                     Spacer(Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
-                                        @Suppress("DEPRECATION")
                                         Text(student.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                                        @Suppress("DEPRECATION")
                                         Text(student.email, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     }
                                     Checkbox(
@@ -262,21 +277,22 @@ fun ShareBroadcastDialog(
                     if (shareWithAll) onShareWithAll() else onShareWithSpecific(selectedStudentIds.toList())
                 },
                 enabled = shareWithAll || selectedStudentIds.isNotEmpty(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Share Now", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { 
-                Text("Cancel", color = MaterialTheme.colorScheme.primary) 
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         },
         shape = RoundedCornerShape(28.dp)
     )
 }
 
+/**
+ * Safety confirmation dialog for broadcast deletion.
+ * Requires the user to type "DELETE" to minimize accidental loss of institutional content.
+ */
 @Composable
 fun DeleteBroadcastConfirmationDialog(
     sessionTitle: String,
@@ -291,12 +307,10 @@ fun DeleteBroadcastConfirmationDialog(
         title = { Text("Delete Broadcast", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                @Suppress("DEPRECATION")
                 Text(
                     text = "Are you sure you want to permanently delete '$sessionTitle'? This action cannot be undone.",
                     style = MaterialTheme.typography.bodyMedium
                 )
-                @Suppress("DEPRECATION")
                 Text(
                     text = "To confirm, please type DELETE below:",
                     style = MaterialTheme.typography.labelSmall,
@@ -328,14 +342,16 @@ fun DeleteBroadcastConfirmationDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = MaterialTheme.colorScheme.primary)
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         },
         shape = RoundedCornerShape(28.dp)
     )
 }
 
+/**
+ * A high-impact card representing a recorded lecture session.
+ * Features an integrated ExoPlayer for inline review and administrative control buttons.
+ */
 @Composable
 fun BroadcastArchiveCard(
     session: LiveSession,
@@ -366,7 +382,7 @@ fun BroadcastArchiveCard(
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Column {
-            // Player Area
+            // INTEGRATED PLAYER: Visible only when 'isPlaying' is true for the session
             AnimatedVisibility(visible = isPlaying) {
                 Box(
                     modifier = Modifier
@@ -376,6 +392,7 @@ fun BroadcastArchiveCard(
                 ) {
                     val exoPlayer = remember {
                         ExoPlayer.Builder(context).build().apply {
+                            // Note: In a production environment, this would use session.streamUrl
                             val videoUrl = "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
                             val mediaItem = MediaItem.fromUri(videoUrl)
                             setMediaItem(mediaItem)
@@ -384,10 +401,12 @@ fun BroadcastArchiveCard(
                         }
                     }
 
+                    // Lifecycle cleanup for the player instance
                     DisposableEffect(Unit) {
                         onDispose { exoPlayer.release() }
                     }
 
+                    // Native View integration for the Media3 PlayerView
                     AndroidView(
                         factory = { ctx ->
                             PlayerView(ctx).apply {
@@ -405,6 +424,7 @@ fun BroadcastArchiveCard(
             }
 
             Column(modifier = Modifier.padding(12.dp)) {
+                // HEADER AREA: Identity metadata and quick-edit/delete icons
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
@@ -417,7 +437,6 @@ fun BroadcastArchiveCard(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        @Suppress("DEPRECATION")
                         Text(
                             text = session.title, 
                             fontWeight = FontWeight.Black, 
@@ -425,7 +444,6 @@ fun BroadcastArchiveCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        @Suppress("DEPRECATION")
                         Text(dateStr, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                     }
                     
@@ -441,6 +459,7 @@ fun BroadcastArchiveCard(
 
                 Spacer(Modifier.height(10.dp))
 
+                // METADATA BADGES: Contextual link to modules or assignments
                 Row(
                     modifier = Modifier.fillMaxWidth(), 
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -458,6 +477,7 @@ fun BroadcastArchiveCard(
 
                 Spacer(Modifier.height(16.dp))
 
+                // ACTION ROW: Main triggers for playback and institutional sharing
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -479,7 +499,6 @@ fun BroadcastArchiveCard(
                             modifier = Modifier.size(iconSize)
                         )
                         Spacer(Modifier.width(6.dp))
-                        @Suppress("DEPRECATION")
                         Text(if (isPlaying) "Close" else "Watch Replay", fontSize = fontSize, fontWeight = FontWeight.Bold)
                     }
                     
@@ -495,7 +514,6 @@ fun BroadcastArchiveCard(
                     ) {
                         Icon(Icons.Default.Share, null, modifier = Modifier.size(iconSize))
                         Spacer(Modifier.width(6.dp))
-                        @Suppress("DEPRECATION")
                         Text("Share", fontSize = fontSize, fontWeight = FontWeight.Bold)
                     }
                 }
@@ -504,6 +522,9 @@ fun BroadcastArchiveCard(
     }
 }
 
+/**
+ * A small branded tag for displaying categorical metadata linked to archived broadcasts.
+ */
 @Composable
 fun ArchiveBadge(icon: ImageVector, label: String, color: Color = MaterialTheme.colorScheme.primary) {
     val isTablet = isTablet()
@@ -518,7 +539,6 @@ fun ArchiveBadge(icon: ImageVector, label: String, color: Color = MaterialTheme.
         ) {
             Icon(icon, null, modifier = Modifier.size(if (isTablet) 14.dp else 12.dp), tint = color)
             Spacer(Modifier.width(4.dp))
-            @Suppress("DEPRECATION")
             Text(
                 text = label, 
                 style = if (isTablet) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), 

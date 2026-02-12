@@ -39,17 +39,32 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * TutorCourseAssignmentsTab provides a modular administrative interface for creating 
+ * and managing academic assessments. It uses a "Step-Based" navigation pattern:
+ * 1. Module Selection: Focus on assignments within a specific curriculum topic.
+ * 2. Assignment Management: Detailed list of tasks with full CRUD capabilities.
+ *
+ * Key Features:
+ * - Deadline tracking with real-time "time left" calculations.
+ * - Multi-format support (PDF, DOCX, ZIP) classification for submissions.
+ * - Dynamic linking between assignments and syllabus modules.
+ * - Integrated Material 3 Date and Time pickers for deadline configuration.
+ */
 @Composable
 fun TutorCourseAssignmentsTab(
     viewModel: TutorViewModel
 ) {
+    // REACTIVE DATA: Core state streams from the TutorViewModel
     val course by viewModel.selectedCourse.collectAsState()
     val assignments by viewModel.selectedCourseAssignments.collectAsState()
     val modules by viewModel.selectedCourseModules.collectAsState()
 
+    // NAVIGATION STATE: Tracks the current layer of the assignment management hierarchy
     var step by remember { mutableIntStateOf(1) } 
     var selectedModuleId by remember { mutableStateOf<String?>(null) }
     
+    // UI OVERLAY STATE: Manages editing context and destructive action safety
     var editingAssignment by remember { mutableStateOf<Assignment?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var assignmentToDelete by remember { mutableStateOf<Assignment?>(null) }
@@ -58,6 +73,7 @@ fun TutorCourseAssignmentsTab(
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = AdaptiveSpacing.contentPadding())) {
             Spacer(Modifier.height(12.dp))
             
+            // HEADER: Context-aware title and institutional iconography
             AdaptiveDashboardHeader(
                 title = if (step == 1) "Select Module" else "Module Assignments",
                 subtitle = course?.title ?: "Manage Assignments",
@@ -66,12 +82,14 @@ fun TutorCourseAssignmentsTab(
             
             Spacer(Modifier.height(24.dp))
 
+            // STEP DISPATCHER: Transitions between Module Selection and Assignment List
             AnimatedContent(
                 targetState = step,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "AssignmentStepTransition"
             ) { currentStep ->
                 when (currentStep) {
+                    // LAYER 1: Choose a curriculum module to view its associated tasks
                     1 -> {
                         if (modules.isEmpty()) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -100,6 +118,8 @@ fun TutorCourseAssignmentsTab(
                             }
                         }
                     }
+                    
+                    // LAYER 2: Management list for assignments within the chosen module
                     2 -> {
                         val filteredAssignments = assignments.filter { it.moduleId == selectedModuleId }
                         
@@ -148,6 +168,7 @@ fun TutorCourseAssignmentsTab(
             }
         }
 
+        // PRIMARY ACTION: Create new assignment (Visible only in Layer 2)
         if (step == 2) {
             ExtendedFloatingActionButton(
                 onClick = { showCreateDialog = true },
@@ -164,6 +185,7 @@ fun TutorCourseAssignmentsTab(
         }
     }
 
+    // DIALOG: Institutional interface for defining assessment criteria and deadlines
     if (showCreateDialog || editingAssignment != null) {
         AssignmentEditDialog(
             assignment = editingAssignment,
@@ -174,6 +196,7 @@ fun TutorCourseAssignmentsTab(
                 editingAssignment = null
             },
             onSave = { updated ->
+                // PERSISTENCE: Commits changes to the Room database via ViewModel
                 viewModel.upsertAssignment(updated)
                 showCreateDialog = false
                 editingAssignment = null
@@ -181,6 +204,7 @@ fun TutorCourseAssignmentsTab(
         )
     }
 
+    // SAFETY DIALOG: Confirms removal of institutional assessment data
     if (assignmentToDelete != null) {
         DeleteConfirmationDialog(
             title = assignmentToDelete?.title ?: "",
@@ -193,6 +217,10 @@ fun TutorCourseAssignmentsTab(
     }
 }
 
+/**
+ * A specialized selection item for curriculum modules.
+ * Features an assignment counter for quick oversight.
+ */
 @Composable
 fun ModuleSelectionCard(title: String, assignmentCount: Int, onClick: () -> Unit) {
     AdaptiveDashboardCard(onClick = onClick) { isTablet ->
@@ -234,6 +262,7 @@ fun ModuleSelectionCard(title: String, assignmentCount: Int, onClick: () -> Unit
     }
 }
 
+/** Placeholder displayed when a module contains no assessments. */
 @Composable
 fun EmptyAssignmentsState(onAction: () -> Unit) {
     val isTablet = isTablet()
@@ -276,6 +305,10 @@ fun EmptyAssignmentsState(onAction: () -> Unit) {
     }
 }
 
+/**
+ * A detailed card representing a single academic assessment.
+ * Features state-aware deadline tracking and management actions.
+ */
 @Composable
 fun AssignmentCard(
     assignment: Assignment, 
@@ -287,6 +320,7 @@ fun AssignmentCard(
     val dueDate = dateFormat.format(Date(assignment.dueDate))
     val isOverdue = assignment.dueDate < System.currentTimeMillis()
     
+    // TEMPORAL LOGIC: Calculates a user-friendly "Time Left" string for the assessment
     val timeLeft = remember(assignment.dueDate) {
         val diff = assignment.dueDate - System.currentTimeMillis()
         val days = diff / (1000 * 60 * 60 * 24)
@@ -304,6 +338,7 @@ fun AssignmentCard(
         backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
     ) { isTablet ->
         Column {
+            // CARD HEADER: Branded module link and dynamic deadline badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -351,6 +386,7 @@ fun AssignmentCard(
 
             Spacer(Modifier.height(16.dp)) 
             
+            // CONTENT: Primary title and descriptive assessment criteria
             Text(
                 text = assignment.title,
                 style = if (isTablet) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
@@ -371,6 +407,7 @@ fun AssignmentCard(
 
             Spacer(Modifier.height(20.dp))
             
+            // FOOTER: Specific deadline date and management triggers
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -418,6 +455,10 @@ fun AssignmentCard(
     }
 }
 
+/**
+ * A sophisticated dialog for modifying assignment parameters.
+ * Manages complex state including deadine pickers, module association, and file type filters.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssignmentEditDialog(
@@ -428,16 +469,20 @@ fun AssignmentEditDialog(
     onSave: (Assignment) -> Unit
 ) {
     val isTablet = isTablet()
+    
+    // FORM STATE: Initialized from existing data or set to institutional defaults
     var title by remember { mutableStateOf(assignment?.title ?: "") }
     var description by remember { mutableStateOf(assignment?.description ?: "") }
     var selectedModuleId by remember { mutableStateOf(assignment?.moduleId ?: modules.firstOrNull()?.id ?: "") }
     var dueDateMillis by remember { mutableStateOf(assignment?.dueDate ?: (System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) }
     
+    // FORMAT LOGIC: Manages the set of allowed file extensions for submissions
     val initialFormats = assignment?.allowedFileTypes?.split(",")?.toSet() ?: setOf("PDF", "DOCX", "ZIP")
     var allowPdf by remember { mutableStateOf("PDF" in initialFormats) }
     var allowDocx by remember { mutableStateOf("DOCX" in initialFormats) }
     var allowZip by remember { mutableStateOf("ZIP" in initialFormats) }
 
+    // PICKER STATE: Manages sequential Date -> Time selection flow
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     
@@ -449,6 +494,7 @@ fun AssignmentEditDialog(
         initialMinute = Calendar.getInstance().apply { timeInMillis = dueDateMillis }.get(Calendar.MINUTE)
     )
 
+    // DIALOG: Material 3 Date Selection
     if (showDatePicker) {
         val datePickerColors = DatePickerDefaults.colors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -468,7 +514,7 @@ fun AssignmentEditDialog(
             confirmButton = {
                 TextButton(onClick = {
                     showDatePicker = false
-                    showTimePicker = true
+                    showTimePicker = true // Automatically transition to time selection
                 }) { Text("Next", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
@@ -485,6 +531,7 @@ fun AssignmentEditDialog(
         }
     }
 
+    // DIALOG: Custom Time Selection wrapper
     if (showTimePicker) {
         assignment1.krzysztofoko.s16001089.ui.tutor.components.Dashboard.TimePickerDialog(
             onDismissRequest = { showTimePicker = false },
@@ -493,7 +540,7 @@ fun AssignmentEditDialog(
                 datePickerState.selectedDateMillis?.let { cal.timeInMillis = it }
                 cal.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
                 cal.set(Calendar.MINUTE, timePickerState.minute)
-                dueDateMillis = cal.timeInMillis
+                dueDateMillis = cal.timeInMillis // Finalize the compound timestamp
                 showTimePicker = false
             }
         ) {
@@ -517,6 +564,7 @@ fun AssignmentEditDialog(
         }
     }
 
+    // MAIN DIALOG WINDOW: Multi-faceted form for assignment data
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
@@ -541,6 +589,7 @@ fun AssignmentEditDialog(
                         modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        // PRIMARY DATA: Title and Descriptive Requirements
                         OutlinedTextField(
                             value = title,
                             onValueChange = { title = it },
@@ -559,6 +608,7 @@ fun AssignmentEditDialog(
                             shape = RoundedCornerShape(12.dp)
                         )
 
+                        // MODULE LINKING: Contextual association within the syllabus
                         Text(
                             text = "Associate Module", 
                             style = if (isTablet) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelLarge, 
@@ -600,6 +650,7 @@ fun AssignmentEditDialog(
                             }
                         }
 
+                        // FILE TYPE POLICY: Filters the allowed submission formats
                         Text(
                             text = "Allowed Formats", 
                             style = if (isTablet) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelLarge, 
@@ -615,29 +666,12 @@ fun AssignmentEditDialog(
                                 labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             
-                            FilterChip(
-                                selected = allowPdf,
-                                onClick = { allowPdf = !allowPdf },
-                                label = { Text("PDF") },
-                                colors = chipColors,
-                                leadingIcon = if (allowPdf) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null
-                            )
-                            FilterChip(
-                                selected = allowDocx,
-                                onClick = { allowDocx = !allowDocx },
-                                label = { Text("DOCX") },
-                                colors = chipColors,
-                                leadingIcon = if (allowDocx) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null
-                            )
-                            FilterChip(
-                                selected = allowZip,
-                                onClick = { allowZip = !allowZip },
-                                label = { Text("ZIP") },
-                                colors = chipColors,
-                                leadingIcon = if (allowZip) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null
-                            )
+                            FilterChip(selected = allowPdf, onClick = { allowPdf = !allowPdf }, label = { Text("PDF") }, colors = chipColors, leadingIcon = if (allowPdf) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null)
+                            FilterChip(selected = allowDocx, onClick = { allowDocx = !allowDocx }, label = { Text("DOCX") }, colors = chipColors, leadingIcon = if (allowDocx) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null)
+                            FilterChip(selected = allowZip, onClick = { allowZip = !allowZip }, label = { Text("ZIP") }, colors = chipColors, leadingIcon = if (allowZip) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null)
                         }
 
+                        // DEADLINE SUMMARY: Displays the compound result of the pickers
                         Surface(
                             onClick = { showDatePicker = true },
                             shape = RoundedCornerShape(12.dp),
@@ -665,6 +699,7 @@ fun AssignmentEditDialog(
 
                     Spacer(Modifier.height(32.dp))
                     
+                    // ACTION BAR: Commits changes to the database
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -704,6 +739,10 @@ fun AssignmentEditDialog(
     )
 }
 
+/**
+ * Safety confirmation dialog for removing academic assessments.
+ * Warns about the destructive loss of submissions and grades.
+ */
 @Composable
 fun DeleteConfirmationDialog(title: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(

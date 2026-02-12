@@ -16,20 +16,31 @@ import javax.mail.internet.MimeMultipart
 import javax.mail.util.ByteArrayDataSource
 
 /**
- * Utility object for sending emails using JavaMail API.
- * Handles 2FA codes, welcome emails, and order confirmations.
+ * EmailUtils is a robust utility service built on the JavaMail (Jakarta Mail) API.
+ * It centralizes all outgoing email communications for the application, including:
+ * - Security: Multi-Factor Authentication (2FA) delivery.
+ * - Onboarding: Welcome emails for new university members.
+ * - E-commerce: Instant digital receipts for store purchases and course enrollments.
+ * - Account Management: Password reset and security update notifications.
  */
 object EmailUtils {
     private const val TAG = "EmailUtils"
     
-    // SMTP Server Configuration
+    // SMTP Server Configuration (Gmail specific)
     private const val SMTP_HOST = "smtp.gmail.com"
     private const val SMTP_PORT = "587"
     private const val SMTP_USER = "prokocomp@gmail.com"
-    private const val SMTP_PASS = "zxwe kbit dapj efcc" // App-specific password
+    private const val SMTP_PASS = "zxwe kbit dapj efcc" // App-specific password (Security Note: Should ideally be externalized)
 
     /**
-     * Internal function to handle the core email sending logic via SMTP.
+     * Core internal function that handles the low-level SMTP protocol communication.
+     * It manages session authentication, MIME message construction, and multi-part
+     * content delivery (HTML + Inline Images).
+     *
+     * @param context Required to access assets for branding (logos).
+     * @param recipientEmail Target address.
+     * @param subject Email subject line.
+     * @param htmlBody The rendered HTML template content.
      */
     private suspend fun sendBaseEmail(
         context: Context?, 
@@ -37,18 +48,18 @@ object EmailUtils {
         subject: String, 
         htmlBody: String
     ): Boolean = withContext(Dispatchers.IO) {
-        // Configure SMTP properties for Gmail
+        // Configure SMTP properties for secure STARTTLS communication
         val props = Properties().apply {
             put("mail.smtp.auth", "true")
             put("mail.smtp.starttls.enable", "true")
             put("mail.smtp.host", SMTP_HOST)
             put("mail.smtp.port", SMTP_PORT)
-            put("mail.smtp.connectiontimeout", "10000") 
-            put("mail.smtp.timeout", "10000")
-            put("mail.smtp.writetimeout", "10000")
+            put("mail.smtp.connectiontimeout", "10000") // 10s connection timeout
+            put("mail.smtp.timeout", "10000")           // 10s read timeout
+            put("mail.smtp.writetimeout", "10000")      // 10s write timeout
         }
 
-        // Authenticate the SMTP session
+        // Initialize SMTP Session with the app-specific password authentication
         val session = Session.getInstance(props, object : Authenticator() {
             override fun getPasswordAuthentication(): PasswordAuthentication {
                 return PasswordAuthentication(SMTP_USER, SMTP_PASS)
@@ -56,22 +67,22 @@ object EmailUtils {
         })
 
         try {
-            // Create a new MIME message
+            // Construct the MIME message container
             val message = MimeMessage(session).apply {
                 setFrom(InternetAddress(SMTP_USER, AppConstants.INSTITUTION))
                 addRecipient(Message.RecipientType.TO, InternetAddress(recipientEmail))
                 this.subject = subject
             }
 
-            // Use Multipart to allow both HTML content and embedded images (logo)
+            // MimeMultipart("related") allows embedding images that are referenced by the HTML
             val multipart = MimeMultipart("related")
             
-            // 1. Create the HTML Text Part
+            // 1. HTML BODY PART: The main content of the email
             val htmlPart = MimeBodyPart()
             htmlPart.setContent(htmlBody, "text/html; charset=utf-8")
             multipart.addBodyPart(htmlPart)
 
-            // 2. Attach the Institution Logo as an Inline Resource
+            // 2. EMBEDDED BRANDING: Loads the university logo from app assets and attaches it inline
             if (context != null) {
                 try {
                     val logoPath = "images/media/GlyndwrUniversity.jpg"
@@ -80,49 +91,57 @@ object EmailUtils {
                         val dataSource: DataSource = ByteArrayDataSource(bytes, "image/jpeg")
                         val imagePart = MimeBodyPart()
                         imagePart.dataHandler = DataHandler(dataSource)
-                        imagePart.setHeader("Content-ID", "<logo>") // References <img src='cid:logo'> in template
+                        // Content-ID allows the HTML template to use <img src='cid:logo'>
+                        imagePart.setHeader("Content-ID", "<logo>") 
                         imagePart.disposition = MimeBodyPart.INLINE
                         imagePart.fileName = "logo.jpg"
                         multipart.addBodyPart(imagePart)
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Logo error: ${e.message}")
+                    Log.e(TAG, "Logo attachment failed: ${e.message}")
                 }
             }
 
-            // Set content and send
+            // Finalize and transmit the email
             message.setContent(multipart)
             Transport.send(message)
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Email failed: ${e.message}")
+            Log.e(TAG, "SMTP Transmission Error: ${e.message}")
             false
         }
     }
 
     /**
-     * Sends a 6-digit verification code for Login.
+     * CURRENTLY IN USE: Delivers a 6-digit numeric code for Identity Verification (2FA).
+     * Integration Point: AuthViewModel.kt during the login/verification flow.
      */
     suspend fun send2FACode(context: Context?, recipientEmail: String, code: String): Boolean {
         return sendBaseEmail(context, recipientEmail, "Login Verification: $code", EmailTemplate.get2FAHtml(code))
     }
 
     /**
-     * Sends a welcome email after successful registration.
+     * FUTURE UPDATE: Planned for the finalized registration flow.
+     * This will be triggered once the university database creates a new official student profile.
+     * Use Case: Welcome onboarding, providing initial login instructions and institutional resources.
      */
     suspend fun sendWelcomeEmail(context: Context?, recipientEmail: String, userName: String): Boolean {
         return sendBaseEmail(context, recipientEmail, "Welcome to ${AppConstants.INSTITUTION}!", EmailTemplate.getRegistrationHtml(userName))
     }
 
     /**
-     * Sends a generic security update/reset notification.
+     * FUTURE UPDATE: Reserved for Account Recovery services.
+     * This will be implemented in the next security sprint to handle forgot-password requests.
+     * Use Case: Secure token delivery for resetting institutional portal passwords.
      */
     suspend fun sendPasswordResetEmail(context: Context?, recipientEmail: String): Boolean {
         return sendBaseEmail(context, recipientEmail, "Password Reset Security Update", EmailTemplate.getPasswordResetHtml())
     }
 
     /**
-     * Sends a detailed receipt after a purchase or enrollment.
+     * CURRENTLY IN USE: Generates and sends digital receipts/enrollment confirmations.
+     * Integration Point: Various ViewModels (e.g., AudioBookViewModel.kt) after a successful transaction.
+     * Logic: Automatically detects if the item is a course, book, or gear to adjust the subject and template.
      */
     suspend fun sendPurchaseConfirmation(
         context: Context?, 

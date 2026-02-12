@@ -1,26 +1,39 @@
 package assignment1.krzysztofoko.s16001089.ui.admin.components.Users
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import assignment1.krzysztofoko.s16001089.data.ReviewLocal
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminUserDetailsViewModel
-import androidx.compose.foundation.shape.RoundedCornerShape
+import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
+import assignment1.krzysztofoko.s16001089.ui.components.adaptiveWidth
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * UserCommentsTab provides an administrative interface for auditing student reviews.
+ */
 @Composable
 fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewModel) {
     val allBooks by viewModel.allBooks.collectAsState()
@@ -31,40 +44,55 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
 
     if (reviews.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
-            Text("No comments found.", color = Color.Gray) 
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.RateReview, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
+                Spacer(Modifier.height(16.dp))
+                @Suppress("DEPRECATION")
+                Text("No academic reviews found.", color = Color.Gray) 
+            }
         }
     } else {
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(16.dp), 
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                SectionHeaderDetails("Student Feedback Audit (${reviews.size})")
+            }
+            
             items(reviews) { review ->
                 val book = allBooks.find { it.id == review.productId }
                 
                 Card(
                     modifier = Modifier.fillMaxWidth(), 
                     shape = RoundedCornerShape(16.dp), 
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = book?.title ?: "Unknown Item", 
-                                    style = MaterialTheme.typography.titleSmall, 
+                                    style = MaterialTheme.typography.titleMedium, 
                                     fontWeight = FontWeight.Black,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    text = "ID: ${review.productId}", 
+                                    text = "Target ID: ${review.productId}", 
                                     style = MaterialTheme.typography.labelSmall, 
                                     color = Color.Gray
                                 )
                             }
                             
-                            Row {
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 IconButton(onClick = { 
                                     editingReview = review
                                     editedCommentText = review.comment
                                 }) { 
-                                    Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp)) 
+                                    Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) 
                                 }
                                 IconButton(onClick = { reviewToDelete = review }) { 
                                     Icon(Icons.Default.DeleteOutline, "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp)) 
@@ -73,111 +101,156 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
                         }
                         
                         HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                         )
                         
                         Text(
-                            text = review.comment, 
+                            text = "\"${review.comment}\"", 
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(vertical = 4.dp)
+                            lineHeight = 22.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(bottom = 12.dp)
                         )
                         
-                        Text(
-                            text = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(review.timestamp)), 
-                            style = MaterialTheme.typography.labelSmall, 
-                            color = Color.Gray,
-                            modifier = Modifier.align(Alignment.End)
-                        )
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                            Icon(Icons.Default.Schedule, null, modifier = Modifier.size(12.dp), tint = Color.Gray)
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(review.timestamp)), 
+                                style = MaterialTheme.typography.labelSmall, 
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(80.dp)) }
+        }
+    }
+
+    // --- HIGH-END THEMED EDIT DIALOG ---
+    if (editingReview != null) {
+        Dialog(onDismissRequest = { editingReview = null }) {
+            Surface(
+                modifier = Modifier.padding(24.dp).adaptiveWidth(AdaptiveWidths.Standard),
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), shape = CircleShape, modifier = Modifier.size(40.dp)) {
+                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.EditNote, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) }
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Text("Edit Feedback", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                    }
+                    
+                    Spacer(Modifier.height(24.dp))
+                    
+                    OutlinedTextField(
+                        value = editedCommentText,
+                        onValueChange = { editedCommentText = it },
+                        label = { Text("Modified Comment") },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary)
+                    )
+
+                    Spacer(Modifier.height(32.dp))
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { editingReview = null }) { Text("Discard", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
+                        Spacer(Modifier.width(12.dp))
+                        Button(onClick = { showAdminWarning = true }, shape = RoundedCornerShape(12.dp)) {
+                            Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp)); Text("Review Update", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
         }
     }
 
-    // Edit Comment Dialog
-    if (editingReview != null) {
-        AlertDialog(
-            onDismissRequest = { editingReview = null },
-            title = { Text("Edit Comment", fontWeight = FontWeight.Bold) },
-            text = {
-                OutlinedTextField(
-                    value = editedCommentText,
-                    onValueChange = { editedCommentText = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Comment") },
-                    minLines = 3
-                )
-            },
-            confirmButton = {
-                Button(onClick = {
-                    showAdminWarning = true
-                }) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { editingReview = null }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    // Admin Warning Popup for Editing Comments
+    // --- POLICY WARNING OVERRIDE ---
     if (showAdminWarning && editingReview != null) {
-        AlertDialog(
-            onDismissRequest = { showAdminWarning = false },
-            icon = { Icon(Icons.Default.Warning, null, tint = Color(0xFFFBC02D), modifier = Modifier.size(32.dp)) },
-            title = { Text("Policy Warning", fontWeight = FontWeight.Black) },
-            text = { 
-                Text(
-                    "You are modifying a comment submitted by another user. Editing student feedback may impact data integrity. Are you sure this change is necessary?",
-                    textAlign = TextAlign.Center
-                ) 
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.updateReview(editingReview!!.copy(comment = editedCommentText))
-                        editingReview = null
-                        showAdminWarning = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Confirm Edit")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAdminWarning = false }) {
-                    Text("Review Again")
+        Dialog(onDismissRequest = { showAdminWarning = false }) {
+            Surface(
+                modifier = Modifier.padding(24.dp).adaptiveWidth(AdaptiveWidths.Standard),
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 12.dp,
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
+            ) {
+                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Gavel, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                    Spacer(Modifier.height(16.dp))
+                    Text("Administrative Audit", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "You are modifying public institutional feedback. This action is tracked and must comply with our professional conduct policies.",
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium,
+                        lineHeight = 20.sp
+                    )
+                    Spacer(Modifier.height(32.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(onClick = { showAdminWarning = false }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Re-Evaluate") }
+                        Button(
+                            onClick = {
+                                viewModel.updateReview(editingReview!!.copy(comment = editedCommentText))
+                                editingReview = null
+                                showAdminWarning = false
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) { Text("Confirm Override", fontWeight = FontWeight.Bold) }
+                    }
                 }
             }
-        )
+        }
     }
 
-    // Delete Confirmation Dialog
+    // --- SAFETY DELETE CONFIRMATION ---
     if (reviewToDelete != null) {
-        AlertDialog(
-            onDismissRequest = { reviewToDelete = null },
-            title = { Text("Delete Comment?", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error) },
-            text = { Text("Are you sure you want to permanently delete this comment? This action cannot be undone.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.deleteComment(reviewToDelete!!.reviewId)
-                        reviewToDelete = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { reviewToDelete = null }) {
-                    Text("Cancel")
+        Dialog(onDismissRequest = { reviewToDelete = null }) {
+            Surface(
+                modifier = Modifier.padding(24.dp).adaptiveWidth(AdaptiveWidths.Standard),
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 12.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                    Spacer(Modifier.height(16.dp))
+                    Text("Remove Comment?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Are you sure you want to permanently delete this student feedback? This operation cannot be reversed.",
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium,
+                        lineHeight = 20.sp
+                    )
+                    Spacer(Modifier.height(32.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TextButton(onClick = { reviewToDelete = null }, modifier = Modifier.weight(1f)) { Text("Keep Comment") }
+                        Button(
+                            onClick = {
+                                viewModel.deleteComment(reviewToDelete!!.reviewId)
+                                reviewToDelete = null
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) { Text("Delete Now", fontWeight = FontWeight.Bold) }
+                    }
                 }
             }
-        )
+        }
     }
 }
