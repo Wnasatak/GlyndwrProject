@@ -57,7 +57,7 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
         // Integrated Full-Width Tab Row
         Surface(
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-            tonalElevation = 2.dp
+            tonalElevation = 0.dp
         ) {
             TabRow(
                 selectedTabIndex = selectedTab,
@@ -90,10 +90,10 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
             }
         }
 
-        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { screenIsTablet ->
             Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                 
-                // Optimized Search and Filters Row
+                // Search and Filters Row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -109,7 +109,7 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
                                 Icon(
                                     imageVector = Icons.Default.Search, 
                                     contentDescription = "Search", 
-                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -127,7 +127,7 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
                             modifier = Modifier
                                 .weight(1f)
                                 .heightIn(min = 48.dp),
-                            placeholder = { Text("Filter by ID, Name or Action...", fontSize = 13.sp) },
+                            placeholder = { Text("Filter logs...", fontSize = 13.sp) },
                             leadingIcon = { Icon(Icons.Default.Fingerprint, null, modifier = Modifier.size(18.dp)) },
                             trailingIcon = {
                                 IconButton(onClick = { 
@@ -137,7 +137,6 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
                             },
                             shape = RoundedCornerShape(24.dp),
                             singleLine = true,
-                            textStyle = TextStyle(fontSize = 14.sp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
                                 focusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -152,8 +151,11 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
                 val activeFilter = if (selectedTab == 0) adminFilter else userFilter
                 
                 val filteredLogs = baseLogs.filter { log ->
-                    // EXCLUSION: Don't show automated maintenance logs
-                    val isMaintenance = log.details.contains("Automated log cleanup", ignoreCase = true)
+                    // EXCLUSION: Do not show logs from database cleaning or maintenance
+                    val isMaintenance = log.details.contains("Automated log cleanup", ignoreCase = true) || 
+                                      log.details.contains("database cleaning", ignoreCase = true) ||
+                                      log.action.contains("MAINTENANCE", ignoreCase = true)
+                    
                     if (isMaintenance) return@filter false
 
                     val matchesCategory = if (activeFilter == "ALL") true
@@ -175,9 +177,9 @@ fun UsersLogsTab(viewModel: AdminViewModel) {
                 if (filteredLogs.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.History, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.2f))
+                            Icon(Icons.Default.History, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                             Spacer(Modifier.height(16.dp))
-                            Text("No activity matching your criteria.", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                            Text("No activity matching criteria.", color = Color.Gray)
                         }
                     }
                 } else {
@@ -252,16 +254,16 @@ fun FilterPillSmall(id: String, icon: ImageVector, isSelected: Boolean, onClick:
             .clickable { onClick() },
         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         shape = CircleShape,
-        border = if (isSelected) null else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f))
+        border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(imageVector = icon, contentDescription = id, modifier = Modifier.size(16.dp), tint = if (isSelected) Color.White else Color.Gray)
+            Icon(imageVector = icon, contentDescription = id, modifier = Modifier.size(16.dp), tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary)
             if (isSelected) {
                 Spacer(Modifier.width(6.dp))
-                Text(text = id.capitalizeText(), style = MaterialTheme.typography.labelSmall, color = Color.White, fontWeight = FontWeight.Black)
+                Text(text = id.capitalizeText(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black)
             }
         }
     }
@@ -293,7 +295,7 @@ fun LogItemCard(log: SystemLog, onClick: () -> Unit) {
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
         ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
     ) {
@@ -333,7 +335,6 @@ fun LogItemCard(log: SystemLog, onClick: () -> Unit) {
                         fontSize = 10.sp
                     )
                 }
-                Spacer(Modifier.height(1.dp))
                 Text(
                     text = log.details, 
                     style = MaterialTheme.typography.bodySmall, 
@@ -375,6 +376,7 @@ fun LogDetailPopup(log: SystemLog, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(28.dp))
@@ -403,30 +405,39 @@ fun LogDetailPopup(log: SystemLog, onDismiss: () -> Unit) {
                 }
 
                 Column {
+                    @Suppress("DEPRECATION")
                     Text("FULL DESCRIPTION", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                     Text(text = log.details, style = MaterialTheme.typography.bodyMedium, lineHeight = 20.sp)
                 }
 
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
+                        @Suppress("DEPRECATION")
                         Text("INITIATOR", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                         Text(text = log.userName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                         Text(text = "ID: ${log.userId}", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontSize = 9.sp)
                     }
                     Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                        @Suppress("DEPRECATION")
                         Text("TARGET ID", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                         Text(text = log.targetId, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 Column {
+                    @Suppress("DEPRECATION")
                     Text("EVENT TIMESTAMP", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                     Text(text = sdf.format(Date(log.timestamp)), style = MaterialTheme.typography.bodySmall)
                 }
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss, shape = RoundedCornerShape(12.dp), modifier = Modifier.height(44.dp).fillMaxWidth(0.4f)) {
+            Button(
+                onClick = onDismiss, 
+                shape = RoundedCornerShape(12.dp), 
+                modifier = Modifier.height(44.dp).fillMaxWidth(0.4f),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
                 Text("Close", fontWeight = FontWeight.Bold)
             }
         }

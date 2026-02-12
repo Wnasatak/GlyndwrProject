@@ -54,22 +54,12 @@ fun AppNavigation(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     
-    // Extract section from arguments if present (for TutorPanel selection)
     val currentTutorSection = remember(navBackStackEntry) {
         val sectionStr = navBackStackEntry?.arguments?.getString("section")
         if (sectionStr != null) {
-            try {
-                TutorSection.valueOf(sectionStr)
-            } catch (e: Exception) {
-                null
-            }
+            try { TutorSection.valueOf(sectionStr) } catch (e: Exception) { null }
         } else {
-            // Default to DASHBOARD if we are on the tutor panel route but no section param
-            if (currentRoute?.startsWith(AppConstants.ROUTE_TUTOR_PANEL) == true) {
-                TutorSection.DASHBOARD
-            } else {
-                null
-            }
+            if (currentRoute?.startsWith(AppConstants.ROUTE_TUTOR_PANEL) == true) TutorSection.DASHBOARD else null
         }
     }
     
@@ -82,48 +72,23 @@ fun AppNavigation(
         else -> false
     }
 
-    // Dynamically update status bar icons (white/black) based on the background color
     LaunchedEffect(isDarkTheme) {
         val activity = context as? ComponentActivity
         activity?.enableEdgeToEdge(
-            statusBarStyle = if (isDarkTheme) {
-                SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
-            } else {
-                SystemBarStyle.light(
-                    android.graphics.Color.TRANSPARENT,
-                    android.graphics.Color.TRANSPARENT
-                )
-            },
-            navigationBarStyle = if (isDarkTheme) {
-                SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
-            } else {
-                SystemBarStyle.light(
-                    android.graphics.Color.TRANSPARENT,
-                    android.graphics.Color.TRANSPARENT
-                )
-            }
+            statusBarStyle = if (isDarkTheme) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT) else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = if (isDarkTheme) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT) else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
         )
     }
 
-    // Sync theme from database when user logs in
-    var syncedUserId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(currentUser, userThemeFromDb) {
         val userId = currentUser?.uid
         if (userId != null && userThemeFromDb != null && syncedUserId != userId) {
             val savedThemeName = userThemeFromDb?.lastSelectedTheme
             if (savedThemeName != null) {
-                try {
-                    val savedTheme = Theme.valueOf(savedThemeName)
-                    onThemeChange(savedTheme)
-                } catch (e: Exception) {
-                    if (userThemeFromDb?.isCustomThemeEnabled == true) {
-                        onThemeChange(Theme.CUSTOM)
-                    }
-                }
+                try { onThemeChange(Theme.valueOf(savedThemeName)) } catch (e: Exception) { if (userThemeFromDb?.isCustomThemeEnabled == true) onThemeChange(Theme.CUSTOM) }
             }
             syncedUserId = userId
         } else if (userId == null && syncedUserId != null) {
-            // Reset to default Dark theme on logout
             onThemeChange(Theme.DARK)
             syncedUserId = null
         }
@@ -136,9 +101,7 @@ fun AppNavigation(
 
     LaunchedEffect(externalPlayer) {
         externalPlayer?.addListener(object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                mainVm.syncPlayerState(isPlaying)
-            }
+            override fun onIsPlayingChanged(isPlaying: Boolean) { mainVm.syncPlayerState(isPlaying) }
         })
     }
 
@@ -148,10 +111,7 @@ fun AppNavigation(
         }
     }
 
-    GlyndwrProjectTheme(
-        theme = currentTheme,
-        userTheme = liveTheme
-    ) {
+    GlyndwrProjectTheme(theme = currentTheme, userTheme = liveTheme) {
         TopLevelScaffold(
             currentUser = currentUser,
             localUser = localUser,
@@ -197,11 +157,20 @@ fun AppNavigation(
             onOpenThemeBuilder = { showThemeBuilder = it },
             onLiveThemeUpdate = { 
                 liveTheme = it 
-                if (currentTheme != Theme.CUSTOM) {
-                    onThemeChange(Theme.CUSTOM)
-                }
+                if (currentTheme != Theme.CUSTOM) onThemeChange(Theme.CUSTOM)
             },
-            onAboutClick = { navController.navigate(AppConstants.ROUTE_ABOUT) } // Pass navigation action
+            onAboutClick = { navController.navigate(AppConstants.ROUTE_ABOUT) },
+            // Pass the minimized player bar to the bottomBar slot of the main scaffold
+            bottomContent = {
+                if (mainVm.showPlayer && mainVm.isPlayerMinimized) {
+                    IntegratedAudioBar(
+                        currentBook = mainVm.currentPlayingBook,
+                        externalPlayer = externalPlayer,
+                        onToggleMinimize = { mainVm.isPlayerMinimized = false },
+                        onClose = { mainVm.stopPlayer(externalPlayer) }
+                    )
+                }
+            }
         ) { paddingValues ->
             AppNavigationPopups(
                 showLogoutConfirm = mainVm.showLogoutConfirm,
@@ -212,134 +181,51 @@ fun AppNavigation(
             )
 
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                NavHost(
-                    navController = navController, 
-                    startDestination = AppConstants.ROUTE_SPLASH, 
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                NavHost(navController = navController, startDestination = AppConstants.ROUTE_SPLASH, modifier = Modifier.fillMaxSize()) {
                     composable(AppConstants.ROUTE_SPLASH) { 
-                        SplashScreen(
-                            isLoadingData = isDataLoading, 
-                            onTimeout = { 
-                                val targetRoute = when (localUser?.role) {
-                                    "admin" -> AppConstants.ROUTE_ADMIN_PANEL
-                                    "teacher", "tutor" -> AppConstants.ROUTE_TUTOR_PANEL
-                                    else -> AppConstants.ROUTE_HOME
-                                }
-                                navController.navigate(targetRoute) { 
-                                    popUpTo(AppConstants.ROUTE_SPLASH) { inclusive = true } 
-                                } 
+                        SplashScreen(isLoadingData = isDataLoading, onTimeout = { 
+                            val targetRoute = when (localUser?.role) {
+                                "admin" -> AppConstants.ROUTE_ADMIN_PANEL
+                                "teacher", "tutor" -> AppConstants.ROUTE_TUTOR_PANEL
+                                else -> AppConstants.ROUTE_HOME
                             }
-                        ) 
+                            navController.navigate(targetRoute) { popUpTo(AppConstants.ROUTE_SPLASH) { inclusive = true } } 
+                        }) 
                     }
-
-                    homeNavGraph(
-                        navController = navController,
-                        currentUserFlow = mainVm.currentUser,
-                        isDataLoading = isDataLoading,
-                        loadError = loadError,
-                        currentTheme = currentTheme,
-                        onThemeChange = handleThemeChange,
-                        onOpenThemeBuilder = { showThemeBuilder = true },
-                        onRefresh = { mainVm.refreshData() },
-                        onPlayAudio = { mainVm.onPlayAudio(it, externalPlayer) },
-                        currentPlayingBookId = mainVm.currentPlayingBook?.id,
-                        isAudioPlaying = mainVm.isAudioPlaying 
-                    )
-
+                    homeNavGraph(navController, mainVm.currentUser, isDataLoading, loadError, currentTheme, handleThemeChange, { showThemeBuilder = true }, { mainVm.refreshData() }, { mainVm.onPlayAudio(it, externalPlayer) }, mainVm.currentPlayingBook?.id, mainVm.isAudioPlaying)
                     authNavGraph(navController, currentTheme, handleThemeChange)
-                    
-                    storeNavGraph(
-                        navController = navController,
-                        currentUserFlow = mainVm.currentUser,
-                        allBooks = allBooks,
-                        currentTheme = currentTheme,
-                        onThemeChange = handleThemeChange,
-                        onPlayAudio = { mainVm.onPlayAudio(it, externalPlayer) }
-                    )
-
-                    dashboardNavGraph(
-                        navController = navController,
-                        currentUserFlow = mainVm.currentUser,
-                        allBooks = allBooks,
-                        currentTheme = currentTheme,
-                        onThemeChange = handleThemeChange,
-                        onOpenThemeBuilder = { showThemeBuilder = true },
-                        onPlayAudio = { mainVm.onPlayAudio(it, externalPlayer) },
-                        isAudioPlaying = mainVm.isAudioPlaying,
-                        currentPlayingBookId = mainVm.currentPlayingBook?.id,
-                        onLogoutClick = { mainVm.showLogoutConfirm = true } 
-                    )
-
-                    infoNavGraph(
-                        navController = navController, 
-                        currentTheme = currentTheme, 
-                        onThemeChange = handleThemeChange,
-                        onOpenThemeBuilder = { showThemeBuilder = true } 
-                    )
-
-                    invoiceNavGraph(
-                        navController = navController,
-                        allBooks = allBooks,
-                        currentUserDisplayName = currentUser?.displayName ?: AppConstants.TEXT_STUDENT,
-                        currentTheme = currentTheme,
-                        onThemeChange = handleThemeChange
-                    )
-
+                    storeNavGraph(navController, mainVm.currentUser, allBooks, currentTheme, handleThemeChange, { mainVm.onPlayAudio(it, externalPlayer) })
+                    dashboardNavGraph(navController, mainVm.currentUser, allBooks, currentTheme, handleThemeChange, { showThemeBuilder = true }, { mainVm.onPlayAudio(it, externalPlayer) }, mainVm.isAudioPlaying, mainVm.currentPlayingBook?.id, { mainVm.showLogoutConfirm = true })
+                    infoNavGraph(navController, currentTheme, handleThemeChange, { showThemeBuilder = true })
+                    invoiceNavGraph(navController, allBooks, currentUser?.displayName ?: AppConstants.TEXT_STUDENT, currentTheme, handleThemeChange)
                     composable(AppConstants.ROUTE_MY_APPLICATIONS) {
-                        MyApplicationsScreen(
-                            onBack = { 
-                                when (localUser?.role) {
-                                    "admin" -> {
-                                        navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) {
-                                            popUpTo(AppConstants.ROUTE_ADMIN_PANEL) { inclusive = true }
-                                        }
-                                    }
-                                    "teacher", "tutor" -> {
-                                        navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) {
-                                            popUpTo(AppConstants.ROUTE_TUTOR_PANEL) { inclusive = true }
-                                        }
-                                    }
-                                    else -> navController.popBackStack()
-                                }
-                            },
-                            onNavigateToCourse = { id -> 
-                                navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id")
-                            },
-                            isDarkTheme = isDarkTheme,
-                            onToggleTheme = { /* Managed by scaffold */ }
-                        )
+                        MyApplicationsScreen(onBack = { 
+                            when (localUser?.role) {
+                                "admin" -> navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) { popUpTo(AppConstants.ROUTE_ADMIN_PANEL) { inclusive = true } }
+                                "teacher", "tutor" -> navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) { popUpTo(AppConstants.ROUTE_TUTOR_PANEL) { inclusive = true } }
+                                else -> navController.popBackStack()
+                            }
+                        }, onNavigateToCourse = { id -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") }, isDarkTheme = isDarkTheme, onToggleTheme = {})
                     }
                 }
 
                 if (mainVm.showWalletHistory) {
-                    WalletHistorySheet(
-                        transactions = walletHistory,
-                        onNavigateToProduct = { id -> 
-                            mainVm.showWalletHistory = false
-                            navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") 
-                        },
-                        onViewInvoice = { id, ref ->
-                            mainVm.showWalletHistory = false
-                            val route = if (ref != null) "${AppConstants.ROUTE_INVOICE_CREATING}/$id?ref=$ref"
-                                        else "${AppConstants.ROUTE_INVOICE_CREATING}/$id"
-                            navController.navigate(route)
-                        },
-                        onDismiss = { mainVm.showWalletHistory = false }
-                    )
+                    WalletHistorySheet(transactions = walletHistory, onNavigateToProduct = { id -> mainVm.showWalletHistory = false; navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") }, onViewInvoice = { id, ref -> mainVm.showWalletHistory = false; val route = if (ref != null) "${AppConstants.ROUTE_INVOICE_CREATING}/$id?ref=$ref" else "${AppConstants.ROUTE_INVOICE_CREATING}/$id"; navController.navigate(route) }, onDismiss = { mainVm.showWalletHistory = false })
                 }
 
-                GlobalAudioPlayerOverlay(
-                    showPlayer = mainVm.showPlayer,
-                    currentBook = mainVm.currentPlayingBook,
-                    isMinimized = mainVm.isPlayerMinimized,
-                    isDarkTheme = isDarkTheme,
-                    externalPlayer = externalPlayer,
-                    onToggleMinimize = { mainVm.isPlayerMinimized = !mainVm.isPlayerMinimized },
-                    onClose = { mainVm.stopPlayer(externalPlayer) },
-                    onSetMinimized = { mainVm.isPlayerMinimized = it }
-                )
+                // Only show maximized player as an overlay on top of NavHost
+                if (mainVm.showPlayer && !mainVm.isPlayerMinimized) {
+                    MaximizedAudioPlayerOverlay(
+                        currentBook = mainVm.currentPlayingBook,
+                        isDarkTheme = isDarkTheme,
+                        externalPlayer = externalPlayer,
+                        onToggleMinimize = { mainVm.isPlayerMinimized = true },
+                        onClose = { mainVm.stopPlayer(externalPlayer) }
+                    )
+                }
             }
         }
     }
 }
+
+private var syncedUserId: String? = null

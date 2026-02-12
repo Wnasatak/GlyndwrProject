@@ -84,6 +84,7 @@ fun TopLevelScaffold(
     onOpenThemeBuilder: (Boolean) -> Unit = {},
     onLiveThemeUpdate: (UserTheme) -> Unit = {},
     onAboutClick: () -> Unit = {},
+    bottomContent: @Composable () -> Unit = {}, // Added bottomContent for Integrated Player
     content: @Composable (PaddingValues) -> Unit
 ) {
     val userId = currentUser?.uid ?: ""
@@ -217,6 +218,7 @@ fun TopLevelScaffold(
                                 val firstName = localUser?.name?.split(" ")?.firstOrNull() ?: currentUser.displayName?.split(" ")?.firstOrNull() ?: "User"
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onDashboardClick() }.padding(4.dp)) {
                                     if (!useNavRail) { UserAvatar(photoUrl = localUser?.photoUrl ?: currentUser.photoUrl?.toString(), modifier = Modifier.size(36.dp)); Spacer(Modifier.width(12.dp)) }
+                                    @Suppress("DEPRECATION")
                                     Text(text = "Hi, $firstName", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
 
@@ -257,6 +259,8 @@ fun TopLevelScaffold(
                         }
                     }
                 },
+                // Pass bottomContent to Scaffold's bottomBar slot to integrate player properly
+                bottomBar = bottomContent,
                 modifier = Modifier.weight(1f),
                 containerColor = MaterialTheme.colorScheme.background,
                 content = content
@@ -302,9 +306,9 @@ fun TopLevelScaffold(
         if (showClassroomPicker && !useNavRail) {
             ModalBottomSheet(onDismissRequest = { showClassroomPicker = false }, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 40.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(16.dp)); Text(text = "Your Classrooms", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black) }
+                    Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(16.dp)); @Suppress("DEPRECATION") Text(text = "Your Classrooms", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black) }
                     Spacer(Modifier.height(24.dp))
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) { items(enrolledCourses) { course -> Surface(onClick = { showClassroomPicker = false; onClassroomClick(course.id) }, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))) { Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Surface(modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoStories, null, tint = Color.White) } } ; Spacer(Modifier.width(16.dp)); Column(modifier = Modifier.weight(1f)) { Text(course.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(course.author, style = MaterialTheme.typography.bodySmall, color = Color.Gray) }; Icon(Icons.Default.ChevronRight, null, tint = Color.Gray) } } } }
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) { items(enrolledCourses) { course -> Surface(onClick = { showClassroomPicker = false; onClassroomClick(course.id) }, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))) { Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Surface(modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoStories, null, tint = Color.White) } } ; Spacer(Modifier.width(16.dp)); Column(modifier = Modifier.weight(1f)) { @Suppress("DEPRECATION") Text(course.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis); @Suppress("DEPRECATION") Text(course.author, style = MaterialTheme.typography.bodySmall, color = Color.Gray) }; Icon(Icons.Default.ChevronRight, null, tint = Color.Gray) } } } }
                 }
             }
         }

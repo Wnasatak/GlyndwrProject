@@ -176,14 +176,28 @@ fun BookItemCard(
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                        @Suppress("DEPRECATION")
                         Text(text = book.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                         trailingContent?.invoke(this)
                     }
+                    @Suppress("DEPRECATION")
                     Text(text = "by ${book.author}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     bottomContent?.invoke(this)
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Badge(containerColor = MaterialTheme.colorScheme.secondaryContainer) { Text(text = if (book.isAudioBook) "Audio" else book.category, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) }
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                        ) {
+                            Text(
+                                text = if (book.isAudioBook) "Audio" else book.category,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                         statusBadge?.invoke(this)
                     }
                 }
@@ -204,6 +218,7 @@ fun QuickViewDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             Button(onClick = { onDismiss(); onReadMore(book.id) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                @Suppress("DEPRECATION")
                 Text(AppConstants.BTN_SIGN_IN_SHOP, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(18.dp))
@@ -215,13 +230,16 @@ fun QuickViewDialog(
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 AsyncImage(model = formatAssetUrl(book.imageUrl), contentDescription = null, modifier = Modifier.size(160.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop)
                 Spacer(modifier = Modifier.height(20.dp))
+                @Suppress("DEPRECATION")
                 Text(text = book.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+                @Suppress("DEPRECATION")
                 Text(text = if (book.isAudioBook) "${AppConstants.TEXT_NARRATED_BY} ${book.author}" else "${AppConstants.TEXT_BY} ${book.author}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(16.dp))
-                Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = RoundedCornerShape(12.dp)) { Text(text = book.description, modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp, textAlign = TextAlign.Justify) }
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = RoundedCornerShape(12.dp)) { @Suppress("DEPRECATION") Text(text = book.description, modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp, textAlign = TextAlign.Justify) }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                     val priceText = if (book.price == 0.0) AppConstants.LABEL_FREE else "£${formatPrice(book.price)}"
+                    @Suppress("DEPRECATION")
                     Text(text = priceText, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                 }
             }

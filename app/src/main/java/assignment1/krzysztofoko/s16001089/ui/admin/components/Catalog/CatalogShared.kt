@@ -138,18 +138,39 @@ fun CatalogDeleteDialog(itemName: String, onDismiss: () -> Unit, onConfirm: () -
     var confirmationText by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete $itemName", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error) },
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shape = RoundedCornerShape(28.dp),
+        title = { 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("Delete $itemName", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error) 
+            }
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Are you sure you want to remove this $itemName from the catalog? This action is permanent.")
-                Text("To confirm, type DELETE below:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Are you sure you want to permanently remove this $itemName? This action cannot be undone.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "To confirm, please type DELETE below:", 
+                    style = MaterialTheme.typography.labelSmall, 
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray
+                )
                 OutlinedTextField(
                     value = confirmationText,
                     onValueChange = { confirmationText = it },
                     placeholder = { Text("DELETE") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    singleLine = true
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.error,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                    )
                 )
             }
         },
@@ -157,9 +178,14 @@ fun CatalogDeleteDialog(itemName: String, onDismiss: () -> Unit, onConfirm: () -
             Button(
                 onClick = onConfirm,
                 enabled = confirmationText.uppercase() == "DELETE",
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) { Text("Confirm Deletion") }
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                shape = RoundedCornerShape(12.dp)
+            ) { Text("Confirm Deletion", fontWeight = FontWeight.Bold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { 
+            TextButton(onClick = onDismiss) { 
+                Text("Cancel", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) 
+            } 
+        }
     )
 }

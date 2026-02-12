@@ -1,6 +1,7 @@
 package assignment1.krzysztofoko.s16001089.ui.home
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -8,13 +9,21 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -71,7 +80,7 @@ fun HomeScreen(
                 if (uiState.isSearchVisible) viewModel.setSearchVisible(false) 
             }
     ) {
-        VerticalWavyBackground(isDarkTheme = currentTheme == Theme.DARK)
+        VerticalWavyBackground(isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE)
         
         Scaffold(
             containerColor = Color.Transparent,
@@ -92,16 +101,16 @@ fun HomeScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 AdaptiveScreenContainer(
                     maxWidth = AdaptiveWidths.Wide
-                ) { isTablet ->
+                ) { screenIsTablet ->
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(columns),
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(paddingValues),
                         contentPadding = PaddingValues(bottom = 32.dp),
-                        horizontalArrangement = if (isTablet) Arrangement.spacedBy(16.dp) else Arrangement.Start
+                        horizontalArrangement = if (screenIsTablet) Arrangement.spacedBy(16.dp) else Arrangement.Start
                     ) {
-                        if (isTablet) {
+                        if (screenIsTablet) {
                             item(span = { GridItemSpan(this.maxLineSpan) }) {
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
@@ -109,14 +118,14 @@ fun HomeScreen(
 
                         item(span = { GridItemSpan(this.maxLineSpan) }) { 
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                                Box(modifier = if (isTablet) Modifier.widthIn(max = 550.dp).padding(vertical = 8.dp) else Modifier.fillMaxWidth()) {
+                                Box(modifier = if (screenIsTablet) Modifier.widthIn(max = 550.dp).padding(vertical = 8.dp) else Modifier.fillMaxWidth()) {
                                     if (!isLoggedIn) {
-                                        PromotionBanner { 
+                                        PromotionBanner(currentTheme) { 
                                             viewModel.setSearchVisible(false)
                                             navController.navigate(AppConstants.ROUTE_AUTH) 
                                         } 
                                     } else {
-                                        MemberWelcomeBanner(user = uiState.localUser) 
+                                        MemberWelcomeBanner(user = uiState.localUser, theme = currentTheme) 
                                     }
                                 }
                             }
@@ -134,7 +143,7 @@ fun HomeScreen(
                                 val isLive = uiState.activeLiveSessions.any { it.courseId == enrolledPaidCourse.id }
                                 item(span = { GridItemSpan(this.maxLineSpan) }) {
                                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                                        Box(modifier = if (isTablet) Modifier.widthIn(max = 550.dp) else Modifier.fillMaxWidth()) {
+                                        Box(modifier = if (screenIsTablet) Modifier.widthIn(max = 550.dp) else Modifier.fillMaxWidth()) {
                                             EnrolledCourseHeader(
                                                 course = enrolledPaidCourse,
                                                 isLive = isLive,
@@ -150,7 +159,7 @@ fun HomeScreen(
                             items(enrolledFreeCourses, span = { GridItemSpan(this.maxLineSpan) }) { freeCourse ->
                                 val isLive = uiState.activeLiveSessions.any { it.courseId == freeCourse.id }
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                                    Box(modifier = if (isTablet) Modifier.widthIn(max = 550.dp) else Modifier.fillMaxWidth()) {
+                                    Box(modifier = if (screenIsTablet) Modifier.widthIn(max = 550.dp) else Modifier.fillMaxWidth()) {
                                         FreeCourseHeader(
                                             course = freeCourse,
                                             isLive = isLive,
@@ -268,4 +277,132 @@ fun HomeScreen(
             }
         )
     }
+}
+
+@Composable
+fun PromotionBanner(theme: Theme, onGetStarted: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        shape = RoundedCornerShape(28.dp),
+        tonalElevation = 8.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .background(brush = getBannerBrush(theme))
+                .padding(24.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.Start) {
+                Text(
+                    text = "Glyndŵr Store",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                @Suppress("DEPRECATION")
+                Text(
+                    text = "Enrol now to unlock exclusive group-wide discounts across our entire catalog.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                    modifier = Modifier.fillMaxWidth(0.8f)
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = onGetStarted,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.onPrimary,
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Get Started", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MemberWelcomeBanner(user: UserLocal?, theme: Theme) {
+    val firstName = user?.name?.split(" ")?.firstOrNull() ?: "Member"
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        shape = RoundedCornerShape(ProDesign.StandardPadding),
+        tonalElevation = 12.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .background(brush = getBannerBrush(theme))
+                .padding(24.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                UserAvatar(photoUrl = user?.photoUrl, modifier = Modifier.size(64.dp))
+                Spacer(modifier = Modifier.width(20.dp))
+                Column {
+                    @Suppress("DEPRECATION")
+                    Text(
+                        text = "Welcome Back",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = firstName,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Surface(
+                    color = Color.White.copy(alpha = 0.15f),
+                    shape = CircleShape
+                ) {
+                    IconButton(onClick = { /* Could go to profile */ }) {
+                        Icon(Icons.Default.AccountBox, null, tint = Color.White)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun getBannerBrush(theme: Theme): Brush {
+    val colors = when (theme) {
+        Theme.SKY -> listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.secondary,
+            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.8f)
+        )
+        Theme.FOREST -> listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.tertiary,
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f)
+        )
+        Theme.DARK_BLUE -> listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.secondary,
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        )
+        Theme.DARK -> listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f),
+            Color.Black.copy(alpha = 0.2f)
+        )
+        else -> listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f),
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+        )
+    }
+    return Brush.linearGradient(
+        colors = colors,
+        start = androidx.compose.ui.geometry.Offset(0f, 0f),
+        end = androidx.compose.ui.geometry.Offset(1000f, 1000f)
+    )
 }

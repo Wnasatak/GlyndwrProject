@@ -396,6 +396,10 @@ fun AssignmentCard(
                     FilledTonalIconButton(
                         onClick = onEdit,
                         modifier = Modifier.size(if (isTablet) 48.dp else 40.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.Edit, "Edit", modifier = Modifier.size(if (isTablet) 22.dp else 18.dp))
@@ -446,20 +450,38 @@ fun AssignmentEditDialog(
     )
 
     if (showDatePicker) {
+        val datePickerColors = DatePickerDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.primary,
+            headlineContentColor = MaterialTheme.colorScheme.primary,
+            selectedDayContainerColor = MaterialTheme.colorScheme.primary,
+            selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+            todayContentColor = MaterialTheme.colorScheme.primary,
+            todayDateBorderColor = MaterialTheme.colorScheme.primary,
+            dayContentColor = MaterialTheme.colorScheme.onSurface,
+            weekdayContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            navigationContentColor = MaterialTheme.colorScheme.primary
+        )
+
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
                     showDatePicker = false
                     showTimePicker = true
-                }) { Text("Next") }
+                }) { Text("Next", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                @Suppress("DEPRECATION")
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
-            }
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
+            },
+            colors = datePickerColors,
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(28.dp)
         ) {
-            DatePicker(state = datePickerState)
+            DatePicker(
+                state = datePickerState,
+                colors = datePickerColors
+            )
         }
     }
 
@@ -475,7 +497,23 @@ fun AssignmentEditDialog(
                 showTimePicker = false
             }
         ) {
-            TimePicker(state = timePickerState)
+            TimePicker(
+                state = timePickerState,
+                colors = TimePickerDefaults.colors(
+                    clockDialColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    clockDialSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                    clockDialUnselectedContentColor = MaterialTheme.colorScheme.onSurface,
+                    selectorColor = MaterialTheme.colorScheme.primary,
+                    periodSelectorSelectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    periodSelectorUnselectedContainerColor = Color.Transparent,
+                    periodSelectorSelectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    periodSelectorUnselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    timeSelectorSelectedContainerColor = MaterialTheme.colorScheme.primary,
+                    timeSelectorUnselectedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    timeSelectorSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                    timeSelectorUnselectedContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
         }
     }
 
@@ -487,7 +525,8 @@ fun AssignmentEditDialog(
             Surface(
                 shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
                 color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp
+                tonalElevation = 0.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
             ) {
                 Column(modifier = Modifier.padding(AdaptiveSpacing.medium())) {
                     Text(
@@ -533,8 +572,8 @@ fun AssignmentEditDialog(
                                 Surface(
                                     onClick = { selectedModuleId = mod.id },
                                     shape = RoundedCornerShape(12.dp),
-                                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                    border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) else Color.Transparent,
+                                    border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -568,22 +607,33 @@ fun AssignmentEditDialog(
                             fontWeight = FontWeight.Bold
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val chipColors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
                             FilterChip(
                                 selected = allowPdf,
                                 onClick = { allowPdf = !allowPdf },
                                 label = { Text("PDF") },
+                                colors = chipColors,
                                 leadingIcon = if (allowPdf) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null
                             )
                             FilterChip(
                                 selected = allowDocx,
                                 onClick = { allowDocx = !allowDocx },
                                 label = { Text("DOCX") },
+                                colors = chipColors,
                                 leadingIcon = if (allowDocx) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null
                             )
                             FilterChip(
                                 selected = allowZip,
                                 onClick = { allowZip = !allowZip },
                                 label = { Text("ZIP") },
+                                colors = chipColors,
                                 leadingIcon = if (allowZip) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) } } else null
                             )
                         }
@@ -591,7 +641,8 @@ fun AssignmentEditDialog(
                         Surface(
                             onClick = { showDatePicker = true },
                             shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -600,7 +651,7 @@ fun AssignmentEditDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text("Deadline", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                    Text("Deadline", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                     Text(
                                         SimpleDateFormat("MMMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(dueDateMillis)),
                                         style = if (isTablet) MaterialTheme.typography.titleLarge else MaterialTheme.typography.bodyLarge,
@@ -619,8 +670,7 @@ fun AssignmentEditDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        @Suppress("DEPRECATION")
-                        TextButton(onClick = onDismiss, modifier = Modifier.height(if (isTablet) 48.dp else 36.dp)) { Text("Cancel", fontWeight = FontWeight.Medium) }
+                        TextButton(onClick = onDismiss, modifier = Modifier.height(if (isTablet) 48.dp else 36.dp)) { Text("Cancel", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary) }
                         
                         Button(
                             onClick = {
@@ -658,6 +708,7 @@ fun AssignmentEditDialog(
 fun DeleteConfirmationDialog(title: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
         title = { Text("Remove Assignment", fontWeight = FontWeight.Bold) },
         text = { 
@@ -668,11 +719,14 @@ fun DeleteConfirmationDialog(title: String, onDismiss: () -> Unit, onConfirm: ()
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 shape = RoundedCornerShape(12.dp)
-            ) { Text("Delete Assignment") }
+            ) { Text("Delete Assignment", fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Keep Assignment") }
+            TextButton(onClick = onDismiss) { 
+                Text("Keep Assignment", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium) 
+            }
         },
-        shape = RoundedCornerShape(28.dp)
+        shape = RoundedCornerShape(28.dp),
+        tonalElevation = 0.dp
     )
 }

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.rounded.Chat
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
@@ -186,7 +187,6 @@ fun TutorPanelScreen(
                             if (isChatOpen) {
                                 IconButton(onClick = { viewModel.setSection(TutorSection.MESSAGES) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Messages") }
                             } else if (currentSection == TutorSection.COURSE_ARCHIVED_BROADCASTS) {
-                                // Fixed: Go back to Live Stream setup, not Course Detail
                                 IconButton(onClick = { viewModel.setSection(TutorSection.COURSE_LIVE) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                             } else if (currentSection in listOf(TutorSection.COURSE_STUDENTS, TutorSection.COURSE_MODULES, TutorSection.COURSE_ASSIGNMENTS, TutorSection.COURSE_GRADES, TutorSection.COURSE_LIVE, TutorSection.COURSE_ATTENDANCE)) {
                                 IconButton(onClick = { viewModel.setSection(TutorSection.SELECTED_COURSE) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Course Detail") }
@@ -271,7 +271,9 @@ fun TutorPanelScreen(
                 if (!hideBottomBar) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                        windowInsets = WindowInsets.navigationBars
+                        tonalElevation = 0.dp,
+                        windowInsets = WindowInsets(0, 0, 0, 0), // Fixed: Removed insets to prevent icons from being pushed up/clipped
+                        modifier = Modifier.height(80.dp) // Professional standard height
                     ) {
                         TutorNavButton(selected = currentSection == TutorSection.DASHBOARD, onClick = { viewModel.setSection(TutorSection.DASHBOARD) }, icon = Icons.Default.Dashboard, label = "Home")
                         TutorNavButton(selected = currentSection == TutorSection.MY_COURSES, onClick = { viewModel.setSection(TutorSection.MY_COURSES) }, icon = Icons.Default.School, label = "Classes")
@@ -327,15 +329,15 @@ fun RowScope.TutorNavButton(selected: Boolean, onClick: () -> Unit, icon: ImageV
     NavigationBarItem(
         selected = selected, 
         onClick = onClick, 
-        icon = { Icon(icon, null) }, 
-        label = { @Suppress("DEPRECATION") Text(text = label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }, 
+        icon = { Icon(icon, null, modifier = Modifier.size(24.dp)) }, 
+        label = { Text(text = label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis) }, 
         alwaysShowLabel = true,
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = MaterialTheme.colorScheme.primary,
             selectedTextColor = MaterialTheme.colorScheme.primary,
-            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
         )
     )
 }

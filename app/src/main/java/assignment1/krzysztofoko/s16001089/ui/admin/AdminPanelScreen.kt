@@ -3,6 +3,8 @@ package assignment1.krzysztofoko.s16001089.ui.admin
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
@@ -16,7 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
@@ -83,7 +87,7 @@ fun AdminPanelScreen(
                     TopAppBar(
                         windowInsets = WindowInsets(0, 0, 0, 0),
                         title = { 
-                            Row(modifier = Modifier.padding(start = 12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(text = sectionTitle, fontWeight = FontWeight.Black, style = if(sectionTitle == "Product Inventory") MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge)
                             }
                         },
@@ -91,6 +95,7 @@ fun AdminPanelScreen(
                             AdaptiveBrandedLogo(
                                 model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
                                 contentDescription = "University Logo",
+                                logoSize = 32.dp,
                                 modifier = Modifier.padding(start = 12.dp)
                             )
                         },
@@ -115,7 +120,7 @@ fun AdminPanelScreen(
                                 ThemeToggleButton(
                                     currentTheme = currentTheme,
                                     onThemeChange = onThemeChange,
-                                    isLoggedIn = true // Admins are always logged in
+                                    isLoggedIn = true 
                                 )
                             }
 
@@ -123,21 +128,24 @@ fun AdminPanelScreen(
                                 IconButton(onClick = { showMenu = true }) {
                                     Icon(Icons.Default.MoreVert, "More")
                                 }
-                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, shape = RoundedCornerShape(16.dp), containerColor = MaterialTheme.colorScheme.surface) {
+                                    ProMenuHeader("ADMIN HUB")
                                     DropdownMenuItem(
                                         text = { Text("Edit Profile") },
                                         onClick = { showMenu = false; onNavigateToProfile() },
-                                        leadingIcon = { Icon(Icons.Default.Person, null) }
+                                        leadingIcon = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary) }
                                     )
                                     
                                     DropdownMenuItem(
                                         text = { Text("Theme Options") },
                                         onClick = { showMenu = false; showThemeSubMenu = true },
-                                        leadingIcon = { Icon(Icons.Default.Palette, null) }
+                                        leadingIcon = { Icon(Icons.Default.Palette, null, tint = MaterialTheme.colorScheme.primary) }
                                     )
 
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
                                     DropdownMenuItem(
-                                        text = { Text("Log Off", color = MaterialTheme.colorScheme.error) },
+                                        text = { Text("Log Off", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) },
                                         onClick = { showMenu = false; onLogoutClick() },
                                         leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) }
                                     )
@@ -147,7 +155,7 @@ fun AdminPanelScreen(
                                     expanded = showThemeSubMenu,
                                     onDismissRequest = { showThemeSubMenu = false },
                                     onThemeChange = onThemeChange,
-                                    isLoggedIn = true // Ensure "My Theme" is visible for Admins
+                                    isLoggedIn = true 
                                 )
                             }
                         },
@@ -155,15 +163,18 @@ fun AdminPanelScreen(
                     )
                 },
                 bottomBar = {
+                    // Optimized compact Admin Navigation Bar
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                        contentColor = MaterialTheme.colorScheme.primary
+                        tonalElevation = 0.dp,
+                        windowInsets = WindowInsets(0, 0, 0, 0),
+                        modifier = Modifier.height(80.dp)
                     ) {
                         AdminNavButton(selected = currentSection == AdminSection.DASHBOARD, onClick = { viewModel.setSection(AdminSection.DASHBOARD) }, icon = Icons.Default.Dashboard, label = "Home")
                         AdminNavButton(selected = currentSection == AdminSection.APPLICATIONS, onClick = { viewModel.setSection(AdminSection.APPLICATIONS) }, icon = Icons.AutoMirrored.Filled.Assignment, label = "Apps")
                         AdminNavButton(selected = currentSection == AdminSection.USERS, onClick = { viewModel.setSection(AdminSection.USERS) }, icon = Icons.Default.People, label = "Users")
                         AdminNavButton(selected = currentSection == AdminSection.COURSES, onClick = { viewModel.setSection(AdminSection.COURSES) }, icon = Icons.Default.School, label = "Courses")
-                        AdminNavButton(selected = currentSection == AdminSection.CATALOG, onClick = { viewModel.setSection(AdminSection.CATALOG) }, icon = Icons.AutoMirrored.Filled.LibraryBooks, label = "Catalog")
+                        AdminNavButton(selected = currentSection == AdminSection.CATALOG, onClick = { viewModel.setSection(AdminSection.CATALOG) }, icon = Icons.AutoMirrored.Filled.LibraryBooks, label = "Inventory")
                     }
                 }
             ) { padding ->
@@ -240,7 +251,15 @@ fun RowScope.AdminNavButton(selected: Boolean, onClick: () -> Unit, icon: ImageV
     NavigationBarItem(
         selected = selected,
         onClick = onClick,
-        icon = { Icon(icon, null) },
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+        icon = { Icon(icon, null, modifier = Modifier.size(24.dp)) },
+        label = { Text(label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        alwaysShowLabel = true,
+        colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = MaterialTheme.colorScheme.primary,
+            selectedTextColor = MaterialTheme.colorScheme.primary,
+            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
     )
 }

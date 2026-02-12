@@ -67,6 +67,7 @@ fun ArchivedBroadcastsScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.Podcasts, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
                         Spacer(Modifier.height(16.dp))
+                        @Suppress("DEPRECATION")
                         Text("No archived broadcasts found.", color = Color.Gray)
                     }
                 }
@@ -98,6 +99,7 @@ fun ArchivedBroadcastsScreen(
         var newTitle by remember { mutableStateOf(renamingSession!!.title) }
         AlertDialog(
             onDismissRequest = { renamingSession = null },
+            containerColor = MaterialTheme.colorScheme.surface,
             title = { Text("Rename Broadcast", fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
@@ -115,13 +117,16 @@ fun ArchivedBroadcastsScreen(
                         viewModel.updateBroadcastTitle(renamingSession!!.id, newTitle)
                         renamingSession = null
                     },
-                    shape = RoundedCornerShape(8.dp)
-                ) { Text("Save") }
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) { Text("Save", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                @Suppress("DEPRECATION")
-                TextButton(onClick = { renamingSession = null }) { Text("Cancel") }
-            }
+                TextButton(onClick = { renamingSession = null }) { 
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary) 
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
         )
     }
 
@@ -172,20 +177,29 @@ fun ShareBroadcastDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Share Replay", fontWeight = FontWeight.Black) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                @Suppress("DEPRECATION")
                 Text("Select who should receive a notification about this replay.", style = MaterialTheme.typography.bodySmall)
                 
                 Surface(
                     onClick = { shareWithAll = !shareWithAll },
-                    color = if (shareWithAll) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    color = if (shareWithAll) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) 
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(12.dp),
+                    border = if (shareWithAll) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)) else null,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = shareWithAll, onCheckedChange = { shareWithAll = it })
+                        Checkbox(
+                            checked = shareWithAll, 
+                            onCheckedChange = { shareWithAll = it },
+                            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                        )
                         Spacer(Modifier.width(8.dp))
+                        @Suppress("DEPRECATION")
                         Text("Whole Class (${students.size} students)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
@@ -202,6 +216,7 @@ fun ShareBroadcastDialog(
                         textStyle = MaterialTheme.typography.bodyMedium
                     )
 
+                    @Suppress("DEPRECATION")
                     Text("Results (${filteredStudents.size})", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     
                     LazyColumn(modifier = Modifier.heightIn(max = 250.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -211,23 +226,28 @@ fun ShareBroadcastDialog(
                                 onClick = {
                                     selectedStudentIds = if (isSelected) selectedStudentIds - student.id else selectedStudentIds + student.id
                                 },
-                                color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
-                                shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.secondary else Color.Gray.copy(alpha = 0.2f)),
+                                color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f) 
+                                        else MaterialTheme.colorScheme.surface,
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f) 
+                                                            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    UserAvatar(photoUrl = student.photoUrl, modifier = Modifier.size(28.dp))
+                                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    UserAvatar(photoUrl = student.photoUrl, modifier = Modifier.size(32.dp))
                                     Spacer(Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
+                                        @Suppress("DEPRECATION")
                                         Text(student.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                        @Suppress("DEPRECATION")
                                         Text(student.email, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     }
                                     Checkbox(
                                         checked = isSelected,
                                         onCheckedChange = {
                                             selectedStudentIds = if (it) selectedStudentIds + student.id else selectedStudentIds - student.id
-                                        }
+                                        },
+                                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.secondary)
                                     )
                                 }
                             }
@@ -241,15 +261,19 @@ fun ShareBroadcastDialog(
                 onClick = {
                     if (shareWithAll) onShareWithAll() else onShareWithSpecific(selectedStudentIds.toList())
                 },
-                enabled = shareWithAll || selectedStudentIds.isNotEmpty()
+                enabled = shareWithAll || selectedStudentIds.isNotEmpty(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text("Share Now", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            @Suppress("DEPRECATION")
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
+            TextButton(onClick = onDismiss) { 
+                Text("Cancel", color = MaterialTheme.colorScheme.primary) 
+            }
+        },
+        shape = RoundedCornerShape(28.dp)
     )
 }
 
@@ -263,6 +287,7 @@ fun DeleteBroadcastConfirmationDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Delete Broadcast", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -271,6 +296,7 @@ fun DeleteBroadcastConfirmationDialog(
                     text = "Are you sure you want to permanently delete '$sessionTitle'? This action cannot be undone.",
                     style = MaterialTheme.typography.bodyMedium
                 )
+                @Suppress("DEPRECATION")
                 Text(
                     text = "To confirm, please type DELETE below:",
                     style = MaterialTheme.typography.labelSmall,
@@ -296,17 +322,17 @@ fun DeleteBroadcastConfirmationDialog(
                 onClick = onConfirm,
                 enabled = confirmationText.uppercase() == "DELETE",
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Confirm Deletion", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            @Suppress("DEPRECATION")
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = MaterialTheme.colorScheme.primary)
             }
-        }
+        },
+        shape = RoundedCornerShape(28.dp)
     )
 }
 
@@ -453,17 +479,23 @@ fun BroadcastArchiveCard(
                             modifier = Modifier.size(iconSize)
                         )
                         Spacer(Modifier.width(6.dp))
+                        @Suppress("DEPRECATION")
                         Text(if (isPlaying) "Close" else "Watch Replay", fontSize = fontSize, fontWeight = FontWeight.Bold)
                     }
                     
-                    FilledTonalButton(
+                    Button(
                         onClick = onShareRequest,
                         modifier = Modifier.weight(1f).height(btnHeight),
                         shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
+                        )
                     ) {
                         Icon(Icons.Default.Share, null, modifier = Modifier.size(iconSize))
                         Spacer(Modifier.width(6.dp))
+                        @Suppress("DEPRECATION")
                         Text("Share", fontSize = fontSize, fontWeight = FontWeight.Bold)
                     }
                 }

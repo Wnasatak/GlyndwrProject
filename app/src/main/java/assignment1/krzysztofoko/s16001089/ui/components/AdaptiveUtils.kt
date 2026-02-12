@@ -3,6 +3,7 @@ package assignment1.krzysztofoko.s16001089.ui.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -26,15 +27,13 @@ import coil.compose.AsyncImage
  * Standard width constraints for different types of screens on tablets.
  */
 object AdaptiveWidths {
-    val Standard = 600.dp   // For Auth, Profile, Small forms
-    val Medium = 700.dp     // For Detail screens (Books, Courses)
-    val Wide = 850.dp       // For Grid screens (Home, Dashboard)
+    val Standard = 600.dp   
+    val Medium = 700.dp     
+    val Wide = 850.dp       
 
-    // Internal component widths
     val HeroImage = 500.dp
     val ActionButton = 400.dp
 
-    // Dashboard specific squeeze
     val DashboardCompact = 480.dp
     val DashboardUltraCompact = 420.dp
 }
@@ -113,13 +112,12 @@ fun AdaptiveDashboardHeader(
 
 /**
  * Standardized Card for Dashboard items.
- * Forced elevation to 0 to prevent the automatic Material 3 "lighter square" tint.
  */
 @Composable
 fun AdaptiveDashboardCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    backgroundColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f), // Solid themed background
+    backgroundColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
     content: @Composable ColumnScope.(isTablet: Boolean) -> Unit
 ) {
     val isTablet = isTablet()
@@ -137,7 +135,6 @@ fun AdaptiveDashboardCard(
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         ),
-        // CRITICAL: Setting elevation to 0 prevents the lighter tonal tint square
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), 
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
@@ -150,7 +147,7 @@ fun AdaptiveDashboardCard(
 }
 
 /**
- * Branded University Logo with a centered soft shade/glow effect behind it.
+ * Branded University Logo with a dynamic, high-visibility backflash integrated with the theme.
  */
 @Composable
 fun AdaptiveBrandedLogo(
@@ -162,10 +159,10 @@ fun AdaptiveBrandedLogo(
     val infiniteTransition = rememberInfiniteTransition("logo_pulse")
 
     val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.5f,
+        initialValue = 0.3f,
+        targetValue = 0.7f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
+            animation = tween(2000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glowAlpha"
@@ -173,24 +170,30 @@ fun AdaptiveBrandedLogo(
 
     val glowScale by infiniteTransition.animateFloat(
         initialValue = 1.0f,
-        targetValue = 1.2f,
+        targetValue = 1.3f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
+            animation = tween(2000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glowScale"
     )
 
+    // Capture theme colors for use in draw block
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryColor = MaterialTheme.colorScheme.secondary
+
     Box(
         modifier = modifier.size(logoSize),
         contentAlignment = Alignment.Center
     ) {
+        // High-Visibility Adaptive Backflash
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val radius = (size.minDimension / 1.4f) * glowScale
+            val radius = (size.minDimension / 1.3f) * glowScale
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color(0xFFBB86FC).copy(alpha = 0.4f * glowAlpha),
+                        primaryColor.copy(alpha = 0.6f * glowAlpha),
+                        secondaryColor.copy(alpha = 0.2f * glowAlpha),
                         Color.Transparent
                     ),
                     center = center,
@@ -207,6 +210,7 @@ fun AdaptiveBrandedLogo(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(CircleShape)
+                .border(1.dp, primaryColor.copy(alpha = 0.2f), CircleShape)
         )
     }
 }

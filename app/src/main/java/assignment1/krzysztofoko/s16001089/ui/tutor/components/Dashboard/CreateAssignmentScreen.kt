@@ -64,20 +64,38 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
     val timePickerState = rememberTimePickerState()
 
     if (showDatePicker) {
+        val datePickerColors = DatePickerDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.primary,
+            headlineContentColor = MaterialTheme.colorScheme.primary,
+            selectedDayContainerColor = MaterialTheme.colorScheme.primary,
+            selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+            todayContentColor = MaterialTheme.colorScheme.primary,
+            todayDateBorderColor = MaterialTheme.colorScheme.primary,
+            dayContentColor = MaterialTheme.colorScheme.onSurface,
+            weekdayContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            navigationContentColor = MaterialTheme.colorScheme.primary
+        )
+
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
                     showDatePicker = false
                     showTimePicker = true
-                }) { Text("Next", color = MaterialTheme.colorScheme.primary) }
+                }) { Text("Next", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                @Suppress("DEPRECATION")
                 TextButton(onClick = { showDatePicker = false }) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
-            }
+            },
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 0.dp,
+            colors = datePickerColors
         ) {
-            DatePicker(state = datePickerState)
+            DatePicker(
+                state = datePickerState,
+                colors = datePickerColors
+            )
         }
     }
 
@@ -97,7 +115,23 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                 showTimePicker = false
             }
         ) {
-            TimePicker(state = timePickerState)
+            TimePicker(
+                state = timePickerState,
+                colors = TimePickerDefaults.colors(
+                    clockDialColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    clockDialSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                    clockDialUnselectedContentColor = MaterialTheme.colorScheme.onSurface,
+                    selectorColor = MaterialTheme.colorScheme.primary,
+                    periodSelectorSelectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    periodSelectorUnselectedContainerColor = Color.Transparent,
+                    periodSelectorSelectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    periodSelectorUnselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    timeSelectorSelectedContainerColor = MaterialTheme.colorScheme.primary,
+                    timeSelectorUnselectedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    timeSelectorSelectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                    timeSelectorUnselectedContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
         }
     }
 
@@ -164,7 +198,6 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                     2 -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { step = 1 }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
-                            @Suppress("DEPRECATION")
                             Text("Select Module", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         }
                         Text(
@@ -220,7 +253,6 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                     3 -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { step = 2 }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
-                            @Suppress("DEPRECATION")
                             Text("Assignment Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         }
 
@@ -284,7 +316,6 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                                     shape = RoundedCornerShape(12.dp)
                                 )
 
-                                @Suppress("DEPRECATION")
                                 Text(
                                     text = "Allowed Submission Formats",
                                     style = MaterialTheme.typography.titleSmall,
@@ -296,10 +327,26 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
+                                    val chipColors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    val chipBorder = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = true,
+                                        borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                        selectedBorderColor = MaterialTheme.colorScheme.primary
+                                    )
+
                                     FilterChip(
                                         selected = allowPdf,
                                         onClick = { allowPdf = !allowPdf },
                                         label = { Text("PDF") },
+                                        colors = chipColors,
+                                        border = if (allowPdf) null else chipBorder,
                                         leadingIcon = if (allowPdf) {
                                             { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
                                         } else null
@@ -308,6 +355,8 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                                         selected = allowDocx,
                                         onClick = { allowDocx = !allowDocx },
                                         label = { Text("DOCX") },
+                                        colors = chipColors,
+                                        border = if (allowDocx) null else chipBorder,
                                         leadingIcon = if (allowDocx) {
                                             { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
                                         } else null
@@ -316,6 +365,8 @@ fun CreateAssignmentScreen(viewModel: TutorViewModel) {
                                         selected = allowZip,
                                         onClick = { allowZip = !allowZip },
                                         label = { Text("ZIP") },
+                                        colors = chipColors,
+                                        border = if (allowZip) null else chipBorder,
                                         leadingIcon = if (allowZip) {
                                             { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
                                         } else null
@@ -368,7 +419,7 @@ fun TimePickerDialog(
         onDismissRequest = onDismissRequest,
         containerColor = MaterialTheme.colorScheme.surface,
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text("OK", color = MaterialTheme.colorScheme.primary) }
+            TextButton(onClick = onConfirm) { Text("OK", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
             TextButton(onClick = onDismissRequest) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
@@ -378,7 +429,8 @@ fun TimePickerDialog(
                 content()
             }
         },
-        shape = RoundedCornerShape(28.dp)
+        shape = RoundedCornerShape(28.dp),
+        tonalElevation = 0.dp
     )
 }
 
@@ -391,7 +443,6 @@ fun CreateModuleDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
         title = { Text("Create New Module", fontWeight = FontWeight.Bold) },
         text = {
             Column {
-                @Suppress("DEPRECATION")
                 Text("Enter a title for the new module.", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
@@ -419,7 +470,8 @@ fun CreateModuleDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
                 Text("Cancel", color = MaterialTheme.colorScheme.primary)
             }
         },
-        shape = RoundedCornerShape(24.dp)
+        shape = RoundedCornerShape(24.dp),
+        tonalElevation = 0.dp
     )
 }
 

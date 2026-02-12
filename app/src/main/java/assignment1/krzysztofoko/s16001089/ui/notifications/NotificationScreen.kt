@@ -214,7 +214,7 @@ fun NotificationScreen(
                         Spacer(modifier = Modifier.height(32.dp))
 
                         if (isMessage) {
-                            Button(onClick = { showSheet = false; onNavigateToMessages() }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                            Button(onClick = { showSheet = false; onNavigateToMessages() }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
                                 Icon(imageVector = Icons.AutoMirrored.Filled.Chat, contentDescription = null)
                                 Spacer(Modifier.width(12.dp)); Text(text = "Show Message", fontWeight = FontWeight.Bold)
                             }
@@ -222,7 +222,7 @@ fun NotificationScreen(
                         }
                         
                         if (!isAnnouncement && !isMessage) {
-                            Button(onClick = { showSheet = false; if (isTopUp) onNavigateToInvoice(selectedNotification!!.productId) else onNavigateToItem(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                            Button(onClick = { showSheet = false; if (isTopUp) onNavigateToInvoice(selectedNotification!!.productId) else onNavigateToItem(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
                                 Icon(imageVector = if (isTopUp) Icons.AutoMirrored.Filled.ReceiptLong else Icons.Default.OpenInNew, contentDescription = null)
                                 Spacer(Modifier.width(12.dp)); Text(text = if (isTopUp) AppConstants.BTN_VIEW_INVOICE else AppConstants.BTN_VIEW_PRODUCT_DETAILS, fontWeight = FontWeight.Bold)
                             }
@@ -230,8 +230,8 @@ fun NotificationScreen(
                         }
                         
                         if (!isTopUp && !isAnnouncement && !isMessage && relatedBook != null && relatedBook!!.price > 0) {
-                            OutlinedButton(onClick = { showSheet = false; onNavigateToInvoice(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                                Icon(Icons.AutoMirrored.Filled.ReceiptLong, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_VIEW_INVOICE, fontWeight = FontWeight.Bold)
+                            OutlinedButton(onClick = { showSheet = false; onNavigateToInvoice(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))) {
+                                Icon(Icons.AutoMirrored.Filled.ReceiptLong, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_VIEW_INVOICE, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                         }
@@ -297,25 +297,19 @@ fun NotificationItem(
         }
     }
 
-    val baseColor = if (isDarkTheme) Color(0xFF1E1E1E) else Color.White
-    val accentColor = if (isDarkTheme) Color(0xFF311B92).copy(alpha = 0.3f) else Color(0xFFF3E5F5).copy(alpha = 0.8f)
-    val announceColor = if (isDarkTheme) Color(0xFF1B5E20).copy(alpha = 0.4f) else Color(0xFFE8F5E9).copy(alpha = 0.9f)
-    val messageColor = if (isDarkTheme) Color(0xFF0D47A1).copy(alpha = 0.4f) else Color(0xFFE3F2FD).copy(alpha = 0.9f)
-    
-    val cardColor = when {
-        isAnnouncement -> announceColor
-        isMessage -> messageColor
-        notification.isRead -> baseColor.copy(alpha = 0.8f)
-        else -> accentColor
+    val cardColor = if (notification.isRead) {
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+    } else {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
     }
                     
-    val borderColor = when {
-        (isAnnouncement || isMessage) -> categoryColor.copy(alpha = if (notification.isRead) 0.3f else 0.8f)
-        !notification.isRead -> categoryColor.copy(alpha = 0.6f)
-        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+    val borderColor = if (!notification.isRead) {
+        categoryColor.copy(alpha = 0.6f)
+    } else {
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
     }
 
-    // Pulsing animation
+    // Pulsing animation for unread announcements/messages
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by if ((isAnnouncement || isMessage) && !notification.isRead) {
         infiniteTransition.animateFloat(
@@ -332,14 +326,8 @@ fun NotificationItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(
-                brush = if ((isAnnouncement || isMessage) && !notification.isRead) {
-                    Brush.verticalGradient(listOf(categoryColor.copy(alpha = 0.15f), cardColor))
-                } else {
-                    Brush.verticalGradient(listOf(cardColor, cardColor))
-                }
-            )
-            .border(if ((isAnnouncement || isMessage) && !notification.isRead) 2.dp else 1.dp, borderColor, RoundedCornerShape(24.dp))
+            .background(cardColor)
+            .border(if (!notification.isRead) 2.dp else 1.dp, borderColor, RoundedCornerShape(24.dp))
             .clickable { onClick() }
             .padding(16.dp)
     ) {
@@ -362,7 +350,7 @@ fun NotificationItem(
                         .scale(pulseScale)
                         .size(26.dp)
                         .background(categoryColor, CircleShape)
-                        .border(2.dp, Color.White, CircleShape)
+                        .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -379,7 +367,7 @@ fun NotificationItem(
                             text = notification.title, 
                             style = MaterialTheme.typography.titleMedium, 
                             fontWeight = if (notification.isRead) FontWeight.Bold else FontWeight.Black, 
-                            color = if ((isAnnouncement || isMessage) && !notification.isRead) categoryColor else MaterialTheme.colorScheme.onSurface, 
+                            color = if (!notification.isRead) categoryColor else MaterialTheme.colorScheme.onSurface, 
                             maxLines = 1, 
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
@@ -409,8 +397,8 @@ fun NotificationItem(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Schedule, null, modifier = Modifier.size(12.dp), tint = Color.Gray)
-                    Spacer(Modifier.width(4.dp)); Text(text = timeStr, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Icon(Icons.Default.Schedule, null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                    Spacer(Modifier.width(4.dp)); Text(text = timeStr, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
                 }
             }
         }

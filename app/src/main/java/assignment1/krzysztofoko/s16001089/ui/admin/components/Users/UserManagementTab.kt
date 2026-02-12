@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
+import assignment1.krzysztofoko.s16001089.ui.admin.components.Catalog.CatalogDeleteDialog
 import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveScreenContainer
 import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
 import java.util.*
@@ -106,10 +107,13 @@ fun UserManagementTab(
     }
 
     if (userToDelete != null) {
-        DeleteUserConfirmationDialog(
-            userName = userToDelete!!.name, 
+        CatalogDeleteDialog(
+            itemName = "User Account: ${userToDelete!!.name}", 
             onDismiss = { userToDelete = null }, 
-            onConfirm = { viewModel.deleteUser(userToDelete!!.id); userToDelete = null }
+            onConfirm = { 
+                viewModel.deleteUser(userToDelete!!.id)
+                userToDelete = null
+            }
         )
     }
 }

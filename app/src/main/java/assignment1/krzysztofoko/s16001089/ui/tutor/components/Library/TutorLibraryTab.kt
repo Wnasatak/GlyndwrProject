@@ -1,8 +1,10 @@
 package assignment1.krzysztofoko.s16001089.ui.tutor.components.Library
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -44,10 +46,12 @@ fun TutorLibraryTab(
 
     val scope = rememberCoroutineScope()
     var isRemovingFromLibrary by remember { mutableStateOf(false) }
-    var itemToConfirmRemove by remember { mutableStateOf<Any?>(null) } // Can be Book or AudioBook
+    var itemToConfirmRemove by remember { mutableStateOf<Any?>(null) } 
     var detailItem by remember { mutableStateOf<Any?>(null) }
 
-    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+    val isTablet = isTablet()
+
+    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { screenIsTablet ->
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(Modifier.height(12.dp))
             
@@ -87,15 +91,18 @@ fun TutorLibraryTab(
                 )
             }
 
-            LazyColumn(
+            // Adaptive Grid: 1 column on phone, 2 on tablet
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(if (screenIsTablet) 2 else 1),
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 if (selectedTab == 0) {
                     val filteredBooks = books.filter { it.title.contains(searchQuery, ignoreCase = true) }
                     if (filteredBooks.isEmpty()) {
-                        item { LibraryEmptyState("No books found in your library.") }
+                        item(span = { GridItemSpan(maxLineSpan) }) { LibraryEmptyState("No books found in your library.") }
                     } else {
                         items(filteredBooks) { book ->
                             LibraryItem(
@@ -112,7 +119,7 @@ fun TutorLibraryTab(
                 } else {
                     val filteredAudio = audioBooks.filter { it.title.contains(searchQuery, ignoreCase = true) }
                     if (filteredAudio.isEmpty()) {
-                        item { LibraryEmptyState("No audiobooks found in your library.") }
+                        item(span = { GridItemSpan(maxLineSpan) }) { LibraryEmptyState("No audiobooks found in your library.") }
                     } else {
                         items(filteredAudio) { ab ->
                             LibraryItem(
@@ -128,7 +135,7 @@ fun TutorLibraryTab(
                     }
                 }
 
-                item {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -164,7 +171,7 @@ fun TutorLibraryTab(
                     }
                 }
 
-                item { Spacer(modifier = Modifier.height(80.dp)) }
+                item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
     }
@@ -209,8 +216,8 @@ fun TutorLibraryTab(
             imageUrl = img,
             category = cat,
             isAudio = isAudio,
-            isAdded = true, // It's in the library
-            onAddClick = { /* Already added */ },
+            isAdded = true, 
+            onAddClick = { },
             onRemoveClick = { itemToConfirmRemove = item },
             onActionClick = {
                 if (isAudio) {
@@ -235,7 +242,7 @@ fun LibraryItem(
     onAction: () -> Unit
 ) {
     val dummyBook = Book(
-        id = "", // Not strictly needed for display
+        id = "", 
         title = title,
         author = author,
         imageUrl = imageUrl,

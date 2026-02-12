@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
@@ -60,8 +61,8 @@ fun CatalogTab(
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % filters.size)
     val tabListState = rememberLazyListState(initialFirstVisibleItemIndex = if (isTablet) 0 else startPosition)
 
-    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
-        val columns = if (isTablet) 2 else 1
+    AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { screenIsTablet ->
+        val columns = if (screenIsTablet) 2 else 1
         val horizontalPadding = 16.dp 
 
         LazyVerticalGrid(
@@ -86,9 +87,9 @@ fun CatalogTab(
                     modifier = Modifier.fillMaxWidth().height(60.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     contentPadding = PaddingValues(horizontal = horizontalPadding),
-                    horizontalArrangement = if (isTablet) Arrangement.Center else Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = if (screenIsTablet) Arrangement.Center else Arrangement.spacedBy(8.dp)
                 ) {
-                    if (isTablet) {
+                    if (screenIsTablet) {
                         items(filters) { filter ->
                             CatalogFilterItem(
                                 filter = filter,
@@ -153,9 +154,14 @@ fun CatalogTab(
     if (showAddProductDialog) {
         AlertDialog(
             onDismissRequest = { onAddProductDialogConsumed() },
-            title = { Text("Select Product Category", fontWeight = FontWeight.Black) },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(28.dp),
+            title = { Text("Add New Product", fontWeight = FontWeight.Black) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    @Suppress("DEPRECATION")
+                    Text("Select a category to begin adding to the inventory.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                     AddCategoryButton("Academic Book", Icons.AutoMirrored.Filled.MenuBook) {
                         bookToEdit = Book(id = UUID.randomUUID().toString(), title = "", author = "", mainCategory = AppConstants.CAT_BOOKS)
                         onAddProductDialogConsumed()
@@ -175,7 +181,11 @@ fun CatalogTab(
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { onAddProductDialogConsumed() }) { Text("Cancel") } }
+            dismissButton = { 
+                TextButton(onClick = { onAddProductDialogConsumed() }) { 
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) 
+                } 
+            }
         )
     }
 
@@ -265,15 +275,20 @@ private fun HeaderSection(title: String, subtitle: String, icon: ImageVector, mo
 
 @Composable
 fun AddCategoryButton(label: String, icon: ImageVector, onClick: () -> Unit) {
-    OutlinedButton(
+    Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        contentPadding = PaddingValues(16.dp)
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
-        Icon(icon, null, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(12.dp))
-        Text(label, fontWeight = FontWeight.Bold)
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(16.dp))
+            Text(label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.weight(1f))
+            Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp), tint = Color.Gray.copy(alpha = 0.5f))
+        }
     }
 }
 

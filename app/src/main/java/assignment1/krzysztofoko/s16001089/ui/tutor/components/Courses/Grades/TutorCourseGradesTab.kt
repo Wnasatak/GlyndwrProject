@@ -105,7 +105,6 @@ fun TutorCourseGradesTab(
 
                     if (filteredItems.isEmpty()) {
                         Box(Modifier.fillMaxSize().padding(AdaptiveSpacing.contentPadding()), contentAlignment = Alignment.Center) {
-                            @Suppress("DEPRECATION")
                             Text(
                                 text = if (selectedGradesTab == 0) "Everything is graded! 🎉" else "No graded items found.",
                                 style = if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
@@ -344,6 +343,7 @@ fun GradeEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         modifier = Modifier
             .padding(AdaptiveSpacing.contentPadding())
             .adaptiveWidth(AdaptiveWidths.Standard),
@@ -392,7 +392,6 @@ fun GradeEditDialog(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.height(if (isTablet) 48.dp else 40.dp)
             ) {
-                @Suppress("DEPRECATION")
                 Text("Save Grade", fontWeight = FontWeight.Bold)
             }
         },
@@ -401,8 +400,7 @@ fun GradeEditDialog(
                 onClick = onDismiss,
                 modifier = Modifier.height(if (isTablet) 48.dp else 36.dp)
             ) {
-                @Suppress("DEPRECATION")
-                Text("Cancel", fontWeight = FontWeight.Medium)
+                Text("Cancel", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
             }
         },
         shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius())

@@ -41,7 +41,10 @@ fun TutorMessagesTab(
     val allEnrollments by viewModel.allEnrollments.collectAsState()
     val allCourses by viewModel.allCourses.collectAsState()
     var searchTxt by remember { mutableStateOf("") }
-    val sdf = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    
+    // Formatting logic: Show only time if today, else date and time
+    val timeSdf = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val dateSdf = remember { SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()) }
 
     val searchResults = remember(conversations, allUsers, searchTxt) {
         if (searchTxt.isEmpty()) {
@@ -106,11 +109,22 @@ fun TutorMessagesTab(
                             is SearchResult.Existing -> {
                                 val user = result.preview.student
                                 val userCourses = getUserCourses(user.id, allEnrollments, allCourses)
+                                
+                                // Determine if message was sent today
+                                val msgDate = Date(result.preview.lastMessage.timestamp)
+                                val calendar = Calendar.getInstance()
+                                val now = calendar.time
+                                calendar.time = msgDate
+                                val isToday = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(msgDate) == 
+                                            SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(now)
+                                
+                                val timeStr = if (isToday) timeSdf.format(msgDate) else dateSdf.format(msgDate)
+
                                 ConversationItem(
                                     conversation = result.preview,
                                     courses = userCourses,
                                     onClick = { viewModel.setSection(TutorSection.CHAT, user) },
-                                    timeStr = sdf.format(Date(result.preview.lastMessage.timestamp))
+                                    timeStr = timeStr
                                 )
                             }
                             is SearchResult.New -> {

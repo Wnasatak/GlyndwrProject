@@ -44,7 +44,6 @@ fun TutorCourseModulesTab(
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Medium) { isTablet ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().padding(horizontal = AdaptiveSpacing.contentPadding())) {
-                // Matching the padding from Class Attendance
                 Spacer(Modifier.height(12.dp))
                 
                 AdaptiveDashboardHeader(
@@ -109,8 +108,9 @@ fun TutorCourseModulesTab(
     if (moduleToDelete != null) {
         AlertDialog(
             onDismissRequest = { moduleToDelete = null },
+            containerColor = MaterialTheme.colorScheme.surface,
             icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Remove Module") },
+            title = { Text("Remove Module", fontWeight = FontWeight.Bold) },
             text = { Text("Are you sure you want to delete '${moduleToDelete?.title}'? This will disconnect all materials linked to this module.") },
             confirmButton = {
                 Button(
@@ -120,12 +120,14 @@ fun TutorCourseModulesTab(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     shape = RoundedCornerShape(12.dp)
-                ) { Text("Delete") }
+                ) { Text("Delete", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                @Suppress("DEPRECATION")
-                TextButton(onClick = { moduleToDelete = null }) { Text("Cancel") }
-            }
+                TextButton(onClick = { moduleToDelete = null }) { 
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary) 
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
         )
     }
 }
@@ -142,7 +144,6 @@ fun EmptyModulesState(onAction: () -> Unit) {
                 tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
             )
             Spacer(Modifier.height(16.dp))
-            @Suppress("DEPRECATION")
             Text(
                 text = "Your syllabus is empty", 
                 style = if (isTablet) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.bodyLarge,
@@ -199,7 +200,6 @@ fun ModuleItemCard(
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-                @Suppress("DEPRECATION")
                 Text(
                     text = "Sequence: #${module.order}",
                     style = if (isTablet) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.labelSmall,
@@ -233,7 +233,6 @@ fun ModuleItemCard(
         
         if (module.description.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
-            @Suppress("DEPRECATION")
             Text(
                 text = module.description,
                 style = if (isTablet) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
@@ -257,7 +256,6 @@ fun ModuleItemCard(
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                @Suppress("DEPRECATION")
                 Text(
                     text = typeLabel,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -299,7 +297,6 @@ fun ModuleEditDialog(
                 tonalElevation = 6.dp
             ) {
                 Column(modifier = Modifier.padding(AdaptiveSpacing.medium()).verticalScroll(rememberScrollState())) {
-                    @Suppress("DEPRECATION")
                     Text(
                         text = if (module == null) "Add Curriculum Module" else "Edit Module",
                         style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
@@ -406,7 +403,6 @@ fun TypeSelectionIcon(icon: ImageVector, label: String, isSelected: Boolean, onC
                 )
             }
         }
-        @Suppress("DEPRECATION")
         Text(
             text = label, 
             style = if (isTablet) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall, 
