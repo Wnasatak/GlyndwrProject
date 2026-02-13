@@ -112,16 +112,34 @@ fun NavGraphBuilder.dashboardNavGraph(
         )
     }
 
-    composable(AppConstants.ROUTE_ADMIN_PANEL) {
+    composable(
+        route = "${AppConstants.ROUTE_ADMIN_PANEL}?section={section}",
+        arguments = listOf(
+            navArgument("section") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            }
+        )
+    ) { backStackEntry ->
+        val section = backStackEntry.arguments?.getString("section")
         AdminPanelScreen(
             onBack = { navController.popBackStack() },
             onNavigateToUserDetails = { userId ->
                 navController.navigate("${AppConstants.ROUTE_ADMIN_USER_DETAILS}/$userId")
             },
             onNavigateToProfile = { navController.navigate(AppConstants.ROUTE_PROFILE) },
+            onNavigateToBookDetails = { bookId ->
+                navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$bookId")
+            },
+            onExploreMore = {
+                navController.navigate(AppConstants.ROUTE_HOME)
+            },
+            allBooks = allBooks,
             currentTheme = currentTheme,
             onThemeChange = onFullThemeChange,
-            onLogoutClick = { onLogoutClick() }
+            onLogoutClick = { onLogoutClick() },
+            initialSection = section
         )
     }
 

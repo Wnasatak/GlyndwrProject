@@ -26,7 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,8 +36,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
-import assignment1.krzysztofoko.s16001089.ui.components.adaptiveWidth
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -67,6 +65,7 @@ fun BroadcastStudio(
     var teacherMsg by remember { mutableStateOf("") }
 
     val listState = rememberLazyListState()
+    val isTablet = isTablet()
 
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
@@ -118,16 +117,28 @@ fun BroadcastStudio(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Top Menu / Header - Always Full Width
+        // Top Menu / Header
         AnimatedVisibility(visible = !isFullScreen) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(AdaptiveSpacing.contentPadding()),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text("Broadcast Studio", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                    Text(courseTitle ?: "Select Course", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Broadcast Studio", 
+                        style = AdaptiveTypography.headline(), 
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        courseTitle ?: "Select Course", 
+                        style = AdaptiveTypography.caption(), 
+                        color = Color.Gray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -147,12 +158,12 @@ fun BroadcastStudio(
         ) {
             Column(
                 modifier = if (isFullScreen) Modifier.fillMaxSize()
-                else Modifier.adaptiveWidth(AdaptiveWidths.Wide).padding(horizontal = 16.dp)
+                else Modifier.adaptiveWidth(AdaptiveWidths.Wide).padding(horizontal = AdaptiveSpacing.contentPadding())
             ) {
-                val videoModifier = if (isFullScreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(240.dp)
+                val videoModifier = if (isFullScreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(if (isTablet) 360.dp else 220.dp)
                 Card(
                     modifier = videoModifier,
-                    shape = if (isFullScreen) RoundedCornerShape(0.dp) else RoundedCornerShape(24.dp),
+                    shape = if (isFullScreen) RoundedCornerShape(0.dp) else RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
                     colors = CardDefaults.cardColors(containerColor = Color.Black),
                     elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
@@ -178,14 +189,13 @@ fun BroadcastStudio(
                                     imageVector = if (isPaused) Icons.Default.PauseCircle else if (!isCamOn) Icons.Default.VideocamOff else Icons.Default.Podcasts,
                                     contentDescription = null,
                                     tint = Color.White.copy(alpha = 0.3f),
-                                    modifier = Modifier.size(64.dp)
+                                    modifier = Modifier.size(if (isTablet) 64.dp else 48.dp)
                                 )
                                 Spacer(Modifier.height(8.dp))
-                                @Suppress("DEPRECATION")
                                 Text(
                                     if (isPaused) "Broadcast Paused" else if (!isCamOn) "Camera Muted" else "Not Broadcasting",
                                     color = Color.White.copy(alpha = 0.5f),
-                                    style = MaterialTheme.typography.labelMedium
+                                    style = AdaptiveTypography.label()
                                 )
                             }
                         }
@@ -220,13 +230,13 @@ fun BroadcastStudio(
                 }
 
                 if (!isFullScreen) {
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(AdaptiveSpacing.contentPadding()))
 
                     Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (isChatVisible) {
                             Card(
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
-                                shape = RoundedCornerShape(20.dp),
+                                shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
                                 border = BorderStroke(width = 1.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                             ) {
@@ -234,8 +244,7 @@ fun BroadcastStudio(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(Icons.Default.ChatBubble, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(8.dp))
-                                        @Suppress("DEPRECATION")
-                                        Text("Live Chat", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                                        Text("Live Chat", fontWeight = FontWeight.Bold, style = AdaptiveTypography.sectionHeader())
                                     }
 
                                     LazyColumn(
@@ -252,9 +261,9 @@ fun BroadcastStudio(
                                         OutlinedTextField(
                                             value = teacherMsg,
                                             onValueChange = { teacherMsg = it },
-                                            placeholder = { Text("Say something...", fontSize = 12.sp) },
+                                            placeholder = { Text("Say something...", style = AdaptiveTypography.hint(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                             modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(16.dp),
+                                            shape = RoundedCornerShape(12.dp),
                                             trailingIcon = {
                                                 IconButton(onClick = {
                                                     if (teacherMsg.isNotBlank()) {
@@ -267,7 +276,7 @@ fun BroadcastStudio(
                                                 }
                                             },
                                             singleLine = true,
-                                            textStyle = TextStyle(fontSize = 13.sp),
+                                            textStyle = AdaptiveTypography.caption(),
                                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                                             keyboardActions = KeyboardActions(onSend = {
                                                 if (teacherMsg.isNotBlank()) {
@@ -283,7 +292,7 @@ fun BroadcastStudio(
                         }
 
                         Column(
-                            modifier = Modifier.width(64.dp),
+                            modifier = Modifier.width(if (isTablet) 64.dp else 56.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
@@ -307,22 +316,28 @@ fun BroadcastStudio(
         // Adaptive Footer Button
         AnimatedVisibility(visible = !isFullScreen) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Box(modifier = Modifier.adaptiveWidth(AdaptiveWidths.Wide).padding(16.dp)) {
+                Box(modifier = Modifier.adaptiveWidth(AdaptiveWidths.Wide).padding(AdaptiveSpacing.contentPadding())) {
                     Button(
                         onClick = {
                             viewModel.toggleLiveStream(!isLive)
                         },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth().height(if (isTablet) 56.dp else 48.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isLive) Color(0xFFE53935) else MaterialTheme.colorScheme.primary
                         ),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
-                        Icon(if (isLive) Icons.Default.Stop else Icons.Default.Podcasts, null)
+                        Icon(if (isLive) Icons.Default.Stop else Icons.Default.Podcasts, null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp))
                         Spacer(Modifier.width(12.dp))
                         @Suppress("DEPRECATION")
-                        Text(if (isLive) "End Broadcast" else "Go Live Now", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(
+                            if (isLive) "End Broadcast" else "Go Live Now", 
+                            fontWeight = FontWeight.Bold, 
+                            style = AdaptiveTypography.sectionHeader(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -369,10 +384,11 @@ fun SimulatedAudioVisualizer(modifier: Modifier = Modifier) {
 
 @Composable
 fun ControlIcon(icon: ImageVector, label: String, isActive: Boolean, activeColor: Color? = null, onClick: () -> Unit) {
+    val isTablet = isTablet()
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(
             modifier = Modifier
-                .size(48.dp)
+                .size(if (isTablet) 48.dp else 40.dp)
                 .clickable { onClick() },
             shape = CircleShape,
             color = if (isActive) (activeColor ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface,
@@ -383,15 +399,14 @@ fun ControlIcon(icon: ImageVector, label: String, isActive: Boolean, activeColor
                     imageVector = icon,
                     contentDescription = label,
                     tint = if (isActive) (activeColor ?: MaterialTheme.colorScheme.primary) else Color.Gray,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(if (isTablet) 22.dp else 18.dp)
                 )
             }
         }
         Spacer(Modifier.height(4.dp))
-        @Suppress("DEPRECATION")
         Text(
             text = label,
-            fontSize = 10.sp,
+            style = AdaptiveTypography.hint(),
             color = if (isActive) (activeColor ?: MaterialTheme.colorScheme.primary) else Color.Gray,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -417,7 +432,6 @@ fun BlinkingRecBadge() {
         Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(8.dp).background(Color.Red, CircleShape))
             Spacer(Modifier.width(8.dp))
-            @Suppress("DEPRECATION")
             Text("REC", color = Color.Red, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
         }
     }
@@ -429,7 +443,7 @@ fun ChatBubble(msg: LiveChatMessage) {
         Text(
             text = msg.sender,
             fontWeight = FontWeight.Bold,
-            fontSize = 11.sp,
+            style = AdaptiveTypography.hint(),
             color = if (msg.isTeacher) MaterialTheme.colorScheme.primary else Color.Gray,
             modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
         )
@@ -442,7 +456,11 @@ fun ChatBubble(msg: LiveChatMessage) {
                 )
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         ) {
-            Text(msg.text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                msg.text, 
+                style = AdaptiveTypography.caption(), 
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }

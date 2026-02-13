@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val repository: BookRepository, 
     private val userDao: UserDao,
-    private val classroomDao: ClassroomDao, // Added classroomDao
+    private val classroomDao: ClassroomDao, 
     private val auditDao: AuditDao,
     private val userId: String,              
     initialCategory: String? = null          
@@ -39,7 +39,8 @@ class HomeViewModel(
         _filterSettings,
         if (userId.isNotEmpty()) userDao.getUserFlow(userId) else flowOf(null),
         if (userId.isNotEmpty()) userDao.getAllEnrollmentsFlow() else flowOf(emptyList()),
-        classroomDao.getAllActiveSessions() // Added active sessions stream
+        classroomDao.getAllActiveSessions(),
+        if (userId.isNotEmpty()) userDao.getNotificationsForUser(userId) else flowOf(emptyList<NotificationLocal>())
     ) { array ->
         @Suppress("UNCHECKED_CAST")
         val books = array[0] as List<Book>?
@@ -59,11 +60,12 @@ class HomeViewModel(
         val enrollments = array[7] as List<CourseEnrollmentDetails>
         @Suppress("UNCHECKED_CAST")
         val activeSessions = array[8] as List<LiveSession>
+        @Suppress("UNCHECKED_CAST")
+        val notifications = array[9] as List<NotificationLocal>
 
         val allBooks = books ?: emptyList()
         val appMap = enrollments.filter { it.userId == userId }.associate { it.courseId to it.status }
         
-        // Filter sessions to only those the student is enrolled in
         val userSessions = activeSessions.filter { session ->
             purchased.contains(session.courseId)
         }
@@ -100,6 +102,7 @@ class HomeViewModel(
             filteredBooks = filtered,
             wishlistIds = wishlist.toSet(),
             purchasedIds = purchased.toSet(),
+            unreadNotificationsCount = notifications.count { !it.isRead },
             applicationsMap = appMap,
             selectedMainCategory = filters.mainCategory,
             selectedSubCategory = filters.subCategory,
@@ -223,7 +226,7 @@ private data class FilterSettings(
 class HomeViewModelFactory(
     private val repository: BookRepository,
     private val userDao: UserDao,
-    private val classroomDao: ClassroomDao, // Added classroomDao
+    private val classroomDao: ClassroomDao,
     private val auditDao: AuditDao,
     private val userId: String,
     private val initialCategory: String? = null

@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
+import assignment1.krzysztofoko.s16001089.data.UserTheme
 import assignment1.krzysztofoko.s16001089.ui.components.HorizontalWavyBackground
 import assignment1.krzysztofoko.s16001089.ui.components.InfoCard
 import assignment1.krzysztofoko.s16001089.ui.components.ThemeToggleButton
@@ -31,11 +32,17 @@ import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 fun InstructionScreen(
     onBack: () -> Unit,
     currentTheme: Theme,
+    userTheme: UserTheme? = null,
     onThemeChange: (Theme) -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
-    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
+    
+    val isDarkTheme = when(currentTheme) {
+        Theme.DARK, Theme.DARK_BLUE -> true
+        Theme.CUSTOM -> userTheme?.customIsDark ?: true
+        else -> false
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
@@ -136,7 +143,11 @@ fun InstructionScreen(
                         modifier = Modifier
                             .then(if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth())
                             .height(56.dp),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
+                        )
                     ) {
                         @Suppress("DEPRECATION")
                         Text(AppConstants.BTN_GOT_IT, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)

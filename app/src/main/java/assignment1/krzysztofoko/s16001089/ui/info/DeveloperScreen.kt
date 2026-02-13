@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
+import assignment1.krzysztofoko.s16001089.data.UserTheme
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import coil.compose.AsyncImage
@@ -37,12 +38,18 @@ fun DeveloperScreen(
     onBack: () -> Unit,               
     onVersionClick: () -> Unit,       
     onFutureFeaturesClick: () -> Unit, 
-    currentTheme: Theme,             
+    currentTheme: Theme,
+    userTheme: UserTheme? = null,
     onThemeChange: (Theme) -> Unit         
 ) {
     val (glowScale, glowAlpha) = rememberGlowAnimation()
     val vibrantVioletColor = Color(0xFF9D4EDD)
-    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
+    
+    val isDarkTheme = when(currentTheme) {
+        Theme.DARK, Theme.DARK_BLUE -> true
+        Theme.CUSTOM -> userTheme?.customIsDark ?: true
+        else -> false
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
@@ -185,8 +192,8 @@ fun DeveloperScreen(
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
                         )
                     ) {
                         Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(24.dp))
@@ -198,11 +205,7 @@ fun DeveloperScreen(
                     Button(
                         onClick = onFutureFeaturesClick,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Icon(Icons.Default.Upcoming, contentDescription = null, modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(12.dp))

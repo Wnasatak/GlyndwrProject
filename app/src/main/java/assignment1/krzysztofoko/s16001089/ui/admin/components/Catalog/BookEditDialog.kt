@@ -4,7 +4,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -18,19 +17,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
-import assignment1.krzysztofoko.s16001089.ui.components.formatAssetUrl
+import assignment1.krzysztofoko.s16001089.ui.components.*
 import coil.compose.AsyncImage
 
 /**
  * BookEditDialog provides a comprehensive administrative interface for adding or modifying
  * academic resources (books, etc.) in the catalog.
+ * Now fully optimized for smartphones using centralized Adaptive typography and spacing.
  */
 @Composable
 fun BookEditDialog(
@@ -40,6 +39,7 @@ fun BookEditDialog(
 ) {
     // Mode Detection
     val isCreateMode = book.title.isEmpty() && book.author.isEmpty() && book.price == 0.0
+    val isTablet = isTablet()
 
     // Local state management for form fields
     var title by remember { mutableStateOf(book.title) }
@@ -72,35 +72,37 @@ fun BookEditDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
+        modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(0.94f),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                     shape = CircleShape,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(if (isTablet) 40.dp else 32.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = if (isCreateMode) Icons.Default.AddBusiness else Icons.Default.Edit, 
                             contentDescription = null, 
                             tint = MaterialTheme.colorScheme.primary, 
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(if (isTablet) 20.dp else 16.dp)
                         )
                     }
                 }
-                Spacer(Modifier.width(16.dp))
-                @Suppress("DEPRECATION")
+                Spacer(Modifier.width(if (isTablet) 16.dp else 12.dp))
                 Text(
-                    text = if (isCreateMode) "Create New Book" else "Edit Book Details", 
-                    style = MaterialTheme.typography.titleLarge, 
-                    fontWeight = FontWeight.Black
+                    text = if (isCreateMode) "Create Book" else "Edit Book Details", 
+                    style = AdaptiveTypography.headline(), 
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp), 
+                verticalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 10.dp), 
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
@@ -109,8 +111,8 @@ fun BookEditDialog(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Box(contentAlignment = Alignment.Center) {
                         Surface(
-                            modifier = Modifier.size(140.dp),
-                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.size(if (isTablet) 140.dp else 100.dp),
+                            shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         ) {
@@ -118,17 +120,16 @@ fun BookEditDialog(
                                 AsyncImage(
                                     model = formatAssetUrl(imageUrl), 
                                     contentDescription = null, 
-                                    modifier = Modifier.fillMaxSize().padding(6.dp).clip(RoundedCornerShape(12.dp)), 
+                                    modifier = Modifier.fillMaxSize().padding(4.dp).clip(RoundedCornerShape(8.dp)), 
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
-                                // THEMED PLACEHOLDER: Shown when no image is present
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
                                         imageVector = if (isAudioBook) Icons.Default.Headphones else Icons.AutoMirrored.Filled.MenuBook,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                                        modifier = Modifier.size(48.dp)
+                                        modifier = Modifier.size(if (isTablet) 48.dp else 32.dp)
                                     )
                                 }
                             }
@@ -141,115 +142,154 @@ fun BookEditDialog(
                         Button(
                             onClick = { imagePickerLauncher.launch(arrayOf("image/*")) },
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                            modifier = Modifier.height(if (isTablet) 40.dp else 36.dp).weight(1f),
+                            contentPadding = PaddingValues(horizontal = 8.dp)
                         ) {
                             Icon(Icons.Default.FileUpload, null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Upload Image", fontSize = 12.sp)
+                            Text("Upload", style = AdaptiveTypography.hint(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         
                         OutlinedButton(
                             onClick = { showUrlInputForImage = !showUrlInputForImage },
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.height(if (isTablet) 40.dp else 36.dp).weight(1f),
+                            contentPadding = PaddingValues(horizontal = 8.dp)
                         ) {
                             Icon(Icons.Default.Link, null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Manual Path", fontSize = 12.sp)
+                            Text("Manual", style = AdaptiveTypography.hint(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
-                    
-                    if (showUrlInputForImage || imageUrl.startsWith("content://")) {
+
+                    if (showUrlInputForImage) {
+                        Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             value = imageUrl, onValueChange = { imageUrl = it },
-                            label = { Text("Image Asset Path / URI") },
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            label = { Text("Image URL", style = AdaptiveTypography.label()) },
+                            modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            textStyle = MaterialTheme.typography.bodySmall,
-                            trailingIcon = { if (imageUrl.isNotEmpty()) IconButton(onClick = { imageUrl = "" }) { Icon(Icons.Default.Clear, null) } }
+                            textStyle = AdaptiveTypography.caption(),
+                            singleLine = true
                         )
                     }
                 }
 
                 // BASIC INFO
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Book Title") }, leadingIcon = { Icon(Icons.Default.Title, null, modifier = Modifier.size(20.dp)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                OutlinedTextField(value = author, onValueChange = { author = it }, label = { Text("Author / Narrator") }, leadingIcon = { Icon(Icons.Default.Person, null, modifier = Modifier.size(20.dp)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                OutlinedTextField(
+                    value = title, onValueChange = { title = it }, 
+                    label = { Text("Book Title", style = AdaptiveTypography.label()) }, 
+                    leadingIcon = { Icon(Icons.Default.Title, null, modifier = Modifier.size(if (isTablet) 20.dp else 18.dp)) }, 
+                    modifier = Modifier.fillMaxWidth(), 
+                    shape = RoundedCornerShape(12.dp), 
+                    textStyle = AdaptiveTypography.caption(),
+                    singleLine = true
+                )
+                
+                OutlinedTextField(
+                    value = author, onValueChange = { author = it }, 
+                    label = { Text("Author", style = AdaptiveTypography.label()) }, 
+                    leadingIcon = { Icon(Icons.Default.Person, null, modifier = Modifier.size(if (isTablet) 20.dp else 18.dp)) }, 
+                    modifier = Modifier.fillMaxWidth(), 
+                    shape = RoundedCornerShape(12.dp), 
+                    textStyle = AdaptiveTypography.caption(),
+                    singleLine = true
+                )
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price (£)") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Payments, null, modifier = Modifier.size(18.dp)) })
-                    OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Genre") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Category, null, modifier = Modifier.size(18.dp)) })
+                if (isTablet) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price", style = AdaptiveTypography.label()) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Payments, null, modifier = Modifier.size(18.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
+                        OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Genre", style = AdaptiveTypography.label()) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Category, null, modifier = Modifier.size(18.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
+                    }
+                } else {
+                    OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price", style = AdaptiveTypography.label()) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Payments, null, modifier = Modifier.size(16.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
+                    OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Genre", style = AdaptiveTypography.label()) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Category, null, modifier = Modifier.size(16.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
                 }
 
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth(), minLines = 3, shape = RoundedCornerShape(12.dp))
+                OutlinedTextField(
+                    value = description, onValueChange = { description = it }, 
+                    label = { Text("Description", style = AdaptiveTypography.label()) }, 
+                    modifier = Modifier.fillMaxWidth(), 
+                    minLines = 2, 
+                    shape = RoundedCornerShape(12.dp), 
+                    textStyle = AdaptiveTypography.caption()
+                )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
                 // DIGITAL ASSETS
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Digital Resources", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Digital Assets", style = AdaptiveTypography.sectionHeader(), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                         
-                        Column {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                Button(
-                                    onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                                ) {
-                                    Icon(Icons.Default.PictureAsPdf, null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Upload PDF", fontSize = 12.sp)
-                                }
-                                
-                                OutlinedButton(
-                                    onClick = { showUrlInputForPdf = !showUrlInputForPdf },
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(Icons.Default.Link, null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    @Suppress("DEPRECATION")
-                                    Text("Manual Path", fontSize = 12.sp)
-                                }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            Button(
+                                onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f).height(if (isTablet) 40.dp else 36.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Icon(Icons.Default.PictureAsPdf, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("PDF", style = AdaptiveTypography.hint(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             
-                            if (showUrlInputForPdf || pdfUrl.startsWith("content://")) {
-                                OutlinedTextField(value = pdfUrl, onValueChange = { pdfUrl = it }, label = { Text("Internal PDF Path / URI") }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), shape = RoundedCornerShape(12.dp), textStyle = MaterialTheme.typography.bodySmall, trailingIcon = { if (pdfUrl.isNotEmpty()) IconButton(onClick = { pdfUrl = "" }) { Icon(Icons.Default.Clear, null) } } )
+                            OutlinedButton(
+                                onClick = { showUrlInputForPdf = !showUrlInputForPdf },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f).height(if (isTablet) 40.dp else 36.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Icon(Icons.Default.Link, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Manual", style = AdaptiveTypography.hint(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
 
-                        // AUDIOBOOK LOGIC
+                        if (showUrlInputForPdf) {
+                            OutlinedTextField(
+                                value = pdfUrl, onValueChange = { pdfUrl = it },
+                                label = { Text("PDF URL", style = AdaptiveTypography.hint()) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                textStyle = AdaptiveTypography.caption(),
+                                singleLine = true
+                            )
+                        }
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = isAudioBook, onCheckedChange = { isAudioBook = it }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary))
-                            @Suppress("DEPRECATION")
-                            Text("Include Audiobook Support", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Checkbox(checked = isAudioBook, onCheckedChange = { isAudioBook = it }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary), modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Audiobook Support", style = AdaptiveTypography.label(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
                         if (isAudioBook) {
-                            OutlinedTextField(value = audioUrl, onValueChange = { audioUrl = it }, label = { Text("Audio Stream URL") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Headphones, null, modifier = Modifier.size(18.dp)) })
+                            OutlinedTextField(value = audioUrl, onValueChange = { audioUrl = it }, label = { Text("Audio URL", style = AdaptiveTypography.hint()) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Headphones, null, modifier = Modifier.size(18.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
                         }
                     }
                 }
 
-                // MODULAR PAYMENT LOGIC
+                // MODULAR PAYMENT
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = isInstallmentAvailable, onCheckedChange = { isInstallmentAvailable = it }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.secondary))
-                            @Suppress("DEPRECATION")
-                            Text("Enable Modular Payment", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                            Checkbox(checked = isInstallmentAvailable, onCheckedChange = { isInstallmentAvailable = it }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.secondary), modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Modular Payment", style = AdaptiveTypography.label(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                         }
                         if (isInstallmentAvailable) {
-                            OutlinedTextField(value = modulePrice, onValueChange = { modulePrice = it }, label = { Text("Price per Module (£)") }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.ReceiptLong, null, modifier = Modifier.size(18.dp)) })
+                            OutlinedTextField(value = modulePrice, onValueChange = { modulePrice = it }, label = { Text("Price/Module (£)", style = AdaptiveTypography.hint()) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.ReceiptLong, null, modifier = Modifier.size(18.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
                         }
                     }
                 }
@@ -270,13 +310,13 @@ fun BookEditDialog(
                 },
                 enabled = title.isNotBlank() && author.isNotBlank(),
                 shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth().height(if (isTablet) 50.dp else 44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) { Text(if (isCreateMode) "Create Book" else "Save Changes", fontWeight = FontWeight.Bold) }
+            ) { Text(if (isCreateMode) "Create Book" else "Save Changes", fontWeight = FontWeight.Bold, fontSize = if (isTablet) 16.sp else 14.sp) }
         },
         dismissButton = { 
-            @Suppress("DEPRECATION")
-            TextButton(onClick = onDismiss) { 
-                Text(if (isCreateMode) "Cancel" else "Discard", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) 
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { 
+                Text(if (isCreateMode) "Cancel" else "Discard", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = AdaptiveTypography.caption()) 
             } 
         }
     )

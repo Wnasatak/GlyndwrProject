@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
+import assignment1.krzysztofoko.s16001089.data.UserTheme
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
@@ -26,10 +27,15 @@ import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 @Composable
 fun VersionInfoScreen(
     onBack: () -> Unit,             
-    currentTheme: Theme,           
+    currentTheme: Theme,
+    userTheme: UserTheme? = null,
     onThemeChange: (Theme) -> Unit       
 ) {
-    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
+    val isDarkTheme = when(currentTheme) {
+        Theme.DARK, Theme.DARK_BLUE -> true
+        Theme.CUSTOM -> userTheme?.customIsDark ?: true
+        else -> false
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
@@ -64,9 +70,7 @@ fun VersionInfoScreen(
             }
         ) { padding ->
             AdaptiveScreenContainer(
-                modifier = Modifier
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState()),
+                modifier = Modifier.padding(padding).verticalScroll(rememberScrollState()),
                 maxWidth = AdaptiveWidths.Standard
             ) { isTablet ->
                 Column(
@@ -136,7 +140,11 @@ fun VersionInfoScreen(
                     Button(
                         onClick = onBack,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         @Suppress("DEPRECATION")
                         Text(AppConstants.BTN_CLOSE, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)

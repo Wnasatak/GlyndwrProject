@@ -14,7 +14,8 @@ data class HomeUiState(
     val filteredBooks: List<Book> = emptyList(),
     val wishlistIds: Set<String> = emptySet(),
     val purchasedIds: Set<String> = emptySet(),
-    val applicationsMap: Map<String, String> = emptyMap(), // Added applications mapping
+    val unreadNotificationsCount: Int = 0,
+    val applicationsMap: Map<String, String> = emptyMap(),
     val selectedMainCategory: String = AppConstants.CAT_ALL,
     val selectedSubCategory: String = "All Genres",
     val searchQuery: String = "",
@@ -27,5 +28,5 @@ data class HomeUiState(
     val walletHistory: List<WalletTransaction> = emptyList(),
     val showWalletHistory: Boolean = false,
     val localUser: UserLocal? = null,
-    val activeLiveSessions: List<LiveSession> = emptyList() // Added to track active tutor streams
+    val activeLiveSessions: List<LiveSession> = emptyList()
 )

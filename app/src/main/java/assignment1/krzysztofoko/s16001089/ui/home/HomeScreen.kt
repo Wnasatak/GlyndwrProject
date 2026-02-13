@@ -68,7 +68,11 @@ fun HomeScreen(
     val isTablet = isTablet()
     val columns = if (isTablet) 2 else 1
 
-    val isAdminOrTutor = uiState.localUser?.role == "admin" || uiState.localUser?.role == "teacher" || uiState.localUser?.role == "tutor"
+    // Role detection logic with null-safety to prevent flickering
+    val userRole = uiState.localUser?.role?.lowercase()
+    val isAdmin = userRole == "admin"
+    val isTutor = userRole in listOf("teacher", "tutor")
+    val isStaff = isAdmin || isTutor
 
     Box(
         modifier = Modifier
@@ -86,16 +90,28 @@ fun HomeScreen(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
-                HomeTopBar(
-                    isSearchVisible = uiState.isSearchVisible,
-                    isLoggedIn = isLoggedIn,
-                    currentTheme = currentTheme,
-                    onSearchClick = { viewModel.setSearchVisible(true) },
-                    onThemeChange = { viewModel.setSearchVisible(false); onThemeChange(it) },
-                    onAboutClick = { viewModel.setSearchVisible(false); onAboutClick() },
-                    onAuthClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_AUTH) },
-                    onDashboardClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_DASHBOARD) }
-                )
+                // FLICKER PROTECTION: Only render the TopBar once we know if the user has a profile or is a guest
+                if (!isLoggedIn || uiState.localUser != null) {
+                    HomeTopBar(
+                        isSearchVisible = uiState.isSearchVisible,
+                        isLoggedIn = isLoggedIn,
+                        currentTheme = currentTheme,
+                        userRole = userRole,
+                        onSearchClick = { viewModel.setSearchVisible(true) },
+                        onThemeChange = { viewModel.setSearchVisible(false); onThemeChange(it) },
+                        onAboutClick = { viewModel.setSearchVisible(false); onAboutClick() },
+                        onAuthClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_AUTH) },
+                        onDashboardClick = { 
+                            viewModel.setSearchVisible(false)
+                            val target = when {
+                                isAdmin -> AppConstants.ROUTE_ADMIN_PANEL
+                                isTutor -> AppConstants.ROUTE_TUTOR_PANEL
+                                else -> AppConstants.ROUTE_DASHBOARD
+                            }
+                            navController.navigate(target)
+                        }
+                    )
+                }
             }
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize()) {
@@ -116,6 +132,7 @@ fun HomeScreen(
                             }
                         }
 
+                        // WELCOME BANNER: Flicker-protected
                         item(span = { GridItemSpan(this.maxLineSpan) }) { 
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                                 Box(modifier = if (screenIsTablet) Modifier.widthIn(max = 550.dp).padding(vertical = 8.dp) else Modifier.fillMaxWidth()) {
@@ -124,8 +141,20 @@ fun HomeScreen(
                                             viewModel.setSearchVisible(false)
                                             navController.navigate(AppConstants.ROUTE_AUTH) 
                                         } 
-                                    } else {
-                                        MemberWelcomeBanner(user = uiState.localUser, theme = currentTheme) 
+                                    } else if (uiState.localUser != null) {
+                                        MemberWelcomeBanner(
+                                            user = uiState.localUser, 
+                                            theme = currentTheme,
+                                            onProfileClick = {
+                                                viewModel.setSearchVisible(false)
+                                                val target = when {
+                                                    isAdmin -> "${AppConstants.ROUTE_ADMIN_PANEL}?section=PROFILE"
+                                                    isTutor -> "${AppConstants.ROUTE_TUTOR_PANEL}?section=TEACHER_DETAIL"
+                                                    else -> AppConstants.ROUTE_DASHBOARD
+                                                }
+                                                navController.navigate(target)
+                                            }
+                                        ) 
                                     }
                                 }
                             }
@@ -175,7 +204,7 @@ fun HomeScreen(
                         item(span = { GridItemSpan(this.maxLineSpan) }) { 
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                                 MainCategoryFilterBar(
-                                    categories = if (isAdminOrTutor) AppConstants.MainCategories.filter { it != AppConstants.CAT_COURSES } else AppConstants.MainCategories, 
+                                    categories = if (isStaff) AppConstants.MainCategories.filter { it != AppConstants.CAT_COURSES } else AppConstants.MainCategories, 
                                     selectedCategory = uiState.selectedMainCategory
                                 ) { viewModel.selectMainCategory(it) } 
                             }
@@ -208,7 +237,7 @@ fun HomeScreen(
                                         book = book,
                                         isLoggedIn = isLoggedIn,
                                         isPendingReview = isPending,
-                                        userRole = uiState.localUser?.role,
+                                        userRole = userRole,
                                         isLiked = uiState.wishlistIds.contains(book.id),
                                         isPurchased = uiState.purchasedIds.contains(book.id),
                                         isAudioPlaying = isAudioPlaying && currentPlayingBookId == book.id,
@@ -277,132 +306,4 @@ fun HomeScreen(
             }
         )
     }
-}
-
-@Composable
-fun PromotionBanner(theme: Theme, onGetStarted: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(28.dp),
-        tonalElevation = 8.dp
-    ) {
-        Box(
-            modifier = Modifier
-                .background(brush = getBannerBrush(theme))
-                .padding(24.dp)
-        ) {
-            Column(horizontalAlignment = Alignment.Start) {
-                Text(
-                    text = "Glyndŵr Store",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                @Suppress("DEPRECATION")
-                Text(
-                    text = "Enrol now to unlock exclusive group-wide discounts across our entire catalog.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                    modifier = Modifier.fillMaxWidth(0.8f)
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(
-                    onClick = onGetStarted,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.onPrimary,
-                        contentColor = MaterialTheme.colorScheme.primary
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Get Started", fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MemberWelcomeBanner(user: UserLocal?, theme: Theme) {
-    val firstName = user?.name?.split(" ")?.firstOrNull() ?: "Member"
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(ProDesign.StandardPadding),
-        tonalElevation = 12.dp
-    ) {
-        Box(
-            modifier = Modifier
-                .background(brush = getBannerBrush(theme))
-                .padding(24.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                UserAvatar(photoUrl = user?.photoUrl, modifier = Modifier.size(64.dp))
-                Spacer(modifier = Modifier.width(20.dp))
-                Column {
-                    @Suppress("DEPRECATION")
-                    Text(
-                        text = "Welcome Back",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = firstName,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Surface(
-                    color = Color.White.copy(alpha = 0.15f),
-                    shape = CircleShape
-                ) {
-                    IconButton(onClick = { /* Could go to profile */ }) {
-                        Icon(Icons.Default.AccountBox, null, tint = Color.White)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun getBannerBrush(theme: Theme): Brush {
-    val colors = when (theme) {
-        Theme.SKY -> listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.secondary,
-            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.8f)
-        )
-        Theme.FOREST -> listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.tertiary,
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f)
-        )
-        Theme.DARK_BLUE -> listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.secondary,
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-        )
-        Theme.DARK -> listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f),
-            Color.Black.copy(alpha = 0.2f)
-        )
-        else -> listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f),
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
-        )
-    }
-    return Brush.linearGradient(
-        colors = colors,
-        start = androidx.compose.ui.geometry.Offset(0f, 0f),
-        end = androidx.compose.ui.geometry.Offset(1000f, 1000f)
-    )
 }

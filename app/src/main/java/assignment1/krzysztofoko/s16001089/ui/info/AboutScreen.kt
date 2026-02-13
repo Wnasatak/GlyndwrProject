@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
+import assignment1.krzysztofoko.s16001089.data.UserTheme
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import coil.compose.AsyncImage
@@ -43,7 +44,8 @@ fun AboutScreen(
     onDeveloperClick: () -> Unit,     
     onInstructionClick: () -> Unit,   
     onOpenThemeBuilder: () -> Unit, 
-    currentTheme: Theme,             
+    currentTheme: Theme,
+    userTheme: UserTheme? = null,
     onThemeChange: (Theme) -> Unit         
 ) {
     val logoRotation = remember { Animatable(0f) }
@@ -51,7 +53,12 @@ fun AboutScreen(
         logoRotation.animateTo(360f, tween(1200, easing = FastOutSlowInEasing))
     }
 
-    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || (currentTheme == Theme.CUSTOM)
+    val isDarkTheme = when(currentTheme) {
+        Theme.DARK, Theme.DARK_BLUE -> true
+        Theme.CUSTOM -> userTheme?.customIsDark ?: true
+        else -> false
+    }
+    
     val glowAnim = rememberGlowAnimation()
     val accentColor = MaterialTheme.colorScheme.primary
     val currentUser = FirebaseAuth.getInstance().currentUser
@@ -113,14 +120,20 @@ fun AboutScreen(
                     Text(text = AppConstants.APP_NAME, style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // App Appearance Selector removed from here as requested.
-
                     InfoCard(icon = Icons.Default.School, title = "INSTITUTION", content = AppConstants.INSTITUTION, containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                     Spacer(modifier = Modifier.height(16.dp))
                     InfoCard(icon = Icons.AutoMirrored.Filled.Assignment, title = "PROJECT INFO", content = AppConstants.PROJECT_INFO, containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    Button(onClick = onInstructionClick, modifier = Modifier.fillMaxWidth().height(60.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
+                    Button(
+                        onClick = onInstructionClick, 
+                        modifier = Modifier.fillMaxWidth().height(60.dp), 
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
+                        )
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.HelpOutline, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.TITLE_HOW_TO_USE, fontWeight = FontWeight.ExtraBold)
                     }
                     Spacer(modifier = Modifier.height(16.dp))

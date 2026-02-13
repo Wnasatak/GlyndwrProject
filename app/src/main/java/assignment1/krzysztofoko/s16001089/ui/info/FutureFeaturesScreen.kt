@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
+import assignment1.krzysztofoko.s16001089.data.UserTheme
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
@@ -28,9 +29,14 @@ import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 fun FutureFeaturesScreen(
     onBack: () -> Unit,
     currentTheme: Theme,
+    userTheme: UserTheme? = null,
     onThemeChange: (Theme) -> Unit
 ) {
-    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
+    val isDarkTheme = when(currentTheme) {
+        Theme.DARK, Theme.DARK_BLUE -> true
+        Theme.CUSTOM -> userTheme?.customIsDark ?: true
+        else -> false
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
@@ -69,8 +75,9 @@ fun FutureFeaturesScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    @Suppress("DEPRECATION")
                     Text(
-                        text = "Upcoming Improvements",
+                        text = AppConstants.TITLE_UPCOMING_IMPROVEMENTS,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -112,10 +119,14 @@ fun FutureFeaturesScreen(
                     Button(
                         onClick = onBack,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         @Suppress("DEPRECATION")
-                        Text("Exciting stuff!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(AppConstants.BTN_EXCITING_STUFF, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -147,6 +158,7 @@ private fun RoadmapItem(icon: ImageVector, title: String, description: String) {
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(text = title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                @Suppress("DEPRECATION")
                 Text(text = description, style = MaterialTheme.typography.bodySmall)
             }
         }

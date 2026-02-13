@@ -20,7 +20,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -46,6 +48,7 @@ fun HomeTopBar(
     isSearchVisible: Boolean,
     isLoggedIn: Boolean,
     currentTheme: Theme,
+    userRole: String? = null,
     onSearchClick: () -> Unit,
     onThemeChange: (Theme) -> Unit,
     onAboutClick: () -> Unit,
@@ -68,7 +71,6 @@ fun HomeTopBar(
         actions = {
             TopBarSearchAction(isSearchVisible = isSearchVisible) { onSearchClick() }
 
-            // Show Theme Toggle ONLY for guest users to prevent duplication for members
             if (!isLoggedIn) {
                 ThemeToggleButton(
                     currentTheme = currentTheme,
@@ -86,7 +88,12 @@ fun HomeTopBar(
                 }
             } else {
                 IconButton(onClick = onDashboardClick) {
-                    Icon(imageVector = Icons.Default.Dashboard, contentDescription = "Dashboard")
+                    val icon = when (userRole?.lowercase()) {
+                        "admin" -> Icons.Default.AdminPanelSettings
+                        "teacher", "tutor" -> Icons.Default.School
+                        else -> Icons.Default.Dashboard
+                    }
+                    Icon(imageVector = icon, contentDescription = "Dashboard")
                 }
             }
         },
@@ -324,9 +331,9 @@ fun HomeEmptyState(onClick: () -> Unit) {
 }
 
 @Composable
-fun PromotionBanner(onRegisterClick: () -> Unit) {
+fun PromotionBanner(theme: Theme, onRegisterClick: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(24.dp)) {
-        Box(modifier = Modifier.background(Brush.linearGradient(colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary))).padding(24.dp)) {
+        Box(modifier = Modifier.background(getBannerBrush(theme)).padding(24.dp)) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(AppConstants.APP_NAME, style = MaterialTheme.typography.headlineSmall, color = Color.White, fontWeight = FontWeight.Bold)
                 Text("Enrol now to unlock exclusive group-wide discounts across our entire catalog.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f))
@@ -338,7 +345,7 @@ fun PromotionBanner(onRegisterClick: () -> Unit) {
 }
 
 @Composable
-fun MemberWelcomeBanner(user: UserLocal?) {
+fun MemberWelcomeBanner(user: UserLocal?, theme: Theme, onProfileClick: () -> Unit) {
     val role = user?.role ?: "user"
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
@@ -367,20 +374,37 @@ fun MemberWelcomeBanner(user: UserLocal?) {
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
     ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-            Spacer(modifier = Modifier.width(12.dp))
-            @Suppress("DEPRECATION")
-            Column {
-                Text(text = "Welcome, $displayName", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                if (effectiveDiscount > 0) {
-                    Text(text = "${effectiveDiscount.toInt()}% $displayRole discount activated! Enjoy your perks ✨", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
-                } else {
-                    Text(text = "Logged in as $displayRole. Access your management dashboard!", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+        Box(modifier = Modifier.background(getBannerBrush(theme)).padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                UserAvatar(photoUrl = user?.photoUrl, modifier = Modifier.size(64.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                @Suppress("DEPRECATION")
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "Welcome, $displayName", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = Color.White)
+                    if (effectiveDiscount > 0) {
+                        Text(text = "${effectiveDiscount.toInt()}% $displayRole discount activated! Enjoy your perks ✨", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
+                    } else {
+                        Text(text = "Logged in as $displayRole. Access your management dashboard!", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
+                    }
+                }
+                IconButton(onClick = onProfileClick) {
+                    Icon(Icons.Default.AccountBox, null, tint = Color.White)
                 }
             }
         }
     }
+}
+
+@Composable
+private fun getBannerBrush(theme: Theme): Brush {
+    val colors = when (theme) {
+        Theme.SKY -> listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.8f))
+        Theme.FOREST -> listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f))
+        Theme.DARK_BLUE -> listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+        Theme.DARK -> listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.2f))
+        else -> listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f), MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f))
+    }
+    return Brush.linearGradient(colors = colors, start = androidx.compose.ui.geometry.Offset(0f, 0f), end = androidx.compose.ui.geometry.Offset(1000f, 1000f))
 }
 
 @Composable

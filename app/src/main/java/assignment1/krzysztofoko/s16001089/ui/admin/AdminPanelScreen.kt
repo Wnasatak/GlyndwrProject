@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.AccountBox
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,7 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
+import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.Course
 import assignment1.krzysztofoko.s16001089.data.ModuleContent
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Apps.ApplicationDetailScreen
@@ -33,12 +36,16 @@ import assignment1.krzysztofoko.s16001089.ui.admin.components.Courses.CourseModu
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Courses.CoursesTab
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Courses.ModuleTasksOverlay
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Dashboard.AdminDashboardTab
+import assignment1.krzysztofoko.s16001089.ui.admin.components.Dashboard.BroadcastAnnouncementDialog
+import assignment1.krzysztofoko.s16001089.ui.admin.components.Library.AdminLibraryScreen
+import assignment1.krzysztofoko.s16001089.ui.admin.components.Profile.AdminDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.UserManagementTab
 import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.UsersLogsTab
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationScreen
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
-enum class AdminSection { DASHBOARD, APPLICATIONS, USERS, CATALOG, COURSES, LOGS }
+enum class AdminSection { DASHBOARD, APPLICATIONS, USERS, CATALOG, COURSES, LOGS, LIBRARY, PROFILE, NOTIFICATIONS, BROADCAST }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,14 +53,32 @@ fun AdminPanelScreen(
     onBack: () -> Unit,
     onNavigateToUserDetails: (String) -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToBookDetails: (String) -> Unit,
+    onExploreMore: () -> Unit = {},
+    allBooks: List<Book>,
     currentTheme: Theme,
     onThemeChange: (Theme) -> Unit,
     onLogoutClick: () -> Unit = {},
+    initialSection: String? = null,
     viewModel: AdminViewModel = viewModel(factory = AdminViewModelFactory(
         db = AppDatabase.getDatabase(LocalContext.current)
     ))
 ) {
-    val currentSection by viewModel.currentSection.collectAsState()
+    val currentSectionState by viewModel.currentSection.collectAsState()
+    val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
+    
+    // Process initial section
+    LaunchedEffect(initialSection) {
+        if (initialSection != null) {
+            try { 
+                val target = AdminSection.valueOf(initialSection)
+                if (currentSectionState != target) {
+                    viewModel.setSection(target)
+                }
+            } catch (e: Exception) { }
+        }
+    }
+
     var selectedAppForReview by remember { mutableStateOf<AdminApplicationItem?>(null) }
     var selectedCourseForModules by remember { mutableStateOf<Course?>(null) }
     var selectedModuleForTasks by remember { mutableStateOf<ModuleContent?>(null) }
@@ -68,13 +93,17 @@ fun AdminPanelScreen(
 
     val isShowingOverlay = selectedAppForReview != null || selectedCourseForModules != null || selectedModuleForTasks != null
 
-    val sectionTitle = when(currentSection) {
+    val sectionTitle = when(currentSectionState) {
         AdminSection.DASHBOARD -> "Admin Hub"
         AdminSection.APPLICATIONS -> "Enrolment Hub"
         AdminSection.USERS -> "User Directory"
         AdminSection.CATALOG -> "Product Inventory"
         AdminSection.COURSES -> "Course Catalog"
         AdminSection.LOGS -> "System Logs"
+        AdminSection.LIBRARY -> "My Library"
+        AdminSection.PROFILE -> "My Profile"
+        AdminSection.NOTIFICATIONS -> "Notifications"
+        AdminSection.BROADCAST -> "Broadcast Center"
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -93,28 +122,34 @@ fun AdminPanelScreen(
                         },
                         navigationIcon = {
                             AdaptiveBrandedLogo(
-                                model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
+                                model = formatAssetUrl("images/media/GlyndwrUniversity.jpg"),
                                 contentDescription = "University Logo",
                                 logoSize = 32.dp,
                                 modifier = Modifier.padding(start = 12.dp)
                             )
                         },
                         actions = {
-                            if (currentSection == AdminSection.CATALOG) {
+                            if (currentSectionState == AdminSection.CATALOG) {
                                 IconButton(onClick = { showAddProductDialog = true }) {
                                     Icon(Icons.Default.Add, "Add Product")
                                 }
                             }
-                            if (currentSection == AdminSection.COURSES) {
+                            if (currentSectionState == AdminSection.COURSES) {
                                 IconButton(onClick = { showAddCourseDialog = true }) {
                                     Icon(Icons.Default.Add, "Add Course")
                                 }
                             }
-                            if (currentSection == AdminSection.USERS) {
+                            if (currentSectionState == AdminSection.USERS) {
                                 IconButton(onClick = { showAddUserDialog = true }) {
                                     Icon(Icons.Default.Add, "Add User")
                                 }
                             }
+                            
+                            ProNotificationIcon(
+                                count = unreadCount, 
+                                isDarkTheme = isDarkTheme, 
+                                onClick = { viewModel.setSection(AdminSection.NOTIFICATIONS) }
+                            )
                             
                             if (isTablet) {
                                 ThemeToggleButton(
@@ -131,11 +166,23 @@ fun AdminPanelScreen(
                                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, shape = RoundedCornerShape(16.dp), containerColor = MaterialTheme.colorScheme.surface) {
                                     ProMenuHeader("ADMIN HUB")
                                     DropdownMenuItem(
-                                        text = { Text("Edit Profile") },
-                                        onClick = { showMenu = false; onNavigateToProfile() },
-                                        leadingIcon = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary) }
+                                        text = { Text("My Profile") },
+                                        onClick = { showMenu = false; viewModel.setSection(AdminSection.PROFILE) },
+                                        leadingIcon = { Icon(Icons.Default.AccountCircle, null, tint = MaterialTheme.colorScheme.primary) }
                                     )
                                     
+                                    DropdownMenuItem(
+                                        text = { Text(AppConstants.TITLE_PROFILE_SETTINGS) },
+                                        onClick = { showMenu = false; onNavigateToProfile() },
+                                        leadingIcon = { Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary) }
+                                    )
+                                    
+                                    DropdownMenuItem(
+                                        text = { Text("My Library") },
+                                        onClick = { showMenu = false; viewModel.setSection(AdminSection.LIBRARY) },
+                                        leadingIcon = { Icon(Icons.Default.LibraryBooks, null, tint = MaterialTheme.colorScheme.primary) }
+                                    )
+
                                     DropdownMenuItem(
                                         text = { Text("Theme Options") },
                                         onClick = { showMenu = false; showThemeSubMenu = true },
@@ -163,24 +210,23 @@ fun AdminPanelScreen(
                     )
                 },
                 bottomBar = {
-                    // Optimized compact Admin Navigation Bar
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                         tonalElevation = 0.dp,
                         windowInsets = WindowInsets(0, 0, 0, 0),
                         modifier = Modifier.height(80.dp)
                     ) {
-                        AdminNavButton(selected = currentSection == AdminSection.DASHBOARD, onClick = { viewModel.setSection(AdminSection.DASHBOARD) }, icon = Icons.Default.Dashboard, label = "Home")
-                        AdminNavButton(selected = currentSection == AdminSection.APPLICATIONS, onClick = { viewModel.setSection(AdminSection.APPLICATIONS) }, icon = Icons.AutoMirrored.Filled.Assignment, label = "Apps")
-                        AdminNavButton(selected = currentSection == AdminSection.USERS, onClick = { viewModel.setSection(AdminSection.USERS) }, icon = Icons.Default.People, label = "Users")
-                        AdminNavButton(selected = currentSection == AdminSection.COURSES, onClick = { viewModel.setSection(AdminSection.COURSES) }, icon = Icons.Default.School, label = "Courses")
-                        AdminNavButton(selected = currentSection == AdminSection.CATALOG, onClick = { viewModel.setSection(AdminSection.CATALOG) }, icon = Icons.AutoMirrored.Filled.LibraryBooks, label = "Inventory")
+                        AdminNavButton(selected = currentSectionState == AdminSection.DASHBOARD, onClick = { viewModel.setSection(AdminSection.DASHBOARD) }, icon = Icons.Default.Dashboard, label = "Home")
+                        AdminNavButton(selected = currentSectionState == AdminSection.APPLICATIONS, onClick = { viewModel.setSection(AdminSection.APPLICATIONS) }, icon = Icons.AutoMirrored.Filled.Assignment, label = "Apps")
+                        AdminNavButton(selected = currentSectionState == AdminSection.USERS, onClick = { viewModel.setSection(AdminSection.USERS) }, icon = Icons.Default.People, label = "Users")
+                        AdminNavButton(selected = currentSectionState == AdminSection.COURSES, onClick = { viewModel.setSection(AdminSection.COURSES) }, icon = Icons.Default.School, label = "Courses")
+                        AdminNavButton(selected = currentSectionState == AdminSection.CATALOG, onClick = { viewModel.setSection(AdminSection.CATALOG) }, icon = Icons.AutoMirrored.Filled.LibraryBooks, label = "Inventory")
                     }
                 }
             ) { padding ->
                 Column(modifier = Modifier.padding(padding).fillMaxSize()) {
                     AnimatedContent(
-                        targetState = currentSection,
+                        targetState = currentSectionState,
                         transitionSpec = { fadeIn() togetherWith fadeOut() },
                         label = "AdminSectionTransition"
                     ) { section ->
@@ -207,6 +253,38 @@ fun AdminPanelScreen(
                                 onAddProductDialogConsumed = { showAddProductDialog = false }
                             )
                             AdminSection.LOGS -> UsersLogsTab(viewModel)
+                            AdminSection.LIBRARY -> AdminLibraryScreen(
+                                allBooks = allBooks,
+                                onNavigateToDetails = onNavigateToBookDetails,
+                                onExploreMore = onExploreMore,
+                                isDarkTheme = isDarkTheme
+                            )
+                            AdminSection.PROFILE -> AdminDetailScreen(
+                                viewModel = viewModel,
+                                onNavigateToSettings = onNavigateToProfile
+                            )
+                            AdminSection.NOTIFICATIONS -> {
+                                NotificationScreen(
+                                    onNavigateToItem = { viewModel.setSection(AdminSection.CATALOG) },
+                                    onNavigateToInvoice = { _ -> }, 
+                                    onNavigateToMessages = { viewModel.setSection(AdminSection.DASHBOARD) },
+                                    onBack = { viewModel.setSection(AdminSection.DASHBOARD) },
+                                    isDarkTheme = isDarkTheme
+                                )
+                            }
+                            AdminSection.BROADCAST -> {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    BroadcastAnnouncementDialog(
+                                        viewModel = viewModel,
+                                        onDismiss = { viewModel.setSection(AdminSection.DASHBOARD) },
+                                        onSend = { title, message, roles, specificUserId ->
+                                            viewModel.sendBroadcastToRoleOrUser(title, message, roles, specificUserId) { _ ->
+                                                viewModel.setSection(AdminSection.DASHBOARD)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

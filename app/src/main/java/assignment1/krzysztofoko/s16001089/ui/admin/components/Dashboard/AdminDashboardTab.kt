@@ -43,13 +43,9 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
     val localAdmin = users.find { it.email == currentUser?.email }
 
     var showProjectDetailsPopup by remember { mutableStateOf(false) }
-    var showBroadcastDialog by remember { mutableStateOf(false) }
     var showGlobalDiscountDialog by remember { mutableStateOf(false) }
     var showSaveSuccessPopup by remember { mutableStateOf(false) }
     
-    var broadcastResultCount by remember { mutableIntStateOf(0) }
-    var showBroadcastSuccessPopup by remember { mutableStateOf(false) }
-
     AdaptiveScreenContainer(
         maxWidth = AdaptiveWidths.Wide
     ) { isTablet ->
@@ -82,6 +78,7 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.padding(top = 4.dp)
                                 ) {
+                                    @Suppress("DEPRECATION")
                                     Text(
                                         "ADMIN", 
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
@@ -103,7 +100,6 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             StatCard(modifier = Modifier.weight(1f), title = "Users", value = users.size.toString(), icon = Icons.Default.People, color = MaterialTheme.colorScheme.primary, onClick = { viewModel.setSection(AdminSection.USERS) })
                             
-                            // Optimization for visibility in light mode: Using a deeper Amber/Orange color for Pending
                             val pendingColor = if (isDarkTheme) Color(0xFFFBC02D) else Color(0xFFF57C00)
                             
                             StatCard(
@@ -168,7 +164,10 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.1f))
                                 AdminActionButton(Icons.Default.Security, "System Logs") { viewModel.setSection(AdminSection.LOGS) }
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.1f))
-                                AdminActionButton(Icons.Default.Mail, "Broadcast Announcement") { showBroadcastDialog = true }
+                                AdminActionButton(Icons.Default.Mail, "Broadcast Announcement") { 
+                                    // FIXED: Navigate to section instead of showing dialog to prevent layout breakage
+                                    viewModel.setSection(AdminSection.BROADCAST) 
+                                }
                             }
                         }
                     }
@@ -196,30 +195,6 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
 
     AppPopups.AdminSaveSuccess(show = showSaveSuccessPopup, onDismiss = { showSaveSuccessPopup = false })
     AppPopups.AdminProjectDetails(show = showProjectDetailsPopup, onDismiss = { showProjectDetailsPopup = false })
-
-    if (showBroadcastDialog) {
-        BroadcastAnnouncementDialog(
-            onDismiss = { showBroadcastDialog = false },
-            onSend = { title, message, targets ->
-                viewModel.sendBroadcast(title, message, targets) { count ->
-                    broadcastResultCount = count
-                    showBroadcastDialog = false
-                    showBroadcastSuccessPopup = true
-                }
-            }
-        )
-    }
-    
-    if (showBroadcastSuccessPopup) {
-        AlertDialog(
-            onDismissRequest = { showBroadcastSuccessPopup = false },
-            icon = { Icon(Icons.Default.Campaign, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(48.dp)) },
-            title = { Text("Announcement Sent", fontWeight = FontWeight.Bold) },
-            text = { Text("Broadcast delivered to $broadcastResultCount targeted users successfully.", textAlign = TextAlign.Center) },
-            confirmButton = { Button(onClick = { showBroadcastSuccessPopup = false }) { Text("Done") } },
-            shape = RoundedCornerShape(28.dp)
-        )
-    }
 }
 
 @Composable
