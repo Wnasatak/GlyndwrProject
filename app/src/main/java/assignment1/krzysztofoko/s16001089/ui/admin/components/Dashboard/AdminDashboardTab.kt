@@ -26,7 +26,7 @@ import com.google.firebase.auth.FirebaseAuth
 
 /**
  * Admin Dashboard Tab.
- * Now fully adaptive using AdaptiveScreenContainer and optimized for larger screens.
+ * Fully refactored to use the centralized Glyndŵr Pro Adaptive Token system.
  */
 @Composable
 fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
@@ -51,28 +51,38 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
     ) { isTablet ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            contentPadding = PaddingValues(
+                horizontal = AdaptiveSpacing.contentPadding(), 
+                vertical = AdaptiveSpacing.medium()
+            ),
+            verticalArrangement = Arrangement.spacedBy(AdaptiveSpacing.medium())
         ) {
             // --- Admin Profile Overview ---
             item {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                     Card(
                         modifier = Modifier.adaptiveWidth(AdaptiveWidths.Medium),
-                        shape = RoundedCornerShape(28.dp),
+                        shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)),
                         border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Row(
-                            modifier = Modifier.padding(20.dp),
+                            modifier = Modifier.padding(AdaptiveSpacing.medium()),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            UserAvatar(photoUrl = localAdmin?.photoUrl ?: currentUser?.photoUrl?.toString(), modifier = Modifier.size(64.dp))
-                            Spacer(Modifier.width(16.dp))
+                            UserAvatar(
+                                photoUrl = localAdmin?.photoUrl ?: currentUser?.photoUrl?.toString(), 
+                                modifier = Modifier.size(AdaptiveDimensions.LargeAvatar)
+                            )
+                            Spacer(Modifier.width(AdaptiveSpacing.small()))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Welcome Back,", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                                Text(localAdmin?.name ?: currentUser?.displayName ?: "Administrator", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                                Text("Welcome Back,", style = AdaptiveTypography.caption(), color = Color.Gray)
+                                Text(
+                                    text = localAdmin?.name ?: currentUser?.displayName ?: "Administrator", 
+                                    style = AdaptiveTypography.headline(), 
+                                    fontWeight = FontWeight.Black
+                                )
                                 Surface(
                                     color = MaterialTheme.colorScheme.primary,
                                     shape = RoundedCornerShape(8.dp),
@@ -80,9 +90,9 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
                                 ) {
                                     @Suppress("DEPRECATION")
                                     Text(
-                                        "ADMIN", 
+                                        text = "ADMIN", 
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                        style = MaterialTheme.typography.labelSmall,
+                                        style = AdaptiveTypography.label(),
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White
                                     )
@@ -96,8 +106,8 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
             // --- System Statistics Rows ---
             item {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.adaptiveWidth(AdaptiveWidths.Medium), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(modifier = Modifier.adaptiveWidth(AdaptiveWidths.Medium), verticalArrangement = Arrangement.spacedBy(AdaptiveSpacing.small())) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(AdaptiveSpacing.small())) {
                             StatCard(modifier = Modifier.weight(1f), title = "Users", value = users.size.toString(), icon = Icons.Default.People, color = MaterialTheme.colorScheme.primary, onClick = { viewModel.setSection(AdminSection.USERS) })
                             
                             val pendingColor = if (isDarkTheme) Color(0xFFFBC02D) else Color(0xFFF57C00)
@@ -111,7 +121,7 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
                                 onClick = { viewModel.setSection(AdminSection.APPLICATIONS) }
                             )
                         }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(AdaptiveSpacing.small())) {
                             StatCard(modifier = Modifier.weight(1f), title = "Catalog", value = (books.size + courses.size).toString(), icon = Icons.Default.Inventory, color = Color(0xFF4CAF50), onClick = { viewModel.setSection(AdminSection.CATALOG) })
                             StatCard(modifier = Modifier.weight(1f), title = "Live Apps", value = approvedApps.toString(), icon = Icons.Default.Assignment, color = Color(0xFF2196F3), onClick = { viewModel.setSection(AdminSection.APPLICATIONS) })
                         }
@@ -124,18 +134,20 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.adaptiveWidth(AdaptiveWidths.Medium)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text("PROJECT DETAILS", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp))
-                            TextButton(onClick = { showProjectDetailsPopup = true }) { Text("View Full Details", style = MaterialTheme.typography.labelSmall) }
+                            Text("PROJECT DETAILS", style = AdaptiveTypography.label(), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp))
+                            TextButton(onClick = { showProjectDetailsPopup = true }) { 
+                                Text("View Full Details", style = AdaptiveTypography.hint()) 
+                            }
                         }
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(AdaptiveSpacing.extraSmall()))
                         Card(
                             modifier = Modifier.fillMaxWidth(), 
-                            shape = RoundedCornerShape(24.dp), 
+                            shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()), 
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)), 
                             border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
-                            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Column(modifier = Modifier.padding(AdaptiveSpacing.medium()), verticalArrangement = Arrangement.spacedBy(AdaptiveSpacing.small())) {
                                 ProjectInfoRow(Icons.Default.School, "Institution", AppConstants.INSTITUTION)
                                 ProjectInfoRow(Icons.Default.Code, "Developer", AppConstants.DEVELOPER_NAME)
                                 ProjectInfoRow(Icons.Default.Badge, "Student ID", AppConstants.STUDENT_ID)
@@ -150,22 +162,21 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
             item {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.adaptiveWidth(AdaptiveWidths.Medium)) {
-                        Text("ADMIN CONTROLS", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp))
-                        Spacer(Modifier.height(8.dp))
+                        Text("ADMIN CONTROLS", style = AdaptiveTypography.label(), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp))
+                        Spacer(Modifier.height(AdaptiveSpacing.extraSmall()))
                         Card(
                             modifier = Modifier.fillMaxWidth(), 
-                            shape = RoundedCornerShape(24.dp), 
+                            shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()), 
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)), 
                             border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
+                            Column(modifier = Modifier.padding(AdaptiveSpacing.small())) {
                                 AdminActionButton(Icons.Default.Percent, "Global Discount Config") { showGlobalDiscountDialog = true }
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.1f))
                                 AdminActionButton(Icons.Default.Security, "System Logs") { viewModel.setSection(AdminSection.LOGS) }
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.1f))
                                 AdminActionButton(Icons.Default.Mail, "Broadcast Announcement") { 
-                                    // FIXED: Navigate to section instead of showing dialog to prevent layout breakage
                                     viewModel.setSection(AdminSection.BROADCAST) 
                                 }
                             }
@@ -174,7 +185,7 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
                 }
             }
 
-            item { Spacer(Modifier.height(100.dp)) }
+            item { Spacer(Modifier.height(AdaptiveSpacing.large())) }
         }
     }
 
@@ -201,15 +212,16 @@ fun AdminDashboardTab(viewModel: AdminViewModel, isDarkTheme: Boolean) {
 fun StatCard(modifier: Modifier, title: String, value: String, icon: ImageVector, color: Color, onClick: () -> Unit = {}) {
     Card(
         modifier = modifier.clickable { onClick() }, 
-        shape = RoundedCornerShape(24.dp), 
+        shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()), 
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.12f)), 
         border = BorderStroke(1.2.dp, color.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.Start) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(24.dp)); Spacer(Modifier.height(12.dp))
-            Text(text = value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = color)
-            Text(text = title, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+        Column(modifier = Modifier.padding(AdaptiveSpacing.small()), horizontalAlignment = Alignment.Start) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(AdaptiveDimensions.SmallIconSize))
+            Spacer(Modifier.height(AdaptiveSpacing.extraSmall()))
+            Text(text = value, style = AdaptiveTypography.headline(), fontWeight = FontWeight.Black, color = color)
+            Text(text = title, style = AdaptiveTypography.caption(), color = Color.Gray)
         }
     }
 }
@@ -218,19 +230,19 @@ fun StatCard(modifier: Modifier, title: String, value: String, icon: ImageVector
 fun ProjectInfoRow(icon: ImageVector, label: String, value: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(AdaptiveSpacing.small()))
         Column {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            Text(label, style = AdaptiveTypography.hint(), color = Color.Gray)
+            Text(value, style = AdaptiveTypography.body(), fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
 fun AdminActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 8.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp))
-        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium); Spacer(Modifier.weight(1f))
+    Row(modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = AdaptiveSpacing.extraSmall(), horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(AdaptiveSpacing.small()))
+        Text(label, style = AdaptiveTypography.body(), fontWeight = FontWeight.Medium); Spacer(Modifier.weight(1f))
         Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
     }
 }

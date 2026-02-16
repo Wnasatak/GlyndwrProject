@@ -35,6 +35,7 @@ import kotlin.math.abs
 
 /**
  * Extracted sections for the Dashboard to keep DashboardScreen.kt clean.
+ * Refactored to use centralized Design Tokens for adaptive spacing and typography.
  */
 
 fun LazyGridScope.dashboardHeaderSection(
@@ -45,7 +46,7 @@ fun LazyGridScope.dashboardHeaderSection(
 ) {
     item(key = "header_section", span = { GridItemSpan(this.maxLineSpan) }) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-            Box(modifier = if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth()) {
+            Box(modifier = if (isTablet) Modifier.widthIn(max = AdaptiveWidths.Wide) else Modifier.fillMaxWidth()) {
                 DashboardHeader(
                     name = user?.name ?: AppConstants.TEXT_STUDENT,
                     photoUrl = user?.photoUrl,
@@ -69,22 +70,22 @@ fun LazyGridScope.applicationsSection(
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                 Card(
                     modifier = Modifier
-                        .then(if (isTablet) Modifier.widthIn(max = 580.dp) else Modifier.fillMaxWidth())
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .then(if (isTablet) Modifier.widthIn(max = AdaptiveWidths.Wide) else Modifier.fillMaxWidth())
+                        .padding(horizontal = AdaptiveSpacing.contentPadding(), vertical = AdaptiveSpacing.small())
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = onClick
                         ),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius())
                 ) {
-                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(modifier = Modifier.padding(AdaptiveSpacing.medium()), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.AutoMirrored.Filled.Assignment, null, tint = MaterialTheme.colorScheme.secondary)
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(AdaptiveSpacing.small()))
                         Column {
-                            Text(AppConstants.TITLE_MY_APPLICATIONS, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                            Text("Track your enrollment status", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
+                            Text(AppConstants.TITLE_MY_APPLICATIONS, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary, style = AdaptiveTypography.sectionHeader())
+                            Text("Track your enrollment status", style = AdaptiveTypography.caption(), color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
                         }
                         Spacer(Modifier.weight(1f))
                         Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.secondary)
@@ -109,7 +110,7 @@ fun LazyGridScope.enrolledCoursesSection(
             val isLive = activeLiveSessions.any { it.courseId == enrolledPaidCourse.id }
             item(key = "paid_course_${enrolledPaidCourse.id}", span = { GridItemSpan(this.maxLineSpan) }) { 
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth()) {
+                    Box(modifier = if (isTablet) Modifier.widthIn(max = AdaptiveWidths.Wide) else Modifier.fillMaxWidth()) {
                         EnrolledCourseHeader(course = enrolledPaidCourse, isLive = isLive, onEnterClassroom = onEnterClassroom)
                     }
                 }
@@ -119,7 +120,7 @@ fun LazyGridScope.enrolledCoursesSection(
         items(enrolledFreeCourses, key = { "free_course_${it.id}" }, span = { GridItemSpan(this.maxLineSpan) }) { freeCourse ->
             val isLive = activeLiveSessions.any { it.courseId == freeCourse.id }
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                Box(modifier = if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth()) {
+                Box(modifier = if (isTablet) Modifier.widthIn(max = AdaptiveWidths.Wide) else Modifier.fillMaxWidth()) {
                     FreeCourseHeader(course = freeCourse, isLive = isLive, onEnterClassroom = onEnterClassroom)
                 }
             }
@@ -154,7 +155,7 @@ fun LazyGridScope.activityRowsSection(
     item(key = "reading_header", span = { GridItemSpan(this.maxLineSpan) }) { SectionHeader(AppConstants.TITLE_CONTINUE_READING) }
     item(key = "reading_row", span = { GridItemSpan(this.maxLineSpan) }) { 
         if (lastViewed.isNotEmpty()) GrowingLazyRow(lastViewed, icon = Icons.Default.History, onBookClick = onBookClick)
-        else EmptySectionPlaceholder(AppConstants.MSG_NO_RECENT_REVIEWS) 
+        else EmptySectionPlaceholder(AppConstants.MSG_NO_RECENTLY_VIEWED) 
     }
 
     item(key = "recent_header", span = { GridItemSpan(this.maxLineSpan) }) { SectionHeader(AppConstants.TITLE_RECENT_ACTIVITY) }
@@ -176,20 +177,18 @@ fun LazyGridScope.collectionControlsSection(
     filterOptions: List<String>,
     filterListState: LazyListState,
     infiniteCount: Int,
-    onFilterClick: (String) -> Unit,
-    onNavigateToClassroom: () -> Unit = {},
-    onNavigateToStore: () -> Unit = {}
+    onFilterClick: (String) -> Unit
 ) {
     item(key = "collection_controls", span = { GridItemSpan(this.maxLineSpan) }) {
         Column(modifier = Modifier.fillMaxWidth()) {
             SectionHeader(AppConstants.TITLE_YOUR_COLLECTION)
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(AdaptiveSpacing.small()))
 
             if (isTablet) {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
+                    contentPadding = PaddingValues(horizontal = AdaptiveSpacing.medium(), vertical = AdaptiveSpacing.small()),
+                    horizontalArrangement = Arrangement.spacedBy(AdaptiveSpacing.medium(), Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     items(filterOptions) { filter ->
@@ -206,8 +205,8 @@ fun LazyGridScope.collectionControlsSection(
             } else {
                 LazyRow(
                     state = filterListState,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(horizontal = AdaptiveSpacing.contentPadding(), vertical = AdaptiveSpacing.small()),
+                    horizontalArrangement = Arrangement.spacedBy(AdaptiveSpacing.small()),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     items(infiniteCount) { index ->
@@ -269,7 +268,7 @@ fun LazyGridScope.ownedBooksGrid(
 
             BookItemCard(
                 book = book,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = AdaptiveSpacing.contentPadding(), vertical = AdaptiveSpacing.small()),
                 onClick = { onBookClick(book) },
                 imageOverlay = {
                     if (book.isAudioBook) {
@@ -302,7 +301,7 @@ fun LazyGridScope.ownedBooksGrid(
                                         leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) }
                                     )
                                 }
-                                if (book.mainCategory == AppConstants.CAT_GEAR) {
+                                if (book.mainCategory == AppConstants.CAT_GEAR || (book.mainCategory == AppConstants.CAT_BOOKS && book.price <= 0.0)) {
                                     DropdownMenuItem(
                                         text = { Text(AppConstants.BTN_PICKUP_INFO) },
                                         onClick = { showItemMenu = false; onPickupInfo(book) },
@@ -322,9 +321,17 @@ fun LazyGridScope.ownedBooksGrid(
                 },
                 bottomContent = {
                     Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                        val label = when { isPending -> "REVIEWING"; isAlreadyEnrolledInOther -> "ALREADY ENROLLED"; isApproved && !isFullyOwned -> "APPROVED"; isRejected -> "DECLINED"; else -> AppConstants.getItemStatusLabel(book) }
+                        val label = when { 
+                            isPending -> "REVIEWING"
+                            isAlreadyEnrolledInOther -> "ALREADY ENROLLED"
+                            isApproved && !isFullyOwned -> "APPROVED"
+                            isRejected -> "DECLINED"
+                            book.mainCategory == AppConstants.CAT_BOOKS && book.price <= 0.0 -> AppConstants.LABEL_PICKED_UP
+                            else -> AppConstants.getItemStatusLabel(book) 
+                        }
                         val color = when { isPending -> Color(0xFFFBC02D); isAlreadyEnrolledInOther -> MaterialTheme.colorScheme.secondary; isApproved && !isFullyOwned -> Color(0xFF4CAF50); isRejected -> Color(0xFFF44336); else -> MaterialTheme.colorScheme.primary }
                         Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, color.copy(alpha = 0.3f))) {
+                            @Suppress("DEPRECATION")
                             Text(text = label, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.ExtraBold)
                         }
                     }

@@ -22,6 +22,7 @@ import assignment1.krzysztofoko.s16001089.ui.classroom.components.Modules.Classr
 import assignment1.krzysztofoko.s16001089.ui.classroom.components.Performance.ClassroomPerformanceTab
 import assignment1.krzysztofoko.s16001089.ui.classroom.components.Broadcasts.ClassroomBroadcastsTab
 import assignment1.krzysztofoko.s16001089.ui.classroom.components.Broadcasts.BroadcastReplayView
+import assignment1.krzysztofoko.s16001089.ui.classroom.components.Broadcasts.LiveStreamView
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
 
@@ -64,7 +65,7 @@ fun ClassroomScreen(
             LiveStreamView(
                 session = activeSession!!,
                 chatMessages = liveChatMessages,
-                onSendMessage = { viewModel.sendLiveChatMessage(it) },
+                onSendMessage = { msg -> viewModel.sendLiveChatMessage(msg) },
                 onClose = { viewModel.leaveLiveSession() }
             )
         } else if (selectedBroadcast != null) {

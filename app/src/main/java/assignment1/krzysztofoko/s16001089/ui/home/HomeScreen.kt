@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Primary Discovery Screen (Home).
- * Optimized for both phone (list) and tablet (centered grid) using centralized Adaptive utilities.
+ * Refactored to fully utilize the Glyndŵr Pro Adaptive Token system.
  */
 @Composable
 fun HomeScreen(
@@ -68,7 +68,6 @@ fun HomeScreen(
     val isTablet = isTablet()
     val columns = if (isTablet) 2 else 1
 
-    // Role detection logic with null-safety to prevent flickering
     val userRole = uiState.localUser?.role?.lowercase()
     val isAdmin = userRole == "admin"
     val isTutor = userRole in listOf("teacher", "tutor")
@@ -90,7 +89,6 @@ fun HomeScreen(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
-                // FLICKER PROTECTION: Only render the TopBar once we know if the user has a profile or is a guest
                 if (!isLoggedIn || uiState.localUser != null) {
                     HomeTopBar(
                         isSearchVisible = uiState.isSearchVisible,
@@ -123,19 +121,19 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxHeight()
                             .padding(paddingValues),
-                        contentPadding = PaddingValues(bottom = 32.dp),
-                        horizontalArrangement = if (screenIsTablet) Arrangement.spacedBy(16.dp) else Arrangement.Start
+                        contentPadding = PaddingValues(bottom = AdaptiveSpacing.large()),
+                        horizontalArrangement = if (screenIsTablet) Arrangement.spacedBy(AdaptiveSpacing.small()) else Arrangement.Start
                     ) {
                         if (screenIsTablet) {
                             item(span = { GridItemSpan(this.maxLineSpan) }) {
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(AdaptiveSpacing.small()))
                             }
                         }
 
-                        // WELCOME BANNER: Flicker-protected
+                        // WELCOME BANNER: Integrated Adaptive Widths
                         item(span = { GridItemSpan(this.maxLineSpan) }) { 
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                                Box(modifier = if (screenIsTablet) Modifier.widthIn(max = 550.dp).padding(vertical = 8.dp) else Modifier.fillMaxWidth()) {
+                                Box(modifier = if (screenIsTablet) Modifier.widthIn(max = AdaptiveWidths.HeroImage).padding(vertical = AdaptiveSpacing.small()) else Modifier.fillMaxWidth()) {
                                     if (!isLoggedIn) {
                                         PromotionBanner(currentTheme) { 
                                             viewModel.setSearchVisible(false)
@@ -160,6 +158,7 @@ fun HomeScreen(
                             }
                         }
 
+                        // ENROLLMENT SECTION: Unified Adaptive Spacing
                         if (isLoggedIn) {
                             val enrolledPaidCourse = uiState.allBooks.find { 
                                 it.mainCategory == AppConstants.CAT_COURSES && uiState.purchasedIds.contains(it.id) && it.price > 0.0
@@ -172,7 +171,7 @@ fun HomeScreen(
                                 val isLive = uiState.activeLiveSessions.any { it.courseId == enrolledPaidCourse.id }
                                 item(span = { GridItemSpan(this.maxLineSpan) }) {
                                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                                        Box(modifier = if (screenIsTablet) Modifier.widthIn(max = 550.dp) else Modifier.fillMaxWidth()) {
+                                        Box(modifier = if (screenIsTablet) Modifier.widthIn(max = AdaptiveWidths.HeroImage) else Modifier.fillMaxWidth()) {
                                             EnrolledCourseHeader(
                                                 course = enrolledPaidCourse,
                                                 isLive = isLive,
@@ -188,7 +187,7 @@ fun HomeScreen(
                             items(enrolledFreeCourses, span = { GridItemSpan(this.maxLineSpan) }) { freeCourse ->
                                 val isLive = uiState.activeLiveSessions.any { it.courseId == freeCourse.id }
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                                    Box(modifier = if (screenIsTablet) Modifier.widthIn(max = 550.dp) else Modifier.fillMaxWidth()) {
+                                    Box(modifier = if (screenIsTablet) Modifier.widthIn(max = AdaptiveWidths.HeroImage) else Modifier.fillMaxWidth()) {
                                         FreeCourseHeader(
                                             course = freeCourse,
                                             isLive = isLive,
@@ -201,6 +200,7 @@ fun HomeScreen(
                             }
                         }
                         
+                        // FILTERS: Center-aligned using Adaptive Spacing
                         item(span = { GridItemSpan(this.maxLineSpan) }) { 
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                                 MainCategoryFilterBar(
@@ -221,6 +221,7 @@ fun HomeScreen(
                             }
                         }
 
+                        // MAIN CATALOG GRID
                         if (isLoading || uiState.isLoading) {
                             item(span = { GridItemSpan(this.maxLineSpan) }) { HomeLoadingState() }
                         } else if (error != null || uiState.error != null) {
@@ -264,7 +265,7 @@ fun HomeScreen(
                                 }
                             }
                         }
-                        item(span = { GridItemSpan(this.maxLineSpan) }) { Spacer(modifier = Modifier.height(32.dp)) }
+                        item(span = { GridItemSpan(this.maxLineSpan) }) { Spacer(modifier = Modifier.height(AdaptiveSpacing.medium())) }
                     }
                 }
 

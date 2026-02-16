@@ -3,7 +3,6 @@ package assignment1.krzysztofoko.s16001089.ui.admin.components.Dashboard
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -24,40 +22,40 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
 import assignment1.krzysztofoko.s16001089.ui.components.*
 
 /**
- * A professional, high-impact dialog for sending system-wide announcements.
- * Fully optimized for smartphone display sizes with robust action handling.
+ * A professional, high-impact component for sending system-wide announcements.
+ * Refactored for High Contrast: Ensures visibility in custom themes (like Light Green) 
+ * by avoiding tonal tints and using sharp outlines.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BroadcastAnnouncementDialog(
     viewModel: AdminViewModel,
     onDismiss: () -> Unit,
-    onSend: (String, String, List<String>, String?) -> Unit // title, message, roles, specificUserId
+    onSend: (String, String, List<String>, String?) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
     
-    val targetOptions = listOf(
-        BroadcastTarget("All", "Everyone", Icons.Default.Public),
-        BroadcastTarget("Students", "Enrolled students", Icons.Default.School),
-        BroadcastTarget("Teachers", "Faculty members", Icons.Default.Person),
-        BroadcastTarget("Admins", "System admins", Icons.Default.AdminPanelSettings),
-        BroadcastTarget("Users", "Standard users", Icons.Default.PeopleOutline),
-        BroadcastTarget("Specific", "Single individual", Icons.Default.PersonSearch)
-    )
+    val targetOptions = remember {
+        listOf(
+            BroadcastTarget("All", "Everyone", Icons.Default.Public),
+            BroadcastTarget("Students", "Enrolled students", Icons.Default.School),
+            BroadcastTarget("Teachers", "Faculty members", Icons.Default.Person),
+            BroadcastTarget("Admins", "System admins", Icons.Default.AdminPanelSettings),
+            BroadcastTarget("Users", "Standard users", Icons.Default.PeopleOutline),
+            BroadcastTarget("Specific", "Single individual", Icons.Default.PersonSearch)
+        )
+    }
     
     var selectedTargetId by remember { mutableStateOf<String?>("All") }
     var isMenuExpanded by remember { mutableStateOf(false) }
     
-    // User Search State
     var userSearchQuery by remember { mutableStateOf("") }
     val allUsers by viewModel.allUsers.collectAsState()
     var selectedUser by remember { mutableStateOf<UserLocal?>(null) }
@@ -67,62 +65,65 @@ fun BroadcastAnnouncementDialog(
         else allUsers.filter { 
             it.name.contains(userSearchQuery, ignoreCase = true) || 
             it.email.contains(userSearchQuery, ignoreCase = true) 
-        }.take(3) // Smaller list for mobile
+        }.take(3)
     }
 
-    val selectedTarget = targetOptions.find { it.id == selectedTargetId }
+    val selectedTarget = remember(selectedTargetId) { targetOptions.find { it.id == selectedTargetId } }
     val isTablet = isTablet()
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
         Surface(
             modifier = Modifier
                 .widthIn(max = 500.dp)
                 .fillMaxWidth(0.94f)
                 .wrapContentHeight()
-                .padding(vertical = 16.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 1f),
-            tonalElevation = 12.dp,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                .padding(vertical = AdaptiveSpacing.medium())
+                .animateContentSize(),
+            shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
+            // HIGH CONTRAST FIX: Use pure surface without tonal elevation to avoid "muddy" green tints.
+            // Added real shadowElevation to make it pop from the background.
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            shadowElevation = 6.dp,
+            // HIGH CONTRAST FIX: Increased border alpha and used 'outline' for a sharper edge.
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
         ) {
             Column(
                 modifier = Modifier
-                    .padding(if (isTablet) 24.dp else 16.dp)
+                    .padding(AdaptiveSpacing.medium())
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // --- HEADER ---
                 Surface(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                     shape = CircleShape,
-                    modifier = Modifier.size(if (isTablet) 56.dp else 44.dp)
+                    modifier = Modifier.size(AdaptiveDimensions.MediumAvatar)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Campaign, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(if (isTablet) 32.dp else 24.dp))
+                        Icon(Icons.Default.Campaign, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(AdaptiveDimensions.SmallIconSize))
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(AdaptiveSpacing.small()))
                 Text(
                     text = "Broadcast Center", 
                     fontWeight = FontWeight.Black, 
-                    style = if (isTablet) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge
+                    style = AdaptiveTypography.headline(),
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Urgent group communication tool", 
-                    style = MaterialTheme.typography.labelSmall, 
-                    color = Color.Gray,
+                    style = AdaptiveTypography.hint(), 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
                 )
                 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(AdaptiveSpacing.medium()))
 
                 // --- AUDIENCE SELECTOR ---
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("TARGET AUDIENCE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.height(8.dp))
+                    Text("TARGET AUDIENCE", style = AdaptiveTypography.label(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(AdaptiveSpacing.extraSmall()))
                     
                     ExposedDropdownMenuBox(
                         expanded = isMenuExpanded,
@@ -131,16 +132,17 @@ fun BroadcastAnnouncementDialog(
                     ) {
                         Surface(
                             modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                            shape = RoundedCornerShape(12.dp)
+                            // HIGH CONTRAST FIX: Pure surface for the input field background.
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(AdaptiveSpacing.itemRadius())
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(imageVector = selectedTarget?.icon ?: Icons.Default.Groups, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = selectedTarget?.id ?: "Select", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Black)
-                                    Text(text = selectedTarget?.description ?: "Choose", style = MaterialTheme.typography.labelSmall, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(text = selectedTarget?.id ?: "Select", style = AdaptiveTypography.body(), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(text = selectedTarget?.description ?: "Choose", style = AdaptiveTypography.hint(), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded)
                             }
@@ -158,8 +160,8 @@ fun BroadcastAnnouncementDialog(
                                             Icon(target.icon, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                                             Spacer(Modifier.width(12.dp))
                                             Column {
-                                                Text(target.id, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                                                Text(target.description, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                                Text(target.id, style = AdaptiveTypography.body(), fontWeight = FontWeight.Bold)
+                                                Text(target.description, style = AdaptiveTypography.hint(), color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                         }
                                     },
@@ -175,10 +177,14 @@ fun BroadcastAnnouncementDialog(
                 }
 
                 // --- USER SEARCH ---
-                AnimatedVisibility(visible = selectedTargetId == "Specific") {
-                    Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-                        Text("FIND USER", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.height(8.dp))
+                AnimatedVisibility(
+                    visible = selectedTargetId == "Specific",
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(top = AdaptiveSpacing.small())) {
+                        Text("FIND USER", style = AdaptiveTypography.label(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(AdaptiveSpacing.extraSmall()))
                         
                         OutlinedTextField(
                             value = if (selectedUser != null) selectedUser!!.name else userSearchQuery,
@@ -186,26 +192,23 @@ fun BroadcastAnnouncementDialog(
                                 userSearchQuery = it
                                 if (selectedUser != null) selectedUser = null 
                             },
-                            placeholder = { 
-                                Text(
-                                    text = "Find user...", 
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                ) 
-                            },
+                            placeholder = { Text(text = "Find user...", style = AdaptiveTypography.caption()) },
                             leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp)) },
                             trailingIcon = { if(selectedUser != null) Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp)) },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(AdaptiveSpacing.itemRadius()),
                             singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyMedium
+                            textStyle = AdaptiveTypography.body(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedContainerColor = MaterialTheme.colorScheme.surface
+                            )
                         )
 
                         if (filteredUsers.isNotEmpty() && selectedUser == null) {
                             Card(
                                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(AdaptiveSpacing.itemRadius()),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                             ) {
@@ -218,11 +221,11 @@ fun BroadcastAnnouncementDialog(
                                                 .padding(10.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            UserAvatar(photoUrl = user.photoUrl, modifier = Modifier.size(28.dp))
+                                            UserAvatar(photoUrl = user.photoUrl, modifier = Modifier.size(AdaptiveDimensions.SmallAvatar))
                                             Spacer(Modifier.width(10.dp))
                                             Column {
-                                                Text(user.name, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                                                Text(user.email, style = MaterialTheme.typography.labelSmall, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                Text(user.name, style = AdaptiveTypography.caption(), fontWeight = FontWeight.Bold)
+                                                Text(user.email, style = AdaptiveTypography.hint(), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                             }
                                         }
                                     }
@@ -232,7 +235,7 @@ fun BroadcastAnnouncementDialog(
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(AdaptiveSpacing.medium()))
 
                 // --- COMPOSE ---
                 OutlinedTextField(
@@ -240,24 +243,32 @@ fun BroadcastAnnouncementDialog(
                     onValueChange = { title = it },
                     label = { Text("Title") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(AdaptiveSpacing.itemRadius()),
                     singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium
+                    textStyle = AdaptiveTypography.body(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(AdaptiveSpacing.small()))
 
                 OutlinedTextField(
                     value = message,
                     onValueChange = { message = it },
                     label = { Text("Message") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(AdaptiveSpacing.itemRadius()),
                     minLines = 3,
-                    textStyle = MaterialTheme.typography.bodyMedium
+                    textStyle = AdaptiveTypography.body(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(AdaptiveSpacing.medium()))
 
                 // --- ACTIONS ---
                 Button(
@@ -275,13 +286,13 @@ fun BroadcastAnnouncementDialog(
                         }
                         onSend(title, message, roles, selectedUser?.id)
                     },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(16.dp)
+                    modifier = Modifier.fillMaxWidth().height(AdaptiveDimensions.StandardButtonHeight),
+                    shape = RoundedCornerShape(AdaptiveSpacing.itemRadius())
                 ) {
                     if (isSending) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                     } else {
-                        Text("Transmit Announcement", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Transmit Announcement", fontWeight = FontWeight.Bold, style = AdaptiveTypography.sectionHeader())
                     }
                 }
 
@@ -289,7 +300,7 @@ fun BroadcastAnnouncementDialog(
                     onClick = onDismiss, 
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                 ) {
-                    Text("Discard Draft", color = Color.Gray, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                    Text("Discard Draft", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = AdaptiveTypography.sectionHeader())
                 }
             }
         }

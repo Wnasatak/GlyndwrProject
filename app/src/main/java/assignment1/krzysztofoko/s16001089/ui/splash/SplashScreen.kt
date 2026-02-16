@@ -111,8 +111,8 @@ fun SplashScreen(
         delay(2000)
         startShadeFade.value = true
         
-        // Finalize the splash timer after a total of 6 seconds (min wait)
-        delay(4000) 
+        // Finalize the splash timer after a total of 5 seconds (min wait)
+        delay(5000)
         isTimerFinished = true
     }
 

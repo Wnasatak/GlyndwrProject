@@ -164,13 +164,24 @@ fun ProductHeaderImage(
             
             // Display ownership status badges if the user owns the item
             if (isOwned) {
-                Row(modifier = Modifier.fillMaxWidth().padding(ProDesign.StandardPadding), horizontalArrangement = Arrangement.SpaceBetween) {
-                    if (book.price > 0) { // Paid items get an "APPROVED" badge
-                        EnrollmentStatusBadge(status = "APPROVED") 
-                    } else { // Keep layout consistent for free items
-                        Spacer(Modifier.width(1.dp)) 
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(ProDesign.StandardPadding),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (book.price <= 0 && book.mainCategory != AppConstants.CAT_COURSES) {
+                        // Display "PICKED UP" and "FREE COLLECTION" for items obtained for free
+                        EnrollmentStatusBadge(status = "PICKED_UP")
+                        Spacer(Modifier.width(8.dp))
+                        EnrollmentStatusBadge(status = "FREE_COLLECTION")
+                    } else {
+                        // Original layout for paid items or courses
+                        if (book.price > 0) {
+                            EnrollmentStatusBadge(status = "APPROVED")
+                            Spacer(Modifier.weight(1f))
+                        }
+                        EnrollmentStatusBadge(status = if (book.mainCategory == AppConstants.CAT_COURSES) "ENROLLED" else "APPROVED")
                     }
-                    EnrollmentStatusBadge(status = if (book.mainCategory == AppConstants.CAT_COURSES) "ENROLLED" else "APPROVED")
                 }
             }
         }

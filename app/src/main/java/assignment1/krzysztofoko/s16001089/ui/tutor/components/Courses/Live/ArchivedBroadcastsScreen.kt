@@ -2,77 +2,86 @@ package assignment1.krzysztofoko.s16001089.ui.tutor.components.Courses.Live
 
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.annotation.OptIn
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import assignment1.krzysztofoko.s16001089.data.LiveSession
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.ui.components.*
+import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 /**
  * ArchivedBroadcastsScreen provides a repository for previously recorded live lecture sessions.
- * It allows tutors to manage their digital legacy by reviewing, renaming, deleting, 
- * or sharing broadcast replays with students.
+ * Matches BroadcastStudio exactly for stability and fast cleanup.
  */
 @Composable
 fun ArchivedBroadcastsScreen(
     viewModel: TutorViewModel
 ) {
-    // REACTIVE STATE: Synchronizes with course context, broadcast history, and student rosters
     val course by viewModel.selectedCourse.collectAsState()
     val previousBroadcasts by viewModel.previousBroadcasts.collectAsState()
     val modules by viewModel.selectedCourseModules.collectAsState()
     val assignments by viewModel.selectedCourseAssignments.collectAsState()
     val students by viewModel.enrolledStudentsInSelectedCourse.collectAsState()
+    val currentSection by viewModel.currentSection.collectAsState()
 
-    // UI STATE: Manages playback state and various administrative overlay triggers
     var playingSessionId by remember { mutableStateOf<String?>(null) }
     var renamingSession by remember { mutableStateOf<LiveSession?>(null) }
     var sessionToDelete by remember { mutableStateOf<LiveSession?>(null) }
     var sharingSession by remember { mutableStateOf<LiveSession?>(null) }
 
-    // ADAPTIVE CONTAINER: Centered width constraint for improved readability on tablets
+    LaunchedEffect(currentSection) {
+        if (currentSection != TutorSection.COURSE_ARCHIVED_BROADCASTS) {
+            playingSessionId = null
+        }
+    }
+
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
             Spacer(Modifier.height(12.dp))
-            
-            // HEADER: Professional context for the archived sessions view
-            AdaptiveDashboardHeader(
-                title = "Session Archive",
-                subtitle = course?.title ?: "All Broadcasts",
-                icon = Icons.Default.History
-            )
-
+            AdaptiveDashboardHeader(title = "Session Archive", subtitle = course?.title ?: "All Broadcasts", icon = Icons.Default.History)
             Spacer(Modifier.height(24.dp))
 
-            // CONTENT DISPATCHER: Renders either the empty state or the list of archived broadcasts
             if (previousBroadcasts.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -82,24 +91,18 @@ fun ArchivedBroadcastsScreen(
                     }
                 }
             } else {
-                // ARCHIVE LIST: Chronological list of recorded session cards
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = 100.dp)
-                ) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
                     items(previousBroadcasts) { session ->
                         BroadcastArchiveCard(
                             session = session,
                             moduleName = modules.find { it.id == session.moduleId }?.title ?: "General",
                             assignmentName = assignments.find { it.id == session.assignmentId }?.title,
                             isPlaying = playingSessionId == session.id,
+                            isSectionActive = currentSection == TutorSection.COURSE_ARCHIVED_BROADCASTS,
                             onDeleteRequest = { sessionToDelete = session },
                             onShareRequest = { sharingSession = session },
                             onRename = { renamingSession = session },
-                            onPlayToggle = {
-                                // PLAYBACK LOGIC: Toggles the inline video player for the selected session
-                                playingSessionId = if (playingSessionId == session.id) null else session.id
-                            }
+                            onPlayToggle = { playingSessionId = if (playingSessionId == session.id) null else session.id }
                         )
                     }
                 }
@@ -107,257 +110,39 @@ fun ArchivedBroadcastsScreen(
         }
     }
 
-    // --- OVERLAYS: Administrative Management Dialogs ---
-
-    // RENAME DIALOG: Updates the descriptive title of a recorded lecture
+    // OVERLAYS remain consistent with project style
     if (renamingSession != null) {
         var newTitle by remember { mutableStateOf(renamingSession!!.title) }
-        AlertDialog(
-            onDismissRequest = { renamingSession = null },
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("Rename Broadcast", fontWeight = FontWeight.Bold) },
-            text = {
-                OutlinedTextField(
-                    value = newTitle,
-                    onValueChange = { newTitle = it },
-                    label = { Text("Broadcast Title") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.updateBroadcastTitle(renamingSession!!.id, newTitle)
-                        renamingSession = null
-                    },
-                    shape = RoundedCornerShape(12.dp)
-                ) { Text("Save", fontWeight = FontWeight.Bold) }
-            },
-            dismissButton = {
-                TextButton(onClick = { renamingSession = null }) { Text("Cancel") }
-            },
-            shape = RoundedCornerShape(24.dp)
-        )
+        AlertDialog(onDismissRequest = { renamingSession = null }, containerColor = MaterialTheme.colorScheme.surface, title = { Text("Rename Broadcast", fontWeight = FontWeight.Bold) }, text = { OutlinedTextField(value = newTitle, onValueChange = { newTitle = it }, label = { Text("Broadcast Title") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true) }, confirmButton = { Button(onClick = { viewModel.updateBroadcastTitle(renamingSession!!.id, newTitle); renamingSession = null }, shape = RoundedCornerShape(12.dp)) { Text("Save", fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = { renamingSession = null }) { Text("Cancel") } }, shape = RoundedCornerShape(24.dp))
     }
-
-    // DELETE DIALOG: Destructive action confirmation with mandatory "DELETE" typing for safety
-    if (sessionToDelete != null) {
-        DeleteBroadcastConfirmationDialog(
-            sessionTitle = sessionToDelete!!.title,
-            onDismiss = { sessionToDelete = null },
-            onConfirm = {
-                viewModel.deletePreviousBroadcast(sessionToDelete!!.id)
-                sessionToDelete = null
-            }
-        )
-    }
-
-    // SHARE DIALOG: Distributes the session replay link to students via notifications
-    if (sharingSession != null) {
-        ShareBroadcastDialog(
-            session = sharingSession!!,
-            students = students,
-            onDismiss = { sharingSession = null },
-            onShareWithAll = {
-                viewModel.shareBroadcastWithAll(sharingSession!!)
-                sharingSession = null
-            },
-            onShareWithSpecific = { selectedIds ->
-                viewModel.shareBroadcastWithSpecificStudents(sharingSession!!, selectedIds)
-                sharingSession = null
-            }
-        )
-    }
+    if (sessionToDelete != null) { DeleteBroadcastConfirmationDialog(sessionTitle = sessionToDelete!!.title, onDismiss = { sessionToDelete = null }, onConfirm = { viewModel.deletePreviousBroadcast(sessionToDelete!!.id); sessionToDelete = null }) }
+    if (sharingSession != null) { ShareBroadcastDialog(session = sharingSession!!, students = students, onDismiss = { sharingSession = null }, onShareWithAll = { viewModel.shareBroadcastWithAll(sharingSession!!); sharingSession = null }, onShareWithSpecific = { selectedIds -> viewModel.shareBroadcastWithSpecificStudents(sharingSession!!, selectedIds); sharingSession = null }) }
 }
 
-/**
- * A sophisticated dialog for sharing archived sessions. 
- * Supports both class-wide broadcasting and targeted student selection via a filtered list.
- */
 @Composable
-fun ShareBroadcastDialog(
-    session: LiveSession,
-    students: List<UserLocal>,
-    onDismiss: () -> Unit,
-    onShareWithAll: () -> Unit,
-    onShareWithSpecific: (List<String>) -> Unit
-) {
+fun ShareBroadcastDialog(session: LiveSession, students: List<UserLocal>, onDismiss: () -> Unit, onShareWithAll: () -> Unit, onShareWithSpecific: (List<String>) -> Unit) {
     var selectedStudentIds by remember { mutableStateOf(setOf<String>()) }
     var shareWithAll by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
-
-    // REAL-TIME SEARCH: Filters the student roster for targeted sharing
-    val filteredStudents = remember(students, searchQuery) {
-        if (searchQuery.isBlank()) students
-        else students.filter { it.name.contains(searchQuery, ignoreCase = true) || it.email.contains(searchQuery, ignoreCase = true) }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = { Text("Share Replay", fontWeight = FontWeight.Black) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Select who should receive a notification about this replay.", style = MaterialTheme.typography.bodySmall)
-                
-                // Toggle: Select all students vs specific selection
-                Surface(
-                    onClick = { shareWithAll = !shareWithAll },
-                    color = if (shareWithAll) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) 
-                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = if (shareWithAll) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)) else null,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = shareWithAll, 
-                            onCheckedChange = { shareWithAll = it },
-                            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("Whole Class (${students.size} students)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-
-                // TARGETED SELECTION: List of students with checkboxes, visible only if 'Whole Class' is unticked
-                if (!shareWithAll) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search students...", fontSize = 12.sp) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp)) },
-                        singleLine = true
-                    )
-
-                    Text("Results (${filteredStudents.size})", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    
-                    LazyColumn(modifier = Modifier.heightIn(max = 250.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(filteredStudents) { student ->
-                            val isSelected = selectedStudentIds.contains(student.id)
-                            Surface(
-                                onClick = {
-                                    selectedStudentIds = if (isSelected) selectedStudentIds - student.id else selectedStudentIds + student.id
-                                },
-                                color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f) 
-                                        else MaterialTheme.colorScheme.surface,
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f) 
-                                                            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    UserAvatar(photoUrl = student.photoUrl, modifier = Modifier.size(32.dp))
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(student.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                                        Text(student.email, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                                    }
-                                    Checkbox(
-                                        checked = isSelected,
-                                        onCheckedChange = {
-                                            selectedStudentIds = if (it) selectedStudentIds + student.id else selectedStudentIds - student.id
-                                        },
-                                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.secondary)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (shareWithAll) onShareWithAll() else onShareWithSpecific(selectedStudentIds.toList())
-                },
-                enabled = shareWithAll || selectedStudentIds.isNotEmpty(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Share Now", fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-        shape = RoundedCornerShape(28.dp)
-    )
+    val filteredStudents = remember(students, searchQuery) { if (searchQuery.isBlank()) students else students.filter { it.name.contains(searchQuery, ignoreCase = true) || it.email.contains(searchQuery, ignoreCase = true) } }
+    AlertDialog(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface, title = { Text("Share Replay", fontWeight = FontWeight.Black) }, text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { Text("Select who should receive a notification about this replay.", style = MaterialTheme.typography.bodySmall); Surface(onClick = { shareWithAll = !shareWithAll }, color = if (shareWithAll) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), shape = RoundedCornerShape(12.dp), border = if (shareWithAll) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)) else null, modifier = Modifier.fillMaxWidth()) { Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = shareWithAll, onCheckedChange = { shareWithAll = it }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)); Spacer(Modifier.width(8.dp)); Text("Whole Class (${students.size} students)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium) } }
+    if (!shareWithAll) { OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text("Search students...", fontSize = 12.sp) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp)) }, singleLine = true); Text("Results (${filteredStudents.size})", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary); LazyColumn(modifier = Modifier.heightIn(max = 250.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { items(filteredStudents) { student -> val isSelected = selectedStudentIds.contains(student.id); Surface(onClick = { selectedStudentIds = if (isSelected) selectedStudentIds - student.id else selectedStudentIds + student.id }, color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(10.dp), border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)), modifier = Modifier.fillMaxWidth()) { Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) { UserAvatar(photoUrl = student.photoUrl, modifier = Modifier.size(32.dp)); Spacer(Modifier.width(12.dp)); Column(modifier = Modifier.weight(1f)) { Text(student.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold); Text(student.email, style = MaterialTheme.typography.labelSmall, color = Color.Gray) }; Checkbox(checked = isSelected, onCheckedChange = { selectedStudentIds = if (it) selectedStudentIds + student.id else selectedStudentIds - student.id }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.secondary)) } } } } } } }, confirmButton = { Button(onClick = { if (shareWithAll) onShareWithAll() else onShareWithSpecific(selectedStudentIds.toList()) }, enabled = shareWithAll || selectedStudentIds.isNotEmpty(), shape = RoundedCornerShape(12.dp)) { Text("Share Now", fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }, shape = RoundedCornerShape(28.dp))
 }
 
-/**
- * Safety confirmation dialog for broadcast deletion.
- * Requires the user to type "DELETE" to minimize accidental loss of institutional content.
- */
 @Composable
-fun DeleteBroadcastConfirmationDialog(
-    sessionTitle: String,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
+fun DeleteBroadcastConfirmationDialog(sessionTitle: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     var confirmationText by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = { Text("Delete Broadcast", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "Are you sure you want to permanently delete '$sessionTitle'? This action cannot be undone.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "To confirm, please type DELETE below:",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Gray
-                )
-                OutlinedTextField(
-                    value = confirmationText,
-                    onValueChange = { confirmationText = it },
-                    placeholder = { Text("Type DELETE here") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.error,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                    )
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                enabled = confirmationText.uppercase() == "DELETE",
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Confirm Deletion", fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-        shape = RoundedCornerShape(28.dp)
-    )
+    AlertDialog(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface, title = { Text("Delete Broadcast", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error) }, text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { Text(text = "Are you sure you want to permanently delete '$sessionTitle'? This action cannot be undone.", style = MaterialTheme.typography.bodyMedium); Text(text = "To confirm, please type DELETE below:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.Gray); OutlinedTextField(value = confirmationText, onValueChange = { confirmationText = it }, placeholder = { Text("Type DELETE here") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.error, unfocusedBorderColor = MaterialTheme.colorScheme.outline)) } }, confirmButton = { Button(onClick = onConfirm, enabled = confirmationText.uppercase() == "DELETE", colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error), shape = RoundedCornerShape(12.dp)) { Text("Confirm Deletion", fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }, shape = RoundedCornerShape(28.dp))
 }
 
-/**
- * A high-impact card representing a recorded lecture session.
- * Features an integrated ExoPlayer for inline review and administrative control buttons.
- */
+@OptIn(UnstableApi::class)
 @Composable
 fun BroadcastArchiveCard(
     session: LiveSession,
     moduleName: String,
     assignmentName: String?,
     isPlaying: Boolean,
+    isSectionActive: Boolean,
     onDeleteRequest: () -> Unit,
     onShareRequest: () -> Unit,
     onRename: () -> Unit,
@@ -367,186 +152,87 @@ fun BroadcastArchiveCard(
     val sdf = SimpleDateFormat("MMM dd, yyyy • HH:mm", Locale.getDefault())
     val dateStr = sdf.format(Date(session.startTime))
     val context = LocalContext.current
-
     val btnHeight = if (isTablet) 44.dp else 34.dp
     val fontSize = if (isTablet) 13.sp else 11.sp
     val iconSize = if (isTablet) 18.dp else 14.dp
 
+    // FIXED: Matched resolution-targeted source confirmed working in Studio
+    val stableVideoUrl = "https://storage.googleapis.com/exoplayer-test-media-0/BigBuckBunny_320x180.mp4"
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isPlaying) MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp) 
-                             else MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = if (isPlaying) MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp) else MaterialTheme.colorScheme.surface),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Column {
-            // INTEGRATED PLAYER: Visible only when 'isPlaying' is true for the session
-            AnimatedVisibility(visible = isPlaying) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(if (isTablet) 300.dp else 200.dp)
-                        .background(Color.Black)
-                ) {
-                    val exoPlayer = remember {
-                        ExoPlayer.Builder(context).build().apply {
-                            // Note: In a production environment, this would use session.streamUrl
-                            val videoUrl = "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-                            val mediaItem = MediaItem.fromUri(videoUrl)
-                            setMediaItem(mediaItem)
-                            prepare()
-                            playWhenReady = true
-                        }
-                    }
-
-                    // Lifecycle cleanup for the player instance
-                    DisposableEffect(Unit) {
-                        onDispose { exoPlayer.release() }
-                    }
-
-                    // Native View integration for the Media3 PlayerView
-                    AndroidView(
-                        factory = { ctx ->
-                            PlayerView(ctx).apply {
-                                player = exoPlayer
-                                useController = true
-                                layoutParams = FrameLayout.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT
-                                )
+            // FIX: Unified cleanup logic - destroyed instantly on navigation
+            if (isSectionActive && isPlaying) {
+                Box(modifier = Modifier.fillMaxWidth().height(if (isTablet) 300.dp else 200.dp).background(Color.Black)) {
+                    key(session.id) {
+                        val exoPlayer = remember {
+                            ExoPlayer.Builder(context).build().apply {
+                                val mediaItem = MediaItem.fromUri(stableVideoUrl)
+                                setMediaItem(mediaItem)
+                                prepare()
+                                repeatMode = Player.REPEAT_MODE_ALL
+                                playWhenReady = true
+                                addListener(object : Player.Listener {
+                                    override fun onPlaybackStateChanged(state: Int) {
+                                        if (state == Player.STATE_READY) {} // Ready to go
+                                    }
+                                    override fun onPlayerError(error: PlaybackException) {
+                                        prepare(); play()
+                                    }
+                                })
                             }
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
+                        }
+
+                        DisposableEffect(Unit) {
+                            onDispose { 
+                                exoPlayer.stop()
+                                exoPlayer.clearMediaItems()
+                                exoPlayer.release() 
+                            }
+                        }
+
+                        AndroidView(
+                            factory = { ctx ->
+                                PlayerView(ctx).apply {
+                                    player = exoPlayer
+                                    useController = true
+                                    setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                                    layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                                }
+                            },
+                            update = { view -> if (view.player != exoPlayer) view.player = exoPlayer },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
 
             Column(modifier = Modifier.padding(12.dp)) {
-                // HEADER AREA: Identity metadata and quick-edit/delete icons
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(if (isTablet) 48.dp else 40.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.VideoLibrary, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp))
-                        }
-                    }
+                    Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f), shape = RoundedCornerShape(10.dp), modifier = Modifier.size(if (isTablet) 48.dp else 40.dp)) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.VideoLibrary, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) } }
                     Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = session.title, 
-                            fontWeight = FontWeight.Black, 
-                            style = if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(dateStr, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    }
-                    
-                    Row {
-                        IconButton(onClick = onRename, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                        }
-                        IconButton(onClick = onDeleteRequest, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-                        }
-                    }
+                    Column(modifier = Modifier.weight(1f)) { Text(text = session.title, fontWeight = FontWeight.Black, style = if (isTablet) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(dateStr, style = MaterialTheme.typography.labelSmall, color = Color.Gray) }
+                    Row { IconButton(onClick = onRename, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)) }; IconButton(onClick = onDeleteRequest, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp)) } }
                 }
-
                 Spacer(Modifier.height(10.dp))
-
-                // METADATA BADGES: Contextual link to modules or assignments
-                Row(
-                    modifier = Modifier.fillMaxWidth(), 
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(modifier = Modifier.weight(1f, fill = false)) {
-                        ArchiveBadge(icon = Icons.Default.ViewModule, label = moduleName)
-                    }
-                    if (assignmentName != null) {
-                        Box(modifier = Modifier.weight(1f, fill = false)) {
-                            ArchiveBadge(icon = Icons.Default.Assignment, label = assignmentName, color = MaterialTheme.colorScheme.secondary)
-                        }
-                    }
-                }
-
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) { Box(modifier = Modifier.weight(1f, fill = false)) { ArchiveBadge(icon = Icons.Default.ViewModule, label = moduleName) }; if (assignmentName != null) { Box(modifier = Modifier.weight(1f, fill = false)) { ArchiveBadge(icon = Icons.Default.Assignment, label = assignmentName, color = MaterialTheme.colorScheme.secondary) } } }
                 Spacer(Modifier.height(16.dp))
-
-                // ACTION ROW: Main triggers for playback and institutional sharing
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = onPlayToggle,
-                        modifier = Modifier.weight(1.4f).height(btnHeight),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isPlaying) MaterialTheme.colorScheme.secondary 
-                                             else MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow, 
-                            null, 
-                            modifier = Modifier.size(iconSize)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (isPlaying) "Close" else "Watch Replay", fontSize = fontSize, fontWeight = FontWeight.Bold)
-                    }
-                    
-                    Button(
-                        onClick = onShareRequest,
-                        modifier = Modifier.weight(1f).height(btnHeight),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary
-                        )
-                    ) {
-                        Icon(Icons.Default.Share, null, modifier = Modifier.size(iconSize))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Share", fontSize = fontSize, fontWeight = FontWeight.Bold)
-                    }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Button(onClick = onPlayToggle, modifier = Modifier.weight(1.4f).height(btnHeight), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 8.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isPlaying) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary)) { Icon(imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow, null, modifier = Modifier.size(iconSize)); Spacer(Modifier.width(6.dp)); Text(if (isPlaying) "Close" else "Watch Replay", fontSize = fontSize, fontWeight = FontWeight.Bold) }
+                    Button(onClick = onShareRequest, modifier = Modifier.weight(1f).height(btnHeight), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 8.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)) { Icon(Icons.Default.Share, null, modifier = Modifier.size(iconSize)); Spacer(Modifier.width(6.dp)); Text("Share", fontSize = fontSize, fontWeight = FontWeight.Bold) }
                 }
             }
         }
     }
 }
 
-/**
- * A small branded tag for displaying categorical metadata linked to archived broadcasts.
- */
 @Composable
 fun ArchiveBadge(icon: ImageVector, label: String, color: Color = MaterialTheme.colorScheme.primary) {
     val isTablet = isTablet()
-    Surface(
-        color = color.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(6.dp),
-        border = BorderStroke(0.5.dp, color.copy(alpha = 0.2f))
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, null, modifier = Modifier.size(if (isTablet) 14.dp else 12.dp), tint = color)
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = label, 
-                style = if (isTablet) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), 
-                color = color, 
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
+    Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(6.dp), border = BorderStroke(0.5.dp, color.copy(alpha = 0.2f))) { Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, modifier = Modifier.size(if (isTablet) 14.dp else 12.dp), tint = color); Spacer(Modifier.width(4.dp)); Text(text = label, style = if (isTablet) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), color = color, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
 }

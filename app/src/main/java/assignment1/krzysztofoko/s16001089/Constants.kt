@@ -11,7 +11,7 @@ import assignment1.krzysztofoko.s16001089.data.Book
 object AppConstants {
     // --- Application Branding & Metadata ---
     // These constants define the app's identity and development status.
-    const val VERSION_NAME = "0.51.316 Under Development"
+    const val VERSION_NAME = "0.67.631 Under Development"
     const val INSTITUTION = "Wrexham Glyndŵr University"
     const val DEVELOPER_NAME = "Krzysztof Oko"
     const val STUDENT_ID = "S16001089"
@@ -292,6 +292,7 @@ object AppConstants {
     const val MSG_SAVE_CHANGES_DESC = "Do you want to save the changes to your review?"
     const val MSG_LOG_OFF_DESC = "Are you sure you want to sign off?"
     const val MSG_DEMO_MODE_DESC = "For this demonstration, your code is provided below, but please also check your email! 😊"
+    const val MSG_DEMO_MODE_DESC_2 = "For this demonstration, your code is provided below, but please also check your email! 😊"
     const val MSG_PAID_COURSE_LIMIT = "You can only be enrolled in one paid course at a time."
 
 
@@ -376,6 +377,7 @@ object AppConstants {
         return when (book.mainCategory) {
             CAT_COURSES -> LABEL_ENROLLED
             CAT_GEAR -> if (book.price > 0.0) LABEL_PURCHASED else LABEL_PICKED_UP
+            CAT_BOOKS -> if (book.price <= 0.0) LABEL_PICKED_UP else LABEL_PURCHASED
             else -> LABEL_PURCHASED
         }
     }

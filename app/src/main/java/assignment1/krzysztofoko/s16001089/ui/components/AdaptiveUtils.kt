@@ -28,30 +28,86 @@ import coil.compose.AsyncImage
 /**
  * AdaptiveUtils.kt
  *
- * Provides a centralized set of constants and composables to handle
- * responsive design and typography across different form factors.
+ * Centralized design tokens for the Glyndŵr Pro system.
+ * Handles responsive typography, spacing, and standard component dimensions.
  */
 
 object AdaptiveTypography {
-    /** Returns headlineSmall for tablets and titleMedium for phones. */
+    /** Main display titles for headers. */
+    @Composable
+    fun display(): TextStyle = if (isTablet()) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineMedium
+
+    /** Headline style for prominent section titles. */
     @Composable
     fun headline(): TextStyle = if (isTablet()) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium
 
-    /** Returns titleMedium for tablets and labelLarge for phones. */
+    /** Sub-titles or section headers within cards. */
     @Composable
     fun sectionHeader(): TextStyle = if (isTablet()) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge
 
-    /** Returns bodyMedium for tablets and labelSmall for phones. */
+    /** Standard body text. */
+    @Composable
+    fun body(): TextStyle = if (isTablet()) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium
+
+    /** Smaller body text or captions. */
     @Composable
     fun caption(): TextStyle = if (isTablet()) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.labelSmall
 
-    /** Returns labelLarge for tablets and labelSmall for phones. */
+    /** Label text for UI markers. */
     @Composable
     fun label(): TextStyle = if (isTablet()) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelSmall
 
-    /** Returns bodySmall for tablets and extra small size for phones. */
+    /** Hint or secondary metadata text. */
     @Composable
     fun hint(): TextStyle = if (isTablet()) MaterialTheme.typography.bodySmall else MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
+}
+
+object AdaptiveSpacing {
+    /** Standard large spacing. */
+    @Composable
+    fun large(): Dp = if (isTablet()) 48.dp else 32.dp
+
+    /** Standard medium spacing. */
+    @Composable
+    fun medium(): Dp = if (isTablet()) 32.dp else 24.dp
+
+    /** Small internal spacing. */
+    @Composable
+    fun small(): Dp = if (isTablet()) 16.dp else 12.dp
+
+    /** Extra small gaps for tight UI. */
+    @Composable
+    fun extraSmall(): Dp = if (isTablet()) 12.dp else 8.dp
+
+    /** Content padding for screen edges. */
+    @Composable
+    fun contentPadding(): Dp = if (isTablet()) 32.dp else 16.dp
+
+    /** Corner radius for major cards. */
+    @Composable
+    fun cornerRadius(): Dp = if (isTablet()) 32.dp else 24.dp
+
+    /** Corner radius for smaller buttons, pills, and sub-surfaces. */
+    @Composable
+    fun itemRadius(): Dp = if (isTablet()) 16.dp else 12.dp
+    
+    /** Padding used specifically inside dialogs. */
+    @Composable
+    fun dialogPadding(): Dp = if (isTablet()) 32.dp else 24.dp
+}
+
+object AdaptiveDimensions {
+    val LoadingDialogSize = 200.dp
+    val LoadingIndicatorSize = 60.dp
+    val LargeIconSize = 64.dp
+    val MediumIconSize = 32.dp
+    val SmallIconSize = 24.dp
+    val StandardButtonHeight = 56.dp
+    
+    // Avatar tokens
+    val LargeAvatar = 64.dp
+    val MediumAvatar = 44.dp
+    val SmallAvatar = 32.dp
 }
 
 object AdaptiveWidths {
@@ -60,20 +116,6 @@ object AdaptiveWidths {
     val Wide = 850.dp
     val HeroImage = 500.dp
     val ActionButton = 400.dp
-}
-
-object AdaptiveSpacing {
-    @Composable
-    fun medium(): Dp = if (isTablet()) 32.dp else 20.dp
-
-    @Composable
-    fun contentPadding(): Dp = if (isTablet()) 32.dp else 16.dp
-
-    @Composable
-    fun cornerRadius(): Dp = if (isTablet()) 32.dp else 20.dp
-    
-    @Composable
-    fun dialogPadding(): Dp = if (isTablet()) 24.dp else 16.dp
 }
 
 @Composable

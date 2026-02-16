@@ -34,7 +34,8 @@ fun CatalogTab(
     viewModel: AdminViewModel,
     isDarkTheme: Boolean,
     showAddProductDialog: Boolean,
-    onAddProductDialogConsumed: () -> Unit
+    onAddProductDialogConsumed: () -> Unit,
+    onNavigateToDetails: (String) -> Unit
 ) {
     val books by viewModel.allBooks.collectAsState(emptyList())
     val audioBooks by viewModel.allAudioBooks.collectAsState(emptyList())
@@ -114,7 +115,17 @@ fun CatalogTab(
                 item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Academic Books", books.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(books) { item ->
                     Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
-                        CatalogItemCard(title = item.title, subtitle = "By ${item.author}", price = item.price, imageUrl = item.imageUrl, icon = Icons.AutoMirrored.Filled.MenuBook, onEdit = { bookToEdit = item }, onDelete = { itemToDelete = item.id to "Book" }, isDarkTheme = isDarkTheme)
+                        CatalogItemCard(
+                            title = item.title, 
+                            subtitle = "By ${item.author}", 
+                            price = item.price, 
+                            imageUrl = item.imageUrl, 
+                            icon = Icons.AutoMirrored.Filled.MenuBook, 
+                            onEdit = { bookToEdit = item }, 
+                            onDelete = { itemToDelete = item.id to "Book" }, 
+                            isDarkTheme = isDarkTheme,
+                            onClick = { onNavigateToDetails(item.id) }
+                        )
                     }
                 }
             }
@@ -123,7 +134,17 @@ fun CatalogTab(
                 item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Audio Learning", audioBooks.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(audioBooks) { item ->
                     Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
-                        CatalogItemCard(title = item.title, subtitle = "By ${item.author}", price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.Headphones, onEdit = { audioToEdit = item }, onDelete = { itemToDelete = item.id to "Audiobook" }, isDarkTheme = isDarkTheme)
+                        CatalogItemCard(
+                            title = item.title, 
+                            subtitle = "By ${item.author}", 
+                            price = item.price, 
+                            imageUrl = item.imageUrl, 
+                            icon = Icons.Default.Headphones, 
+                            onEdit = { audioToEdit = item }, 
+                            onDelete = { itemToDelete = item.id to "Audiobook" }, 
+                            isDarkTheme = isDarkTheme,
+                            onClick = { onNavigateToDetails(item.id) }
+                        )
                     }
                 }
             }
@@ -132,7 +153,17 @@ fun CatalogTab(
                 item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("University Courses", courses.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(courses) { item ->
                     Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
-                        CatalogItemCard(title = item.title, subtitle = item.department, price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.School, onEdit = { courseToEdit = item }, onDelete = { itemToDelete = item.id to "Course" }, isDarkTheme = isDarkTheme)
+                        CatalogItemCard(
+                            title = item.title, 
+                            subtitle = item.department, 
+                            price = item.price, 
+                            imageUrl = item.imageUrl, 
+                            icon = Icons.Default.School, 
+                            onEdit = { courseToEdit = item }, 
+                            onDelete = { itemToDelete = item.id to "Course" }, 
+                            isDarkTheme = isDarkTheme,
+                            onClick = { onNavigateToDetails(item.id) }
+                        )
                     }
                 }
             }
@@ -141,7 +172,17 @@ fun CatalogTab(
                 item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Official Gear", gear.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(gear) { item ->
                     Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
-                        CatalogItemCard(title = item.title, subtitle = "Stock: ${item.stockCount} left", price = item.price, imageUrl = item.imageUrl, icon = Icons.Default.Checkroom, onEdit = { gearToEdit = item }, onDelete = { itemToDelete = item.id to "Gear Item" }, isDarkTheme = isDarkTheme)
+                        CatalogItemCard(
+                            title = item.title, 
+                            subtitle = "Stock: ${item.stockCount} left", 
+                            price = item.price, 
+                            imageUrl = item.imageUrl, 
+                            icon = Icons.Default.Checkroom, 
+                            onEdit = { gearToEdit = item }, 
+                            onDelete = { itemToDelete = item.id to "Gear Item" }, 
+                            isDarkTheme = isDarkTheme,
+                            onClick = { onNavigateToDetails(item.id) }
+                        )
                     }
                 }
             }

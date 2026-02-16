@@ -69,7 +69,7 @@ fun ProWalletPill(
                 modifier = Modifier.size(16.dp),
                 tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(6.6.dp))
             Text(
                 text = "£${String.format(Locale.US, "%.2f", balance)}",
                 style = MaterialTheme.typography.labelMedium,
@@ -279,6 +279,8 @@ fun EnrollmentStatusBadge(status: String, modifier: Modifier = Modifier) {
         "APPROVED" -> Triple(Color(0xFF4CAF50), "APPROVED", Icons.Default.CheckCircle)
         "REJECTED" -> Triple(Color(0xFFF44336), "DECLINED", Icons.Default.Error)
         "ENROLLED" -> Triple(Color(0xFF673AB7), "ENROLLED", Icons.Default.School)
+        "PICKED_UP" -> Triple(Color(0xFF009688), "PICKED UP", Icons.Default.LibraryAddCheck)
+        "FREE_COLLECTION" -> Triple(Color(0xFF03A9F4), "FREE COLLECTION", Icons.Default.Redeem)
         else -> Triple(Color.Gray, status, Icons.Default.PendingActions)
     }
 

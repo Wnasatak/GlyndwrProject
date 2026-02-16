@@ -250,7 +250,8 @@ fun AdminPanelScreen(
                                 viewModel = viewModel, 
                                 isDarkTheme = isDarkTheme,
                                 showAddProductDialog = showAddProductDialog,
-                                onAddProductDialogConsumed = { showAddProductDialog = false }
+                                onAddProductDialogConsumed = { showAddProductDialog = false },
+                                onNavigateToDetails = onNavigateToBookDetails
                             )
                             AdminSection.LOGS -> UsersLogsTab(viewModel)
                             AdminSection.LIBRARY -> AdminLibraryScreen(
@@ -265,7 +266,7 @@ fun AdminPanelScreen(
                             )
                             AdminSection.NOTIFICATIONS -> {
                                 NotificationScreen(
-                                    onNavigateToItem = { viewModel.setSection(AdminSection.CATALOG) },
+                                    onNavigateToItem = { onNavigateToBookDetails(it) },
                                     onNavigateToInvoice = { _ -> }, 
                                     onNavigateToMessages = { viewModel.setSection(AdminSection.DASHBOARD) },
                                     onBack = { viewModel.setSection(AdminSection.DASHBOARD) },
