@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -46,6 +47,8 @@ fun ApplicationDetailScreen(
     isDarkTheme: Boolean
 ) {
     val sdf = remember { SimpleDateFormat("dd MMMM yyyy, HH:mm", Locale.getDefault()) }
+    val isChangeRequest = app.details.requestedCourseId != null
+    val isWithdrawal = app.details.isWithdrawal
 
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
@@ -57,7 +60,11 @@ fun ApplicationDetailScreen(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { 
                         Text(
-                            "Review Application", 
+                            when {
+                                isWithdrawal -> "Review Withdrawal Request"
+                                isChangeRequest -> "Review Course Change"
+                                else -> "Review Application"
+                            }, 
                             fontWeight = FontWeight.Black,
                             style = MaterialTheme.typography.titleLarge
                         ) 
@@ -84,7 +91,7 @@ fun ApplicationDetailScreen(
                 ) {
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Header Card: Student Identity & Course
+                    // Header Card: Student Identity
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(28.dp),
@@ -138,20 +145,64 @@ fun ApplicationDetailScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant, 
                                     style = MaterialTheme.typography.bodySmall
                                 )
-                                Spacer(Modifier.height(12.dp))
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), 
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
+                            }
+                        }
+                    }
+
+                    // Withdrawal or Enrollment Transition Section
+                    if (isWithdrawal) {
+                        ApplicationSection("Withdrawal Information", Icons.Default.Warning, isDarkTheme) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.05f),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
                                     Text(
-                                        text = app.course?.title ?: "Course Name", 
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), 
-                                        style = MaterialTheme.typography.labelMedium, 
-                                        fontWeight = FontWeight.Black, 
-                                        color = MaterialTheme.colorScheme.primary
+                                        "REASON: Institutional Withdrawal Request", 
+                                        style = MaterialTheme.typography.labelSmall, 
+                                        color = MaterialTheme.colorScheme.error,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "The student has requested to resign from: ${app.course?.title ?: "Current Program"}", 
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Black,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
+                        }
+                    } else if (isChangeRequest) {
+                        ApplicationSection("Enrollment Change Details", Icons.Default.SwapHoriz, isDarkTheme) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("CURRENT", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                    Text(app.course?.title ?: "Unknown", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                                
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward, 
+                                    null, 
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 12.dp)
+                                )
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("REQUESTED", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                    Text(app.requestedCourse?.title ?: "New Program", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                    } else {
+                        ApplicationSection("Enrollment Program", Icons.Default.School, isDarkTheme) {
+                            AppDetailRow(Icons.Default.Class, "Selected Course", app.course?.title ?: "Institutional Program")
                         }
                     }
 
@@ -170,28 +221,12 @@ fun ApplicationDetailScreen(
                     }
 
                     ApplicationSection("Motivation Statement", Icons.Default.FormatQuote, isDarkTheme) {
+                        @Suppress("DEPRECATION")
                         Text(
                             text = app.details.motivationalText, 
                             style = MaterialTheme.typography.bodyMedium, 
                             lineHeight = 22.sp,
                             color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    ApplicationSection("Emergency Contact", Icons.Default.Emergency, isDarkTheme) {
-                        AppDetailRow(Icons.Default.ContactPhone, "Name", app.details.emergencyContactName)
-                        AppDetailRow(Icons.Default.Phone, "Phone", app.details.emergencyContactPhone)
-                    }
-
-                    // Status & Metadata
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Submitted on: ${sdf.format(Date(app.details.submittedAt))}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -220,14 +255,14 @@ fun ApplicationDetailScreen(
                                 modifier = Modifier.weight(1f).height(56.dp),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF4CAF50),
+                                    containerColor = if (isWithdrawal) MaterialTheme.colorScheme.error else Color(0xFF4CAF50),
                                     contentColor = Color.White
                                 ),
                                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                             ) {
                                 Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Approve", fontWeight = FontWeight.Black)
+                                Text(if (isWithdrawal) "Confirm" else "Approve", fontWeight = FontWeight.Black)
                             }
                         }
                     } else {

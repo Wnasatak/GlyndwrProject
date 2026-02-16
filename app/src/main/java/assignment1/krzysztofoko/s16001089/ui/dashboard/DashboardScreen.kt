@@ -109,7 +109,7 @@ fun DashboardScreen(
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
     val isTablet = screenWidth >= 600
-    val isCompact = screenWidth < 420 
+    val isCompact = screenWidth < 420
 
     val columns = if (isTablet) 2 else 1
     val gridState = rememberLazyGridState()
@@ -129,17 +129,17 @@ fun DashboardScreen(
     val showApplications = applicationCount > 0 && enrolledPaidCourse == null
 
     val collectionIndex = remember(showApplications, enrolledPaidCourse, enrolledFreeCourses, isAdmin, isTutor) {
-        var count = 1 
+        var count = 1
         if (showApplications) count++
         if (enrolledPaidCourse != null || enrolledFreeCourses.isNotEmpty()) {
-            count++ 
+            count++
             if (enrolledPaidCourse != null) count++
             count += enrolledFreeCourses.size
         }
         if (isAdmin) count++
         if (isTutor) count++
-        count += 6 
-        count 
+        count += 6
+        count
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "bellRing")
@@ -225,7 +225,7 @@ fun DashboardScreen(
                         Box {
                             IconButton(onClick = { showMenu = true }) { Icon(Icons.Rounded.MoreVert, AppConstants.TITLE_MORE_OPTIONS) }
                             DropdownMenu(
-                                expanded = showMenu, 
+                                expanded = showMenu,
                                 onDismissRequest = { showMenu = false },
                                 shape = RoundedCornerShape(16.dp),
                                 containerColor = MaterialTheme.colorScheme.surface,
@@ -244,11 +244,11 @@ fun DashboardScreen(
                                     DropdownMenuItem(text = { Text("Search Products", style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; viewModel.setSearchVisible(true) }, leadingIcon = { Icon(Icons.Rounded.Search, null) })
                                     DropdownMenuItem(text = { Text(AppConstants.TITLE_STORE, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_HOME) }, leadingIcon = { Icon(Icons.Rounded.Storefront, null) })
                                     DropdownMenuItem(
-                                        text = { Text("Appearance", style = MaterialTheme.typography.bodyMedium) }, 
-                                        onClick = { 
+                                        text = { Text("Appearance", style = MaterialTheme.typography.bodyMedium) },
+                                        onClick = {
                                             showMenu = false
-                                            showThemePicker = true 
-                                        }, 
+                                            showThemePicker = true
+                                        },
                                         leadingIcon = { Icon(Icons.Rounded.Palette, null) }
                                     )
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -257,45 +257,45 @@ fun DashboardScreen(
                                 if (showApplications) {
                                     DropdownMenuItem(text = { Text(AppConstants.TITLE_MY_APPLICATIONS, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) }, leadingIcon = { Icon(Icons.Rounded.Assignment, null) })
                                 }
-                                
+
                                 val hasCourses = enrolledCourses.isNotEmpty()
                                 if (hasCourses) {
                                     DropdownMenuItem(
-                                        text = { Text(AppConstants.TITLE_CLASSROOM, style = MaterialTheme.typography.bodyMedium) }, 
-                                        onClick = { 
+                                        text = { Text(AppConstants.TITLE_CLASSROOM, style = MaterialTheme.typography.bodyMedium) },
+                                        onClick = {
                                             showMenu = false
-                                            showClassroomPicker = true 
-                                        }, 
+                                            showClassroomPicker = true
+                                        },
                                         leadingIcon = { Icon(Icons.Rounded.School, null) }
                                     )
                                 }
-                                
+
                                 DropdownMenuItem(text = { Text(AppConstants.TITLE_MESSAGES, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_MESSAGES) }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Chat, null) })
-                                
+
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                                
+
                                 if (!isCompact) {
                                     DropdownMenuItem(
-                                        text = { Text("Appearance", style = MaterialTheme.typography.bodyMedium) }, 
-                                        onClick = { 
+                                        text = { Text("Appearance", style = MaterialTheme.typography.bodyMedium) },
+                                        onClick = {
                                             showMenu = false
-                                            showThemePicker = true 
-                                        }, 
+                                            showThemePicker = true
+                                        },
                                         leadingIcon = { Icon(Icons.Rounded.Palette, null) }
                                     )
                                 }
 
                                 DropdownMenuItem(text = { Text(AppConstants.TITLE_PROFILE_SETTINGS, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_PROFILE) }, leadingIcon = { Icon(Icons.Rounded.Settings, null) })
                                 DropdownMenuItem(text = { Text("About App", style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_ABOUT) }, leadingIcon = { Icon(Icons.Rounded.Info, null) }) // Added About App item
-                                
+
                                 if (isAdmin) { DropdownMenuItem(text = { Text(AppConstants.TITLE_ADMIN_PANEL, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) }, leadingIcon = { Icon(Icons.Rounded.AdminPanelSettings, null) }) }
                                 if (isTutor) { DropdownMenuItem(text = { Text(AppConstants.TITLE_TUTOR_PANEL, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) }, leadingIcon = { Icon(Icons.Rounded.School, null) }) }
-                                
+
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                                
+
                                 DropdownMenuItem(
-                                    text = { Text("Sign Off", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium) }, 
-                                    onClick = { showMenu = false; onLogout() }, 
+                                    text = { Text("Sign Off", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium) },
+                                    onClick = { showMenu = false; onLogout() },
                                     leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Logout, null, tint = MaterialTheme.colorScheme.error) }
                                 )
                             }

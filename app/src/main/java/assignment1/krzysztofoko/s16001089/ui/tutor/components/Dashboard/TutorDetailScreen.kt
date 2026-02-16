@@ -44,18 +44,18 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.TutorViewModel
 @Composable
 fun TutorDetailScreen(
     viewModel: TutorViewModel,
-    onNavigateToProfile: () -> Unit = {} 
+    onNavigateToProfile: () -> Unit = {}
 ) {
     // REACTIVE STATE: Synchronizes with the tutor's persistent profile and class load
     val tutorProfile by viewModel.tutorProfile.collectAsState()
     val userLocal by viewModel.currentUserLocal.collectAsState()
     val assignedCourses by viewModel.assignedCourses.collectAsState()
     val allCourses by viewModel.allCourses.collectAsState()
-    
+
     // UI STATE: Manages editing context and the course assignment overlay
     var isEditing by remember { mutableStateOf(false) }
     var showAssignmentDialog by remember { mutableStateOf(false) }
-    
+
     // EDITABLE LOCAL STATE: Temporary storage for profile changes before persistence
     var editBio by remember(tutorProfile) { mutableStateOf(tutorProfile?.bio ?: "") }
     var editDept by remember(tutorProfile) { mutableStateOf(tutorProfile?.department ?: "") }
@@ -92,7 +92,7 @@ fun TutorDetailScreen(
                             isLarge = true
                         )
                         Spacer(Modifier.height(16.dp))
-                        
+
                         // Construct display name with institutional title (Prof, Dr, etc.)
                         val displayName = buildString {
                             if (!tutorProfile?.title.isNullOrEmpty()) {
@@ -101,7 +101,7 @@ fun TutorDetailScreen(
                             }
                             append(userLocal?.name ?: tutorProfile?.name ?: "Senior Tutor")
                         }
-                        
+
                         Text(
                             text = displayName,
                             style = if (cardIsTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
@@ -115,9 +115,9 @@ fun TutorDetailScreen(
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
                         )
-                        
+
                         Spacer(Modifier.height(20.dp))
-                        
+
                         // VIEW MODE ACTIONS
                         if (!isEditing) {
                             Row(
@@ -134,9 +134,9 @@ fun TutorDetailScreen(
                                     Spacer(Modifier.width(8.dp))
                                     Text("Edit Details", fontWeight = FontWeight.Bold, maxLines = 1)
                                 }
-                                
+
                                 Spacer(Modifier.width(8.dp))
-                                
+
                                 // Secondary link to account settings
                                 FilledIconButton(
                                     onClick = onNavigateToProfile,
@@ -235,15 +235,15 @@ fun TutorDetailScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Black
                         )
-                        
+
                         // Trigger for the course assignment management dialog
                         IconButton(
                             onClick = { showAssignmentDialog = true },
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                Icons.Default.LibraryAdd, 
-                                null, 
+                                Icons.Default.LibraryAdd,
+                                null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -276,8 +276,8 @@ fun TutorDetailScreen(
                                 }
                                 Spacer(Modifier.width(16.dp))
                                 Text(
-                                    text = course.title, 
-                                    fontWeight = FontWeight.Bold, 
+                                    text = course.title,
+                                    fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.bodyMedium,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -287,7 +287,7 @@ fun TutorDetailScreen(
                     }
                 }
             }
-            
+
             // Standard bottom spacer for navigation clarity
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
@@ -368,7 +368,7 @@ fun CourseAssignmentDialog(
     val allCourses by viewModel.allCourses.collectAsState()
     val assignedCourses by viewModel.assignedCourses.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
-    
+
     // Derived state for quick assignment lookup
     val assignedIds = assignedCourses.map { it.id }.toSet()
     val filteredCourses = allCourses.filter { it.title.contains(searchQuery, ignoreCase = true) }
@@ -391,7 +391,7 @@ fun CourseAssignmentDialog(
                         Text("Manage Assignments", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                         IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, null) }
                     }
-                    
+
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
@@ -411,18 +411,18 @@ fun CourseAssignmentDialog(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { 
+                                    .clickable {
                                         // DATABASE UPDATE: Toggles the assignment status in the Room database
                                         if (isAssigned) viewModel.unassignCourseFromSelf(course.id)
                                         else viewModel.assignCourseToSelf(course.id)
                                     },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isAssigned) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
-                                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                    containerColor = if (isAssigned) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                                 ),
-                                border = if (isAssigned) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) 
-                                         else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                                border = if (isAssigned) BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                                else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                             ) {
                                 Row(
                                     modifier = Modifier.padding(16.dp),
@@ -442,7 +442,7 @@ fun CourseAssignmentDialog(
                             }
                         }
                     }
-                    
+
                     Button(
                         onClick = onDismiss,
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(56.dp),

@@ -29,7 +29,6 @@ import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.Invoice
 import assignment1.krzysztofoko.s16001089.data.ReviewLocal
 import assignment1.krzysztofoko.s16001089.data.WishlistItem
-import assignment1.krzysztofoko.s16001089.ui.admin.AdminUserDetailsViewModel
 import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
 import assignment1.krzysztofoko.s16001089.ui.components.adaptiveWidth
 import java.text.SimpleDateFormat
@@ -42,12 +41,12 @@ fun UserActivityTab(
     searchHistory: List<String>,
     purchasedBooks: List<Book>,
     commentedBooks: List<Book>,
-    viewModel: AdminUserDetailsViewModel,
+    allReviews: List<ReviewLocal>,
+    allInvoices: List<Invoice>,
+    onDeleteComment: (Int) -> Unit = {},
+    onUpdateReview: (ReviewLocal) -> Unit = {},
     onNavigateToBook: (String) -> Unit = {}
 ) {
-    val allReviews by viewModel.allReviews.collectAsState()
-    val allInvoices by viewModel.invoices.collectAsState()
-    
     var selectedReviewForPopup by remember { mutableStateOf<ReviewLocal?>(null) }
     var selectedPurchaseForPopup by remember { mutableStateOf<Pair<Book, Invoice?>?>(null) }
     var selectedWishForPopup by remember { mutableStateOf<Pair<WishlistItem, Book>?>(null) }
@@ -252,7 +251,7 @@ fun UserActivityTab(
                         OutlinedButton(onClick = { showDeleteConfirm = false }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Keep Comment") }
                         Button(
                             onClick = {
-                                viewModel.deleteComment(selectedReviewForPopup!!.reviewId)
+                                onDeleteComment(selectedReviewForPopup!!.reviewId)
                                 selectedReviewForPopup = null
                                 showDeleteConfirm = false
                             },
@@ -277,7 +276,7 @@ fun UserActivityTab(
                     Spacer(Modifier.height(32.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         TextButton(onClick = { showAdminWarning = false }, modifier = Modifier.weight(1f)) { Text("Review Again") }
-                        Button(onClick = { viewModel.updateReview(selectedReviewForPopup!!.copy(comment = editedComment)); selectedReviewForPopup = null; showAdminWarning = false }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Confirm Edit") }
+                        Button(onClick = { onUpdateReview(selectedReviewForPopup!!.copy(comment = editedComment)); selectedReviewForPopup = null; showAdminWarning = false }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Confirm Edit") }
                     }
                 }
             }

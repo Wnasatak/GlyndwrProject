@@ -58,6 +58,7 @@ fun AdminUserDetailsScreen(
     val enrollments by viewModel.courseEnrollments.collectAsState()
     val grades by viewModel.userGrades.collectAsState()
     val allCourses by viewModel.allCourses.collectAsState()
+    val allBooks by viewModel.allBooks.collectAsState()
     val purchasedBooks by viewModel.purchasedBooks.collectAsState()
     val commentedBooks by viewModel.commentedBooks.collectAsState()
 
@@ -176,12 +177,21 @@ fun AdminUserDetailsScreen(
                                 searchHistory = searchHistory, 
                                 purchasedBooks = purchasedBooks, 
                                 commentedBooks = commentedBooks, 
-                                viewModel = viewModel,
+                                allReviews = allReviews,
+                                allInvoices = invoices,
+                                onDeleteComment = { viewModel.deleteComment(it) },
+                                onUpdateReview = { viewModel.updateReview(it) },
                                 onNavigateToBook = { bookId ->
                                     navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$bookId")
                                 }
                             )
-                            2 -> UserCommentsTab(allReviews, viewModel)
+                            2 -> UserCommentsTab(
+                                reviews = allReviews, 
+                                allBooks = allBooks,
+                                isAdmin = true,
+                                onDeleteComment = { viewModel.deleteComment(it) },
+                                onUpdateReview = { viewModel.updateReview(it) }
+                            )
                             3 -> UserAcademicTab(
                                 enrollments = enrollments, 
                                 grades = grades, 

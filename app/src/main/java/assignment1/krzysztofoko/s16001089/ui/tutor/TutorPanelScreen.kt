@@ -310,7 +310,7 @@ fun TutorPanelScreen(
                             TutorSection.LIBRARY -> TutorLibraryTab(viewModel, onPlayAudio)
                             TutorSection.BOOKS -> TutorBooksTab(viewModel)
                             TutorSection.AUDIOBOOKS -> TutorAudioBooksTab(viewModel, onPlayAudio)
-                            TutorSection.TEACHER_DETAIL -> TutorDetailScreen(viewModel, onNavigateToProfile = onNavigateToProfile)
+                            TutorSection.TEACHER_DETAIL -> TutorDetailScreen(viewModel,  onNavigateToProfile = onNavigateToProfile)
                             TutorSection.CREATE_ASSIGNMENT -> CreateAssignmentScreen(viewModel)
                             TutorSection.START_LIVE_STREAM -> TutorCourseLiveTab(viewModel)
                             TutorSection.STUDENT_PROFILE -> TutorStudentProfileScreen(viewModel)

@@ -39,32 +39,32 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun HomeScreen(
-    userId: String,                   
-    initialCategory: String? = null,  
-    navController: NavController,     
-    isLoggedIn: Boolean,              
-    isLoading: Boolean,               
-    error: String?,                   
-    onRefresh: () -> Unit,            
-    onAboutClick: () -> Unit,         
-    currentTheme: Theme,             
-    onThemeChange: (Theme) -> Unit,        
-    onPlayAudio: (Book) -> Unit,      
-    currentPlayingBookId: String?,    
-    isAudioPlaying: Boolean,          
+    userId: String,
+    initialCategory: String? = null,
+    navController: NavController,
+    isLoggedIn: Boolean,
+    isLoading: Boolean,
+    error: String?,
+    onRefresh: () -> Unit,
+    onAboutClick: () -> Unit,
+    currentTheme: Theme,
+    onThemeChange: (Theme) -> Unit,
+    onPlayAudio: (Book) -> Unit,
+    currentPlayingBookId: String?,
+    isAudioPlaying: Boolean,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModelFactory(
         repository = BookRepository(AppDatabase.getDatabase(LocalContext.current)),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
         classroomDao = AppDatabase.getDatabase(LocalContext.current).classroomDao(),
         auditDao = AppDatabase.getDatabase(LocalContext.current).auditDao(),
         userId = userId,
-        initialCategory = initialCategory 
+        initialCategory = initialCategory
     ))
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val uiState by viewModel.uiState.collectAsState()
-    
+
     val isTablet = isTablet()
     val columns = if (isTablet) 2 else 1
 
@@ -77,14 +77,14 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .clickable(
-                interactionSource = remember { MutableInteractionSource() }, 
+                interactionSource = remember { MutableInteractionSource() },
                 indication = null
-            ) { 
-                if (uiState.isSearchVisible) viewModel.setSearchVisible(false) 
+            ) {
+                if (uiState.isSearchVisible) viewModel.setSearchVisible(false)
             }
     ) {
         VerticalWavyBackground(isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE)
-        
+
         Scaffold(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -99,7 +99,7 @@ fun HomeScreen(
                         onThemeChange = { viewModel.setSearchVisible(false); onThemeChange(it) },
                         onAboutClick = { viewModel.setSearchVisible(false); onAboutClick() },
                         onAuthClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_AUTH) },
-                        onDashboardClick = { 
+                        onDashboardClick = {
                             viewModel.setSearchVisible(false)
                             val target = when {
                                 isAdmin -> AppConstants.ROUTE_ADMIN_PANEL
@@ -131,17 +131,17 @@ fun HomeScreen(
                         }
 
                         // WELCOME BANNER: Integrated Adaptive Widths
-                        item(span = { GridItemSpan(this.maxLineSpan) }) { 
+                        item(span = { GridItemSpan(this.maxLineSpan) }) {
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                                 Box(modifier = if (screenIsTablet) Modifier.widthIn(max = AdaptiveWidths.HeroImage).padding(vertical = AdaptiveSpacing.small()) else Modifier.fillMaxWidth()) {
                                     if (!isLoggedIn) {
-                                        PromotionBanner(currentTheme) { 
+                                        PromotionBanner(currentTheme) {
                                             viewModel.setSearchVisible(false)
-                                            navController.navigate(AppConstants.ROUTE_AUTH) 
-                                        } 
+                                            navController.navigate(AppConstants.ROUTE_AUTH)
+                                        }
                                     } else if (uiState.localUser != null) {
                                         MemberWelcomeBanner(
-                                            user = uiState.localUser, 
+                                            user = uiState.localUser,
                                             theme = currentTheme,
                                             onProfileClick = {
                                                 viewModel.setSearchVisible(false)
@@ -152,7 +152,7 @@ fun HomeScreen(
                                                 }
                                                 navController.navigate(target)
                                             }
-                                        ) 
+                                        )
                                     }
                                 }
                             }
@@ -160,10 +160,10 @@ fun HomeScreen(
 
                         // ENROLLMENT SECTION: Unified Adaptive Spacing
                         if (isLoggedIn) {
-                            val enrolledPaidCourse = uiState.allBooks.find { 
+                            val enrolledPaidCourse = uiState.allBooks.find {
                                 it.mainCategory == AppConstants.CAT_COURSES && uiState.purchasedIds.contains(it.id) && it.price > 0.0
                             }
-                            val enrolledFreeCourses = uiState.allBooks.filter { 
+                            val enrolledFreeCourses = uiState.allBooks.filter {
                                 it.mainCategory == AppConstants.CAT_COURSES && uiState.purchasedIds.contains(it.id) && it.price <= 0.0
                             }
 
@@ -175,15 +175,15 @@ fun HomeScreen(
                                             EnrolledCourseHeader(
                                                 course = enrolledPaidCourse,
                                                 isLive = isLive,
-                                                onEnterClassroom = { courseId -> 
-                                                    navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId") 
+                                                onEnterClassroom = { courseId ->
+                                                    navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId")
                                                 }
                                             )
                                         }
                                     }
                                 }
                             }
-                            
+
                             items(enrolledFreeCourses, span = { GridItemSpan(this.maxLineSpan) }) { freeCourse ->
                                 val isLive = uiState.activeLiveSessions.any { it.courseId == freeCourse.id }
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
@@ -191,32 +191,32 @@ fun HomeScreen(
                                         FreeCourseHeader(
                                             course = freeCourse,
                                             isLive = isLive,
-                                            onEnterClassroom = { courseId -> 
-                                                navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId") 
+                                            onEnterClassroom = { courseId ->
+                                                navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$courseId")
                                             }
                                         )
                                     }
                                 }
                             }
                         }
-                        
+
                         // FILTERS: Center-aligned using Adaptive Spacing
-                        item(span = { GridItemSpan(this.maxLineSpan) }) { 
+                        item(span = { GridItemSpan(this.maxLineSpan) }) {
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                                 MainCategoryFilterBar(
-                                    categories = if (isStaff) AppConstants.MainCategories.filter { it != AppConstants.CAT_COURSES } else AppConstants.MainCategories, 
+                                    categories = if (isStaff) AppConstants.MainCategories.filter { it != AppConstants.CAT_COURSES } else AppConstants.MainCategories,
                                     selectedCategory = uiState.selectedMainCategory
-                                ) { viewModel.selectMainCategory(it) } 
+                                ) { viewModel.selectMainCategory(it) }
                             }
                         }
-                        
-                        item(span = { GridItemSpan(this.maxLineSpan) }) { 
+
+                        item(span = { GridItemSpan(this.maxLineSpan) }) {
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                                AnimatedVisibility(visible = AppConstants.SubCategoriesMap.containsKey(uiState.selectedMainCategory)) { 
+                                AnimatedVisibility(visible = AppConstants.SubCategoriesMap.containsKey(uiState.selectedMainCategory)) {
                                     SubCategoryFilterBar(
-                                        categories = AppConstants.SubCategoriesMap[uiState.selectedMainCategory] ?: emptyList(), 
+                                        categories = AppConstants.SubCategoriesMap[uiState.selectedMainCategory] ?: emptyList(),
                                         selectedCategory = uiState.selectedSubCategory
-                                    ) { viewModel.selectSubCategory(it) } 
+                                    ) { viewModel.selectSubCategory(it) }
                                 }
                             }
                         }
@@ -242,9 +242,9 @@ fun HomeScreen(
                                         isLiked = uiState.wishlistIds.contains(book.id),
                                         isPurchased = uiState.purchasedIds.contains(book.id),
                                         isAudioPlaying = isAudioPlaying && currentPlayingBookId == book.id,
-                                        onItemClick = { 
+                                        onItemClick = {
                                             viewModel.setSearchVisible(false)
-                                            navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") 
+                                            navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}")
                                         },
                                         onToggleWishlist = {
                                             viewModel.setSearchVisible(false)
@@ -253,13 +253,13 @@ fun HomeScreen(
                                             }
                                         },
                                         onPlayAudio = { onPlayAudio(book) },
-                                        onInvoiceClick = { 
+                                        onInvoiceClick = {
                                             viewModel.setSearchVisible(false)
-                                            navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/${book.id}") 
+                                            navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/${book.id}")
                                         },
-                                        onRemoveClick = { 
+                                        onRemoveClick = {
                                             viewModel.setSearchVisible(false)
-                                            viewModel.setBookToRemove(book) 
+                                            viewModel.setBookToRemove(book)
                                         }
                                     )
                                 }
@@ -275,17 +275,17 @@ fun HomeScreen(
                     contentAlignment = Alignment.TopCenter
                 ) {
                     HomeSearchSection(
-                        isSearchVisible = uiState.isSearchVisible, 
-                        searchQuery = uiState.searchQuery, 
+                        isSearchVisible = uiState.isSearchVisible,
+                        searchQuery = uiState.searchQuery,
                         recentSearches = uiState.recentSearches,
-                        onQueryChange = { viewModel.updateSearchQuery(it) }, 
+                        onQueryChange = { viewModel.updateSearchQuery(it) },
                         onClearHistory = { viewModel.clearRecentSearches() },
-                        onCloseClick = { viewModel.setSearchVisible(false) }, 
+                        onCloseClick = { viewModel.setSearchVisible(false) },
                         suggestions = uiState.suggestions,
-                        onSuggestionClick = { book -> 
+                        onSuggestionClick = { book ->
                             viewModel.saveSearchQuery(book.title)
                             viewModel.setSearchVisible(false)
-                            navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") 
+                            navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}")
                         },
                         modifier = Modifier
                             .then(if (isTablet) Modifier.widthIn(max = 600.dp) else Modifier.fillMaxWidth())

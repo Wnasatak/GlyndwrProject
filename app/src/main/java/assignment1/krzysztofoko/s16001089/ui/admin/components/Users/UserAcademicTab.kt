@@ -26,6 +26,10 @@ import assignment1.krzysztofoko.s16001089.ui.components.EnrollmentStatusBadge
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Administrative Academic Tab for managing student course enrollments.
+ * This component is reserved for institutional staff to audit and update academic statuses.
+ */
 @Composable
 fun UserAcademicTab(
     enrollments: List<CourseEnrollmentDetails>, 
@@ -55,6 +59,7 @@ fun UserAcademicTab(
                             verticalAlignment = Alignment.Top
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
+                                @Suppress("DEPRECATION")
                                 Text(course?.title ?: "Unknown Course", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium, fontSize = 18.sp)
                                 Text("Course ID: ${enrollment.courseId}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                             }
@@ -70,6 +75,7 @@ fun UserAcademicTab(
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
+                        @Suppress("DEPRECATION")
                         Text(
                             text = sdf.format(Date(enrollment.submittedAt)),
                             style = MaterialTheme.typography.bodyMedium,
@@ -159,6 +165,7 @@ fun StatusEditDialog(currentStatus: String, onDismiss: () -> Unit, onConfirm: (S
                     }
                 }
                 Spacer(Modifier.height(12.dp))
+                @Suppress("DEPRECATION")
                 Text("Update Status", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
                 Text("Select the new enrollment stage", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
@@ -220,10 +227,12 @@ fun StatusEditDialog(currentStatus: String, onDismiss: () -> Unit, onConfirm: (S
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
+                @Suppress("DEPRECATION")
                 Text("Apply Status Change", fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelLarge)
             }
         },
         dismissButton = {
+            @Suppress("DEPRECATION")
             TextButton(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth().height(32.dp)

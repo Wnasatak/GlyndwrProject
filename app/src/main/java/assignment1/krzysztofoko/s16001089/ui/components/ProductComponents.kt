@@ -166,19 +166,19 @@ fun ProductHeaderImage(
             if (isOwned) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(ProDesign.StandardPadding),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (book.price <= 0 && book.mainCategory != AppConstants.CAT_COURSES) {
-                        // Display "PICKED UP" and "FREE COLLECTION" for items obtained for free
+                        // Display "PICKED UP" on the left and "FREE COLLECTION" on the right
                         EnrollmentStatusBadge(status = "PICKED_UP")
-                        Spacer(Modifier.width(8.dp))
                         EnrollmentStatusBadge(status = "FREE_COLLECTION")
                     } else {
                         // Original layout for paid items or courses
                         if (book.price > 0) {
                             EnrollmentStatusBadge(status = "APPROVED")
-                            Spacer(Modifier.weight(1f))
+                        } else {
+                            Spacer(Modifier.width(1.dp))
                         }
                         EnrollmentStatusBadge(status = if (book.mainCategory == AppConstants.CAT_COURSES) "ENROLLED" else "APPROVED")
                     }

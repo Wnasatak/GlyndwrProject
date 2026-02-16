@@ -128,13 +128,10 @@ data class UserLocal(
     val phoneNumber: String? = null,
     val selectedPaymentMethod: String? = null,
     val balance: Double = 0.0,
-    val role: String = "student",
+    val role: String = "user",
     val discountPercent: Double = 0.0
 )
 
-/**
- * Separated entity for User Theme preferences.
- */
 @Entity(tableName = "user_themes")
 data class UserTheme(
     @PrimaryKey val userId: String,
@@ -286,6 +283,8 @@ data class CourseEnrollmentDetails(
     @PrimaryKey val id: String, // userId_courseId
     val userId: String,
     val courseId: String,
+    val requestedCourseId: String? = null,
+    val isWithdrawal: Boolean = false,
     val lastQualification: String,
     val institution: String,
     val graduationYear: String,
@@ -370,6 +369,9 @@ interface UserDao {
 
     @Query("DELETE FROM course_enrollment_details WHERE userId = :userId")
     suspend fun deleteEnrollmentsForUser(userId: String)
+
+    @Query("DELETE FROM course_enrollment_details WHERE id = :id")
+    suspend fun deleteEnrollmentById(id: String)
 
     @Query("SELECT productId FROM wishlist WHERE userId = :userId ORDER BY addedAt DESC")
     fun getWishlistIds(userId: String): Flow<List<String>>
@@ -484,7 +486,7 @@ interface UserDao {
             deleteInteraction(reviewId, userId)
             if (existing.interactionType == type) return
         }
-        if (type == "LIKE") incrementLikes(reviewId) else incrementDislikes(reviewId)
+        if (type == "LIKE") incrementLikes(reviewId) else decrementDislikes(reviewId)
         insertInteraction(ReviewInteraction(reviewId, userId, userName, type))
     }
 
@@ -503,10 +505,6 @@ interface UserDao {
     @Query("SELECT * FROM invoices WHERE invoiceNumber = :invoiceNumber")
     suspend fun getInvoiceByNumber(invoiceNumber: String): Invoice?
 
-    /**
-     * Consolidate Lookup Logic:
-     * We try to match by reference first if provided, otherwise fallback to the most recent record.
-     */
     @Query("SELECT * FROM invoices WHERE userId = :userId AND (orderReference = :orderRef OR :orderRef IS NULL) AND productId = :productId ORDER BY purchasedAt DESC LIMIT 1")
     suspend fun getInvoiceRecord(userId: String, productId: String, orderRef: String?): Invoice?
 
@@ -539,6 +537,18 @@ interface UserDao {
 
     @Query("UPDATE course_enrollment_details SET status = :status WHERE id = :id")
     suspend fun updateEnrollmentStatus(id: String, status: String)
+
+    @Query("UPDATE course_enrollment_details SET status = :status, requestedCourseId = :requestedId, isWithdrawal = 0 WHERE id = :id")
+    suspend fun requestCourseChange(id: String, status: String, requestedId: String)
+
+    @Query("UPDATE course_enrollment_details SET status = :status, isWithdrawal = 1, requestedCourseId = NULL WHERE id = :id")
+    suspend fun requestWithdrawal(id: String, status: String)
+
+    @Query("SELECT * FROM course_enrollment_details WHERE id = :id")
+    suspend fun getEnrollmentById(id: String): CourseEnrollmentDetails?
+
+    @Query("UPDATE course_enrollment_details SET courseId = :newCourseId, requestedCourseId = NULL, status = :status WHERE id = :id")
+    suspend fun updateEnrollmentAfterChange(id: String, newCourseId: String, status: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertRoleDiscount(discount: RoleDiscount)

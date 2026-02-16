@@ -68,7 +68,7 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
      */
     private fun isBypassEmail(email: String?): Boolean {
         if (email == null) return false
-        val bypassList = listOf("teacher@example.com", "admin@example.com", "student@example.com", "user@example.com") // Example Users used only for testing
+        val bypassList = listOf("teacher@example.com", "admin@example.com", "student@example.com", "user@example.com") 
         return bypassList.contains(email.lowercase())
     }
 
@@ -133,16 +133,13 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                 val user = res.user
                 loginAttempts = 0
                 
-                // --- BYPASS LOGIC ---
-                // Allow specific emails to bypass the isEmailVerified check
                 if (user?.isEmailVerified == true || isBypassEmail(user?.email)) {
                     viewModelScope.launch {
                         val existing = db.userDao().getUserById(user!!.uid)
                         
+                        // REMOVED HARDCODED STUDENT/TEACHER OVERRIDES
                         val updatedRole = when (user.email) {
                             "prokocomp@gmail.com", "admin@example.com" -> "admin"
-                            "teacher@example.com" -> "teacher"
-                            "student@example.com" -> "student"
                             else -> (existing?.role ?: "user")
                         }
                         
@@ -191,9 +188,7 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                 viewModelScope.launch {
                     val assignedRole = when (trimmedEmail) {
                         "prokocomp@gmail.com", "admin@example.com" -> "admin"
-                        "teacher@example.com" -> "teacher"
-                        "student@example.com" -> "student"
-                        else -> "user"
+                        else -> "user" // DEFAULT TO USER
                     }
                     
                     val userData = UserLocal(
@@ -206,17 +201,8 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                     pendingAuthResult = "" to userData
                     addLog(user.uid, firstName, "USER_SIGN_UP", "New user registered: $trimmedEmail", userData.role)
                     
-                    // Even if bypassing for sign-in, we still trigger the flow for sign-up
-                    if (isBypassEmail(trimmedEmail)) {
-                        // For bypass emails, we skip the "must verify" screen and go to 2FA or finalize
-                        // In this project, sign-up usually leads to a "check email" screen.
-                        // We'll let it send the email but the user can then just sign in immediately.
-                        user.sendEmailVerification()
-                        isVerifyingEmail = true
-                    } else {
-                        user.sendEmailVerification()
-                        isVerifyingEmail = true
-                    }
+                    user.sendEmailVerification()
+                    isVerifyingEmail = true
                     isLoading = false
                 }
             }
@@ -240,8 +226,6 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
                     
                     val updatedRole = when (user.email) {
                         "prokocomp@gmail.com", "admin@example.com" -> "admin"
-                        "teacher@example.com" -> "teacher"
-                        "student@example.com" -> "student"
                         else -> (existing?.role ?: "user")
                     }
 
@@ -289,7 +273,7 @@ class AuthViewModel(private val db: AppDatabase) : ViewModel() {
         val role = localUser?.role ?: "user"
         val action = when(role) {
             "admin" -> "ADMIN_LOGOUT"
-            "teacher" -> "TUTOR_LOGOUT"
+            "teacher" -> "TUTOR_LOGIN"
             else -> "USER_LOGOUT"
         }
         addLog(uid, name, action, "User signed out from the session.", role)

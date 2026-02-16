@@ -55,6 +55,8 @@ fun NotificationScreen(
     onNavigateToItem: (String) -> Unit,    
     onNavigateToInvoice: (String) -> Unit, 
     onNavigateToMessages: () -> Unit,
+    onNavigateToUser: (String) -> Unit = {}, // NEW: For academic requests
+    onViewApplications: () -> Unit = {},     // NEW: For enrolment hub
     onBack: () -> Unit,                    
     isDarkTheme: Boolean,                  
     viewModel: NotificationViewModel = viewModel(factory = NotificationViewModelFactory(
@@ -127,7 +129,7 @@ fun NotificationScreen(
                             ) {
                                 NotificationItem(notification = notification, isDarkTheme = isDarkTheme, viewModel = viewModel, onDelete = { dismissingIds.value = dismissingIds.value + notification.id }, onClick = { 
                                         scope.launch {
-                                            relatedBook = if (notification.type == "ANNOUNCEMENT" || notification.type == "MESSAGE") null else viewModel.getRelatedBook(notification.productId)
+                                            relatedBook = if (notification.type == "ANNOUNCEMENT" || notification.type == "MESSAGE" || notification.type == "ACADEMIC_REQUEST") null else viewModel.getRelatedBook(notification.productId)
                                             selectedNotification = notification
                                             showSheet = true
                                             viewModel.markAsRead(notification.id)
@@ -145,6 +147,7 @@ fun NotificationScreen(
             val isTopUp = selectedNotification!!.productId == AppConstants.ID_TOPUP
             val isAnnouncement = selectedNotification!!.type == "ANNOUNCEMENT"
             val isMessage = selectedNotification!!.type == "MESSAGE"
+            val isAcademicRequest = selectedNotification!!.type == "ACADEMIC_REQUEST"
             val isPickup = selectedNotification!!.type == AppConstants.NOTIF_TYPE_PICKUP
             
             ModalBottomSheet(
@@ -167,20 +170,21 @@ fun NotificationScreen(
                             modifier = Modifier
                                 .size(80.dp)
                                 .background(
-                                    brush = if (isAnnouncement || isMessage) Brush.radialGradient(listOf(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), Color.Transparent))
+                                    brush = if (isAnnouncement || isMessage || isAcademicRequest) Brush.radialGradient(listOf(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), Color.Transparent))
                                             else Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), Color.Transparent)),
                                     shape = CircleShape
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Box(
-                                modifier = Modifier.size(56.dp).background(if (isAnnouncement || isMessage) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary, CircleShape),
+                                modifier = Modifier.size(56.dp).background(if (isAnnouncement || isMessage) MaterialTheme.colorScheme.secondary else if (isAcademicRequest) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = when {
                                         isMessage -> Icons.AutoMirrored.Filled.Chat
                                         isAnnouncement -> Icons.Default.Campaign
+                                        isAcademicRequest -> Icons.Default.School
                                         isTopUp -> Icons.Default.AccountBalanceWallet
                                         selectedNotification!!.type == AppConstants.NOTIF_TYPE_PURCHASE -> Icons.Default.ShoppingBag
                                         isPickup -> Icons.Default.Storefront
@@ -221,9 +225,40 @@ fun NotificationScreen(
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                         }
+
+                        if (isAcademicRequest) {
+                            // Specialized buttons for Academic Requests
+                            Button(
+                                onClick = { 
+                                    showSheet = false
+                                    onNavigateToUser(selectedNotification!!.productId) // productId contains studentId
+                                }, 
+                                modifier = Modifier.fillMaxWidth().height(56.dp), 
+                                shape = RoundedCornerShape(16.dp), 
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            ) {
+                                Icon(imageVector = Icons.Default.Badge, contentDescription = null)
+                                Spacer(Modifier.width(12.dp)); Text(text = "View Student Profile", fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            OutlinedButton(
+                                onClick = { 
+                                    showSheet = false
+                                    onViewApplications() 
+                                }, 
+                                modifier = Modifier.fillMaxWidth().height(56.dp), 
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                            ) {
+                                Icon(imageVector = Icons.Default.Assignment, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(12.dp)); Text(text = "Check Enrolment Hub", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
                         
-                        // ACTION BUTTON: Navigates to product or invoice
-                        if (!isAnnouncement && !isMessage) {
+                        // ACTION BUTTON: Navigates to product or invoice (Hidden for academic requests)
+                        if (!isAnnouncement && !isMessage && !isAcademicRequest) {
                             // VIEW PRODUCT: Works if we have a valid productId
                             Button(
                                 onClick = { 
@@ -241,17 +276,17 @@ fun NotificationScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                         
-                        // INVOICE BUTTON: Hidden for free items (Pickups) or specifically for free resources
+                        // INVOICE BUTTON: Hidden for free items (Pickups) or specifically for academic requests
                         val isFree = (relatedBook?.price ?: 0.0) <= 0.0
-                        if (!isTopUp && !isAnnouncement && !isMessage && !isPickup && !isFree && relatedBook != null) {
+                        if (!isTopUp && !isAnnouncement && !isMessage && !isPickup && !isFree && !isAcademicRequest && relatedBook != null) {
                             OutlinedButton(onClick = { showSheet = false; onNavigateToInvoice(selectedNotification!!.productId) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))) {
                                 Icon(Icons.AutoMirrored.Filled.ReceiptLong, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_VIEW_INVOICE, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                         
-                        // REMOVE FROM LIBRARY: Option for free resources
-                        if (relatedBook != null && isFree && relatedBook!!.mainCategory != AppConstants.CAT_GEAR && !isTopUp && !isAnnouncement && !isMessage) {
+                        // REMOVE FROM LIBRARY: Option for free resources (Hidden for academic requests)
+                        if (relatedBook != null && isFree && relatedBook!!.mainCategory != AppConstants.CAT_GEAR && !isTopUp && !isAnnouncement && !isMessage && !isAcademicRequest) {
                             OutlinedButton(onClick = { showSheet = false; showRemoveConfirm = true }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))) {
                                 Icon(Icons.Default.DeleteOutline, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.MENU_REMOVE_FROM_LIBRARY, fontWeight = FontWeight.Bold)
                             }
@@ -291,15 +326,17 @@ fun NotificationItem(
     val timeStr = sdf.format(Date(notification.timestamp))
     val isAnnouncement = notification.type == "ANNOUNCEMENT"
     val isMessage = notification.type == "MESSAGE"
+    val isAcademicRequest = notification.type == "ACADEMIC_REQUEST"
     
     var relatedItem by remember { mutableStateOf<Book?>(null) }
     LaunchedEffect(notification.productId) {
-        if (!isAnnouncement && !isMessage) relatedItem = viewModel.getRelatedBook(notification.productId)
+        if (!isAnnouncement && !isMessage && !isAcademicRequest) relatedItem = viewModel.getRelatedBook(notification.productId)
     }
 
     val (categoryIcon, categoryColor) = when {
         isMessage -> Icons.AutoMirrored.Filled.Chat to MaterialTheme.colorScheme.secondary
         isAnnouncement -> Icons.Default.Campaign to MaterialTheme.colorScheme.secondary
+        isAcademicRequest -> Icons.Default.School to MaterialTheme.colorScheme.tertiary
         notification.productId == AppConstants.ID_TOPUP -> Icons.Default.AccountBalanceWallet to CatCoursesTeal
         relatedItem?.mainCategory == AppConstants.CAT_BOOKS -> Icons.Default.MenuBook to CatBooksBlue
         relatedItem?.mainCategory == AppConstants.CAT_AUDIOBOOKS -> Icons.Default.Headphones to CatAudioBooksPink
@@ -326,7 +363,7 @@ fun NotificationItem(
 
     // Pulsing animation for unread announcements/messages
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by if ((isAnnouncement || isMessage) && !notification.isRead) {
+    val pulseScale by if ((isAnnouncement || isMessage || isAcademicRequest) && !notification.isRead) {
         infiniteTransition.animateFloat(
             initialValue = 1f,
             targetValue = 1.15f,
@@ -348,7 +385,7 @@ fun NotificationItem(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(60.dp), contentAlignment = Alignment.Center) {
-                val imagePath = if (isAnnouncement || isMessage || notification.productId == AppConstants.ID_TOPUP) "file:///android_asset/images/media/GlyndwrUniversity.jpg"
+                val imagePath = if (isAnnouncement || isMessage || isAcademicRequest || notification.productId == AppConstants.ID_TOPUP) "file:///android_asset/images/media/GlyndwrUniversity.jpg"
                                 else formatAssetUrl(relatedItem?.imageUrl ?: "images/media/GlyndwrUniversity.jpg")
                 
                 AsyncImage(
@@ -387,13 +424,13 @@ fun NotificationItem(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
-                        if (isAnnouncement && !notification.isRead) {
+                        if ((isAnnouncement || isAcademicRequest) && !notification.isRead) {
                             Surface(
                                 color = categoryColor,
                                 shape = RoundedCornerShape(4.dp),
                                 modifier = Modifier.padding(start = 8.dp)
                             ) {
-                                Text("URGENT", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                                Text(if(isAcademicRequest) "REQUEST" else "URGENT", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
                             }
                         }
                     }

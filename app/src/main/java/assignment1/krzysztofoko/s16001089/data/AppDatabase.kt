@@ -18,7 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CourseEnrollmentDetails::class, SystemLog::class, AssignedCourse::class,
         Attendance::class, RoleDiscount::class, UserTheme::class
     ], 
-    version = 31, // Bumped to 31 for Theme Persistence
+    version = 33, // Bumped to 33 for complete Academic Request tracking
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,6 +35,24 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        /**
+         * Migration 32 to 33: Adds isWithdrawal column to course_enrollment_details.
+         */
+        private val MIGRATION_32_33 = object : Migration(32, 33) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `course_enrollment_details` ADD COLUMN `isWithdrawal` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * Migration 31 to 32: Adds requestedCourseId column to course_enrollment_details.
+         */
+        private val MIGRATION_31_32 = object : Migration(31, 32) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `course_enrollment_details` ADD COLUMN `requestedCourseId` TEXT")
+            }
+        }
 
         /**
          * Migration 30 to 31: Adds lastSelectedTheme column to user_themes.
@@ -162,7 +180,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
                     MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
                     MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29,
-                    MIGRATION_29_30, MIGRATION_30_31
+                    MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33
                 )
                 .fallbackToDestructiveMigration()
                 .build()

@@ -80,10 +80,10 @@ fun SpinningAudioButton(
 
 @Composable
 fun DashboardHeader(
-    name: String, 
-    photoUrl: String?, 
-    role: String, 
-    balance: Double, 
+    name: String,
+    photoUrl: String?,
+    role: String,
+    balance: Double,
     onTopUp: () -> Unit,
     onViewHistory: () -> Unit
 ) {
@@ -93,16 +93,16 @@ fun DashboardHeader(
     val avatarSize = AdaptiveDimensions.LargeAvatar
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(padding), 
-        shape = RoundedCornerShape(radius), 
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)), 
+        modifier = Modifier.fillMaxWidth().padding(padding),
+        shape = RoundedCornerShape(radius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
     ) {
         Column(modifier = Modifier.padding(innerPadding)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 UserAvatar(
-                    photoUrl = photoUrl, 
-                    modifier = Modifier.size(avatarSize).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), CircleShape).padding(2.dp), 
+                    photoUrl = photoUrl,
+                    modifier = Modifier.size(avatarSize).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), CircleShape).padding(2.dp),
                     isLarge = true
                 )
                 Spacer(Modifier.width(innerPadding))
@@ -114,9 +114,9 @@ fun DashboardHeader(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(AdaptiveSpacing.medium()))
-            
+
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(AdaptiveSpacing.itemRadius()),
@@ -136,9 +136,9 @@ fun DashboardHeader(
                         }
                         Text(text = "£" + String.format(Locale.US, "%.2f", balance), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                     }
-                    
+
                     Button(
-                        onClick = onTopUp, 
+                        onClick = onTopUp,
                         shape = RoundedCornerShape(AdaptiveSpacing.itemRadius()),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
@@ -162,7 +162,7 @@ fun WalletHistorySheet(transactions: List<WalletTransaction>, onNavigateToProduc
     ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp), containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp, dragHandle = { BottomSheetDefaults.DragHandle() }) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 40.dp)) {
             Text(text = "Wallet History", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 24.dp))
-            if (transactions.isEmpty()) { Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) { Text("No transactions yet.", color = Color.Gray) } } 
+            if (transactions.isEmpty()) { Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) { Text("No transactions yet.", color = Color.Gray) } }
             else { LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxHeight(0.6f)) { items(transactions, key = { it.id }) { tx -> WalletTransactionItem(tx = tx, sdf = sdf, onNavigateToProduct = onNavigateToProduct, onViewInvoice = onViewInvoice, onDismissSheet = onDismiss) } } }
             Spacer(modifier = Modifier.height(24.dp))
             Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { @Suppress("DEPRECATION") Text("Close", style = AdaptiveTypography.sectionHeader(), fontWeight = FontWeight.Bold) }
@@ -199,7 +199,7 @@ fun GrowingLazyRow(books: List<Book>, icon: ImageVector, onBookClick: (Book) -> 
     if (books.isEmpty()) return
     val isTablet = isTablet()
     val listState = rememberLazyListState()
-    if (isTablet) { LazyRow(state = listState, contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) { items(books, key = { it.id }) { book -> WishlistMiniCard(book = book, icon = icon, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)) { onBookClick(book) } } } } 
+    if (isTablet) { LazyRow(state = listState, contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) { items(books, key = { it.id }) { book -> WishlistMiniCard(book = book, icon = icon, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)) { onBookClick(book) } } } }
     else { val itemsToShow = remember(books) { List(100) { books }.flatten() }; val initialIndex = itemsToShow.size / 2 - (itemsToShow.size / 2 % books.size); LaunchedEffect(books) { listState.scrollToItem(initialIndex) }; LazyRow(state = listState, contentPadding = PaddingValues(horizontal = 32.dp, vertical = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { itemsIndexed(itemsToShow) { index, book -> Box(modifier = Modifier.graphicsLayer { val layoutInfo = listState.layoutInfo; val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }; if (itemInfo != null) { val viewportWidth = layoutInfo.viewportEndOffset.toFloat(); val itemOffset = itemInfo.offset.toFloat(); val itemSize = itemInfo.size.toFloat(); val centerOffset = (viewportWidth - itemSize) / 2; val distanceFromCenter = kotlin.math.abs(itemOffset - centerOffset); val scale = (1.1f - (distanceFromCenter / (viewportWidth / 2)) * 0.3f).coerceIn(0.8f, 1.1f); scaleX = scale; scaleY = scale; shadowElevation = (16f * scale).coerceAtLeast(2f) } }) { WishlistMiniCard(book = book, icon = icon, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)) { onBookClick(book) } } } } }
 }
 

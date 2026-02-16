@@ -3,9 +3,9 @@ package assignment1.krzysztofoko.s16001089
 import assignment1.krzysztofoko.s16001089.data.Book
 
 /**
- * AppConstants serves as the single source of truth for all hardcoded strings, 
+ * AppConstants serves as the single source of truth for all hardcoded strings,
  * configuration values, and business logic constants within the Glyndŵr Project.
- * Centralizing these values ensures UI consistency, simplifies localization, 
+ * Centralizing these values ensures UI consistency, simplifies localization,
  * and makes global updates (like versioning or branding) straightforward.
  */
 object AppConstants {
@@ -48,7 +48,7 @@ object AppConstants {
     const val LABEL_PAID = "Paid"
     const val LABEL_NEW = "NEW"
     const val LABEL_MY_COURSES = "MY COURSES"
-    
+
     // --- Filter Identifiers ---
     // Constant keys used in ViewModel filtering logic.
     const val FILTER_ALL = "All"
@@ -56,7 +56,7 @@ object AppConstants {
     const val FILTER_AUDIOBOOKS = "Audiobooks"
     const val FILTER_GEAR = "Gear"
     const val FILTER_COURSES = "Courses"
-    
+
     // --- UI Strings: Screen & Dialog Titles ---
     // Descriptive headings for various parts of the application.
     const val TITLE_MEMBER_LOGIN = "Member Login"
@@ -182,7 +182,7 @@ object AppConstants {
     const val BTN_SIGN_IN_REGISTER = "Sign in / Register"
     const val BTN_SIGN_IN_ENROLL = "Sign in to Enroll"
     const val BTN_SIGN_IN_SHOP = "Sign In to Shop"
-    
+
     // --- Body Text & Section Headers ---
     const val SECTION_ABOUT_ITEM = "About this item"
     const val SECTION_ABOUT_AUDIO = "About this audiobook"
@@ -215,7 +215,7 @@ object AppConstants {
     const val TAB_MODULES = "Modules"
     const val TAB_ASSIGNMENTS = "Assignments"
     const val TAB_PERFORMANCE = "Grades"
-    
+
     // --- Accounting, Invoicing & Financial Labels ---
     const val LABEL_SUBTOTAL = "Subtotal"
     const val LABEL_STUDENT_DISCOUNT_VAL = "Student Discount"
@@ -236,7 +236,7 @@ object AppConstants {
     const val LABEL_ORDER_TOTAL = "Order Total"
     const val LABEL_FINAL = "Final"
     const val LABEL_BALANCE = "Balance"
-    
+
     // --- Routing & Component IDs ---
     const val ID_TOPUP = "topup_product"
     const val ROUTE_ADMIN_USER_DETAILS = "admin_user_details"

@@ -68,7 +68,7 @@ fun AdminDetailScreen(
                             isLarge = true
                         )
                         Spacer(Modifier.height(16.dp))
-                        
+
                         Text(
                             text = adminUser?.name ?: "Loading...",
                             style = if (cardIsTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
@@ -82,9 +82,9 @@ fun AdminDetailScreen(
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
                         )
-                        
+
                         Spacer(Modifier.height(20.dp))
-                        
+
                         if (!isEditing) {
                             Row(
                                 modifier = Modifier.adaptiveButtonWidth(),
@@ -100,9 +100,9 @@ fun AdminDetailScreen(
                                     Spacer(Modifier.width(8.dp))
                                     Text("Edit Info", fontWeight = FontWeight.Bold)
                                 }
-                                
+
                                 Spacer(Modifier.width(8.dp))
-                                
+
                                 FilledIconButton(
                                     onClick = onNavigateToSettings,
                                     modifier = Modifier.size(44.dp),
@@ -167,7 +167,7 @@ fun AdminDetailScreen(
                     }
                 }
             }
-            
+
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }

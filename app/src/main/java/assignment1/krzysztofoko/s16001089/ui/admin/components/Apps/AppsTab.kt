@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -189,7 +190,9 @@ fun AdminApplicationCard(
     onCheck: () -> Unit = {}
 ) {
     val sdf = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
-    
+    val isChangeRequest = app.details.requestedCourseId != null
+    val isWithdrawal = app.details.isWithdrawal
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -200,12 +203,49 @@ fun AdminApplicationCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = app.student?.name ?: "Unknown Student", fontWeight = FontWeight.Black, fontSize = 18.sp)
-                    Text(text = app.course?.title ?: "Applied for Course", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                    
+                    if (isWithdrawal) {
+                        Surface(color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
+                            Text(text = "WITHDRAWAL REQUEST", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
+                        }
+                    } else if (isChangeRequest) {
+                        Surface(color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
+                            Text(text = "COURSE CHANGE", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
+                        }
+                    } else {
+                        Text(text = app.course?.title ?: "Applied for Course", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
                 EnrollmentStatusBadge(status = app.details.status)
             }
             
             Spacer(modifier = Modifier.height(16.dp))
+
+            if (isWithdrawal) {
+                Surface(color = MaterialTheme.colorScheme.error.copy(alpha = 0.05f), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f)), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Student has requested to withdraw from this course.", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            } else if (isChangeRequest) {
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("FROM", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                            Text(app.course?.title ?: "Unknown", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(horizontal = 8.dp).size(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("TO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                            Text(app.requestedCourse?.title ?: "New Program", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.tertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
             
             AppDetailRowItem("Qualification", app.details.lastQualification)
             AppDetailRowItem("Institution", app.details.institution)
@@ -250,7 +290,7 @@ fun AdminApplicationCard(
                     ) {
                         Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Approve", fontWeight = FontWeight.Bold)
+                        Text(if (isWithdrawal) "Confirm" else "Approve", fontWeight = FontWeight.Bold)
                     }
                 }
             } else if (app.details.status == "ENROLLED") {

@@ -180,7 +180,7 @@ fun AdminPanelScreen(
                                     DropdownMenuItem(
                                         text = { Text("My Library") },
                                         onClick = { showMenu = false; viewModel.setSection(AdminSection.LIBRARY) },
-                                        leadingIcon = { Icon(Icons.Default.LibraryBooks, null, tint = MaterialTheme.colorScheme.primary) }
+                                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.LibraryBooks, null, tint = MaterialTheme.colorScheme.primary) }
                                     )
 
                                     DropdownMenuItem(
@@ -192,7 +192,7 @@ fun AdminPanelScreen(
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                                     DropdownMenuItem(
-                                        text = { Text("Log Off", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) },
+                                        text = { Text("Sign Off", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) },
                                         onClick = { showMenu = false; onLogoutClick() },
                                         leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) }
                                     )
@@ -259,7 +259,7 @@ fun AdminPanelScreen(
                                 onNavigateToDetails = onNavigateToBookDetails,
                                 onExploreMore = onExploreMore,
                                 isDarkTheme = isDarkTheme
-                            )
+                            ) 
                             AdminSection.PROFILE -> AdminDetailScreen(
                                 viewModel = viewModel,
                                 onNavigateToSettings = onNavigateToProfile
@@ -269,6 +269,8 @@ fun AdminPanelScreen(
                                     onNavigateToItem = { onNavigateToBookDetails(it) },
                                     onNavigateToInvoice = { _ -> }, 
                                     onNavigateToMessages = { viewModel.setSection(AdminSection.DASHBOARD) },
+                                    onNavigateToUser = { onNavigateToUserDetails(it) },
+                                    onViewApplications = { viewModel.setSection(AdminSection.APPLICATIONS) },
                                     onBack = { viewModel.setSection(AdminSection.DASHBOARD) },
                                     isDarkTheme = isDarkTheme
                                 )

@@ -38,13 +38,13 @@ fun NavGraphBuilder.dashboardNavGraph(
     onLogoutClick: () -> Unit
 ) {
     val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
-    
+
     // Centralized theme change logic
-    val onThemeToggle = { 
+    val onThemeToggle = {
         val nextTheme = if (isDarkTheme) Theme.LIGHT else Theme.DARK
         onThemeChange(nextTheme)
     }
-    
+
     val onFullThemeChange = { theme: Theme ->
         onThemeChange(theme)
         if (theme == Theme.CUSTOM) onOpenThemeBuilder()
@@ -57,7 +57,7 @@ fun NavGraphBuilder.dashboardNavGraph(
             onBack = { navController.popBackStack() },
             onLogout = onLogoutClick,
             isDarkTheme = isDarkTheme,
-            onThemeChange = onFullThemeChange, 
+            onThemeChange = onFullThemeChange,
             onViewInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/${it.id}") },
             onPlayAudio = onPlayAudio,
             currentPlayingBookId = currentPlayingBookId,
@@ -157,7 +157,7 @@ fun NavGraphBuilder.dashboardNavGraph(
     composable(
         route = "${AppConstants.ROUTE_TUTOR_PANEL}?section={section}",
         arguments = listOf(
-            navArgument("section") { 
+            navArgument("section") {
                 type = NavType.StringType
                 nullable = true
                 defaultValue = null

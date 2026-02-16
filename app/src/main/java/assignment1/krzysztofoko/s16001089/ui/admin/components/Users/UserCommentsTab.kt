@@ -23,20 +23,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import assignment1.krzysztofoko.s16001089.data.ReviewLocal
-import assignment1.krzysztofoko.s16001089.ui.admin.AdminUserDetailsViewModel
+import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
 import assignment1.krzysztofoko.s16001089.ui.components.adaptiveWidth
 import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * UserCommentsTab provides an administrative interface for auditing student reviews.
+ * UserCommentsTab provides an interface for auditing student reviews.
+ * Refactored to support both Admin and Student Profile views without a direct ViewModel dependency.
  */
 @Composable
-fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewModel) {
-    val allBooks by viewModel.allBooks.collectAsState()
+fun UserCommentsTab(
+    reviews: List<ReviewLocal>, 
+    allBooks: List<Book>,
+    isAdmin: Boolean = false,
+    onDeleteComment: (Int) -> Unit = {},
+    onUpdateReview: (ReviewLocal) -> Unit = {}
+) {
     var editingReview by remember { mutableStateOf<ReviewLocal?>(null) }
     var reviewToDelete by remember { mutableStateOf<ReviewLocal?>(null) }
     var editedCommentText by remember { mutableStateOf("") }
@@ -47,7 +52,6 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.Default.RateReview, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
                 Spacer(Modifier.height(16.dp))
-                @Suppress("DEPRECATION")
                 Text("No academic reviews found.", color = Color.Gray) 
             }
         }
@@ -130,7 +134,7 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
         }
     }
 
-    // --- HIGH-END THEMED EDIT DIALOG ---
+    // --- EDIT DIALOG ---
     if (editingReview != null) {
         Dialog(onDismissRequest = { editingReview = null }) {
             Surface(
@@ -165,9 +169,15 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { editingReview = null }) { Text("Discard", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
                         Spacer(Modifier.width(12.dp))
-                        Button(onClick = { showAdminWarning = true }, shape = RoundedCornerShape(12.dp)) {
+                        Button(onClick = { 
+                            if (isAdmin) showAdminWarning = true 
+                            else {
+                                onUpdateReview(editingReview!!.copy(comment = editedCommentText))
+                                editingReview = null
+                            }
+                        }, shape = RoundedCornerShape(12.dp)) {
                             Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp)); Text("Review Update", fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.width(8.dp)); Text(if (isAdmin) "Review Update" else "Save Update", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -191,7 +201,7 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
                     Text("Administrative Audit", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "You are modifying public institutional feedback. This action is tracked and must comply with our professional conduct policies.",
+                        "You are modifying institutional feedback. This action is tracked and must comply with our professional conduct policies.",
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyMedium,
                         lineHeight = 20.sp
@@ -201,7 +211,7 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
                         OutlinedButton(onClick = { showAdminWarning = false }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Re-Evaluate") }
                         Button(
                             onClick = {
-                                viewModel.updateReview(editingReview!!.copy(comment = editedCommentText))
+                                onUpdateReview(editingReview!!.copy(comment = editedCommentText))
                                 editingReview = null
                                 showAdminWarning = false
                             },
@@ -231,7 +241,7 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
                     Text("Remove Comment?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "Are you sure you want to permanently delete this student feedback? This operation cannot be reversed.",
+                        "Are you sure you want to permanently delete this feedback? This operation cannot be reversed.",
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyMedium,
                         lineHeight = 20.sp
@@ -241,7 +251,7 @@ fun UserCommentsTab(reviews: List<ReviewLocal>, viewModel: AdminUserDetailsViewM
                         TextButton(onClick = { reviewToDelete = null }, modifier = Modifier.weight(1f)) { Text("Keep Comment") }
                         Button(
                             onClick = {
-                                viewModel.deleteComment(reviewToDelete!!.reviewId)
+                                onDeleteComment(reviewToDelete!!.reviewId)
                                 reviewToDelete = null
                             },
                             modifier = Modifier.weight(1f),

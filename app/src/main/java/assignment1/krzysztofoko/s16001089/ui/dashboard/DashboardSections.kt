@@ -105,10 +105,10 @@ fun LazyGridScope.enrolledCoursesSection(
 ) {
     if (enrolledPaidCourse != null || enrolledFreeCourses.isNotEmpty()) {
         item(key = "courses_header", span = { GridItemSpan(this.maxLineSpan) }) { SectionHeader(AppConstants.LABEL_MY_COURSES) }
-        
+
         if (enrolledPaidCourse != null) {
             val isLive = activeLiveSessions.any { it.courseId == enrolledPaidCourse.id }
-            item(key = "paid_course_${enrolledPaidCourse.id}", span = { GridItemSpan(this.maxLineSpan) }) { 
+            item(key = "paid_course_${enrolledPaidCourse.id}", span = { GridItemSpan(this.maxLineSpan) }) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = if (isTablet) Modifier.widthIn(max = AdaptiveWidths.Wide) else Modifier.fillMaxWidth()) {
                         EnrolledCourseHeader(course = enrolledPaidCourse, isLive = isLive, onEnterClassroom = onEnterClassroom)
@@ -116,7 +116,7 @@ fun LazyGridScope.enrolledCoursesSection(
                 }
             }
         }
-        
+
         items(enrolledFreeCourses, key = { "free_course_${it.id}" }, span = { GridItemSpan(this.maxLineSpan) }) { freeCourse ->
             val isLive = activeLiveSessions.any { it.courseId == freeCourse.id }
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
@@ -134,15 +134,15 @@ fun LazyGridScope.quickActionsSection(
     onAdminClick: () -> Unit,
     onTutorClick: () -> Unit
 ) {
-    if (isAdmin) { 
-        item(key = "admin_actions", span = { GridItemSpan(this.maxLineSpan) }) { 
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) { AdminQuickActions(onClick = onAdminClick) } 
-        } 
+    if (isAdmin) {
+        item(key = "admin_actions", span = { GridItemSpan(this.maxLineSpan) }) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) { AdminQuickActions(onClick = onAdminClick) }
+        }
     }
-    if (isTutor) { 
-        item(key = "tutor_actions", span = { GridItemSpan(this.maxLineSpan) }) { 
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) { TutorQuickActions(onClick = onTutorClick) } 
-        } 
+    if (isTutor) {
+        item(key = "tutor_actions", span = { GridItemSpan(this.maxLineSpan) }) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) { TutorQuickActions(onClick = onTutorClick) }
+        }
     }
 }
 
@@ -153,21 +153,21 @@ fun LazyGridScope.activityRowsSection(
     onBookClick: (Book) -> Unit
 ) {
     item(key = "reading_header", span = { GridItemSpan(this.maxLineSpan) }) { SectionHeader(AppConstants.TITLE_CONTINUE_READING) }
-    item(key = "reading_row", span = { GridItemSpan(this.maxLineSpan) }) { 
+    item(key = "reading_row", span = { GridItemSpan(this.maxLineSpan) }) {
         if (lastViewed.isNotEmpty()) GrowingLazyRow(lastViewed, icon = Icons.Default.History, onBookClick = onBookClick)
-        else EmptySectionPlaceholder(AppConstants.MSG_NO_RECENTLY_VIEWED) 
+        else EmptySectionPlaceholder(AppConstants.MSG_NO_RECENTLY_VIEWED)
     }
 
     item(key = "recent_header", span = { GridItemSpan(this.maxLineSpan) }) { SectionHeader(AppConstants.TITLE_RECENT_ACTIVITY) }
-    item(key = "recent_row", span = { GridItemSpan(this.maxLineSpan) }) { 
+    item(key = "recent_row", span = { GridItemSpan(this.maxLineSpan) }) {
         if (commented.isNotEmpty()) GrowingLazyRow(commented, icon = Icons.AutoMirrored.Filled.Comment, onBookClick = onBookClick)
-        else EmptySectionPlaceholder(AppConstants.MSG_NO_RECENT_REVIEWS) 
+        else EmptySectionPlaceholder(AppConstants.MSG_NO_RECENT_REVIEWS)
     }
 
     item(key = "liked_header", span = { GridItemSpan(this.maxLineSpan) }) { SectionHeader(AppConstants.TITLE_RECENTLY_LIKED) }
-    item(key = "liked_row", span = { GridItemSpan(this.maxLineSpan) }) { 
+    item(key = "liked_row", span = { GridItemSpan(this.maxLineSpan) }) {
         if (wishlist.isNotEmpty()) GrowingLazyRow(wishlist, icon = Icons.Default.Favorite, onBookClick = onBookClick)
-        else EmptySectionPlaceholder(AppConstants.MSG_FAVORITES_EMPTY) 
+        else EmptySectionPlaceholder(AppConstants.MSG_FAVORITES_EMPTY)
     }
 }
 
@@ -321,13 +321,13 @@ fun LazyGridScope.ownedBooksGrid(
                 },
                 bottomContent = {
                     Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                        val label = when { 
+                        val label = when {
                             isPending -> "REVIEWING"
                             isAlreadyEnrolledInOther -> "ALREADY ENROLLED"
                             isApproved && !isFullyOwned -> "APPROVED"
                             isRejected -> "DECLINED"
                             book.mainCategory == AppConstants.CAT_BOOKS && book.price <= 0.0 -> AppConstants.LABEL_PICKED_UP
-                            else -> AppConstants.getItemStatusLabel(book) 
+                            else -> AppConstants.getItemStatusLabel(book)
                         }
                         val color = when { isPending -> Color(0xFFFBC02D); isAlreadyEnrolledInOther -> MaterialTheme.colorScheme.secondary; isApproved && !isFullyOwned -> Color(0xFF4CAF50); isRejected -> Color(0xFFF44336); else -> MaterialTheme.colorScheme.primary }
                         Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, color.copy(alpha = 0.3f))) {
