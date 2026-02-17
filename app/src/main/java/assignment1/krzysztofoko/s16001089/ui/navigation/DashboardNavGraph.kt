@@ -16,6 +16,7 @@ import assignment1.krzysztofoko.s16001089.ui.profile.EditProfileScreen
 import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationScreen
 import assignment1.krzysztofoko.s16001089.ui.classroom.ClassroomScreen
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminPanelScreen
+import assignment1.krzysztofoko.s16001089.ui.admin.AdminSection
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminUserDetailsScreen
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorPanelScreen
 import assignment1.krzysztofoko.s16001089.ui.messages.MessagesScreen
@@ -137,7 +138,10 @@ fun NavGraphBuilder.dashboardNavGraph(
             onNavigateToUserDetails = { userId ->
                 navController.navigate("${AppConstants.ROUTE_ADMIN_USER_DETAILS}/$userId")
             },
-            onNavigateToProfile = { navController.navigate(AppConstants.ROUTE_PROFILE) },
+            onNavigateToProfile = { 
+                // Fix: Point Profile Settings to EditProfile route
+                navController.navigate(AppConstants.ROUTE_EDIT_PROFILE) 
+            },
             onNavigateToBookDetails = { bookId ->
                 navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$bookId")
             },

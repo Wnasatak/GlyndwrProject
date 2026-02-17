@@ -285,8 +285,9 @@ fun DashboardScreen(
                                     )
                                 }
 
-                                DropdownMenuItem(text = { Text(AppConstants.TITLE_PROFILE_SETTINGS, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_PROFILE) }, leadingIcon = { Icon(Icons.Rounded.Settings, null) })
-                                DropdownMenuItem(text = { Text("About App", style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_ABOUT) }, leadingIcon = { Icon(Icons.Rounded.Info, null) }) // Added About App item
+                                DropdownMenuItem(text = { Text("My Profile", style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_PROFILE) }, leadingIcon = { Icon(Icons.Rounded.AccountCircle, null) })
+                                DropdownMenuItem(text = { Text(AppConstants.TITLE_PROFILE_SETTINGS, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_EDIT_PROFILE) }, leadingIcon = { Icon(Icons.Rounded.Settings, null) })
+                                DropdownMenuItem(text = { Text("About App", style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_ABOUT) }, leadingIcon = { Icon(Icons.Rounded.Info, null) })
 
                                 if (isAdmin) { DropdownMenuItem(text = { Text(AppConstants.TITLE_ADMIN_PANEL, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) }, leadingIcon = { Icon(Icons.Rounded.AdminPanelSettings, null) }) }
                                 if (isTutor) { DropdownMenuItem(text = { Text(AppConstants.TITLE_TUTOR_PANEL, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) }, leadingIcon = { Icon(Icons.Rounded.School, null) }) }

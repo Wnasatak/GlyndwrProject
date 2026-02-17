@@ -11,7 +11,7 @@ import assignment1.krzysztofoko.s16001089.data.Book
 object AppConstants {
     // --- Application Branding & Metadata ---
     // These constants define the app's identity and development status.
-    const val VERSION_NAME = "0.67.631 Under Development"
+    const val VERSION_NAME = "0.77.631 Under Development"
     const val INSTITUTION = "Wrexham Glyndŵr University"
     const val DEVELOPER_NAME = "Krzysztof Oko"
     const val STUDENT_ID = "S16001089"
