@@ -323,7 +323,13 @@ fun DashboardScreen(
                         contentPadding = PaddingValues(bottom = 300.dp),
                         horizontalArrangement = if (isTablet) Arrangement.spacedBy(16.dp) else Arrangement.Start
                     ) {
-                        dashboardHeaderSection(localUser, isTablet, onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) }, onViewHistory = { showWalletHistory = true })
+                        dashboardHeaderSection(
+                            user = localUser,
+                            isTablet = isTablet,
+                            onProfileClick = { navController.navigate(AppConstants.ROUTE_PROFILE) },
+                            onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) },
+                            onViewHistory = { showWalletHistory = true }
+                        )
                         applicationsSection(showApplications, isTablet, onClick = { navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) })
                         enrolledCoursesSection(enrolledPaidCourse, enrolledFreeCourses, activeLiveSessions, isTablet, onEnterClassroom = { id -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$id") })
                         quickActionsSection(isAdmin, isTutor, onAdminClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) }, onTutorClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) })
@@ -360,7 +366,7 @@ fun DashboardScreen(
 
         if (showWalletHistory) { WalletHistorySheet(transactions = walletHistory, onNavigateToProduct = { id -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") }, onViewInvoice = { id, ref -> val route = if (ref != null) "${AppConstants.ROUTE_INVOICE_CREATING}/$id?ref=$ref" else "${AppConstants.ROUTE_INVOICE_CREATING}/$id"; navController.navigate(route) }, onDismiss = { showWalletHistory = false }) }
         if (selectedBookForPickup != null) { PickupInfoDialog(orderConfirmation = selectedBookForPickup?.orderConfirmation, onDismiss = { selectedBookForPickup = null }) }
-        AppPopups.WalletTopUp(show = showPaymentPopup, user = localUser, onDismiss = { viewModel.setShowPaymentPopup(false) }, onTopUpComplete = { amount -> viewModel.topUp(amount) { msg -> viewModel.setShowPaymentPopup(false); scope.launch { snackbarHostState.showSnackbar(msg) } } }, onManageProfile = { viewModel.setShowPaymentPopup(false); navController.navigate(AppConstants.ROUTE_PROFILE) })
+        AppPopups.WalletTopUp(show = showPaymentPopup, user = localUser, onDismiss = { viewModel.setShowPaymentPopup(false) }, onTopUpComplete = { amount -> viewModel.topUp(amount) { msg -> viewModel.setShowPaymentPopup(false); scope.launch { snackbarHostState.showSnackbar(msg) } } }, onManageProfile = { viewModel.setShowPaymentPopup(false); navController.navigate(AppConstants.ROUTE_EDIT_PROFILE) })
         AppPopups.RemoveFromLibraryConfirmation(show = bookToRemove != null, bookTitle = bookToRemove?.title ?: "", onDismiss = { viewModel.setBookToRemove(null) }, onConfirm = { viewModel.removePurchase(bookToRemove!!) { msg -> viewModel.setBookToRemove(null); scope.launch { snackbarHostState.showSnackbar(msg) } } })
     }
 }

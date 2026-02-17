@@ -2,6 +2,7 @@ package assignment1.krzysztofoko.s16001089.ui.admin.components.Users
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,7 +32,10 @@ import java.util.*
  * UserWalletTab provides an administrative ledger of a user's financial activity.
  */
 @Composable
-fun UserWalletTab(transactions: List<WalletTransaction>) {
+fun UserWalletTab(
+    transactions: List<WalletTransaction>,
+    isAdmin: Boolean = false
+) {
     var selectedTransaction by remember { mutableStateOf<WalletTransaction?>(null) }
     val sdfDate = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val sdfTime = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
@@ -56,7 +60,7 @@ fun UserWalletTab(transactions: List<WalletTransaction>) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                SectionHeaderDetails("Transaction Ledger (${transactions.size})")
+                SectionHeaderDetails(if (isAdmin) "Transaction Ledger (${transactions.size})" else "My Transactions (${transactions.size})")
             }
 
             items(transactions) { tx ->
@@ -100,6 +104,7 @@ fun UserWalletTab(transactions: List<WalletTransaction>) {
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1
                             )
+                            @Suppress("DEPRECATION")
                             Text(
                                 text = "${sdfDate.format(Date(tx.timestamp))} • ${sdfTime.format(Date(tx.timestamp))}",
                                 style = MaterialTheme.typography.labelSmall,
@@ -109,6 +114,7 @@ fun UserWalletTab(transactions: List<WalletTransaction>) {
 
                         Column(horizontalAlignment = Alignment.End) {
                             val prefix = if (isTopUp) "+" else "-"
+                            @Suppress("DEPRECATION")
                             Text(
                                 text = "$prefix£${String.format(Locale.US, "%.2f", tx.amount)}",
                                 style = MaterialTheme.typography.titleMedium,
@@ -173,6 +179,7 @@ fun UserWalletTab(transactions: List<WalletTransaction>) {
                             }
                         }
                         Spacer(Modifier.width(16.dp))
+                        @Suppress("DEPRECATION")
                         Text("Transaction Detail", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                     }
 
@@ -189,6 +196,7 @@ fun UserWalletTab(transactions: List<WalletTransaction>) {
                             modifier = Modifier.padding(20.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            @Suppress("DEPRECATION")
                             Text(
                                 text = if (isTopUp) "DEPOSIT" else "PURCHASE",
                                 style = MaterialTheme.typography.labelSmall,
@@ -197,6 +205,7 @@ fun UserWalletTab(transactions: List<WalletTransaction>) {
                                 letterSpacing = 1.sp
                             )
                             Spacer(Modifier.height(4.dp))
+                            @Suppress("DEPRECATION")
                             Text(
                                 text = "${if (isTopUp) "+" else "-"}£${String.format(Locale.US, "%.2f", tx.amount)}",
                                 style = MaterialTheme.typography.headlineMedium,
@@ -252,7 +261,9 @@ private fun TransactionMetadataRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        @Suppress("DEPRECATION")
         Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.Gray, fontWeight = FontWeight.Medium)
+        @Suppress("DEPRECATION")
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,

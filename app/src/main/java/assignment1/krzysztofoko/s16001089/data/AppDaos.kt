@@ -302,6 +302,16 @@ data class CourseEnrollmentDetails(
     val submittedAt: Long = System.currentTimeMillis()
 )
 
+@Entity(tableName = "enrollment_history")
+data class EnrollmentHistory(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val userId: String,
+    val courseId: String,
+    val status: String, // "WITHDRAWN", "CHANGED"
+    val timestamp: Long = System.currentTimeMillis(),
+    val previousCourseId: String? = null
+)
+
 @Entity(tableName = "global_discounts")
 data class RoleDiscount(
     @PrimaryKey val role: String, // "admin", "student", "teacher", "user"
@@ -337,6 +347,7 @@ interface UserDao {
         deleteReviewInteractionsForUser(userId)
         deleteWalletHistoryForUser(userId)
         deleteEnrollmentsForUser(userId)
+        deleteEnrollmentHistoryForUser(userId)
         deleteUserOnly(userId)
     }
 
@@ -369,6 +380,9 @@ interface UserDao {
 
     @Query("DELETE FROM course_enrollment_details WHERE userId = :userId")
     suspend fun deleteEnrollmentsForUser(userId: String)
+
+    @Query("DELETE FROM enrollment_history WHERE userId = :userId")
+    suspend fun deleteEnrollmentHistoryForUser(userId: String)
 
     @Query("DELETE FROM course_enrollment_details WHERE id = :id")
     suspend fun deleteEnrollmentById(id: String)
@@ -549,6 +563,12 @@ interface UserDao {
 
     @Query("UPDATE course_enrollment_details SET courseId = :newCourseId, requestedCourseId = NULL, status = :status WHERE id = :id")
     suspend fun updateEnrollmentAfterChange(id: String, newCourseId: String, status: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addEnrollmentHistory(history: EnrollmentHistory)
+
+    @Query("SELECT * FROM enrollment_history WHERE userId = :userId ORDER BY timestamp DESC")
+    fun getEnrollmentHistoryForUser(userId: String): Flow<List<EnrollmentHistory>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertRoleDiscount(discount: RoleDiscount)

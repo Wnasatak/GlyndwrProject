@@ -104,6 +104,12 @@ class AdminViewModel(
 
             if (enrollment.isWithdrawal) {
                 // WITHDRAWAL: RESET TO USER
+                userDao.addEnrollmentHistory(EnrollmentHistory(
+                    userId = targetUserId,
+                    courseId = enrollment.courseId,
+                    status = "WITHDRAWN",
+                    timestamp = System.currentTimeMillis()
+                ))
                 userDao.deleteEnrollmentById(appId)
                 userDao.deletePurchasesForUser(targetUserId) 
                 student?.let { 
@@ -112,6 +118,14 @@ class AdminViewModel(
                 addLog("APPROVED_WITHDRAWAL", appId, "Confirmed withdrawal for $courseTitle. Student role reverted to user and individual discounts cleared.", "ADMIN")
             } else if (enrollment.requestedCourseId != null) {
                 val newCourseId = enrollment.requestedCourseId!!
+                // RECORD HISTORY: Store both previous and new IDs correctly
+                userDao.addEnrollmentHistory(EnrollmentHistory(
+                    userId = targetUserId,
+                    courseId = newCourseId, // The course changed TO
+                    status = "CHANGED",
+                    timestamp = System.currentTimeMillis(),
+                    previousCourseId = enrollment.courseId // The course changed FROM
+                ))
                 userDao.updateEnrollmentAfterChange(appId, newCourseId, "APPROVED")
                 addLog("APPROVED_CHANGE", appId, "Approved course change to $courseTitle", "ADMIN")
             } else {

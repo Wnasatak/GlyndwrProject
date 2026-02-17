@@ -59,6 +59,9 @@ class ProfileViewModel(
     val courseEnrollments = userDao.getEnrollmentsForUserFlow(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val enrollmentHistory = userDao.getEnrollmentHistoryForUser(userId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val userGrades = classroomDao.getAllGradesForUser(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

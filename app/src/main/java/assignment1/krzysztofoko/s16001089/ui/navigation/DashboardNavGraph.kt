@@ -12,6 +12,7 @@ import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.dashboard.DashboardScreen
 import assignment1.krzysztofoko.s16001089.ui.profile.ProfileScreen
+import assignment1.krzysztofoko.s16001089.ui.profile.EditProfileScreen
 import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationScreen
 import assignment1.krzysztofoko.s16001089.ui.classroom.ClassroomScreen
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminPanelScreen
@@ -69,6 +70,14 @@ fun NavGraphBuilder.dashboardNavGraph(
 
     composable(AppConstants.ROUTE_PROFILE) {
         ProfileScreen(
+            navController = navController,
+            onLogout = onLogoutClick,
+            isDarkTheme = isDarkTheme
+        )
+    }
+
+    composable(AppConstants.ROUTE_EDIT_PROFILE) {
+        EditProfileScreen(
             navController = navController,
             onLogout = onLogoutClick,
             isDarkTheme = isDarkTheme

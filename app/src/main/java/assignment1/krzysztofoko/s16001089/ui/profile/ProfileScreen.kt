@@ -84,6 +84,7 @@ fun ProfileScreen(
     val searchHistory by viewModel.searchHistory.collectAsState()
     val allReviews by viewModel.allReviews.collectAsState()
     val enrollments by viewModel.courseEnrollments.collectAsState()
+    val enrollmentHistory by viewModel.enrollmentHistory.collectAsState()
     val grades by viewModel.userGrades.collectAsState()
     val allCourses by viewModel.allCourses.collectAsState()
     val allBooks by viewModel.allBooks.collectAsState()
@@ -135,11 +136,13 @@ fun ProfileScreen(
                             windowInsets = WindowInsets(0, 0, 0, 0),
                             title = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    UserAvatar(
-                                        photoUrl = localUser?.photoUrl,
-                                        modifier = Modifier.size(40.dp).clickable { photoPickerLauncher.launch("image/*") }
-                                    )
-                                    Spacer(Modifier.width(12.dp))
+                                    if (!isTablet) {
+                                        UserAvatar(
+                                            photoUrl = localUser?.photoUrl,
+                                            modifier = Modifier.size(40.dp).clickable { photoPickerLauncher.launch("image/*") }
+                                        )
+                                        Spacer(Modifier.width(12.dp))
+                                    }
                                     Column {
                                         val displayName = buildString {
                                             if (!localUser?.title.isNullOrEmpty()) {
@@ -209,7 +212,9 @@ fun ProfileScreen(
                         label = "TabContentTransition"
                     ) { targetIndex ->
                         when (targetIndex) {
-                            0 -> StudentDetailTab(viewModel, localUser, photoPickerLauncher, snackbarHostState)
+                            0 -> StudentDetailTab(viewModel, localUser, photoPickerLauncher, snackbarHostState, onNavigateToSettings = {
+                                navController.navigate(AppConstants.ROUTE_EDIT_PROFILE)
+                            })
                             1 -> UserActivityTab(
                                 browseHistory = browseHistory,
                                 wishlist = wishlist,
@@ -225,8 +230,10 @@ fun ProfileScreen(
                             2 -> UserCommentsTab(reviews = allReviews, allBooks = allBooks)
                             3 -> StudentAcademicTab(
                                 enrollments = enrollments,
+                                history = enrollmentHistory,
                                 grades = grades,
                                 allCourses = allCourses,
+                                userLocal = localUser,
                                 onResignRequest = { viewModel.submitResignationRequest(it) { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } } },
                                 onChangeRequest = { enrollment, newId -> viewModel.submitCourseChangeRequest(enrollment, newId) { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } } }
                             )
@@ -248,7 +255,8 @@ fun StudentDetailTab(
     viewModel: ProfileViewModel,
     localUser: UserLocal?,
     photoPickerLauncher: androidx.activity.result.ActivityResultLauncher<String>,
-    snackbarHostState: SnackbarHostState
+    snackbarHostState: SnackbarHostState,
+    onNavigateToSettings: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var isEditingSettings by remember { mutableStateOf(false) }
@@ -322,7 +330,7 @@ fun StudentDetailTab(
                         Spacer(Modifier.width(8.dp))
 
                         FilledIconButton(
-                            onClick = { isEditingSettings = !isEditingSettings },
+                            onClick = onNavigateToSettings,
                             modifier = Modifier.size(44.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = IconButtonDefaults.filledIconButtonColors(

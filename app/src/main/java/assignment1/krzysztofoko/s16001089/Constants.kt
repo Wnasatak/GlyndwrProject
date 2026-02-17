@@ -343,6 +343,7 @@ object AppConstants {
     const val ROUTE_NOTIFICATIONS = "notifications"
     const val ROUTE_MESSAGES = "messages"
     const val ROUTE_PROFILE = "profile"
+    const val ROUTE_EDIT_PROFILE = "edit_profile"
     const val ROUTE_ABOUT = "about"
     const val ROUTE_DEVELOPER = "developer"
     const val ROUTE_INSTRUCTIONS = "instructions"

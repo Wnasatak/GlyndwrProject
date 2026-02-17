@@ -20,7 +20,7 @@ import java.util.*
 
 fun generateAndSaveInvoicePdf(
     context: Context, 
-    book: Book, 
+    book: Book?, 
     userName: String, 
     invoiceId: String, 
     date: String,
@@ -104,8 +104,8 @@ fun generateAndSaveInvoicePdf(
     canvas.drawText("Amount", 540f, 280f, paint)
 
     // Item Row
-    val actualTotal = purchaseRecord?.let { it.amountFromWallet + it.amountPaidExternal } ?: (book.price * 0.9)
-    val isFinance = book.mainCategory == AppConstants.CAT_FINANCE || book.id == AppConstants.ID_TOPUP
+    val actualTotal = purchaseRecord?.let { it.amountFromWallet + it.amountPaidExternal } ?: (book?.price ?: 0.0 * 0.9)
+    val isFinance = book?.mainCategory == AppConstants.CAT_FINANCE || book?.id == AppConstants.ID_TOPUP || book == null
     val actualBase = if (isFinance) actualTotal else actualTotal / 0.9
     val calculatedDiscount = if (isFinance) 0.0 else actualBase * 0.1
     val actualBaseStr = String.format(Locale.US, "%.2f", actualBase)
@@ -114,13 +114,13 @@ fun generateAndSaveInvoicePdf(
     paint.isFakeBoldText = true
     paint.textSize = 13f
     paint.color = android.graphics.Color.BLACK
-    canvas.drawText(book.title, 55f, 320f, paint)
+    canvas.drawText(book?.title ?: "University Service", 55f, 320f, paint)
     
     paint.textSize = 10f
     paint.isFakeBoldText = false
     paint.color = android.graphics.Color.GRAY
-    val bookType = if (book.isAudioBook) "Digital Audio" else "Hardcopy"
-    canvas.drawText("${book.category} • $bookType", 55f, 338f, paint)
+    val bookType = if (book?.isAudioBook == true) "Digital Audio" else "Service/Academic"
+    canvas.drawText("${book?.category ?: "Finance"} • $bookType", 55f, 338f, paint)
     
     paint.textAlign = Paint.Align.RIGHT
     paint.textSize = 13f

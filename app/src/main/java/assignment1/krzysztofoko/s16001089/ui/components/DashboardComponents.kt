@@ -84,6 +84,7 @@ fun DashboardHeader(
     photoUrl: String?,
     role: String,
     balance: Double,
+    onProfileClick: () -> Unit,
     onTopUp: () -> Unit,
     onViewHistory: () -> Unit
 ) {
@@ -99,7 +100,14 @@ fun DashboardHeader(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
     ) {
         Column(modifier = Modifier.padding(innerPadding)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onProfileClick
+                )
+            ) {
                 UserAvatar(
                     photoUrl = photoUrl,
                     modifier = Modifier.size(avatarSize).background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), CircleShape).padding(2.dp),

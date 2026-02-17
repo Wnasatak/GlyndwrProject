@@ -61,11 +61,11 @@ fun UserCommentsTab(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                SectionHeaderDetails("Student Feedback Audit (${reviews.size})")
+                SectionHeaderDetails(if (isAdmin) "Student Feedback Audit (${reviews.size})" else "My Comments (${reviews.size})")
             }
             
             items(reviews) { review ->
-                val book = allBooks.find { it.id == review.productId }
+                val book = allCoursesFixed(allBooks).find { it.id == review.productId } ?: allBooks.find { it.id == review.productId }
                 
                 Card(
                     modifier = Modifier.fillMaxWidth(), 
@@ -119,7 +119,7 @@ fun UserCommentsTab(
                         
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
                             Icon(Icons.Default.Schedule, null, modifier = Modifier.size(12.dp), tint = Color.Gray)
-                            Spacer(Modifier.width(6.dp))
+                            Spacer(Modifier.width(6.6.dp))
                             Text(
                                 text = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(review.timestamp)), 
                                 style = MaterialTheme.typography.labelSmall, 
@@ -150,6 +150,7 @@ fun UserCommentsTab(
                             Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.EditNote, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) }
                         }
                         Spacer(Modifier.width(16.dp))
+                        @Suppress("DEPRECATION")
                         Text("Edit Feedback", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                     }
                     
@@ -198,8 +199,10 @@ fun UserCommentsTab(
                 Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.Gavel, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
                     Spacer(Modifier.height(16.dp))
+                    @Suppress("DEPRECATION")
                     Text("Administrative Audit", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(12.dp))
+                    @Suppress("DEPRECATION")
                     Text(
                         "You are modifying institutional feedback. This action is tracked and must comply with our professional conduct policies.",
                         textAlign = TextAlign.Center,
@@ -238,8 +241,10 @@ fun UserCommentsTab(
                 Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
                     Spacer(Modifier.height(16.dp))
+                    @Suppress("DEPRECATION")
                     Text("Remove Comment?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(12.dp))
+                    @Suppress("DEPRECATION")
                     Text(
                         "Are you sure you want to permanently delete this feedback? This operation cannot be reversed.",
                         textAlign = TextAlign.Center,
@@ -264,3 +269,5 @@ fun UserCommentsTab(
         }
     }
 }
+
+private fun allCoursesFixed(books: List<Book>) = books // Fallback

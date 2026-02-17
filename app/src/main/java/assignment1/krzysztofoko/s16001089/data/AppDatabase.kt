@@ -16,9 +16,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         Assignment::class, AssignmentSubmission::class, Grade::class, LiveSession::class, 
         ClassroomMessage::class, TutorProfile::class, WalletTransaction::class,
         CourseEnrollmentDetails::class, SystemLog::class, AssignedCourse::class,
-        Attendance::class, RoleDiscount::class, UserTheme::class
+        Attendance::class, RoleDiscount::class, UserTheme::class, EnrollmentHistory::class
     ], 
-    version = 33, // Bumped to 33 for complete Academic Request tracking
+    version = 34, // Bumped to 34 for Enrollment History tracking
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,6 +35,24 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        /**
+         * Migration 33 to 34: Creates the enrollment_history table.
+         */
+        private val MIGRATION_33_34 = object : Migration(33, 34) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `enrollment_history` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `userId` TEXT NOT NULL, 
+                        `courseId` TEXT NOT NULL, 
+                        `status` TEXT NOT NULL, 
+                        `timestamp` INTEGER NOT NULL, 
+                        `previousCourseId` TEXT
+                    )
+                """.trimIndent())
+            }
+        }
 
         /**
          * Migration 32 to 33: Adds isWithdrawal column to course_enrollment_details.
@@ -180,7 +198,8 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
                     MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25,
                     MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29,
-                    MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33
+                    MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33,
+                    MIGRATION_33_34
                 )
                 .fallbackToDestructiveMigration()
                 .build()

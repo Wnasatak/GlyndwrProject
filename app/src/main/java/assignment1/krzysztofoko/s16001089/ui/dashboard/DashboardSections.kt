@@ -41,6 +41,7 @@ import kotlin.math.abs
 fun LazyGridScope.dashboardHeaderSection(
     user: UserLocal?,
     isTablet: Boolean,
+    onProfileClick: () -> Unit,
     onTopUp: () -> Unit,
     onViewHistory: () -> Unit
 ) {
@@ -52,6 +53,7 @@ fun LazyGridScope.dashboardHeaderSection(
                     photoUrl = user?.photoUrl,
                     role = user?.role ?: "student",
                     balance = user?.balance ?: 0.0,
+                    onProfileClick = onProfileClick,
                     onTopUp = onTopUp,
                     onViewHistory = onViewHistory
                 )
