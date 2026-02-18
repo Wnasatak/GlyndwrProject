@@ -26,18 +26,21 @@ import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
 /**
  * Instruction Screen providing a user guide for the application.
+ * Explains core functionality like browsing, signing in, and purchasing.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstructionScreen(
-    onBack: () -> Unit,
-    currentTheme: Theme,
-    userTheme: UserTheme? = null,
-    onThemeChange: (Theme) -> Unit
+    onBack: () -> Unit,               // Handler to return to the previous screen
+    currentTheme: Theme,              // The active application theme
+    userTheme: UserTheme? = null,     // User-specific custom theme data
+    onThemeChange: (Theme) -> Unit    // Callback to update global theme state
 ) {
+    // Detect screen configuration to provide a tablet-optimized layout
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
     
+    // Resolve theme style for background wave rendering
     val isDarkTheme = when(currentTheme) {
         Theme.DARK, Theme.DARK_BLUE -> true
         Theme.CUSTOM -> userTheme?.customIsDark ?: true
@@ -45,11 +48,13 @@ fun InstructionScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Renders the themed animated background
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Allow background to show through
             topBar = {
+                // Centered Top App Bar with back navigation and theme switcher
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { 
@@ -71,20 +76,23 @@ fun InstructionScreen(
                             onThemeChange = onThemeChange
                         )
                     },
+                    // Semi-transparent surface for glassmorphic effect
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
                 )
             }
         ) { padding ->
+            // Main content container with device-specific alignment
             Box(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = if (isTablet) Alignment.TopCenter else Alignment.TopStart
             ) {
                 Column(
                     modifier = Modifier
+                        // On tablets, constrain width to 600dp for better readability
                         .then(if (isTablet) Modifier.widthIn(max = 600.dp).fillMaxHeight() else Modifier.fillMaxSize())
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(rememberScrollState()) // Enable scrolling for long content
                         .padding(24.dp),
                     horizontalAlignment = if (isTablet) Alignment.CenterHorizontally else Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(if (isTablet) 12.dp else 0.dp)
@@ -100,6 +108,8 @@ fun InstructionScreen(
                     
                     if (isTablet) Spacer(modifier = Modifier.height(12.dp))
                     
+                    // --- GUIDANCE CARDS ---
+
                     InfoCard(
                         icon = Icons.AutoMirrored.Filled.MenuBook,
                         title = "Browse Items",
@@ -138,6 +148,7 @@ fun InstructionScreen(
                     
                     Spacer(modifier = Modifier.height(if (isTablet) 32.dp else 24.dp))
                     
+                    // Main action button to acknowledge the guide
                     Button(
                         onClick = onBack,
                         modifier = Modifier

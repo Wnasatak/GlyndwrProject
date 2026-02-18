@@ -32,6 +32,24 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * MyApplicationsScreen.kt
+ *
+ * This file implements the "My Applications" management screen. It allows students
+ * to track the status of their ongoing academic applications, view summaries of 
+ * their submitted details, and proceed to enrolment for approved courses.
+ */
+
+/**
+ * MyApplicationsScreen Composable
+ *
+ * The primary entry point for the applications tracking UI.
+ *
+ * Key features:
+ * - **Live Status Tracking:** Dynamically reflects changes in application status (Pending, Approved, Declined).
+ * - **Empty State Handling:** Displays a clear, icon-driven placeholder when no applications exist.
+ * - **Reactive Data:** Utilises a dedicated ViewModel to stream combined application and course metadata.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyApplicationsScreen(
@@ -46,17 +64,19 @@ fun MyApplicationsScreen(
         userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     ))
 ) {
+    // --- STATE OBSERVATION --- //
     val applications by viewModel.applications.collectAsState()
     val enrolledPaidCourseTitle by viewModel.enrolledPaidCourseTitle.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Branded wavy background component.
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
 
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Transparent to allow background visibility.
             topBar = {
                 CenterAlignedTopAppBar(
-                    windowInsets = WindowInsets(0, 0, 0, 0), // Fix for big gap at top
+                    windowInsets = WindowInsets(0, 0, 0, 0), // Eliminate unwanted top spacing.
                     title = { Text(AppConstants.TITLE_MY_APPLICATIONS, fontWeight = FontWeight.Black) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
                     actions = { IconButton(onClick = onToggleTheme) { Icon(if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, null) } },
@@ -64,6 +84,7 @@ fun MyApplicationsScreen(
                 )
             }
         ) { padding ->
+            // Check for empty results.
             if (applications.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -73,13 +94,13 @@ fun MyApplicationsScreen(
                     }
                 }
             } else {
+                // List of active applications.
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(applications) {
-                            app ->
+                    items(applications) { app ->
                         ApplicationItemCard(app, onNavigateToCourse, enrolledPaidCourseTitle)
                     }
                 }
@@ -88,6 +109,12 @@ fun MyApplicationsScreen(
     }
 }
 
+/**
+ * ApplicationItemCard Composable
+ *
+ * Renders a single application record. It provides a summary of the academic background 
+ * provided and manages the primary action button based on the application's status.
+ */
 @Composable
 fun ApplicationItemCard(
     app: ApplicationWithCourse,
@@ -95,8 +122,11 @@ fun ApplicationItemCard(
     enrolledCourseTitle: String?
 ) {
     val sdf = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    
+    // Status Logic flags.
     val isApproved = app.details.status == "APPROVED"
     val isPaidCourse = (app.course?.price ?: 0.0) > 0.0
+    // A course can't be finalised if the user is already in another paid programme.
     val isAlreadyEnrolledInOther = enrolledCourseTitle != null && isPaidCourse && isApproved
 
     Card(
@@ -106,6 +136,7 @@ fun ApplicationItemCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
+            // --- HEADER: Course Title & Date --- //
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
@@ -119,11 +150,13 @@ fun ApplicationItemCard(
                     Text(text = "Submitted: ${sdf.format(Date(app.details.submittedAt))}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
 
+                // Colour-coded status indicator.
                 StatusBadge(status = app.details.status)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // --- SUMMARY: Academic Review Data --- //
             Text(
                 text = "Academic Review: ${app.details.lastQualification} from ${app.details.institution}",
                 style = MaterialTheme.typography.bodySmall,
@@ -132,6 +165,8 @@ fun ApplicationItemCard(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            // --- CONSTRAINT WARNING --- //
+            // Informs the user if they must drop another course before enrolling here.
             if (isAlreadyEnrolledInOther) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -142,6 +177,7 @@ fun ApplicationItemCard(
                         Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(12.dp))
                         Column {
+                            @Suppress("DEPRECATION")
                             Text(text = "Already Enrolled", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                             Text(text = "You are currently enrolled in: '$enrolledCourseTitle'. You can only be enrolled in one paid course at a time.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
@@ -150,20 +186,28 @@ fun ApplicationItemCard(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
+            // --- PRIMARY ACTION --- //
             Button(
                 onClick = { onNavigateToCourse(app.details.courseId) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                enabled = !isAlreadyEnrolledInOther
+                enabled = !isAlreadyEnrolledInOther // Button is disabled if enrolment conflict exists.
             ) {
-                Text(if (isApproved) "Proceed to Enrollment" else "View Course Details")
+                Text(if (isApproved) "Proceed to Enrolment" else "View Course Details")
             }
         }
     }
 }
 
+/**
+ * StatusBadge Composable
+ *
+ * A small, high-visibility label that maps raw status strings to meaningful 
+ * colours and labels for the user.
+ */
 @Composable
 fun StatusBadge(status: String) {
+    // Maps technical status keys to presentation colours.
     val (color, label) = when (status) {
         "PENDING_REVIEW" -> Color(0xFFFBC02D) to "PENDING"
         "APPROVED" -> Color(0xFF4CAF50) to "APPROVED"
@@ -186,27 +230,44 @@ fun StatusBadge(status: String) {
     }
 }
 
+/**
+ * Domain-specific wrapper for combining application data with its associated course details.
+ */
 data class ApplicationWithCourse(
     val details: CourseEnrollmentDetails,
     val course: Course?
 )
 
+/**
+ * MyApplicationsViewModel
+ *
+ * Manages the state for the applications screen. It reactively combines data from 
+ * the application table and the course catalogue.
+ */
 class MyApplicationsViewModel(
     private val userDao: UserDao,
     private val courseDao: CourseDao,
     private val bookRepository: BookRepository,
     private val userId: String
 ) : ViewModel() {
+    
+    // Streams the list of combined application/course objects.
     val applications: StateFlow<List<ApplicationWithCourse>> = flow {
         userDao.getAllEnrollmentsFlow().collect { list ->
+            // Filter records for the current student.
             val filtered = list.filter { it.userId == userId }
             val mapped = filtered.map { app ->
+                // Enrichment: Attach the full Course metadata to the application record.
                 ApplicationWithCourse(app, courseDao.getCourseById(app.courseId))
             }
             emit(mapped)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /**
+     * Reactively calculates if the user is already officially enrolled in a paid course.
+     * This is used to enforce the university's "one paid course" policy.
+     */
     val enrolledPaidCourseTitle: StateFlow<String?> = combine(
         bookRepository.getAllCombinedData(userId).filterNotNull(),
         userDao.getPurchaseIds(userId)
@@ -217,13 +278,23 @@ class MyApplicationsViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 }
 
+/**
+ * MyApplicationsViewModelFactory
+ *
+ * Facilitates the injection of multiple DAOs and identifying information into the ViewModel.
+ */
 class MyApplicationsViewModelFactory(
     private val userDao: UserDao,
     private val courseDao: CourseDao,
     private val bookRepository: BookRepository,
     private val userId: String
 ) : androidx.lifecycle.ViewModelProvider.Factory {
+    
+    /**
+     * Manual instantiation method required for constructor-based dependency injection.
+     */
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        @Suppress("UNCHECKED_CAST")
         return MyApplicationsViewModel(userDao, courseDao, bookRepository, userId) as T
     }
 }

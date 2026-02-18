@@ -194,10 +194,34 @@ fun TopLevelScaffold(
                         if (hasCourses) {
                             Box {
                                 NavigationRailItem(selected = currentRoute?.contains(AppConstants.ROUTE_CLASSROOM) == true, onClick = { showClassroomPicker = true }, icon = { Icon(Icons.Default.School, null) }, label = { Text("Classroom") }, colors = railColors)
-                                DropdownMenu(expanded = showClassroomPicker, onDismissRequest = { showClassroomPicker = false }, offset = androidx.compose.ui.unit.DpOffset(x = 80.dp, y = (-56).dp), modifier = Modifier.width(280.dp).padding(vertical = 8.dp)) {
-                                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(12.dp)); Text("Select Classroom", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+                                DropdownMenu(
+                                    expanded = showClassroomPicker, 
+                                    onDismissRequest = { showClassroomPicker = false }, 
+                                    offset = androidx.compose.ui.unit.DpOffset(x = 80.dp, y = (-56).dp), 
+                                    modifier = Modifier.width(280.dp).padding(vertical = 8.dp),
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) { 
+                                        Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)); 
+                                        Spacer(Modifier.width(12.dp)); 
+                                        Text("Select Classroom", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) 
+                                    }
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                                    enrolledCourses.forEach { course -> DropdownMenuItem(text = { Text(course.title, maxLines = 1, overflow = TextOverflow.Ellipsis) }, onClick = { showClassroomPicker = false; onClassroomClick(course.id) }, leadingIcon = { Surface(modifier = Modifier.size(32.dp), shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoStories, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary) } } }, modifier = Modifier.padding(vertical = 4.dp)) }
+                                    enrolledCourses.forEach { course -> 
+                                        DropdownMenuItem(
+                                            text = { Text(course.title, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface) }, 
+                                            onClick = { showClassroomPicker = false; onClassroomClick(course.id) }, 
+                                            leadingIcon = { 
+                                                Surface(modifier = Modifier.size(32.dp), shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)) { 
+                                                    Box(contentAlignment = Alignment.Center) { 
+                                                        Icon(Icons.Default.AutoStories, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary) 
+                                                    } 
+                                                } 
+                                            }, 
+                                            modifier = Modifier.padding(vertical = 4.dp)
+                                        ) 
+                                    }
                                 }
                             }
                         }
@@ -338,9 +362,9 @@ fun TopLevelScaffold(
         if (showClassroomPicker && !useNavRail) {
             ModalBottomSheet(onDismissRequest = { showClassroomPicker = false }, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 40.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(16.dp)); @Suppress("DEPRECATION") Text(text = "Your Classrooms", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black) }
+                    Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(16.dp)); @Suppress("DEPRECATION") Text(text = "Your Classrooms", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) }
                     Spacer(Modifier.height(24.dp))
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) { items(enrolledCourses) { course -> Surface(onClick = { showClassroomPicker = false; onClassroomClick(course.id) }, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))) { Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Surface(modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoStories, null, tint = Color.White) } } ; Spacer(Modifier.width(16.dp)); Column(modifier = Modifier.weight(1f)) { @Suppress("DEPRECATION") Text(course.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis); @Suppress("DEPRECATION") Text(course.author, style = MaterialTheme.typography.bodySmall, color = Color.Gray) }; Icon(Icons.Default.ChevronRight, null, tint = Color.Gray) } } } }
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) { items(enrolledCourses) { course -> Surface(onClick = { showClassroomPicker = false; onClassroomClick(course.id) }, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))) { Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Surface(modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoStories, null, tint = Color.White) } } ; Spacer(Modifier.width(16.dp)); Column(modifier = Modifier.weight(1f)) { @Suppress("DEPRECATION") Text(course.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface); @Suppress("DEPRECATION") Text(course.author, style = MaterialTheme.typography.bodySmall, color = Color.Gray) }; Icon(Icons.Default.ChevronRight, null, tint = Color.Gray) } } } }
                 }
             }
         }

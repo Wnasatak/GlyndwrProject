@@ -29,6 +29,31 @@ import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
+/**
+ * CourseEnrollmentScreen.kt
+ *
+ * This file implements a detailed, 4-step wizard for formal university course applications.
+ * It collects essential academic and personal data required by the university's
+ * administration to assess entry requirements before allowing full enrolment.
+ */
+
+/**
+ * CourseEnrollmentScreen Composable
+ *
+ * A multi-stage form designed to streamline the academic application process.
+ *
+ * Steps:
+ * 1. **Personal Details:** Basic identity information (DOB, Nationality, Gender).
+ * 2. **Academic Background:** Previous qualifications and English proficiency.
+ * 3. **Support & Contact:** Emergency contacts and special requirements.
+ * 4. **Motivation:** Personal statement and document (CV) uploads.
+ *
+ * Key features:
+ * - **Progress Tracking:** Features a linear progress indicator to guide the user.
+ * - **State Management:** Maintains a comprehensive set of temporary states for all form fields.
+ * - **Animated Transitions:** Uses `AnimatedContent` for smooth sliding between steps.
+ * - **ViewModel Integration:** Submits the final, aggregated data to the `CourseDetailViewModel`.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CourseEnrollmentScreen(
@@ -47,10 +72,11 @@ fun CourseEnrollmentScreen(
     val course by viewModel.course.collectAsState()
     val isDarkTheme = currentTheme == Theme.DARK
     
+    // --- WIZARD STATE --- //
     var currentStep by remember { mutableIntStateOf(1) }
     val totalSteps = 4
 
-    // Form State
+    // --- FORM FIELD STATES --- //
     var lastQualification by remember { mutableStateOf("") }
     var institution by remember { mutableStateOf("") }
     var graduationYear by remember { mutableStateOf("") }
@@ -66,20 +92,18 @@ fun CourseEnrollmentScreen(
     var cvAttached by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Branded background component.
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
 
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Let the background show.
             topBar = {
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { Text("Course Application", fontWeight = FontWeight.Black) },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
                     actions = {
-                        ThemeToggleButton(
-                            currentTheme = currentTheme,
-                            onThemeChange = onThemeChange
-                        )
+                        ThemeToggleButton(currentTheme = currentTheme, onThemeChange = onThemeChange)
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 )
@@ -89,10 +113,10 @@ fun CourseEnrollmentScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()) // Ensure form is scrollable on smaller screens.
                     .padding(20.dp)
             ) {
-                // Progress Indicator
+                // --- STEP PROGRESS INDICATOR --- //
                 LinearProgressIndicator(
                     progress = { currentStep.toFloat() / totalSteps.toFloat() },
                     modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
@@ -109,6 +133,7 @@ fun CourseEnrollmentScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // --- MAIN FORM CARD --- //
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
@@ -116,6 +141,7 @@ fun CourseEnrollmentScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
+                        // Dynamically render the content for the current step with a fade transition.
                         AnimatedContent(targetState = currentStep, label = "stepTransition") { step ->
                             when (step) {
                                 1 -> PersonalDetailsStep(dob, { dob = it }, nationality, { nationality = it }, gender, { gender = it })
@@ -127,6 +153,7 @@ fun CourseEnrollmentScreen(
 
                         Spacer(modifier = Modifier.height(32.dp))
 
+                        // --- NAVIGATION BUTTONS --- //
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             if (currentStep > 1) {
                                 OutlinedButton(onClick = { currentStep-- }, modifier = Modifier.height(50.dp).weight(1f)) {
@@ -141,7 +168,7 @@ fun CourseEnrollmentScreen(
                                     if (currentStep < totalSteps) {
                                         currentStep++
                                     } else {
-                                        // Final Step: Submit Application for Review
+                                        // FINAL STEP: Compile data and submit to the ViewModel.
                                         viewModel.submitEnrollmentApplication(
                                             CourseEnrollmentDetails(
                                                 id = "${viewModel.userId}_$courseId",
@@ -162,7 +189,7 @@ fun CourseEnrollmentScreen(
                                                 cvFileName = if (cvAttached) "student_cv.pdf" else null
                                             )
                                         ) {
-                                            onEnrollmentSuccess()
+                                            onEnrollmentSuccess() // Notify UI of successful submission.
                                         }
                                     }
                                 },
@@ -179,6 +206,10 @@ fun CourseEnrollmentScreen(
     }
 }
 
+/**
+ * Step 1: Personal Details.
+ * Collects fundamental identity data.
+ */
 @Composable
 fun PersonalDetailsStep(dob: String, onDob: (String) -> Unit, nat: String, onNat: (String) -> Unit, gen: String, onGen: (String) -> Unit) {
     Column {
@@ -195,6 +226,10 @@ fun PersonalDetailsStep(dob: String, onDob: (String) -> Unit, nat: String, onNat
     }
 }
 
+/**
+ * Step 2: Academic Background.
+ * Collects information regarding previous education.
+ */
 @Composable
 fun AcademicBackgroundStep(qual: String, onQual: (String) -> Unit, inst: String, onInst: (String) -> Unit, year: String, onYear: (String) -> Unit, eng: String, onEng: (String) -> Unit) {
     Column {
@@ -214,6 +249,10 @@ fun AcademicBackgroundStep(qual: String, onQual: (String) -> Unit, inst: String,
     }
 }
 
+/**
+ * Step 3: Support & Contact.
+ * Collects emergency contact details and accessibility requirements.
+ */
 @Composable
 fun SupportContactStep(name: String, onName: (String) -> Unit, phone: String, onPhone: (String) -> Unit, support: String, onSupport: (String) -> Unit) {
     Column {
@@ -228,9 +267,12 @@ fun SupportContactStep(name: String, onName: (String) -> Unit, phone: String, on
     }
 }
 
+/**
+ * Step 4: Motivation & Documents.
+ * Collects the student's personal statement and handles (simulated) document attachment.
+ */
 @Composable
 fun MotivationStep(mot: String, onMot: (String) -> Unit, port: String, onPort: (String) -> Unit, cv: Boolean, onCv: (Boolean) -> Unit) {
-    @Suppress("DEPRECATION")
     Column {
         @Suppress("DEPRECATION")
         Text("Motivation & Documents", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -240,6 +282,7 @@ fun MotivationStep(mot: String, onMot: (String) -> Unit, port: String, onPort: (
         OutlinedTextField(value = port, onValueChange = onPort, label = { Text("Portfolio URL (Optional)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
         Spacer(Modifier.height(24.dp))
         
+        // Custom interactive surface for simulating a file upload.
         Surface(
             onClick = { onCv(!cv) },
             shape = RoundedCornerShape(12.dp),

@@ -27,6 +27,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.data.Book
 
+/**
+ * SearchComponent.kt
+ *
+ * This file provides a comprehensive search subsystem for the application.
+ * It includes a stylized search bar, an animated transition for revealing the search UI,
+ * and specialized lists for displaying search history and live suggestions.
+ */
+
+/**
+ * SearchBarComponent Composable
+ *
+ * A custom-built search bar designed to replace the standard TopAppBar title when searching.
+ * It features a clean, rounded appearance with integrated clear and back actions.
+ *
+ * @param query The current text entered by the user.
+ * @param onQueryChange Callback invoked as the user types.
+ * @param onCloseClick Callback to dismiss the search mode and return to the normal title.
+ * @param modifier Custom styling for the bar container.
+ */
 @Composable
 fun SearchBarComponent(
     query: String,
@@ -34,6 +53,7 @@ fun SearchBarComponent(
     onCloseClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Used to dismiss the software keyboard programmatically.
     val focusManager = LocalFocusManager.current
 
     Surface(
@@ -51,12 +71,15 @@ fun SearchBarComponent(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Leading search icon to reinforce the purpose of the field.
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.width(12.dp))
+            
+            // The main input field. Styled to be transparent within the custom Surface.
             TextField(
                 value = query,
                 onValueChange = onQueryChange,
@@ -70,17 +93,20 @@ fun SearchBarComponent(
                     unfocusedIndicatorColor = Color.Transparent,
                 ),
                 singleLine = true,
+                // Configure the keyboard to show a "Search" button.
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                 textStyle = MaterialTheme.typography.bodyLarge
             )
             
+            // Show a "Clear" button only when there is text in the field.
             if (query.isNotEmpty()) {
                 IconButton(onClick = { onQueryChange("") }) {
                     Icon(Icons.Default.Close, contentDescription = "Clear")
                 }
             }
             
+            // Trailing back button to exit search mode.
             IconButton(onClick = onCloseClick) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -92,6 +118,18 @@ fun SearchBarComponent(
     }
 }
 
+/**
+ * HomeSearchSection Composable
+ *
+ * Orchestrates the entire search UI logic on the home screen. 
+ * It manages the animated visibility of the search bar and intelligently switches
+ * between showing recent history and live results/suggestions.
+ *
+ * @param isSearchVisible Master flag controlling if search mode is active.
+ * @param searchQuery Current input.
+ * @param recentSearches List of strings from the user's local search history.
+ * @param suggestions List of book/course objects matching the current query.
+ */
 @Composable
 fun HomeSearchSection(
     isSearchVisible: Boolean,
@@ -105,6 +143,7 @@ fun HomeSearchSection(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
+        // The Search Bar uses a horizontal slide animation when appearing.
         AnimatedVisibility(
             visible = isSearchVisible,
             enter = expandHorizontally(expandFrom = Alignment.Start, animationSpec = tween(durationMillis = 400)) + fadeIn(animationSpec = tween(durationMillis = 300)),
@@ -117,7 +156,8 @@ fun HomeSearchSection(
             )
         }
 
-        // Show Recent Searches if query is empty and history exists
+        // --- SEARCH HISTORY --- //
+        // Revealed only when the query is empty and the search mode is active.
         AnimatedVisibility(
             visible = isSearchVisible && searchQuery.isEmpty() && recentSearches.isNotEmpty(),
             enter = expandVertically() + fadeIn(),
@@ -130,7 +170,8 @@ fun HomeSearchSection(
             )
         }
 
-        // Show Suggestions if query is not empty
+        // --- LIVE SUGGESTIONS --- //
+        // Revealed as the user types and matches are found.
         AnimatedVisibility(
             visible = isSearchVisible && searchQuery.isNotEmpty() && suggestions.isNotEmpty(),
             enter = expandVertically() + fadeIn(),
@@ -140,6 +181,7 @@ fun HomeSearchSection(
                 items = suggestions,
                 onItemClick = onSuggestionClick
             ) { book ->
+                // Row content for a single suggestion.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -168,6 +210,12 @@ fun HomeSearchSection(
     }
 }
 
+/**
+ * SearchHistoryList Composable
+ *
+ * Displays a list of the user's most recent search queries.
+ * Features a "Clear All" action to wipe the local history.
+ */
 @Composable
 fun SearchHistoryList(
     queries: List<String>,
@@ -183,6 +231,7 @@ fun SearchHistoryList(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            // Header with title and clear action.
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -195,6 +244,7 @@ fun SearchHistoryList(
                     Text("Clear All", style = MaterialTheme.typography.labelSmall)
                 }
             }
+            // Dynamically render each historical query.
             queries.forEachIndexed { index, query ->
                 Row(
                     modifier = Modifier
@@ -207,6 +257,7 @@ fun SearchHistoryList(
                     Spacer(Modifier.width(12.dp))
                     Text(query, style = MaterialTheme.typography.bodyMedium)
                 }
+                // Visual divider between list items.
                 if (index < queries.size - 1) {
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 }
@@ -215,6 +266,12 @@ fun SearchHistoryList(
     }
 }
 
+/**
+ * SearchSuggestionsList Composable
+ *
+ * A generic, reusable list for displaying search results or suggestions. 
+ * Uses a generic type `T` and a lambda for `itemContent` to allow flexible data binding.
+ */
 @Composable
 fun <T> SearchSuggestionsList(
     items: List<T>,
@@ -226,7 +283,7 @@ fun <T> SearchSuggestionsList(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
-            .animateContentSize(),
+            .animateContentSize(), // Smoothly animate height changes as suggestions list grows/shrinks.
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
         tonalElevation = 4.dp,
@@ -253,6 +310,12 @@ fun <T> SearchSuggestionsList(
     }
 }
 
+/**
+ * TopBarSearchAction Composable
+ *
+ * A standard search icon intended for use in a TopAppBar's actions slot. 
+ * It automatically hides itself when the search UI is active.
+ */
 @Composable
 fun TopBarSearchAction(
     isSearchVisible: Boolean,

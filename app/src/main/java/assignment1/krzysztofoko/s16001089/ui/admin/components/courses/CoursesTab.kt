@@ -1,6 +1,5 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Courses
+package assignment1.krzysztofoko.s16001089.ui.admin.components.courses
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -8,7 +7,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,11 +20,17 @@ import androidx.compose.ui.unit.dp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.Course
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
-import assignment1.krzysztofoko.s16001089.ui.admin.components.Catalog.*
+import assignment1.krzysztofoko.s16001089.ui.admin.components.catalog.*
 import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveScreenContainer
 import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
 import java.util.UUID
 
+/**
+ * CoursesTab
+ *
+ * Displays the academic course catalog for administrators to manage.
+ * Allows selecting a course to manage its modules and assignments.
+ */
 @Composable
 fun CoursesTab(
     viewModel: AdminViewModel,
@@ -39,7 +43,7 @@ fun CoursesTab(
     var courseToEdit by remember { mutableStateOf<Course?>(null) }
     var itemToDelete by remember { mutableStateOf<Course?>(null) }
 
-    // Handle external trigger for adding a course
+    // Handle external trigger for adding a course (e.g. from the top bar)
     LaunchedEffect(showAddCourseDialog) {
         if (showAddCourseDialog) {
             courseToEdit = Course(

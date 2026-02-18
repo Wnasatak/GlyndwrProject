@@ -17,20 +17,27 @@ import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.StateFlow
 
+/**
+ * Navigation graph module for product details and purchase/consumption flows.
+ * This function dynamically routes the user to the correct detail screen based on the item type.
+ */
 fun NavGraphBuilder.storeNavGraph(
-    navController: NavController,
-    currentUserFlow: StateFlow<FirebaseUser?>,
-    allBooks: List<Book>,
-    currentTheme: Theme,
-    onThemeChange: (Theme) -> Unit,
-    onPlayAudio: (Book) -> Unit
+    navController: NavController,           // Reference to the main navigation controller
+    currentUserFlow: StateFlow<FirebaseUser?>, // Observed stream of the current user's session
+    allBooks: List<Book>,                   // The master list of all products (Books, Gear, Courses)
+    currentTheme: Theme,                    // The active visual theme selection
+    onThemeChange: (Theme) -> Unit,         // Callback to update the global theme
+    onPlayAudio: (Book) -> Unit             // Trigger for audio playback service
 ) {
+    // --- ROUTE: DYNAMIC PRODUCT DETAILS ---
+    // Maps item IDs to specific screens based on their category (Audiobook vs Gear vs Course vs Book).
     composable("${AppConstants.ROUTE_BOOK_DETAILS}/{bookId}") { backStackEntry ->
         val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
         val selectedBook = allBooks.find { it.id == bookId }
         val currentUser by currentUserFlow.collectAsState()
         
         when {
+            // Case 1: The item is flagged as an Audiobook
             selectedBook?.isAudioBook == true -> {
                 AudioBookDetailScreen(
                     bookId = bookId,
@@ -44,6 +51,7 @@ fun NavGraphBuilder.storeNavGraph(
                     onViewInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/$it") }
                 )
             }
+            // Case 2: The item belongs to the Merchandise/Gear category
             selectedBook?.mainCategory == AppConstants.CAT_GEAR -> {
                 GearDetailScreen(
                     navController = navController,
@@ -57,6 +65,7 @@ fun NavGraphBuilder.storeNavGraph(
                     onViewInvoice = { navController.navigate("${AppConstants.ROUTE_INVOICE_CREATING}/$it") }
                 )
             }
+            // Case 3: The item is an academic Course
             selectedBook?.mainCategory == AppConstants.CAT_COURSES -> {
                 CourseDetailScreen(
                     courseId = bookId,
@@ -71,6 +80,7 @@ fun NavGraphBuilder.storeNavGraph(
                     onStartEnrollment = { navController.navigate("${AppConstants.ROUTE_COURSE_ENROLLMENT}/$it") }
                 )
             }
+            // Default: Standard Digital or Physical Book
             else -> {
                 BookDetailScreen(
                     bookId = bookId,
@@ -88,12 +98,15 @@ fun NavGraphBuilder.storeNavGraph(
         }
     }
 
+    // --- ROUTE: COURSE ENROLLMENT WORKFLOW ---
+    // Handles the step-by-step registration process for students.
     composable("${AppConstants.ROUTE_COURSE_ENROLLMENT}/{courseId}") { backStackEntry ->
         val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
         CourseEnrollmentScreen(
             courseId = courseId,
             onBack = { navController.popBackStack() },
             onEnrollmentSuccess = {
+                // Redirect to dashboard and remove enrollment screens from history
                 navController.navigate(AppConstants.ROUTE_DASHBOARD) {
                     popUpTo("${AppConstants.ROUTE_BOOK_DETAILS}/$courseId") { inclusive = true }
                 }
@@ -103,6 +116,8 @@ fun NavGraphBuilder.storeNavGraph(
         )
     }
 
+    // --- ROUTE: PDF DOCUMENT READER ---
+    // A dedicated full-screen viewer for digital book content.
     composable("${AppConstants.ROUTE_PDF_READER}/{bookId}") { backStackEntry -> 
         PdfReaderScreen(
             bookId = backStackEntry.arguments?.getString("bookId") ?: "",

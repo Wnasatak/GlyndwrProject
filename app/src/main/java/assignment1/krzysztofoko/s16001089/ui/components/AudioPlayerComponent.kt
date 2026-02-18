@@ -37,9 +37,28 @@ import kotlinx.coroutines.isActive
 import kotlin.math.sin
 
 /**
- * AudioPlayerComponent is a versatile media player UI that supports both minimized (bar)
- * and maximized (full-screen overlay) states. It integrates with Media3 (ExoPlayer)
- * to provide real-time playback control, progress tracking, and animated visual feedback.
+ * AudioPlayerComponent Composable
+ *
+ * A sophisticated, state-aware audio player UI that seamlessly transitions between a compact, 
+ * minimized bar and an immersive, maximized view. This component is deeply integrated with the
+ * Media3 playback library, providing users with a rich and responsive control experience.
+ *
+ * Key Features:
+ * - **Dual-State UI:** Switches between a minimal bar (for background listening) and a full-featured 
+ *   maximized player via the `isMinimized` flag.
+ * - **Media3 Integration:** Hooks into a `Player` instance to reflect real-time playback state,
+ *   including `isPlaying`, `duration`, and `currentPosition`.
+ * - **Lifecycle Aware:** Uses `DisposableEffect` to safely add and remove the player listener, preventing memory leaks.
+ * - **Live Progress Tracking:** Employs a `LaunchedEffect` to update the current position every second while playing.
+ * - **Rich Animations:** Features multiple looping animations, including a dynamic background gradient, a cover art
+ *   shimmer effect, and a custom `SquigglySlider` for progress, to create a lively and engaging UI.
+ *
+ * @param book The `Book` object containing metadata like title, author, and image URL.
+ * @param isMinimized A boolean that dictates whether to render the minimized or maximized view.
+ * @param onToggleMinimize Callback invoked to switch between the minimized and maximized states.
+ * @param onClose Callback to completely dismiss and stop the audio player.
+ * @param isDarkTheme Flag to adapt background components (not directly used here but passed to sub-composables).
+ * @param player The nullable `Player` instance from Media3 (ExoPlayer) that controls the audio.
  */
 @Composable
 fun AudioPlayerComponent(
@@ -50,44 +69,49 @@ fun AudioPlayerComponent(
     isDarkTheme: Boolean,
     player: Player?
 ) {
-    // Local state for tracking player progress and status
+    // Internal state variables that react to changes from the Media3 Player.
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(false) }
     val density = LocalDensity.current
 
-    // Lifecycle-aware sync with the Media3 player instance
+    // This effect binds the composable's state to the external Player instance.
+    // It correctly adds a listener when the player is available and cleans it up when the composable is disposed.
     DisposableEffect(player) {
         val listener = object : Player.Listener {
+            // Update UI state when playback starts or stops.
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
                 duration = player?.duration?.coerceAtLeast(0L) ?: 0L
             }
+            // Ensure duration is updated if it changes (e.g., in a live stream or as metadata loads).
             override fun onPlaybackStateChanged(state: Int) {
                 duration = player?.duration?.coerceAtLeast(0L) ?: 0L
             }
         }
         player?.addListener(listener)
-        // Initial state capture
+        // Set initial state immediately upon composition.
         isPlaying = player?.isPlaying ?: false
         duration = player?.duration?.coerceAtLeast(0L) ?: 0L
 
+        // The onDispose block is crucial for preventing leaks.
         onDispose {
             player?.removeListener(listener)
         }
     }
 
-    // Coroutine-driven progress update (refreshes every second while playing)
+    // This effect creates a coroutine that periodically updates the `currentPosition`.
+    // It only runs when the player exists and is actively playing, and restarts if `isPlaying` changes.
     LaunchedEffect(player, isPlaying) {
         if (isPlaying && player != null) {
-            while (isActive) {
+            while (isActive) { // `isActive` is a check from the CoroutineScope.
                 currentPosition = player.currentPosition
-                delay(1000)
+                delay(1000) // Poll for new position every second.
             }
         }
     }
 
-    // Background animation: Shifting ambient gradient for a dynamic feel
+    // A subtle, continuous animation for the background gradient to give the UI a dynamic, premium feel.
     val infiniteTransition = rememberInfiniteTransition(label = "ambientGradient")
     val offsetAnim by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -99,10 +123,10 @@ fun AudioPlayerComponent(
         label = "offsetAnim"
     )
 
-    // Layout structure depends on the minimization state
+    // The root layout conditionally renders the minimized or maximized view.
     Box(modifier = Modifier.padding(if (isMinimized) 0.dp else 16.dp)) {
         if (isMinimized) {
-            // VIEW: MINIMIZED (Bottom Bar)
+            // --- MINIMIZED PLAYER BAR ---
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -113,7 +137,7 @@ fun AudioPlayerComponent(
                 tonalElevation = 0.dp,
                 border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
             ) {
-                // Animated background gradient
+                // The animated gradient provides a subtle visual texture.
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -131,7 +155,7 @@ fun AudioPlayerComponent(
                 )
 
                 Column {
-                    // Slim progress indicator at the very top of the bar
+                    // A thin progress line gives at-a-glance feedback on playback position.
                     val progress = if (duration > 0) currentPosition.toFloat() / duration else 0f
                     LinearProgressIndicator(
                         progress = { progress },
@@ -140,7 +164,7 @@ fun AudioPlayerComponent(
                         trackColor = Color.Transparent
                     )
                     
-                    // Main content: Thumbnail, title, and simple controls
+                    // Bar contents: Cover, Title/Author, Play/Pause, Close.
                     Row(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -169,11 +193,13 @@ fun AudioPlayerComponent(
                                 maxLines = 1
                             )
                         }
+                        // Play/Pause toggle button.
                         IconButton(onClick = {
                             if (isPlaying) player?.pause() else player?.play()
                         }) {
                             Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = MaterialTheme.colorScheme.primary)
                         }
+                        // Close button to dismiss the player entirely.
                         IconButton(onClick = onClose) {
                             Icon(Icons.Default.Close, null, modifier = Modifier.size(20.dp))
                         }
@@ -181,7 +207,7 @@ fun AudioPlayerComponent(
                 }
             }
         } else {
-            // VIEW: MAXIMIZED (Full-screen Card Style)
+            // --- MAXIMIZED PLAYER VIEW ---
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -192,7 +218,6 @@ fun AudioPlayerComponent(
                 shadowElevation = 12.dp,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
             ) {
-                // Background Gradient (more pronounced in maximized state)
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -213,7 +238,7 @@ fun AudioPlayerComponent(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Header: Controls to minimize or close
+                    // Header with minimize and close controls.
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -222,14 +247,7 @@ fun AudioPlayerComponent(
                         IconButton(onClick = onToggleMinimize) {
                             Icon(Icons.Default.KeyboardArrowDown, "Minimize")
                         }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Now Playing",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Text("Now Playing", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         IconButton(onClick = onClose) {
                             Icon(Icons.Default.Close, "Close")
                         }
@@ -237,119 +255,76 @@ fun AudioPlayerComponent(
 
                     Spacer(Modifier.height(16.dp))
                     
-                    // Large Cover Image with dynamic "shimmer" effect while playing
+                    // Large cover art with a conditional shimmer effect.
                     val imageSize = 200.dp
                     Box(
-                        modifier = Modifier
-                            .size(imageSize)
-                            .clip(RoundedCornerShape(20.dp))
+                        modifier = Modifier.size(imageSize).clip(RoundedCornerShape(20.dp))
                     ) {
-                        AsyncImage(
-                            model = book.imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                        AsyncImage(model = book.imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         
-                        // Diagonal shimmer animation for active playback
+                        // This shimmering gradient is only rendered when music is actively playing.
                         if (isPlaying) {
                             val diagonalTransition = rememberInfiniteTransition(label = "diagonalShade")
                             val animProgress by diagonalTransition.animateFloat(
                                 initialValue = 0f,
                                 targetValue = 1f,
-                                animationSpec = infiniteRepeatable(
-                                    animation = tween(15000, easing = LinearOutSlowInEasing), 
-                                    repeatMode = RepeatMode.Reverse
-                                ),
+                                animationSpec = infiniteRepeatable(tween(15000, easing = LinearOutSlowInEasing), RepeatMode.Reverse),
                                 label = "animProgress"
                             )
                             
                             Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        Brush.linearGradient(
-                                            0.0f to Color.Transparent,
-                                            0.45f to Color.Transparent,
-                                            0.5f to Color.White.copy(alpha = 0.3f),
-                                            0.55f to Color.Transparent,
-                                            1.0f to Color.Transparent,
-                                            start = Offset(with(density) { 200.dp.toPx() } * (animProgress - 0.5f) * 2f, with(density) { 200.dp.toPx() } * (animProgress - 0.5f) * 2f),
-                                            end = Offset(with(density) { 200.dp.toPx() } * (animProgress + 0.5f) * 2f, with(density) { 200.dp.toPx() } * (animProgress + 0.5f) * 2f)
-                                        )
+                                modifier = Modifier.fillMaxSize().background(
+                                    Brush.linearGradient(
+                                        0.0f to Color.Transparent, 0.45f to Color.Transparent, 0.5f to Color.White.copy(alpha = 0.3f), 0.55f to Color.Transparent, 1.0f to Color.Transparent,
+                                        start = Offset(with(density) { 200.dp.toPx() } * (animProgress - 0.5f) * 2f, with(density) { 200.dp.toPx() } * (animProgress - 0.5f) * 2f),
+                                        end = Offset(with(density) { 200.dp.toPx() } * (animProgress + 0.5f) * 2f, with(density) { 200.dp.toPx() } * (animProgress + 0.5f) * 2f)
                                     )
+                                )
                             )
                         }
                     }
 
                     Spacer(Modifier.height(20.dp))
 
-                    // Title and Author information
-                    Text(
-                        text = book.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = book.author,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    // Audiobook metadata.
+                    Text(book.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(book.author, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Custom animated "Squiggly" progress slider
+                    // The custom slider for seeking and progress visualization.
                     SquigglySlider(
                         progress = if (duration > 0) currentPosition.toFloat() / duration else 0f,
                         isPlaying = isPlaying,
-                        onValueChange = { 
-                            player?.seekTo((it * duration).toLong())
+                        onValueChange = { newProgress -> 
+                            player?.seekTo((newProgress * duration).toLong())
                         },
                         modifier = Modifier.fillMaxWidth().height(40.dp)
                     )
 
-                    // Time labels (current vs total)
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
+                    // Time labels showing current position vs total duration.
+                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(text = formatTime(currentPosition.toInt()), style = MaterialTheme.typography.labelSmall)
                         Text(text = formatTime(duration.toInt()), style = MaterialTheme.typography.labelSmall)
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Playback Controls: Replay, Play/Pause, Fast Forward
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { player?.seekTo(currentPosition - 10000) }) {
-                            Icon(Icons.Default.Replay10, null, modifier = Modifier.size(28.dp))
-                        }
+                    // Main playback controls with large central Play/Pause FAB.
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { player?.seekTo(currentPosition - 10000) }) { Icon(Icons.Default.Replay10, null, modifier = Modifier.size(28.dp)) }
                         Spacer(modifier = Modifier.width(32.dp))
                         FloatingActionButton(
-                            onClick = {
-                                if (isPlaying) player?.pause() else player?.play()
-                            },
+                            onClick = { if (isPlaying) player?.pause() else player?.play() },
                             shape = CircleShape,
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(64.dp)
                         ) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = "Play/Pause",
-                                modifier = Modifier.size(36.dp)
-                            )
+                            Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Play/Pause", modifier = Modifier.size(36.dp))
                         }
                         Spacer(modifier = Modifier.width(32.dp))
-                        IconButton(onClick = { player?.seekTo(currentPosition + 30000) }) {
-                            Icon(Icons.Default.Forward30, null, modifier = Modifier.size(28.dp))
-                        }
+                        IconButton(onClick = { player?.seekTo(currentPosition + 30000) }) { Icon(Icons.Default.Forward30, null, modifier = Modifier.size(28.dp)) }
                     }
                 }
             }
@@ -358,12 +333,17 @@ fun AudioPlayerComponent(
 }
 
 /**
- * A custom slider component that renders a "squiggly" or wavy path for the active progress.
- * The wave animates while playback is active.
+ * SquigglySlider Composable
  *
- * @param progress Float between 0 and 1 representing the current playback position.
- * @param isPlaying Boolean to toggle the wave animation.
- * @param onValueChange Lambda triggered when the user scrubs the slider.
+ * A highly custom and decorative slider that replaces the standard `Slider` with a `Canvas`-based
+ * implementation. It visualizes progress with a wavy line that animates when `isPlaying` is true.
+ * A key feature is the invisible `Slider` laid on top, which transparently handles all user touch input
+ * (scrubbing) for a robust and simplified implementation.
+ *
+ * @param progress The current progress, represented as a float from 0.0 to 1.0.
+ * @param isPlaying A boolean that controls whether the wave animation is active.
+ * @param onValueChange A lambda that reports the new progress value when the user scrubs the slider.
+ * @param modifier The modifier to be applied to the slider.
  */
 @Composable
 fun SquigglySlider(
@@ -375,57 +355,46 @@ fun SquigglySlider(
     val primaryColor = MaterialTheme.colorScheme.primary
     val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
     
-    // Phase animation for the wavy progress path
+    // An infinite animation that drives the sine wave's phase, creating the "moving wave" effect.
     val infiniteTransition = rememberInfiniteTransition(label = "wave")
     val phase by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
+        animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing), RepeatMode.Restart),
         label = "phase"
     )
 
     Box(modifier = modifier) {
+        // The custom drawing layer.
         Canvas(modifier = Modifier.fillMaxSize()) {
             val width = size.width
             val height = size.height
             val centerY = height / 2
             val progressX = width * progress
             
-            // Draw the background (inactive) track
-            drawLine(
-                color = trackColor,
-                start = Offset(progressX, centerY),
-                end = Offset(width, centerY),
-                strokeWidth = 4.dp.toPx(),
-                cap = StrokeCap.Round
-            )
+            // 1. Draw the inactive (background) part of the track.
+            drawLine(color = trackColor, start = Offset(progressX, centerY), end = Offset(width, centerY), strokeWidth = 4.dp.toPx(), cap = StrokeCap.Round)
             
-            // Generate the wavy path for active progress
+            // 2. Draw the active (foreground) part of the track as a path.
             val path = Path()
             path.moveTo(0f, centerY)
             
-            val waveAmplitude = if (isPlaying) 6.dp.toPx() else 0f
+            val waveAmplitude = if (isPlaying) 6.dp.toPx() else 0f // Wave is flat when paused.
             val waveFrequency = 0.05f
             
+            // Generate the points for the squiggly line up to the current progress.
             for (x in 0..progressX.toInt()) {
                 val y = if (isPlaying) {
                     centerY + waveAmplitude * sin(x * waveFrequency + phase)
                 } else {
                     centerY
                 }
-                path.lineTo(x.toFloat(), y.toFloat())
+                path.lineTo(x.toFloat(), y)
             }
             
-            drawPath(
-                path = path,
-                color = primaryColor,
-                style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
-            )
+            drawPath(path = path, color = primaryColor, style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round))
             
-            // Draw the thumb indicator
+            // 3. Draw the draggable thumb, which follows the wave.
             drawCircle(
                 color = primaryColor,
                 radius = 6.dp.toPx(),
@@ -433,7 +402,8 @@ fun SquigglySlider(
             )
         }
         
-        // Invisible slider overlay for touch interaction
+        // 4. An invisible, standard Slider is placed on top to handle all touch input.
+        // This is much simpler and more robust than handling raw pointer input on the Canvas.
         Slider(
             value = progress,
             onValueChange = onValueChange,
@@ -441,16 +411,18 @@ fun SquigglySlider(
             colors = SliderDefaults.colors(
                 thumbColor = Color.Transparent,
                 activeTrackColor = Color.Transparent,
-                inactiveTrackColor = Color.Transparent,
-                activeTickColor = Color.Transparent,
-                inactiveTickColor = Color.Transparent
+                inactiveTrackColor = Color.Transparent
             )
         )
     }
 }
 
 /**
- * Utility to format millisecond duration into a readable time string (HH:mm:ss or mm:ss).
+ * A simple utility function to convert a duration in milliseconds into a user-friendly
+ * time format string (e.g., "01:23" or "01:15:45").
+ *
+ * @param milliseconds The duration in milliseconds.
+ * @return A formatted string representation of the time.
  */
 private fun formatTime(milliseconds: Int): String {
     val seconds = (milliseconds / 1000) % 60

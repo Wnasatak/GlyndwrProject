@@ -25,13 +25,21 @@ import assignment1.krzysztofoko.s16001089.data.UserLocal
  */
 
 /**
- * A persistent, minimized audio player bar that sits above the navigation bar.
- * This is used when an audio book is playing but the user is navigating other parts of the app.
+ * IntegratedAudioBar Composable
  *
- * @param currentBook The book currently being played. If null, the bar is hidden.
- * @param externalPlayer The Media3 Player instance managing the audio playback.
- * @param onToggleMinimize Callback to expand the player to full screen.
- * @param onClose Callback to stop playback and dismiss the player.
+ * A persistent, minimised audio player bar that sits neatly above the bottom navigation bar.
+ * This component ensures that the user can continue listening to an audiobook while they 
+ * navigate through other sections of the application.
+ *
+ * Key features:
+ * - **Unobtrusive Presence:** Stays fixed at the bottom of the screen.
+ * - **System Awareness:** Respects system navigation bars via `navigationBarsPadding`.
+ * - **Reuse:** Leverages the `AudioPlayerComponent` in its minimised state for consistency.
+ *
+ * @param currentBook The `Book` object currently being played. If null, the bar remains hidden.
+ * @param externalPlayer The Media3 `Player` instance that manages the actual audio stream.
+ * @param onToggleMinimize Callback to expand the player to its full-screen immersive state.
+ * @param onClose Callback to halt playback and dismiss the player bar entirely.
  */
 @Composable
 fun IntegratedAudioBar(
@@ -44,18 +52,18 @@ fun IntegratedAudioBar(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding(), // Ensures it doesn't overlap with system nav bars
+                .navigationBarsPadding(), // Ensures the bar doesn't overlap with system controls.
             color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
             tonalElevation = 4.dp,
             border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
         ) {
-            // Reuses the core AudioPlayerComponent in 'minimized' mode
+            // Reuses the core player component, passing 'true' for the isMinimized parameter.
             AudioPlayerComponent(
                 book = currentBook,
                 isMinimized = true,
                 onToggleMinimize = onToggleMinimize,
                 onClose = onClose,
-                isDarkTheme = true, // Force dark/neutral look for the bottom bar
+                isDarkTheme = true, // Force a sleek, dark appearance for the bottom bar.
                 player = externalPlayer
             )
         }
@@ -63,14 +71,17 @@ fun IntegratedAudioBar(
 }
 
 /**
- * A full-screen overlay for the audio player.
- * Features a dimmed background that can be tapped to minimize the player back to the IntegratedAudioBar.
+ * MaximizedAudioPlayerOverlay Composable
  *
- * @param currentBook The book currently being played.
- * @param isDarkTheme Used to adjust the internal player component's styling.
- * @param externalPlayer The Media3 Player instance.
- * @param onToggleMinimize Callback to return to the minimized state.
- * @param onClose Callback to dismiss the player entirely.
+ * A full-screen, immersive overlay for the audio player. It provides a focused environment
+ * for playback control, featuring a dimmed background that can be tapped to return to the 
+ * previous screen.
+ *
+ * @param currentBook The `Book` object currently being played.
+ * @param isDarkTheme Flag used to adjust internal styling based on the active theme.
+ * @param externalPlayer The Media3 `Player` instance.
+ * @param onToggleMinimize Callback to return the player to its minimised bar state.
+ * @param onClose Callback to stop the audio and dismiss the player.
  */
 @Composable
 fun MaximizedAudioPlayerOverlay(
@@ -81,18 +92,18 @@ fun MaximizedAudioPlayerOverlay(
     onClose: () -> Unit
 ) {
     if (currentBook != null) {
-        // Overlay container with a semi-transparent black background
+        // Immersive overlay container with a semi-transparent black background.
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.6f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = null // No visual ripple when clicking background to minimize
+                    indication = null // No visual ripple when clicking the background to dismiss.
                 ) { onToggleMinimize() },
             contentAlignment = Alignment.Center
         ) {
-            // Adaptive width ensures the player doesn't look stretched on tablets/wide screens
+            // Adaptive width ensures the player maintains a professional look on tablets and wide screens.
             Box(modifier = Modifier.padding(16.dp).adaptiveWidth(AdaptiveWidths.Medium)) {
                 AudioPlayerComponent(
                     book = currentBook,
@@ -110,7 +121,7 @@ fun MaximizedAudioPlayerOverlay(
 /**
  * Legacy component for managing global audio player state.
  * @deprecated Superseded by [IntegratedAudioBar] and [MaximizedAudioPlayerOverlay] for better 
- * integration with the Scaffold's bottom content slot.
+ * integration with the main Scaffold's bottom content area.
  */
 @Composable
 fun GlobalAudioPlayerOverlay(
@@ -124,18 +135,21 @@ fun GlobalAudioPlayerOverlay(
     onSetMinimized: (Boolean) -> Unit,
     userRole: String? = null
 ) {
-    // Kept for backward compatibility if needed in secondary navigation trees
+    // This component is kept for backward compatibility with older navigation structures.
 }
 
 /**
- * Centralized manager for common navigation-related popups.
- * Handles the logic for showing/hiding dialogs like Logout and session termination.
+ * AppNavigationPopups Composable
  *
- * @param showLogoutConfirm Trigger for the logout confirmation dialog.
- * @param showSignedOutPopup Trigger for the successful logout feedback dialog.
- * @param onLogoutConfirm Execution logic when the user confirms logout.
- * @param onLogoutDismiss Logic to hide the logout dialog without action.
- * @param onSignedOutDismiss Logic to acknowledge the sign-out success.
+ * A centralised manager for all common navigation-triggered popups.
+ * It handles the logic for rendering essential dialogs like logout confirmation and 
+ * post-sign-out feedback, ensuring consistent behaviour across the entire app.
+ *
+ * @param showLogoutConfirm Trigger flag for the logout confirmation dialog.
+ * @param showSignedOutPopup Trigger flag for the successful logout feedback popup.
+ * @param onLogoutConfirm Execution logic invoked when the user confirms they want to log out.
+ * @param onLogoutDismiss Logic to hide the logout dialog without taking action.
+ * @param onSignedOutDismiss Logic to acknowledge and close the sign-out success message.
  */
 @Composable
 fun AppNavigationPopups(
@@ -145,7 +159,7 @@ fun AppNavigationPopups(
     onLogoutDismiss: () -> Unit,
     onSignedOutDismiss: () -> Unit
 ) {
-    // Show confirmation dialog before ending the session
+    // Renders the confirmation dialog before officially ending the user's session.
     if (showLogoutConfirm) {
         AppPopups.LogoutConfirmation(
             onDismiss = onLogoutDismiss,
@@ -153,7 +167,7 @@ fun AppNavigationPopups(
         )
     }
 
-    // Informative popup displayed after a successful sign-out
+    // Renders the informative popup displayed after a successful sign-out event.
     AppPopups.SignedOutSuccess(
         show = showSignedOutPopup,
         onDismiss = onSignedOutDismiss

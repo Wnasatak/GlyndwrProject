@@ -12,7 +12,12 @@ import kotlinx.coroutines.launch
 import java.util.*
 
 /**
- * ViewModel for the Audiobook Details screen.
+ * AudioBookViewModel.kt
+ *
+ * This ViewModel acts as the data architect for the Audiobook details screen.
+ * It manages the lifecycle of audiobook data, tracks user-specific states like
+ * ownership and wishlist status, and coordinates the logic for both free and 
+ * paid purchase workflows.
  */
 class AudioBookViewModel(
     private val bookDao: BookDao,           
@@ -22,79 +27,103 @@ class AudioBookViewModel(
     private val userId: String              
 ) : ViewModel() {
 
+    // --- UI STATE FLOWS --- //
+
+    // Holds the core book metadata once loaded.
     private val _book = MutableStateFlow<Book?>(null)
     val book: StateFlow<Book?> = _book.asStateFlow()
 
+    // Indicates if a data fetch is currently in progress.
     private val _loading = MutableStateFlow(true)
     val loading: StateFlow<Boolean> = _loading.asStateFlow()
 
+    // Streams the current user's data, ensuring UI reacts to balance or role changes.
     val localUser: StateFlow<UserLocal?> = if (userId.isNotEmpty()) {
         userDao.getUserFlow(userId)
     } else {
         flowOf(null)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    // Collects all available role-based discounts for real-time price calculations.
     val roleDiscounts: StateFlow<List<RoleDiscount>> = userDao.getAllRoleDiscounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Tracks if the current user already owns this specific item.
     val isOwned: StateFlow<Boolean> = if (userId.isNotEmpty()) {
         userDao.getPurchaseIds(userId).map { it.contains(bookId) }
     } else {
         flowOf(false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    // Tracks if this book is in the user's personal wishlist.
     val inWishlist: StateFlow<Boolean> = if (userId.isNotEmpty()) {
         userDao.getWishlistIds(userId).map { it.contains(bookId) }
     } else {
         flowOf(false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    // Streams all user reviews for this product.
     val allReviews: StateFlow<List<ReviewLocal>> = userDao.getReviewsForProduct(bookId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        loadBook()
+        loadBook() // Kick off data loading immediately on creation.
     }
 
+    /**
+     * Attempts to fetch the book data from both generic and specialized audiobook tables.
+     * Also records the view in the user's browsing history.
+     */
     private fun loadBook() {
         viewModelScope.launch {
-            _loading.value = true
-            var fetchedBook = bookDao.getBookById(bookId)
+            _loading.value = true // Start loading.
+            var fetchedBook = bookDao.getBookById(bookId) // Check general books table first.
             if (fetchedBook == null) {
+                // If not found, check the dedicated audiobooks table.
                 val ab = audioBookDao.getAudioBookById(bookId)
                 if (ab != null) {
-                    fetchedBook = ab.toBook() 
+                    fetchedBook = ab.toBook() // Map specialized model to the generic Book model.
                 }
             }
-            _book.value = fetchedBook
+            _book.value = fetchedBook // Update state.
+            
+            // Add to browsing history if the user is authenticated.
             if (userId.isNotEmpty() && fetchedBook != null) {
                 userDao.addToHistory(HistoryItem(userId, bookId))
             }
-            _loading.value = false
+            _loading.value = false // Loading finished.
         }
     }
 
+    /**
+     * Toggles the presence of this book in the user's favorites list.
+     */
     fun toggleWishlist(onComplete: (String) -> Unit) {
         viewModelScope.launch {
-            if (userId.isEmpty()) return@launch
+            if (userId.isEmpty()) return@launch // Guard against guest users.
             if (inWishlist.value) {
-                userDao.removeFromWishlist(userId, bookId)
+                userDao.removeFromWishlist(userId, bookId) // Remove if already liked.
                 onComplete(AppConstants.MSG_REMOVED_FAVORITES)
             } else {
-                userDao.addToWishlist(WishlistItem(userId, bookId))
+                userDao.addToWishlist(WishlistItem(userId, bookId)) // Add to favorites.
                 onComplete(AppConstants.MSG_ADDED_FAVORITES)
             }
         }
     }
 
+    /**
+     * Handles the logic for adding a zero-cost item to the user's digital library.
+     * This involves updating the database, creating a notification, and sending a confirmation email.
+     */
     fun addFreePurchase(context: Context?, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             if (userId.isEmpty()) return@launch
             val currentBook = _book.value ?: return@launch
-            val orderConf = OrderUtils.generateOrderReference()
+            val orderConf = OrderUtils.generateOrderReference() // Generate unique ref.
             val purchaseId = UUID.randomUUID().toString()
             val user = userDao.getUserById(userId)
 
+            // 1. Record the free purchase in the database.
             userDao.addPurchase(PurchaseItem(
                 purchaseId = purchaseId,
                 userId = userId, 
@@ -109,6 +138,7 @@ class AudioBookViewModel(
                 orderConfirmation = orderConf
             ))
 
+            // 2. Alert the user with an in-app notification.
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
                 userId = userId,
@@ -119,6 +149,7 @@ class AudioBookViewModel(
                 type = "PICKUP"
             ))
 
+            // 3. Send a formal confirmation email.
             if (user != null && user.email.isNotEmpty()) {
                 val bookDetails = mapOf(
                     "Title" to currentBook.title,
@@ -138,15 +169,20 @@ class AudioBookViewModel(
                 )
             }
 
-            onComplete(AppConstants.MSG_ADDED_TO_LIBRARY)
+            onComplete(AppConstants.MSG_ADDED_TO_LIBRARY) // Notify UI of success.
         }
     }
 
+    /**
+     * Finalises a paid transaction. The actual payment is handled in the UI flow, 
+     * this method handles the post-purchase side effects like sending the receipt.
+     */
     fun handlePurchaseComplete(context: Context?, finalPrice: Double, orderRef: String, onComplete: (String) -> Unit) {
         viewModelScope.launch {
             val user = userDao.getUserById(userId)
             val currentBook = _book.value ?: return@launch
             
+            // Send receipt via email.
             if (user != null && user.email.isNotEmpty()) {
                 val priceStr = "£" + String.format(Locale.US, "%.2f", finalPrice)
                 val bookDetails = mapOf(
@@ -171,10 +207,13 @@ class AudioBookViewModel(
         }
     }
 
+    /**
+     * Removes an item from the user's library.
+     */
     fun removePurchase(onComplete: (String) -> Unit) {
         viewModelScope.launch {
             if (userId.isEmpty()) return@launch
-            userDao.deletePurchase(userId, bookId)
+            userDao.deletePurchase(userId, bookId) // Wipe record from local DB.
             onComplete(AppConstants.MSG_REMOVED_LIBRARY)
         }
     }

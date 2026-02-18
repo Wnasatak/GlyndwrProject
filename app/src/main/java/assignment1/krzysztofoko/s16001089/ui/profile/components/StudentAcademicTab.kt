@@ -242,19 +242,23 @@ fun StudentAcademicTab(
                         } else {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Check Application Button
-                                OutlinedButton(
+                                // Check Application - Icon Only
+                                IconButton(
                                     onClick = { showApplicationDetails = enrollment },
-                                    modifier = Modifier.weight(1.1f).height(46.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                    contentPadding = PaddingValues(horizontal = 4.dp)
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                                 ) {
-                                    Icon(Icons.Default.Description, null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(6.6.dp))
-                                    Text("Check Application", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                    Icon(
+                                        Icons.Default.Description, 
+                                        contentDescription = "Check Application", 
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
 
                                 if (enrollment.status == "ENROLLED" || enrollment.status == "APPROVED" || isDeclined) {
@@ -269,6 +273,7 @@ fun StudentAcademicTab(
                                     ) {
                                         Icon(Icons.Default.SwapHoriz, null, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.6.dp))
+                                        @Suppress("DEPRECATION")
                                         Text("Change Course", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                                     }
                                 }
@@ -276,7 +281,7 @@ fun StudentAcademicTab(
                                 // Resign Button
                                 Button(
                                     onClick = { showResignConfirm = enrollment },
-                                    modifier = Modifier.weight(0.9f).height(46.dp),
+                                    modifier = Modifier.weight(1f).height(46.dp),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
@@ -286,6 +291,7 @@ fun StudentAcademicTab(
                                 ) {
                                     Icon(Icons.Default.ExitToApp, null, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(6.6.dp))
+                                    @Suppress("DEPRECATION")
                                     Text("Resign", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                                 }
                             }
@@ -374,6 +380,7 @@ fun StudentAcademicTab(
                 ) {
                     ListItem(
                         headlineContent = { 
+                            @Suppress("DEPRECATION")
                             Text(
                                 "Score: ${grade.score}%", 
                                 fontWeight = FontWeight.Black, 
@@ -387,6 +394,7 @@ fun StudentAcademicTab(
                             ) 
                         },
                         trailingContent = { 
+                            @Suppress("DEPRECATION")
                             Text(
                                 SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(grade.gradedAt)), 
                                 style = MaterialTheme.typography.labelSmall
@@ -428,6 +436,7 @@ fun StudentAcademicTab(
                         }
                     }
                     Spacer(Modifier.height(16.dp))
+                    @Suppress("DEPRECATION")
                     Text(
                         text = if (record.status == "CHANGED") "Course Change Record" else "Withdrawal Record",
                         style = MaterialTheme.typography.headlineSmall,
@@ -458,6 +467,7 @@ fun StudentAcademicTab(
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
+                        @Suppress("DEPRECATION")
                         Text("Close Record", fontWeight = FontWeight.Bold)
                     }
                 }
@@ -481,6 +491,7 @@ fun StudentAcademicTab(
                 }
             },
             title = { 
+                @Suppress("DEPRECATION")
                 Text(
                     "Resign from Course", 
                     fontWeight = FontWeight.Black, 
@@ -507,7 +518,7 @@ fun StudentAcademicTab(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = Color.White
                     )
-                ) { Text("Submit Request", fontWeight = FontWeight.Bold) }
+                ) { @Suppress("DEPRECATION") Text("Submit Request", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(
@@ -605,6 +616,7 @@ fun CourseApplicationDetailsDialog(
                     modifier = Modifier.size(48.dp)
                 )
                 Spacer(Modifier.height(16.dp))
+                @Suppress("DEPRECATION")
                 Text(
                     "Application Details",
                     style = MaterialTheme.typography.titleLarge,
@@ -624,6 +636,7 @@ fun CourseApplicationDetailsDialog(
                 
                 if (userLocal != null) {
                     HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    @Suppress("DEPRECATION")
                     Text("User Profile Data", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
                     DetailRow("Full Name", userLocal.name)
                     DetailRow("Email", userLocal.email)
@@ -632,6 +645,7 @@ fun CourseApplicationDetailsDialog(
                 }
 
                 HorizontalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                @Suppress("DEPRECATION")
                 Text("Enrollment Info", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
                 
                 DetailRow("Nationality", enrollment.nationality)
@@ -652,6 +666,7 @@ fun CourseApplicationDetailsDialog(
                 }
                 
                 Spacer(Modifier.height(12.dp))
+                @Suppress("DEPRECATION")
                 Text("Motivational Statement:", style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.fillMaxWidth())
                 Text(
                     enrollment.motivationalText,
@@ -681,7 +696,9 @@ private fun DetailRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        @Suppress("DEPRECATION")
         Text(label, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+        @Suppress("DEPRECATION")
         Text(
             value, 
             style = MaterialTheme.typography.bodySmall, 
@@ -771,6 +788,7 @@ fun StudentCourseChangeDialog(
                                     }
                                 }
                                 Spacer(Modifier.height(24.dp))
+                                @Suppress("DEPRECATION")
                                 Text("Reason for Change", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                                 Spacer(Modifier.height(12.dp))
                                 Text(
@@ -822,6 +840,7 @@ fun StudentCourseChangeDialog(
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     @Suppress("DEPRECATION")
                                                     Text(course.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+                                                    @Suppress("DEPRECATION")
                                                     Text(course.department, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                                 }
                                                 if (isSelected) {
@@ -850,7 +869,9 @@ fun StudentCourseChangeDialog(
                                 @Suppress("DEPRECATION")
                                 Text("Ready to Submit", fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
                                 Spacer(Modifier.height(12.dp))
+                                @Suppress("DEPRECATION")
                                 Text("New Selection:", color = Color.Gray, style = MaterialTheme.typography.labelMedium)
+                                @Suppress("DEPRECATION")
                                 Text(selectedCourse?.title ?: "", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
 
                                 Spacer(Modifier.height(40.dp))

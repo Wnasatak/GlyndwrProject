@@ -26,6 +26,34 @@ import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 
+/**
+ * UserComponents.kt
+ *
+ * This file contains a collection of UI components dedicated to user profile management.
+ * It includes a highly customisable avatar component, profile headers, and several
+ * sections for editing personal information, addresses, and payment settings.
+ */
+
+/**
+ * UserAvatar Composable
+ *
+ * A smart, robust avatar component designed to display user profile pictures.
+ * It handles loading states with an animated spinner, provides fallback icons for errors 
+ * or missing data, and supports custom overlays and click actions.
+ *
+ * Key features:
+ * - **Smart Loading:** Displays a rotating placeholder icon while the image loads.
+ * - **Fallback Logic:** Automatically uses a default local asset if no URL is provided.
+ * - **Adaptive Icon Sizing:** Calculates the ideal placeholder icon size based on the 
+ *   container's constraints.
+ *
+ * @param photoUrl The remote URL or local path for the user's photo.
+ * @param modifier Custom styling for the avatar container.
+ * @param iconSize Optional override for the placeholder icon size.
+ * @param isLarge Flag to use a larger placeholder icon style.
+ * @param onClick Optional callback for interaction.
+ * @param overlay Custom composable to be rendered on top of the avatar (e.g., a progress spinner).
+ */
 @Composable
 fun UserAvatar(
     photoUrl: String?,
@@ -43,14 +71,12 @@ fun UserAvatar(
         .fillMaxSize()
         .let { if (onClick != null) it.clickable(onClick = onClick) else it }
 
+    // Animation for the rotating loading/placeholder icon.
     val infiniteTransition = rememberInfiniteTransition(label = "avatarLoad")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
+        animationSpec = infiniteRepeatable(animation = tween(2000, easing = LinearEasing), repeatMode = RepeatMode.Restart),
         label = "rotation"
     )
 
@@ -60,6 +86,7 @@ fun UserAvatar(
         color = Color.Transparent
     ) {
         BoxWithConstraints(contentAlignment = Alignment.Center) {
+            // Determine icon size based on available space if not explicitly provided.
             val autoIconSize = when {
                 isLarge && maxWidth > 100.dp -> 110.dp
                 isLarge -> 40.dp
@@ -76,6 +103,7 @@ fun UserAvatar(
                 modifier = avatarModifier,
                 contentScale = if (isUsingDefault) ContentScale.Fit else contentScale,
                 loading = {
+                    // Display rotating placeholder icon while loading.
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Icon(
                             if (isLarge) Icons.Default.Person else Icons.Default.AccountCircle,
@@ -86,10 +114,8 @@ fun UserAvatar(
                     }
                 },
                 error = {
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    // Static fallback icon for errors.
+                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
                         Icon(
                             if (isLarge) Icons.Default.Person else Icons.Default.AccountCircle,
                             contentDescription = null,
@@ -104,6 +130,12 @@ fun UserAvatar(
     }
 }
 
+/**
+ * ProfileHeader Composable
+ *
+ * A prominent header section for the profile screen, displaying the user's avatar 
+ * with an interactive edit button and a loading state for photo uploads.
+ */
 @Composable
 fun ProfileHeader(
     photoUrl: String?,
@@ -117,18 +149,15 @@ fun ProfileHeader(
             isLarge = true,
             onClick = { if (!isUploading) onPickPhoto() },
             overlay = {
+                // Dim the avatar and show a spinner while an upload is in progress.
                 if (isUploading) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.4f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f), CircleShape), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = Color.White)
                     }
                 }
             }
         )
+        // Edit FAB overlaid on the avatar.
         SmallFloatingActionButton(
             onClick = { if (!isUploading) onPickPhoto() },
             shape = CircleShape,
@@ -140,6 +169,12 @@ fun ProfileHeader(
     }
 }
 
+/**
+ * PersonalInfoSection Composable
+ *
+ * A group of input fields for managing the user's primary identity data,
+ * including their formal title, names, and contact details.
+ */
 @Composable
 fun PersonalInfoSection(
     title: String,
@@ -154,12 +189,7 @@ fun PersonalInfoSection(
     onEditEmail: () -> Unit
 ) {
     Column {
-        Text(
-            "Personal Information",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Text("Personal Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(16.dp))
         
         OutlinedTextField(
@@ -172,22 +202,11 @@ fun PersonalInfoSection(
         Spacer(modifier = Modifier.height(12.dp))
         
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(
-                value = firstName,
-                onValueChange = onFirstNameChange,
-                label = { Text("First Name") },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            OutlinedTextField(
-                value = surname,
-                onValueChange = onSurnameChange,
-                label = { Text("Surname") },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            )
+            OutlinedTextField(value = firstName, onValueChange = onFirstNameChange, label = { Text("First Name") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+            OutlinedTextField(value = surname, onValueChange = onSurnameChange, label = { Text("Surname") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
         }
         Spacer(modifier = Modifier.height(12.dp))
+        
         OutlinedTextField(
             value = phoneNumber,
             onValueChange = onPhoneNumberChange,
@@ -198,16 +217,15 @@ fun PersonalInfoSection(
             leadingIcon = { Icon(Icons.Default.Phone, null) }
         )
         Spacer(modifier = Modifier.height(12.dp))
+        
+        // Email is displayed in a custom Surface as it requires a multi-step verification process to edit.
         Surface(
             onClick = onEditEmail,
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -220,18 +238,19 @@ fun PersonalInfoSection(
     }
 }
 
+/**
+ * ProfileAddressSection Composable
+ *
+ * Displays the user's primary residence or billing address in a clear, interactive row.
+ */
 @Composable
 fun ProfileAddressSection(
     address: String,
     onChangeAddress: () -> Unit
 ) {
     Column {
-        Text(
-            "Active Address",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        @Suppress("DEPRECATION")
+        Text("Active Address", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(12.dp))
         Surface(
             onClick = onChangeAddress,
@@ -239,17 +258,10 @@ fun ProfileAddressSection(
             shape = RoundedCornerShape(16.dp),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Home, null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(16.dp))
-                Text(
-                    address,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f)
-                )
+                Text(address, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                 Text("Change", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
             }
@@ -257,18 +269,20 @@ fun ProfileAddressSection(
     }
 }
 
+/**
+ * ProfilePaymentSection Composable
+ *
+ * Displays the user's chosen payment method, using contextual icons to visually
+ * represent different providers (PayPal, Google Pay, etc.).
+ */
 @Composable
 fun ProfilePaymentSection(
     paymentMethod: String,
     onChangePayment: () -> Unit
 ) {
     Column {
-        Text(
-            "Active Payment Method",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        @Suppress("DEPRECATION")
+        Text("Active Payment Method", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(12.dp))
         Surface(
             onClick = onChangePayment,
@@ -276,10 +290,8 @@ fun ProfilePaymentSection(
             shape = RoundedCornerShape(16.dp),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                // Map payment method name to a corresponding icon.
                 Icon(
                     imageVector = when {
                         paymentMethod.contains("Google") -> Icons.Default.AccountBalanceWallet
@@ -299,17 +311,18 @@ fun ProfilePaymentSection(
     }
 }
 
+/**
+ * ProfileSecuritySection Composable
+ *
+ * Provides a dedicated area for account security actions, such as changing the password.
+ */
 @Composable
 fun ProfileSecuritySection(
     onChangePassword: () -> Unit
 ) {
     Column {
-        Text(
-            "Account Security",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        @Suppress("DEPRECATION")
+        Text("Account Security", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedButton(
             onClick = onChangePassword,

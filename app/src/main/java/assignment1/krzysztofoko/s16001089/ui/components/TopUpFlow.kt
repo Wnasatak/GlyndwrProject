@@ -24,6 +24,24 @@ import androidx.compose.ui.window.Dialog
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import java.util.*
 
+/**
+ * TopUpFlow.kt
+ *
+ * This file contains the components for the wallet top-up user journey.
+ * It's designed as a multi-step dialog that allows users to review their balance,
+ * select a top-up amount (pre-set or custom), and confirm the transaction securely.
+ */
+
+/**
+ * IntegratedTopUpDialog Composable
+ *
+ * A centralised, multi-step dialog for managing university wallet funds.
+ *
+ * Steps:
+ * 0. **Summary:** Shows current balance and active payment method.
+ * 1. **Selection:** Allows picking a preset (£5, £10, £20, £50) or entering a custom amount.
+ * 2. **Confirmation:** Final verification before processing the transaction.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IntegratedTopUpDialog(
@@ -32,16 +50,15 @@ fun IntegratedTopUpDialog(
     onManageProfile: () -> Unit,
     onTopUpComplete: (Double) -> Unit
 ) {
-    var currentStep by remember { mutableIntStateOf(0) } // 0: Summary/Settings, 1: Amount, 2: Confirm
-    var selectedAmount by remember { mutableDoubleStateOf(10.0) }
-    var customAmount by remember { mutableStateOf("") }
-    var isProcessing by remember { mutableStateOf(false) }
+    // --- STATE MANAGEMENT --- //
+    var currentStep by remember { mutableIntStateOf(0) } // Tracks the current screen in the flow.
+    var selectedAmount by remember { mutableDoubleStateOf(10.0) } // Holds the chosen preset amount.
+    var customAmount by remember { mutableStateOf("") } // Holds the raw string for custom inputs.
+    var isProcessing by remember { mutableStateOf(false) } // Loading state for the final transaction.
 
     Dialog(onDismissRequest = { if (!isProcessing) onDismiss() }) {
         Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
@@ -50,7 +67,7 @@ fun IntegratedTopUpDialog(
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header
+                // Header: Title changes based on the current step.
                 Text(
                     text = when(currentStep) {
                         0 -> "Payment & Wallet"
@@ -61,6 +78,7 @@ fun IntegratedTopUpDialog(
                     fontWeight = FontWeight.Bold
                 )
                 
+                // Show step indicator for the selection and confirmation stages.
                 if (currentStep > 0) {
                     Text(
                         text = "Step $currentStep of 2",
@@ -72,33 +90,33 @@ fun IntegratedTopUpDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Smoothly animate transitions between the different steps.
                 AnimatedContent(
                     targetState = currentStep,
                     label = "topUpStepTransition",
                     transitionSpec = {
                         if (targetState > initialState) {
+                            // Slide in from right when going forward.
                             slideInHorizontally { it } + fadeIn() togetherWith slideOutHorizontally { -it } + fadeOut()
                         } else {
+                            // Slide in from left when going back.
                             slideInHorizontally { -it } + fadeIn() togetherWith slideOutHorizontally { it } + fadeOut()
                         }
                     }
                 ) { step ->
                     when (step) {
                         0 -> {
+                            // --- STEP 0: BALANCE SUMMARY --- //
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                // Current Balance info
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Column(
-                                        modifier = Modifier.padding(16.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text("Current Balance", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("Current Balance", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                         Text(
-                                            "£${String.format(Locale.US, "%.2f", user?.balance ?: 0.0)}",
+                                            "£${String.format(Locale.US, "%.2f", user?.balance ?: 0.0)}", // Formats balance to 2 decimal places.
                                             style = MaterialTheme.typography.headlineMedium,
                                             fontWeight = FontWeight.Black,
                                             color = MaterialTheme.colorScheme.primary
@@ -108,21 +126,13 @@ fun IntegratedTopUpDialog(
                                 
                                 Spacer(modifier = Modifier.height(24.dp))
                                 
-                                // Payment Method Header + Manage link
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("Active Payment Method", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                                    TextButton(
-                                        onClick = onManageProfile,
-                                        contentPadding = PaddingValues(0.dp),
-                                        modifier = Modifier.height(32.dp)
-                                    ) {
+                                // Displays the payment method that will be charged.
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Active Payment Method", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                    TextButton(onClick = onManageProfile, contentPadding = PaddingValues(0.dp), modifier = Modifier.height(32.dp)) {
                                         Icon(Icons.Default.Edit, null, modifier = Modifier.size(14.dp))
                                         Spacer(Modifier.width(4.dp))
-                                        Text("Manage", style = MaterialTheme.typography.labelMedium)
+                                        Text("Manage", style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
                                 
@@ -133,6 +143,7 @@ fun IntegratedTopUpDialog(
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        // Pick an icon based on the payment method string.
                                         Icon(
                                             imageVector = when {
                                                 user?.selectedPaymentMethod?.contains("PayPal") == true -> Icons.Default.Payment
@@ -149,12 +160,8 @@ fun IntegratedTopUpDialog(
                                 
                                 Spacer(modifier = Modifier.height(32.dp))
                                 
-                                // Action Buttons
-                                Button(
-                                    onClick = { currentStep = 1 },
-                                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
+                                // Primary action to start the top-up wizard.
+                                Button(onClick = { currentStep = 1 }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(12.dp)) {
                                     Icon(Icons.Default.Add, null)
                                     Spacer(Modifier.width(8.dp))
                                     Text("Top Up Now", fontWeight = FontWeight.Bold)
@@ -162,32 +169,28 @@ fun IntegratedTopUpDialog(
                             }
                         }
                         1 -> {
+                            // --- STEP 1: AMOUNT SELECTION --- //
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Text("Select Amount", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                                 Spacer(Modifier.height(16.dp))
                                 
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    // Row 1: Fixed preset amounts.
                                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        AmountSelectionCard(5.0, selectedAmount == 5.0 && customAmount.isEmpty(), Modifier.weight(1f)) { 
-                                            selectedAmount = 5.0; customAmount = "" 
-                                        }
-                                        AmountSelectionCard(10.0, selectedAmount == 10.0 && customAmount.isEmpty(), Modifier.weight(1f)) { 
-                                            selectedAmount = 10.0; customAmount = "" 
-                                        }
-                                        AmountSelectionCard(20.0, selectedAmount == 20.0 && customAmount.isEmpty(), Modifier.weight(1f)) { 
-                                            selectedAmount = 20.0; customAmount = "" 
-                                        }
+                                        AmountSelectionCard(5.0, selectedAmount == 5.0 && customAmount.isEmpty(), Modifier.weight(1f)) { selectedAmount = 5.0; customAmount = "" }
+                                        AmountSelectionCard(10.0, selectedAmount == 10.0 && customAmount.isEmpty(), Modifier.weight(1f)) { selectedAmount = 10.0; customAmount = "" }
+                                        AmountSelectionCard(20.0, selectedAmount == 20.0 && customAmount.isEmpty(), Modifier.weight(1f)) { selectedAmount = 20.0; customAmount = "" }
                                     }
+                                    // Row 2: Large preset and custom input field.
                                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        AmountSelectionCard(50.0, selectedAmount == 50.0 && customAmount.isEmpty(), Modifier.weight(1f)) { 
-                                            selectedAmount = 50.0; customAmount = "" 
-                                        }
+                                        AmountSelectionCard(50.0, selectedAmount == 50.0 && customAmount.isEmpty(), Modifier.weight(1f)) { selectedAmount = 50.0; customAmount = "" }
                                         CustomAmountInputBox(
                                             value = customAmount,
                                             onValueChange = { 
+                                                // Basic validation: ensure input is either empty or a valid decimal.
                                                 if (it.isEmpty() || it.toDoubleOrNull() != null) {
                                                     customAmount = it
-                                                    selectedAmount = -1.0
+                                                    selectedAmount = -1.0 // Deselect presets when typing.
                                                 }
                                             },
                                             isSelected = customAmount.isNotEmpty(),
@@ -198,15 +201,11 @@ fun IntegratedTopUpDialog(
                             }
                         }
                         2 -> {
+                            // --- STEP 2: FINAL CONFIRMATION --- //
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 val finalAmt = customAmount.toDoubleOrNull() ?: selectedAmount
                                 val amtStr = String.format(Locale.US, "%.2f", finalAmt)
-                                Icon(
-                                    Icons.Default.Security, 
-                                    null, 
-                                    modifier = Modifier.size(64.dp), 
-                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                                )
+                                Icon(Icons.Default.Security, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
                                 Spacer(Modifier.height(16.dp))
                                 Text("One Final Step", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Text(
@@ -217,10 +216,11 @@ fun IntegratedTopUpDialog(
                                     modifier = Modifier.padding(vertical = 12.dp)
                                 )
                                 
+                                // Show processing state with spinner.
                                 if (isProcessing) {
                                     Spacer(Modifier.height(16.dp))
                                     CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                                    Text("Verifying...", modifier = Modifier.padding(top = 12.dp), style = MaterialTheme.typography.labelMedium)
+                                    Text("Verifying...", modifier = Modifier.padding(top = 12.dp), style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         }
@@ -229,36 +229,25 @@ fun IntegratedTopUpDialog(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Navigation Footer
+                // --- NAVIGATION FOOTER --- //
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (currentStep == 0) {
-                        OutlinedButton(
-                            onClick = onDismiss, 
-                            modifier = Modifier.weight(1f).height(48.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Close")
-                        }
+                        // Option to close the dialog from the summary screen.
+                        OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(48.dp), shape = RoundedCornerShape(12.dp)) { Text("Close") }
                     } else {
-                        OutlinedButton(
-                            onClick = { currentStep -= 1 },
-                            modifier = Modifier.weight(1f).height(48.dp),
-                            enabled = !isProcessing,
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Back")
-                        }
+                        // Standard 'Back' button for wizard steps.
+                        OutlinedButton(onClick = { currentStep -= 1 }, modifier = Modifier.weight(1f).height(48.dp), enabled = !isProcessing, shape = RoundedCornerShape(12.dp)) { Text("Back") }
+                        
+                        // 'Continue' or 'Top up' button with validation.
                         Button(
                             onClick = {
                                 if (currentStep == 1) {
                                     val finalAmt = customAmount.toDoubleOrNull() ?: selectedAmount
-                                    if (finalAmt > 0) {
-                                        currentStep = 2
-                                    }
+                                    if (finalAmt > 0) currentStep = 2 // Progress if amount is valid.
                                 } else {
                                     isProcessing = true
                                     val finalAmt = customAmount.toDoubleOrNull() ?: selectedAmount
-                                    onTopUpComplete(finalAmt)
+                                    onTopUpComplete(finalAmt) // Trigger the final callback.
                                 }
                             },
                             modifier = Modifier.weight(1f).height(48.dp),
@@ -274,13 +263,13 @@ fun IntegratedTopUpDialog(
     }
 }
 
+/**
+ * AmountSelectionCard Composable
+ *
+ * A selectable card used for pre-defined top-up amounts.
+ */
 @Composable
-fun AmountSelectionCard(
-    amount: Double,
-    isSelected: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
+fun AmountSelectionCard(amount: Double, isSelected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = modifier.height(56.dp),
@@ -300,42 +289,27 @@ fun AmountSelectionCard(
     }
 }
 
+/**
+ * CustomAmountInputBox Composable
+ *
+ * A specialized input field for entering a custom decimal top-up amount.
+ * It uses a `BasicTextField` inside a styled `Surface` for a seamless, branded look.
+ */
 @Composable
-fun CustomAmountInputBox(
-    value: String,
-    onValueChange: (String) -> Unit,
-    isSelected: Boolean,
-    modifier: Modifier = Modifier
-) {
+fun CustomAmountInputBox(value: String, onValueChange: (String) -> Unit, isSelected: Boolean, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.height(56.dp),
         shape = RoundedCornerShape(16.dp),
         color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                "£", 
-                style = MaterialTheme.typography.titleMedium, 
-                fontWeight = FontWeight.Bold, 
-                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray
-            )
+        Row(modifier = Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            Text("£", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray)
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
-                modifier = Modifier
-                    .padding(start = 4.dp)
-                    .fillMaxWidth(),
-                textStyle = TextStyle(
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Start
-                ),
+                modifier = Modifier.padding(start = 4.dp).fillMaxWidth(),
+                textStyle = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Start),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)

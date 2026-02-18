@@ -1,7 +1,6 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Courses
+package assignment1.krzysztofoko.s16001089.ui.admin.components.courses
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -13,11 +12,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.data.ModuleContent
 import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
 import assignment1.krzysztofoko.s16001089.ui.components.adaptiveWidth
@@ -28,7 +24,7 @@ import assignment1.krzysztofoko.s16001089.ui.components.adaptiveWidth
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModuleEditDialog(
+fun AdminModuleEditDialog(
     module: ModuleContent,
     onDismiss: () -> Unit,
     onSave: (ModuleContent) -> Unit
@@ -75,7 +71,6 @@ fun ModuleEditDialog(
                             }
                         }
                         Spacer(Modifier.width(16.dp))
-                        @Suppress("DEPRECATION")
                         Text(
                             text = if (isCreateMode) "Add Syllabus Module" else "Edit Module Details", 
                             style = MaterialTheme.typography.titleLarge, 
@@ -137,7 +132,6 @@ fun ModuleEditDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         TextButton(onClick = onDismiss) {
-                            @Suppress("DEPRECATION")
                             Text(if (isCreateMode) "Cancel" else "Discard", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.width(12.dp))
@@ -154,7 +148,6 @@ fun ModuleEditDialog(
                             enabled = title.isNotBlank(),
                             shape = RoundedCornerShape(12.dp)
                         ) { 
-                            @Suppress("DEPRECATION")
                             Text(if (isCreateMode) "Create Module" else "Save Changes", fontWeight = FontWeight.Bold) 
                         }
                     }

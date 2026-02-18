@@ -22,7 +22,24 @@ import assignment1.krzysztofoko.s16001089.ui.theme.LocalAppTheme
 import kotlinx.coroutines.delay
 
 /**
- * A reusable, professional button to access theme customization.
+ * ThemeComponents.kt
+ *
+ * This file houses all the user-facing components for selecting and customising
+ * the application's visual theme. It provides a consistent and branded entry point
+ * for users to change their appearance settings.
+ */
+
+/**
+ * AppAppearanceSelector Composable
+ *
+ * A prominent, card-style button used on the main settings or dashboard screen.
+ * It serves as the primary entry point to the theme selection and customisation section.
+ *
+ * @param currentTheme The currently active `Theme` enum.
+ * @param onThemeChange Callback to change the global theme.
+ * @param onOpenDesigner Callback to navigate to the advanced theme customisation screen.
+ * @param isLoggedIn Flag indicating the user's authentication status.
+ * @param modifier Custom styling for the component.
  */
 @Composable
 fun AppAppearanceSelector(
@@ -55,7 +72,7 @@ fun AppAppearanceSelector(
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text("App Appearance", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                Text("Customize colors and themes", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                Text("Customise colours and themes", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             }
             Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
         }
@@ -63,7 +80,16 @@ fun AppAppearanceSelector(
 }
 
 /**
- * A modern theme selector pill that expands to show the active theme name.
+ * ThemeToggleButton Composable
+ *
+ * A compact, animated theme picker designed for use in a TopAppBar.
+ * When a new theme is selected, it temporarily expands to show the name of the new theme,
+ * providing clear visual feedback before shrinking back to an icon-only state.
+ *
+ * @param currentTheme The currently selected theme.
+ * @param onThemeChange Callback to apply a new theme.
+ * @param onOpenCustomBuilder Callback to open the advanced theme designer.
+ * @param isLoggedIn Authentication status, used to enable/disable the 'Custom' theme option.
  */
 @Composable
 fun ThemeToggleButton(
@@ -73,36 +99,34 @@ fun ThemeToggleButton(
     isLoggedIn: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    // --- STATE MANAGEMENT --- //
     var showThemeMenu by remember { mutableStateOf(false) }
-    var isExpanded by remember { mutableStateOf(false) }
+    var isExpanded by remember { mutableStateOf(false) } // Controls the text visibility.
     var isFirstComposition by remember { mutableStateOf(true) }
 
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
 
+    // Animate the background colour change when the pill expands.
     val targetColor = if (isExpanded) {
         MaterialTheme.colorScheme.secondaryContainer
     } else {
         MaterialTheme.colorScheme.surface
     }
-    
-    val containerColor by animateColorAsState(
-        targetValue = targetColor,
-        animationSpec = tween(durationMillis = 800),
-        label = "containerColor"
-    )
+    val containerColor by animateColorAsState(targetValue = targetColor, animationSpec = tween(durationMillis = 800), label = "containerColor")
 
+    // This effect triggers the expand/collapse animation upon a theme change.
     LaunchedEffect(currentTheme) {
         if (isFirstComposition) {
             isFirstComposition = false
         } else {
             isExpanded = true
-            delay(2000)
+            delay(2000) // Keep the name visible for 2 seconds.
             isExpanded = false
         }
     }
 
-    // Adaptive container: Fixed width on phones (cover), Wrap content on tablets (push)
+    // The main container that handles the dropdown menu.
     Box(
         modifier = if (isTablet) {
             modifier.height(44.dp).wrapContentWidth()
@@ -119,13 +143,13 @@ fun ThemeToggleButton(
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = if (isExpanded) 0.5f else 0.2f)),
             modifier = Modifier.wrapContentWidth(
                 align = if (isTablet) Alignment.Start else Alignment.End, 
-                unbounded = !isTablet // Allows expansion over content ONLY on phones
+                unbounded = !isTablet // Allows the pill to expand over other content on phones.
             )
         ) {
             Row(
                 modifier = Modifier
                     .padding(horizontal = if (isExpanded) 14.dp else 10.dp, vertical = 10.dp)
-                    .animateContentSize(animationSpec = tween(500)),
+                    .animateContentSize(animationSpec = tween(500)), // Animate the width change smoothly.
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
@@ -136,6 +160,7 @@ fun ThemeToggleButton(
                     tint = if (isExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
+                // The theme name text appears and disappears with an animation.
                 AnimatedVisibility(
                     visible = isExpanded,
                     enter = fadeIn() + expandHorizontally(),
@@ -165,6 +190,12 @@ fun ThemeToggleButton(
     }
 }
 
+/**
+ * ThemeSelectionDropdown Composable
+ *
+ * A styled dropdown menu that lists all available themes, indicating the currently 
+ * selected one with a checkmark icon.
+ */
 @Composable
 fun ThemeSelectionDropdown(
     expanded: Boolean,
@@ -185,6 +216,7 @@ fun ThemeSelectionDropdown(
         shape = RoundedCornerShape(16.dp),
         containerColor = MaterialTheme.colorScheme.surface
     ) {
+        // Menu Header
         Text(
             text = "APPEARANCE SETTINGS",
             style = MaterialTheme.typography.labelSmall,
@@ -195,7 +227,9 @@ fun ThemeSelectionDropdown(
         
         HorizontalDivider(modifier = Modifier.padding(bottom = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
+        // Dynamically create a menu item for each entry in the Theme enum.
         Theme.entries.forEach { theme ->
+            // The 'Custom' theme is only available to authenticated users.
             if (theme == Theme.CUSTOM && !isLoggedIn) return@forEach
 
             val isSelected = theme == currentTheme
@@ -209,6 +243,7 @@ fun ThemeSelectionDropdown(
                 },
                 onClick = { 
                     onThemeChange(theme)
+                    // If the user selects 'Custom', also trigger the builder.
                     if (theme == Theme.CUSTOM) {
                         onOpenCustomBuilder()
                     }
@@ -222,6 +257,7 @@ fun ThemeSelectionDropdown(
                         tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     ) 
                 },
+                // Show a checkmark for the currently active theme.
                 trailingIcon = {
                     if (isSelected) {
                         Icon(
@@ -245,6 +281,9 @@ fun ThemeSelectionDropdown(
     }
 }
 
+/**
+ * A private helper function that maps a `Theme` enum to its corresponding icon.
+ */
 private fun getThemeIcon(theme: Theme) = when (theme) {
     Theme.LIGHT -> Icons.Rounded.LightMode
     Theme.DARK -> Icons.Rounded.DarkMode
@@ -255,10 +294,13 @@ private fun getThemeIcon(theme: Theme) = when (theme) {
     Theme.CUSTOM -> Icons.Rounded.AutoFixHigh
 }
 
+/**
+ * A private helper function that maps a `Theme` enum to its user-friendly display name.
+ */
 private fun getThemeName(theme: Theme) = when (theme) {
     Theme.LIGHT -> "Light Mode"
     Theme.DARK -> "Dark Mode"
-    Theme.GRAY -> "Gray Street"
+    Theme.GRAY -> "Grey Street"
     Theme.SKY -> "Sky Blue"
     Theme.FOREST -> "Forest Green"
     Theme.DARK_BLUE -> "Deep Navy"

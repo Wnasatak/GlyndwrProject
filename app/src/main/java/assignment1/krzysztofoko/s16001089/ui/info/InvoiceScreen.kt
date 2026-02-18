@@ -39,27 +39,30 @@ import java.util.*
 
 /**
  * Screen displaying a detailed digital receipt/invoice for a specific purchase.
- * Optimized with AdaptiveScreenContainer for better presentation on tablets.
+ * Provides a breakdown of costs, discounts, and payment methods.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvoiceScreen(
-    book: Book,                       
-    userName: String,                 
-    onBack: () -> Unit,               
-    isDarkTheme: Boolean,             
-    onToggleTheme: () -> Unit,
-    orderRef: String? = null          
+    book: Book,                       // The product associated with the invoice
+    userName: String,                 // User display name for the receipt
+    onBack: () -> Unit,               // Handler to return to previous view
+    isDarkTheme: Boolean,             // Visual state flag
+    onToggleTheme: () -> Unit,        // Handler for theme switching
+    orderRef: String? = null          // Optional specific reference ID for database lookup
 ) {
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     
+    // Formatting for the purchase date and time
     val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
 
+    // UI state for the fetched invoice record
     var invoice by remember { mutableStateOf<Invoice?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
+    // Fetch the invoice details from the local database based on available IDs
     LaunchedEffect(book.id, orderRef) {
         invoice = if (orderRef != null) {
             db.userDao().getInvoiceByReference(userId, orderRef)
@@ -69,6 +72,7 @@ fun InvoiceScreen(
         isLoading = false
     }
 
+    // Animation for the institutional logo
     val rotation = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         rotation.animateTo(
@@ -78,11 +82,13 @@ fun InvoiceScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Dynamic animated themed background
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Allow background to show through
             topBar = {
+                // Toolbar with title and theme control
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { 
@@ -106,9 +112,12 @@ fun InvoiceScreen(
                 )
             }
         ) { padding ->
+            // --- DATA CONDITIONAL RENDERING ---
             if (isLoading) {
+                // Loading state
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             } else if (invoice == null) {
+                // Fallback for missing records
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(AppConstants.MSG_INVOICE_NOT_FOUND)
@@ -120,6 +129,7 @@ fun InvoiceScreen(
                 val currentInvoice = invoice!!
                 val formattedDate = sdf.format(Date(currentInvoice.purchasedAt))
                 
+                // Adaptive container ensures content remains centered and correctly sized on tablets
                 AdaptiveScreenContainer(
                     modifier = Modifier.padding(padding).verticalScroll(rememberScrollState()),
                     maxWidth = AdaptiveWidths.Standard
@@ -128,6 +138,7 @@ fun InvoiceScreen(
                         modifier = Modifier.padding(AdaptiveSpacing.contentPadding()),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // --- THE MAIN INVOICE CARD ---
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
@@ -135,6 +146,7 @@ fun InvoiceScreen(
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                         ) {
                             Column(modifier = Modifier.padding(24.dp)) {
+                                // Header: Branding and Logo
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(text = AppConstants.APP_NAME, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
@@ -150,6 +162,7 @@ fun InvoiceScreen(
                                 
                                 Spacer(modifier = Modifier.height(32.dp))
                                 
+                                // User and Technical Metadata
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(AppConstants.TITLE_ISSUED_TO, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
@@ -168,6 +181,7 @@ fun InvoiceScreen(
                                 
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                                 
+                                // Detailed Item Information
                                 Text(AppConstants.TITLE_PURCHASED_ITEM, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                 Spacer(modifier = Modifier.height(12.dp))
                                 
@@ -176,6 +190,7 @@ fun InvoiceScreen(
                                 val discount = currentInvoice.discountApplied
 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Item Visual Category Icon
                                     Box(modifier = Modifier.size(50.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = when(currentInvoice.itemCategory) {
@@ -196,15 +211,19 @@ fun InvoiceScreen(
                                         if (!currentInvoice.itemVariant.isNullOrEmpty()) { categoryText = "$categoryText • ${currentInvoice.itemVariant}" }
                                         Text(categoryText, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                     }
+                                    // Original price before potential student discounts
                                     Text("£" + String.format(Locale.US, "%.2f", basePrice), fontWeight = FontWeight.Medium)
                                 }
                                 
                                 Spacer(modifier = Modifier.height(32.dp))
                                 
+                                // --- FINANCIAL SUMMARY ---
                                 Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp)).padding(16.dp)) {
                                     InvoiceSummaryRow(AppConstants.LABEL_SUBTOTAL, "£" + String.format(Locale.US, "%.2f", basePrice))
+                                    // Highlight student discount in green if applied
                                     if (discount > 0) { InvoiceSummaryRow(AppConstants.LABEL_STUDENT_DISCOUNT_VAL, "-£" + String.format(Locale.US, "%.2f", discount), color = Color(0xFF2E7D32)) }
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                                    // Final amount charged
                                     InvoiceSummaryRow(AppConstants.LABEL_TOTAL_PAID, "£" + String.format(Locale.US, "%.2f", pricePaid), isTotal = true)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(text = "${AppConstants.LABEL_PAID_VIA} ${currentInvoice.paymentMethod}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f))
@@ -214,12 +233,14 @@ fun InvoiceScreen(
                                 }
                                 
                                 Spacer(modifier = Modifier.height(40.dp))
+                                // Receipt validation text
                                 Text(text = "${AppConstants.MSG_THANK_YOU_STORE}\n${AppConstants.LABEL_COMPUTER_GENERATED}", style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, color = Color.Gray, modifier = Modifier.fillMaxWidth())
                             }
                         }
                         
                         Spacer(modifier = Modifier.height(24.dp))
                         
+                        // Action: Generates a physical PDF file from the UI data for external use
                         Button(
                             onClick = { 
                                 val pRecord = PurchaseItem(purchaseId = UUID.randomUUID().toString(), userId = currentInvoice.userId, productId = currentInvoice.productId, mainCategory = currentInvoice.itemCategory, purchasedAt = currentInvoice.purchasedAt, paymentMethod = currentInvoice.paymentMethod, amountFromWallet = currentInvoice.pricePaid, amountPaidExternal = 0.0, totalPricePaid = currentInvoice.pricePaid, quantity = currentInvoice.quantity, orderConfirmation = currentInvoice.orderReference)
@@ -240,14 +261,14 @@ fun InvoiceScreen(
 }
 
 /**
- * Reusable Row Component for Invoice Financials.
+ * Reusable Row Component for formatted key-value pairs in the financial summary.
  */
 @Composable
 fun InvoiceSummaryRow(
-    label: String,
-    value: String,
-    isTotal: Boolean = false,
-    color: Color = Color.Unspecified
+    label: String,                    // Text description (e.g., Subtotal)
+    value: String,                    // Formatted currency value
+    isTotal: Boolean = false,         // Flag to apply larger bold styling
+    color: Color = Color.Unspecified  // Optional color override (e.g., green for discounts)
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(), 

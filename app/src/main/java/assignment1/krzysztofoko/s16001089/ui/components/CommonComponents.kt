@@ -29,11 +29,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import assignment1.krzysztofoko.s16001089.AppConstants
 import java.util.Locale
 
 /**
- * Standard Design Tokens for the Glyndŵr Pro system.
+ * ProDesign Object
+ *
+ * A centralised repository for design tokens used frequently across the application's common components.
+ * This ensures that core UI elements like menus and cards maintain a consistent and professional look.
+ * Using a centralised object makes it easy to update the visual language of the app globally.
  */
 object ProDesign {
     val MenuRadius = 16.dp
@@ -46,7 +52,66 @@ object ProDesign {
 }
 
 /**
- * A professional Wallet Pill for the Navbar.
+ * LoadingOverlay Composable
+ *
+ * Provides a high-fidelity modal overlay that blocks interaction during background processing.
+ * It features a subtle backdrop and a clean Material3 progress indicator with a branded message.
+ *
+ * @param isVisible Controls the visibility of the overlay.
+ * @param label Text to display below the progress indicator (e.g., "Processing...").
+ */
+@Composable
+fun LoadingOverlay(
+    isVisible: Boolean,
+    label: String = "Processing..."
+) {
+    if (isVisible) {
+        Dialog(
+            onDismissRequest = {},
+            properties = DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false
+            )
+        ) {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                modifier = Modifier.width(200.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 4.dp,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * ProWalletPill Composable
+ *
+ * A compact and clickable UI element designed to display the user's current wallet balance.
+ * It is typically placed in a top navigation bar or user profile area for quick access and visibility.
+ * The pill format is modern and space-efficient.
+ *
+ * @param balance The user's account balance as a [Double]. This value is formatted to two decimal places.
+ * @param onClick A lambda function to be executed when the user taps on the pill, usually to navigate to a wallet or top-up screen.
+ * @param modifier A [Modifier] for custom styling and layout.
  */
 @Composable
 fun ProWalletPill(
@@ -81,7 +146,16 @@ fun ProWalletPill(
 }
 
 /**
- * A professional Notification Icon with an animated ringing effect and badge.
+ * ProNotificationIcon Composable
+ *
+ * A dynamic notification icon that provides rich visual feedback.
+ * When there are unread notifications (`count > 0`), it displays a badge and activates a subtle, attention-grabbing
+ * ringing animation. The colour also shifts to a more prominent yellow to indicate an active state.
+ *
+ * @param count The number of unread notifications. Determines the visibility and text of the badge.
+ * @param isDarkTheme A boolean to adjust the active colour for better contrast in dark mode.
+ * @param onClick The action to perform when the icon is clicked, typically opening the notifications screen.
+ * @param modifier The modifier for this composable.
  */
 @Composable
 fun ProNotificationIcon(
@@ -90,18 +164,17 @@ fun ProNotificationIcon(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // A looping animation that creates a "ringing" effect by rotating the bell icon back and forth.
     val infiniteTransition = rememberInfiniteTransition(label = "bellRing")
     val rotation by infiniteTransition.animateFloat(
         initialValue = -15f,
         targetValue = 15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(250, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
+        animationSpec = infiniteRepeatable(tween(250, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "rotation"
     )
 
     Box(modifier = modifier, contentAlignment = Alignment.TopEnd) {
+        // The bell's colour is state-dependent: yellow when active, default when idle.
         val bellColor = if (count > 0 && isDarkTheme) Color(0xFFFFEB3B)
         else if (count > 0) Color(0xFFFBC02D)
         else MaterialTheme.colorScheme.onPrimaryContainer
@@ -111,22 +184,21 @@ fun ProNotificationIcon(
                 imageVector = if (count > 0) Icons.Default.NotificationsActive else Icons.Default.Notifications,
                 contentDescription = "Notifications",
                 tint = bellColor,
-                modifier = Modifier
-                    .size(24.dp)
-                    .graphicsLayer { if (count > 0) { rotationZ = rotation } }
+                // The graphicsLayer modifier applies the rotation animation only when there are notifications.
+                modifier = Modifier.size(24.dp).graphicsLayer { if (count > 0) { rotationZ = rotation } }
             )
         }
+        // The badge is only composed into the UI tree if the count is positive.
         if (count > 0) {
             Surface(
-                color = Color(0xFFE53935),
+                color = Color(0xFFE53935), // A distinct red for high visibility.
                 shape = CircleShape,
                 border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primaryContainer),
-                modifier = Modifier
-                    .size(18.dp)
-                    .offset(x = 4.dp, y = (-4).dp)
+                modifier = Modifier.size(18.dp).offset(x = 4.dp, y = (-4).dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
+                        // Shows "!" for counts over 9 to maintain a clean look.
                         text = if (count > 9) "!" else count.toString(),
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp),
                         color = Color.White,
@@ -139,7 +211,16 @@ fun ProNotificationIcon(
 }
 
 /**
- * A professional Message/Chat Icon with unread badge.
+ * ProMessageIcon Composable
+ *
+ * An icon for accessing user messages or a chat feature. Similar to `ProNotificationIcon`,
+ * it displays a badge to indicate the number of unread messages, creating a consistent
+ * notification pattern across the app's navigation.
+ *
+ * @param count The number of unread messages.
+ * @param isDarkTheme Flag to adjust the active icon colour for the current theme.
+ * @param onClick Lambda to be executed on icon click, usually to navigate to the messages screen.
+ * @param modifier The modifier for this composable.
  */
 @Composable
 fun ProMessageIcon(
@@ -166,9 +247,7 @@ fun ProMessageIcon(
                 color = Color(0xFFE53935),
                 shape = CircleShape,
                 border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primaryContainer),
-                modifier = Modifier
-                    .size(18.dp)
-                    .offset(x = 4.dp, y = (-4).dp)
+                modifier = Modifier.size(18.dp).offset(x = 4.dp, y = (-4).dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
@@ -184,7 +263,13 @@ fun ProMessageIcon(
 }
 
 /**
- * A professional, opaque container for all app-wide overflow menus.
+ * ProMenuContainer Composable
+ *
+ * A styled container for building dropdown or overflow menus. It enforces a consistent width, shape,
+ * and background colour, serving as a foundational block for creating menus that feel native to the app.
+ *
+ * @param modifier A modifier to be applied to the container Column.
+ * @param content The composable content of the menu, typically `DropdownMenuItem`s or custom rows.
  */
 @Composable
 fun ProMenuContainer(
@@ -200,10 +285,16 @@ fun ProMenuContainer(
 }
 
 /**
- * A professional header for menu sections.
+ * ProMenuHeader Composable
+ *
+ * A header used within a `ProMenuContainer` to create labelled sections in a menu.
+ * It displays a capitalised title and a horizontal divider for clear visual separation.
+ *
+ * @param title The text to be displayed as the section header.
  */
 @Composable
 fun ProMenuHeader(title: String) {
+    @Suppress("DEPRECATION")
     Text(
         text = title.uppercase(),
         style = MaterialTheme.typography.labelSmall,
@@ -218,7 +309,18 @@ fun ProMenuHeader(title: String) {
 }
 
 /**
- * A standard adaptive content wrapper.
+ * AdaptiveContent Composable
+ *
+ * A powerful and reusable layout wrapper that intelligently adapts its content to different screen sizes.
+ * On larger screens (tablets), it constrains the content to a maximum width for better readability.
+ * On smaller screens (phones), it allows the content to fill the width. It also provides optional
+ * scrolling behaviour.
+ *
+ * @param modifier The modifier for this composable.
+ * @param maxWidth The maximum width the content should occupy on large screens.
+ * @param padding The padding to be applied within the content area.
+ * @param isScrollable If true, the content will be placed in a vertically scrolling column.
+ * @param content The main body of content to be displayed within this adaptive container.
  */
 @Composable
 fun AdaptiveContent(
@@ -230,12 +332,14 @@ fun AdaptiveContent(
 ) {
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
+    // Use more generous padding on tablets for a less cramped layout.
     val hPadding = if (isTablet) 32.dp else padding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
 
+    // The outer Box centres the content column on larger screens.
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(
             modifier = Modifier
-                .widthIn(max = maxWidth)
+                .widthIn(max = maxWidth) // This is the core of the adaptive behaviour.
                 .fillMaxHeight()
                 .then(if (isScrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
                 .padding(start = hPadding, end = hPadding, top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding()),
@@ -245,6 +349,21 @@ fun AdaptiveContent(
     }
 }
 
+/**
+ * InfoCard Composable
+ *
+ * A generic and versatile card component for displaying a key piece of information, 
+ * consisting of a leading icon, a title, and a content string. It's ideal for use in dashboards,
+ * settings screens, or any context where a piece of data needs to be highlighted.
+ *
+ * @param icon The leading icon that gives a visual clue about the content.
+ * @param title A short title or label for the information.
+ * @param content The main informational text.
+ * @param modifier The modifier for the Card.
+ * @param containerColor The background colour of the card.
+ * @param contentStyle The text style for the main content string.
+ * @param border An optional border to apply to the card.
+ */
 @Composable
 fun InfoCard(
     icon: ImageVector,
@@ -272,8 +391,19 @@ fun InfoCard(
     }
 }
 
+/**
+ * EnrollmentStatusBadge Composable
+ *
+ * A specialised badge that provides a clear, colour-coded, and icon-driven representation of an
+ * item's status (e.g., an application's approval state). It maps a raw status string to a
+ * visually distinct combination of colour, label, and icon.
+ *
+ * @param status The raw status string (e.g., "PENDING_REVIEW", "APPROVED").
+ * @param modifier The modifier for this composable.
+ */
 @Composable
 fun EnrollmentStatusBadge(status: String, modifier: Modifier = Modifier) {
+    // The `when` block is a state machine that translates a string into a complete visual theme.
     val (color, label, icon) = when (status) {
         "PENDING_REVIEW" -> Triple(Color(0xFFFBC02D), "PENDING", Icons.Default.PendingActions)
         "APPROVED" -> Triple(Color(0xFF4CAF50), "APPROVED", Icons.Default.CheckCircle)
@@ -281,7 +411,7 @@ fun EnrollmentStatusBadge(status: String, modifier: Modifier = Modifier) {
         "ENROLLED" -> Triple(Color(0xFF673AB7), "ENROLLED", Icons.Default.School)
         "PICKED_UP" -> Triple(Color(0xFF009688), "PICKED UP", Icons.Default.LibraryAddCheck)
         "FREE_COLLECTION" -> Triple(Color(0xFF03A9F4), "FREE COLLECTION", Icons.Default.Redeem)
-        else -> Triple(Color.Gray, status, Icons.Default.PendingActions)
+        else -> Triple(Color.Gray, status, Icons.Default.PendingActions) // Fallback for unknown statuses.
     }
 
     Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, color.copy(alpha = 0.5f)), modifier = modifier) {
@@ -293,8 +423,20 @@ fun EnrollmentStatusBadge(status: String, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * ViewInvoiceButton Composable
+ *
+ * A prominent button for viewing a financial invoice or receipt. A key feature is that this button
+ * will only be composed into the UI if the associated `price` is greater than zero, preventing
+ * users from seeing an unnecessary button for free items.
+ *
+ * @param price The price of the associated item. The button is only shown if this is > 0.
+ * @param onClick The action to perform when clicked, typically navigating to an invoice detail screen.
+ * @param modifier The modifier for this composable.
+ */
 @Composable
 fun ViewInvoiceButton(price: Double, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    // Conditional rendering: The button only exists in the composition tree if there is a price.
     if (price > 0) {
         Button(
             onClick = onClick,

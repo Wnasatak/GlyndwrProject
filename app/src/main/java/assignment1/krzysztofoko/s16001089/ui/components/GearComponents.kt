@@ -1,7 +1,10 @@
 package assignment1.krzysztofoko.s16001089.ui.components
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -12,8 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +36,26 @@ import coil.compose.AsyncImage
 import java.util.Locale
 import java.util.UUID
 
+/**
+ * GearComponents.kt
+ *
+ * This file contains a range of specialised UI components for the "Gear" (merchandise) section 
+ * of the application. These components are tailored to handle product-specific data such as 
+ * image galleries, size/colour selection, stock levels, and physical pick-up information.
+ */
+
+/**
+ * GearImageGallery Composable
+ *
+ * A high-quality image gallery for showcasing product photos. 
+ * Features an interactive paging indicator and a "FEATURED" badge for high-priority items.
+ *
+ * @param images A list of image URLs to display.
+ * @param selectedImageIndex The index of the currently visible image.
+ * @param onImageClick Callback for when a user selects a different image from the indicator.
+ * @param isFeatured Boolean flag to display the featured badge.
+ * @param title Accessibility title for the product.
+ */
 @Composable
 fun GearImageGallery(
     images: List<String>,
@@ -43,6 +65,7 @@ fun GearImageGallery(
     title: String
 ) {
     Box(modifier = Modifier.fillMaxWidth().height(350.dp)) {
+        // Main product image display.
         AsyncImage(
             model = images.getOrNull(selectedImageIndex) ?: "",
             contentDescription = title,
@@ -50,6 +73,7 @@ fun GearImageGallery(
             contentScale = ContentScale.Crop
         )
         
+        // Render the "FEATURED" badge in the top corner if applicable.
         if (isFeatured) {
             Surface(
                 modifier = Modifier.padding(16.dp).align(Alignment.TopEnd),
@@ -66,6 +90,7 @@ fun GearImageGallery(
             }
         }
 
+        // Paging indicators for galleries with multiple images.
         if (images.size > 1) {
             Row(
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
@@ -85,6 +110,14 @@ fun GearImageGallery(
     }
 }
 
+/**
+ * GearHeaderSection Composable
+ *
+ * Displays the primary product details: brand, title, and price. 
+ * Includes support for showing a struck-through original price if an item is on sale.
+ *
+ * @param gear The `Gear` data model containing product details.
+ */
 @Composable
 fun GearHeaderSection(gear: Gear) {
     Row(verticalAlignment = Alignment.Top) {
@@ -93,6 +126,7 @@ fun GearHeaderSection(gear: Gear) {
             Text(text = gear.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
         }
         Column(horizontalAlignment = Alignment.End) {
+            // Display the original price with a line-through if the item is discounted.
             if (gear.originalPrice > gear.price) {
                 Text(
                     text = "£${String.format(Locale.US, "%.2f", gear.originalPrice)}",
@@ -100,6 +134,7 @@ fun GearHeaderSection(gear: Gear) {
                     color = Color.Gray
                 )
             }
+            // Display the current price or a "FREE" badge.
             if (gear.price > 0) {
                 Text(text = "£${String.format(Locale.US, "%.2f", gear.price)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
             } else {
@@ -109,6 +144,13 @@ fun GearHeaderSection(gear: Gear) {
     }
 }
 
+/**
+ * GearTagsSection Composable
+ *
+ * Renders a set of hashtag-style tags for the product using a flexible flow layout.
+ *
+ * @param tags A comma-separated string of tags.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GearTagsSection(tags: String) {
@@ -130,6 +172,17 @@ fun GearTagsSection(tags: String) {
     }
 }
 
+/**
+ * GearOptionSelectors Composable
+ *
+ * Provides a set of interactive selectors for product variations like size and colour.
+ * Only renders selectors for options that actually have data available.
+ *
+ * @param sizes Comma-separated list of available sizes.
+ * @param selectedSize The currently chosen size.
+ * @param colors Comma-separated list of available colours.
+ * @param selectedColor The currently chosen colour.
+ */
 @Composable
 fun GearOptionSelectors(
     sizes: String,
@@ -141,6 +194,7 @@ fun GearOptionSelectors(
     onColorClick: (String) -> Unit
 ) {
     Column {
+        // Render size selectors if multi-size product.
         if (sizes.isNotEmpty() && sizes != "One Size" && sizes != "Default") {
             Text(text = "Size: $selectedSize", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
@@ -161,8 +215,9 @@ fun GearOptionSelectors(
             Spacer(modifier = Modifier.height(24.dp))
         }
 
+        // Render colour selectors if multi-colour product.
         if (colors.isNotEmpty() && colors != "Default") {
-            Text(text = "Color: $selectedColor", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(text = "Colour: $selectedColor", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(colors.split(",")) { color ->
@@ -186,6 +241,12 @@ fun GearOptionSelectors(
     }
 }
 
+/**
+ * GearStockIndicator Composable
+ *
+ * Displays current stock levels with colour-coded feedback (Green for healthy stock, Orange for low stock).
+ * Includes quantity controls for items that are not free.
+ */
 @Composable
 fun GearStockIndicator(
     stockCount: Int,
@@ -215,6 +276,7 @@ fun GearStockIndicator(
             }
         }
         
+        // Quantity controls: Increment/Decrement buttons.
         if (stockCount > 0 && !isFree) {
             Spacer(Modifier.weight(1f))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -230,6 +292,11 @@ fun GearStockIndicator(
     }
 }
 
+/**
+ * GearSpecsCard Composable
+ *
+ * A compact information card detailing the product's technical specifications and physical pick-up location.
+ */
 @Composable
 fun GearSpecsCard(material: String, sku: String, category: String) {
     Card(
@@ -245,6 +312,13 @@ fun GearSpecsCard(material: String, sku: String, category: String) {
     }
 }
 
+/**
+ * GearBottomActionBar Composable
+ *
+ * The primary action bar at the bottom of the product screen. 
+ * Intelligently changes its layout and actions based on the user's authentication status, 
+ * whether they already own the item, and the product's price (Free vs Paid).
+ */
 @Composable
 fun GearBottomActionBar(
     isOwned: Boolean,
@@ -260,12 +334,16 @@ fun GearBottomActionBar(
 ) {
     Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)).padding(16.dp).navigationBarsPadding()) {
         if (!isLoggedIn) {
+            // Case: User not logged in.
             Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                @Suppress("DEPRECATION")
                 Text("Sign In to Shop")
             }
         } else if (stockCount > 0) {
+            // Case: Product is in stock.
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (isOwned) {
+                    // Action set for users who already own the item.
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (price > 0) {
                             OutlinedButton(
@@ -289,6 +367,7 @@ fun GearBottomActionBar(
                             }
                         }
 
+                        // Option to re-order the same item.
                         if (price > 0) {
                             Button(
                                 onClick = onCheckout,
@@ -317,6 +396,7 @@ fun GearBottomActionBar(
                         }
                     }
                 } else {
+                    // Action set for initial purchase.
                     if (price > 0) {
                         Button(onClick = onCheckout, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -342,6 +422,7 @@ fun GearBottomActionBar(
                 }
             }
         } else {
+            // Case: Sold out.
             Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                 Text("Out of Stock")
             }
@@ -349,6 +430,12 @@ fun GearBottomActionBar(
     }
 }
 
+/**
+ * SimilarProductsSlider Composable
+ *
+ * A horizontally-scrolling carousel of other products in the same category, 
+ * encouraging cross-shopping.
+ */
 @Composable
 fun SimilarProductsSlider(
     products: List<Gear>,
@@ -395,6 +482,12 @@ fun SimilarProductsSlider(
     }
 }
 
+/**
+ * PickupInfoDialog Composable
+ *
+ * A dialog that provides clear instructions to the user on where and how to collect their 
+ * ordered physical items. It includes a generated order confirmation reference.
+ */
 @Composable
 fun PickupInfoDialog(orderConfirmation: String? = null, onDismiss: () -> Unit) {
     val displayOrderNumber = orderConfirmation ?: remember { UUID.randomUUID().toString().take(8).uppercase() }
@@ -458,6 +551,11 @@ fun PickupInfoDialog(orderConfirmation: String? = null, onDismiss: () -> Unit) {
     )
 }
 
+/**
+ * FreeOrderConfirmationDialog Composable
+ *
+ * A celebratory success dialog shown specifically after a user claims a free item.
+ */
 @Composable
 fun FreeOrderConfirmationDialog(
     gearTitle: String,
@@ -533,6 +631,9 @@ fun FreeOrderConfirmationDialog(
     )
 }
 
+/**
+ * Internal helper for rendering a single specification row.
+ */
 @Composable
 fun SpecRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

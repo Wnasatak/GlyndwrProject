@@ -21,16 +21,19 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
 /**
- * Screen displaying the version history and "What's New" information.
+ * Version Information Screen.
+ * Displays a chronological list of application updates and new technical features.
+ * Used to communicate technical project progress to the user.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VersionInfoScreen(
-    onBack: () -> Unit,             
-    currentTheme: Theme,
-    userTheme: UserTheme? = null,
-    onThemeChange: (Theme) -> Unit       
+    onBack: () -> Unit,               // Logic to navigate back to the previous screen
+    currentTheme: Theme,              // The active application theme selection
+    userTheme: UserTheme? = null,     // User-specific custom theme state from DB
+    onThemeChange: (Theme) -> Unit    // Callback to update the global theme
 ) {
+    // Resolve visual state for background waves based on theme
     val isDarkTheme = when(currentTheme) {
         Theme.DARK, Theme.DARK_BLUE -> true
         Theme.CUSTOM -> userTheme?.customIsDark ?: true
@@ -38,11 +41,13 @@ fun VersionInfoScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Renders the dynamic animated background
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent, 
+            containerColor = Color.Transparent, // Allow waves to be visible
             topBar = {
+                // Centered Top App Bar with back action and theme toggle
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { 
@@ -63,12 +68,14 @@ fun VersionInfoScreen(
                             onThemeChange = onThemeChange
                         )
                     },
+                    // Semi-transparent surface for glassmorphic style
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
                 )
             }
         ) { padding ->
+            // Use adaptive container to ensure text lines stay at a readable length on wide screens
             AdaptiveScreenContainer(
                 modifier = Modifier.padding(padding).verticalScroll(rememberScrollState()),
                 maxWidth = AdaptiveWidths.Standard
@@ -76,7 +83,7 @@ fun VersionInfoScreen(
                 Column(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp) // Spacing between info cards
                 ) {
                     @Suppress("DEPRECATION")
                     Text(
@@ -87,6 +94,10 @@ fun VersionInfoScreen(
                         modifier = if (isTablet) Modifier else Modifier.padding(bottom = 8.dp)
                     )
                     
+                    // --- VERSION HISTORY CARDS ---
+                    // Information drawn from the centralized AppConstants metadata
+
+                    // PDF Reader Update
                     InfoCard(
                         icon = Icons.Default.PictureAsPdf,
                         title = AppConstants.VER_READER_TITLE,
@@ -95,6 +106,7 @@ fun VersionInfoScreen(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                     )
 
+                    // Final Demo Release
                     InfoCard(
                         icon = Icons.Default.History,
                         title = AppConstants.VER_FINAL_DEMO_TITLE,
@@ -103,6 +115,7 @@ fun VersionInfoScreen(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                     )
 
+                    // Security & Encryption
                     InfoCard(
                         icon = Icons.Default.Security,
                         title = AppConstants.VER_SECURITY_TITLE,
@@ -111,6 +124,7 @@ fun VersionInfoScreen(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                     )
 
+                    // User Feedback System
                     InfoCard(
                         icon = Icons.Default.Comment,
                         title = AppConstants.VER_REVIEWS_TITLE,
@@ -119,6 +133,7 @@ fun VersionInfoScreen(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                     )
 
+                    // Branding & Custom Themes
                     InfoCard(
                         icon = Icons.Default.ColorLens,
                         title = AppConstants.VER_THEME_TITLE,
@@ -127,6 +142,7 @@ fun VersionInfoScreen(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                     )
 
+                    // Inventory & Catalog Management
                     InfoCard(
                         icon = Icons.Default.Inventory,
                         title = AppConstants.VER_CATALOG_TITLE,
@@ -137,6 +153,7 @@ fun VersionInfoScreen(
                     
                     Spacer(modifier = Modifier.height(if (isTablet) 32.dp else 12.dp))
                     
+                    // Main action button to dismiss the screen
                     Button(
                         onClick = onBack,
                         modifier = Modifier.fillMaxWidth().height(56.dp),

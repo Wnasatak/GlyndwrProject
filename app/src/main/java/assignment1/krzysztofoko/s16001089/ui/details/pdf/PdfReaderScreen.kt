@@ -30,8 +30,30 @@ import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import kotlinx.coroutines.launch
 
 /**
- * Main Screen for the Enhanced PDF Book Reader.
- * Modified for extreme stability: uses a shared ViewModel but keys the content to the bookId.
+ * PdfReaderScreen.kt
+ *
+ * This file implements the primary user interface for the enhanced PDF reading experience.
+ * It provides a highly stable, feature-rich viewer that supports custom reading modes, 
+ * brightness control, and interactive zoom/pan gestures. 
+ */
+
+/**
+ * PdfReaderScreen Composable
+ *
+ * The main container for the PDF reader. It orchestrates the top navigation bar, 
+ * the bottom pagination controls, and the central document viewing area.
+ *
+ * Key features:
+ * - **Extreme Stability:** Uses the `key(bookId)` pattern to force a clean UI reset when switching books.
+ * - **Immersive Modes:** Supports a toggleable full-screen state that hides the UI for focused reading.
+ * - **Reactive State:** Syncs directly with the `PdfViewModel` for reading modes and zoom levels.
+ * - **Lifecycle Management:** Automatically loads book data on entry and performs clean-up on disposal.
+ *
+ * @param bookId Unique identifier for the PDF book to be loaded.
+ * @param onBack Callback to return to the previous screen.
+ * @param currentTheme The active application theme.
+ * @param onThemeChange Callback to update the application theme.
+ * @param viewModel The state holder for PDF rendering logic.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,36 +64,43 @@ fun PdfReaderScreen(
     onThemeChange: (Theme) -> Unit,        
     viewModel: PdfViewModel = viewModel()
 ) {
+    // --- STATE OBSERVATION --- //
     val uiState by viewModel.uiState.collectAsState()
     val readingMode by viewModel.readingMode.collectAsState()
     val brightness by viewModel.brightness.collectAsState()
     val zoomScale by viewModel.zoomScale.collectAsState()
     val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE
     
+    // UI Visibility flags.
     var showSettings by remember { mutableStateOf(false) }
     var isFullScreen by remember { mutableStateOf(false) }
     
-    // Keying the list state to bookId ensures it resets when changing books
+    // Persistent scroll state for the document list.
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    // Ensure we clean up everything when leaving the screen
+    // --- LIFECYCLE HOOKS --- //
+    // Triggers loading when the bookId changes and ensures state reset when leaving.
     DisposableEffect(bookId) {
         viewModel.loadBook(bookId, isDarkTheme)
         onDispose {
-            viewModel.reset()
+            viewModel.reset() // Prevent memory leaks by clearing cached bitmaps.
         }
     }
 
+    // Tracks the current page index based on the scroll position.
     var currentPage by remember { mutableIntStateOf(1) }
     LaunchedEffect(listState.firstVisibleItemIndex) {
         currentPage = listState.firstVisibleItemIndex + 1
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // --- BACKGROUND LAYER --- //
         if (!isFullScreen) {
+            // Show decorative wavy background in normal mode.
             HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         } else {
+            // Solid, eye-friendly background in full-screen mode based on reading mode.
             Box(modifier = Modifier.fillMaxSize().background(when(readingMode) {
                 PdfReadingMode.INVERTED -> Color.Black
                 PdfReadingMode.SEPIA -> Color(0xFFF4ECD8)
@@ -80,8 +109,9 @@ fun PdfReaderScreen(
         }
 
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Let the background layers show through.
             topBar = {
+                // Top Bar slides out of view during full-screen reading.
                 AnimatedVisibility(
                     visible = !isFullScreen,
                     enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
@@ -97,6 +127,7 @@ fun PdfReaderScreen(
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1
                                 )
+                                // Displays live progress indicator (e.g., "Page 5 of 120").
                                 if (uiState is PdfUiState.Ready) {
                                     Text(
                                         text = "Page $currentPage of ${(uiState as PdfUiState.Ready).pageCount}", 
@@ -112,6 +143,7 @@ fun PdfReaderScreen(
                             }
                         },
                         actions = {
+                            // Full-screen toggle.
                             IconButton(onClick = { isFullScreen = true }) {
                                 Icon(Icons.Default.Fullscreen, "Enter Full Screen")
                             }
@@ -121,6 +153,7 @@ fun PdfReaderScreen(
                                 onThemeChange = onThemeChange
                             )
 
+                            // Open advanced reader settings (Reading mode, Brightness).
                             IconButton(onClick = { showSettings = true }) {
                                 Icon(Icons.Default.Settings, null)
                             }
@@ -130,6 +163,7 @@ fun PdfReaderScreen(
                 }
             },
             bottomBar = {
+                // Bottom bar provides rapid navigation via a slider.
                 AnimatedVisibility(
                     visible = !isFullScreen && uiState is PdfUiState.Ready,
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -141,6 +175,7 @@ fun PdfReaderScreen(
                             IconButton(onClick = { scope.launch { if (currentPage > 1) listState.animateScrollToItem(currentPage - 2) } }) {
                                 Icon(Icons.Default.ChevronLeft, null)
                             }
+                            // Proportional slider for document scrubbing.
                             Slider(
                                 value = if (readyState.pageCount > 1) (currentPage - 1).toFloat() / (readyState.pageCount - 1) else 0f,
                                 onValueChange = { scope.launch { listState.scrollToItem((it * (readyState.pageCount - 1)).toInt()) } },
@@ -156,7 +191,8 @@ fun PdfReaderScreen(
         ) { padding ->
             val contentPadding = if (isFullScreen) PaddingValues(0.dp) else padding
             
-            // Recreating the content area using bookId as key to prevent cross-book rendering crashes
+            // --- MAIN CONTENT KEYING --- //
+            // Forcing a fresh composition when bookId changes prevents rendering stale pages.
             key(bookId) {
                 when (uiState) {
                     is PdfUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -174,6 +210,7 @@ fun PdfReaderScreen(
                                 modifier = Modifier.padding(contentPadding)
                             )
                             
+                            // Exit full-screen floating action button.
                             if (isFullScreen) {
                                 SmallFloatingActionButton(
                                     onClick = { isFullScreen = false },
@@ -189,6 +226,7 @@ fun PdfReaderScreen(
             }
         }
 
+        // Modal sheet for accessibility and comfort settings.
         if (showSettings) {
             ReaderSettingsSheet(
                 readingMode = readingMode,
@@ -203,6 +241,12 @@ fun PdfReaderScreen(
     }
 }
 
+/**
+ * PdfContent Composable
+ *
+ * Handles the actual rendering of PDF page bitmaps in a highly interactive scrollable list.
+ * It integrates gesture-based zooming and panning for a natural reading feel.
+ */
 @Composable
 fun PdfContent(
     viewModel: PdfViewModel,
@@ -213,10 +257,13 @@ fun PdfContent(
     listState: androidx.compose.foundation.lazy.LazyListState,
     modifier: Modifier = Modifier
 ) {
-    var gestureScale by remember { mutableStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
+    // --- GESTURE STATE --- //
+    var gestureScale by remember { mutableStateOf(1f) } // Dynamic pinch-to-zoom scale.
+    var offset by remember { mutableStateOf(Offset.Zero) } // Current pan coordinates.
+    
+    // Logic to handle multi-touch interaction.
     val transformState = rememberTransformableState { zoomChange, offsetChange, _ ->
-        gestureScale = (gestureScale * zoomChange).coerceIn(1f, 5f)
+        gestureScale = (gestureScale * zoomChange).coerceIn(1f, 5f) // Limit zoom range.
         offset += offsetChange
     }
 
@@ -230,7 +277,7 @@ fun PdfContent(
                     else -> Color(0xFF323639)
                 })
                 .graphicsLayer(
-                    scaleX = gestureScale * zoomScale, 
+                    scaleX = gestureScale * zoomScale, // Multiply base zoom by gesture zoom.
                     scaleY = gestureScale * zoomScale, 
                     translationX = offset.x, 
                     translationY = offset.y
@@ -239,8 +286,7 @@ fun PdfContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(pageCount) { index ->
-                // Using bookId context here isn't needed as parent is keyed, 
-                // but we fetch from viewModel which is now safely loaded.
+                // Fetch the correctly filtered bitmap for the current reading mode.
                 val bitmap = remember(index, readingMode) { viewModel.getPage(index, readingMode) }
                 bitmap?.let {
                     Card(
@@ -263,12 +309,19 @@ fun PdfContent(
             }
         }
         
+        // --- BACKLIGHT SIMULATION --- //
+        // A semi-transparent black layer that darkens the entire screen to simulate brightness control.
         if (brightness < 1.0f) {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 1.0f - brightness)))
         }
     }
 }
 
+/**
+ * ReaderSettingsSheet Composable
+ *
+ * A modal bottom sheet providing granular controls for the reading environment.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderSettingsSheet(
@@ -285,6 +338,7 @@ fun ReaderSettingsSheet(
             Text("Reader Settings", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(24.dp))
             
+            // --- MODE SELECTOR --- //
             Text("Reading Mode", style = MaterialTheme.typography.titleMedium)
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                 FilterChip(selected = readingMode == PdfReadingMode.NORMAL, onClick = { onModeChange(PdfReadingMode.NORMAL) }, label = { Text("Normal") })
@@ -294,6 +348,7 @@ fun ReaderSettingsSheet(
             
             Spacer(Modifier.height(16.dp))
             
+            // --- BRIGHTNESS SLIDER --- //
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.BrightnessLow, null, Modifier.size(20.dp))
                 Slider(value = brightness, onValueChange = onBrightnessChange, valueRange = 0.2f..1.0f, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
@@ -302,6 +357,7 @@ fun ReaderSettingsSheet(
             
             Spacer(Modifier.height(16.dp))
             
+            // --- ZOOM SCALE SLIDER --- //
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.TextFields, null, Modifier.size(16.dp))
                 Slider(value = zoomScale, onValueChange = onZoomChange, valueRange = 1.0f..2.0f, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))

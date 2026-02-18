@@ -9,15 +9,18 @@ import assignment1.krzysztofoko.s16001089.ui.info.*
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
 /**
- * Navigation graph for informational screens.
+ * Navigation graph extension for informational and support screens.
+ * Contains routes for the "About" section, Developer credentials, User manuals, and Roadmap.
  */
 fun NavGraphBuilder.infoNavGraph(
-    navController: NavController,
-    currentTheme: Theme,
-    userTheme: UserTheme?,
-    onThemeChange: (Theme) -> Unit,
-    onOpenThemeBuilder: () -> Unit
+    navController: NavController,   // Controls the app's navigation stack
+    currentTheme: Theme,            // The active visual theme selection
+    userTheme: UserTheme?,          // User-specific custom theme data from DB
+    onThemeChange: (Theme) -> Unit, // Callback to update the global theme state
+    onOpenThemeBuilder: () -> Unit  // Callback to launch the custom theme creation tool
 ) {
+    // --- ROUTE: ABOUT ---
+    // Primary high-level overview of the application purpose and university context.
     composable(AppConstants.ROUTE_ABOUT) {
         AboutScreen(
             onBack = { navController.popBackStack() },
@@ -30,6 +33,8 @@ fun NavGraphBuilder.infoNavGraph(
         )
     }
 
+    // --- ROUTE: DEVELOPER ---
+    // Provides details about the programmer and provides links to technical metadata.
     composable(AppConstants.ROUTE_DEVELOPER) {
         DeveloperScreen(
             onBack = { navController.popBackStack() },
@@ -41,6 +46,8 @@ fun NavGraphBuilder.infoNavGraph(
         )
     }
 
+    // --- ROUTE: INSTRUCTIONS ---
+    // A digital manual providing guidance on how to use core application features.
     composable(AppConstants.ROUTE_INSTRUCTIONS) {
         InstructionScreen(
             onBack = { navController.popBackStack() },
@@ -50,6 +57,8 @@ fun NavGraphBuilder.infoNavGraph(
         )
     }
 
+    // --- ROUTE: VERSION INFO ---
+    // Displays the current build version, build date, and specific release notes.
     composable(AppConstants.ROUTE_VERSION_INFO) {
         VersionInfoScreen(
             onBack = { navController.popBackStack() },
@@ -59,6 +68,8 @@ fun NavGraphBuilder.infoNavGraph(
         )
     }
 
+    // --- ROUTE: FUTURE FEATURES ---
+    // Outlines the application roadmap and potential future enhancements.
     composable(AppConstants.ROUTE_FUTURE_FEATURES) {
         FutureFeaturesScreen(
             onBack = { navController.popBackStack() },

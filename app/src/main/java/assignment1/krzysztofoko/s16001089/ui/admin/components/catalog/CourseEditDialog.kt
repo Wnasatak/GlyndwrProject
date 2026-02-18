@@ -1,8 +1,7 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Catalog
+package assignment1.krzysztofoko.s16001089.ui.admin.components.catalog
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,9 +25,27 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import coil.compose.AsyncImage
 
 /**
- * CourseEditDialog provides a comprehensive administrative interface for adding or modifying
- * university courses. Features native system file pickers for real image uploading.
- * Now fully optimized for smartphones using centralized Adaptive typography and spacing.
+ * CourseEditDialog.kt
+ *
+ * This component provides a comprehensive administrative interface for managing university courses.
+ * It facilitates the creation of new courses and the modification of existing ones, including
+ * support for digital assets (images) via native system file pickers.
+ *
+ * Key Features:
+ * - Native Image Integration: Uses ActivityResultContracts for secure device storage access.
+ * - Responsive UI: Adjusts spacing, font sizes, and layouts for both smartphones and tablets.
+ * - Installment Logic: Built-in configuration for payment plans and module pricing.
+ * - Adaptive Design: Leverages centralized theme components for consistent branding.
+ */
+
+/**
+ * CourseEditDialog Composable
+ *
+ * The primary modal for administrative course management.
+ *
+ * @param course The [Course] data model to populate the form.
+ * @param onDismiss Callback to close the dialog without saving changes.
+ * @param onSave Callback to persist the updated [Course] object back to the database.
  */
 @Composable
 fun CourseEditDialog(
@@ -36,11 +53,13 @@ fun CourseEditDialog(
     onDismiss: () -> Unit, 
     onSave: (Course) -> Unit
 ) {
-    // Mode Detection
+    // --- MODE & ADAPTIVE LOGIC --- //
+    // Determines if we are adding a fresh record or editing an existing one by checking key fields.
     val isCreateMode = course.title.isEmpty() && course.department.isEmpty() && course.price == 0.0
-    val isTablet = isTablet()
+    val isTablet = isTablet() // Responsive check for specialized layout adjustments.
 
-    // Local state management for form fields
+    // --- STATE MANAGEMENT --- //
+    // Local state variables synchronized with the [Course] data model for reactive form updates.
     var title by remember { mutableStateOf(course.title) }
     var price by remember { mutableStateOf(if (isCreateMode) "" else course.price.toString()) }
     var description by remember { mutableStateOf(course.description) }
@@ -50,10 +69,11 @@ fun CourseEditDialog(
     var isInstallmentAvailable by remember { mutableStateOf(course.isInstallmentAvailable) }
     var modulePrice by remember { mutableStateOf(if (isCreateMode) "" else course.modulePrice.toString()) }
 
-    // UI visibility states
+    // State to toggle the manual URL input field if the user prefers typing over file picking.
     var showUrlInputForImage by remember { mutableStateOf(false) }
 
-    // NATIVE FILE PICKER
+    // --- NATIVE FILE PICKER --- //
+    // Launcher for selecting course promotional images from the device's gallery or file system.
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let { imageUrl = it.toString() } }
@@ -65,6 +85,7 @@ fun CourseEditDialog(
         shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
         modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(0.94f),
         title = {
+            // --- HEADER: Dialog Icon and Title --- //
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
@@ -95,9 +116,9 @@ fun CourseEditDialog(
                 verticalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 10.dp), 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()) // Ensures accessibility on smaller screens.
             ) {
-                // IMAGE PREVIEW & UPLOAD
+                // --- SECTION: IMAGE PREVIEW & UPLOAD --- //
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Box(contentAlignment = Alignment.Center) {
                         Surface(
@@ -107,13 +128,15 @@ fun CourseEditDialog(
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         ) {
                             if (imageUrl.isNotEmpty()) {
+                                // Renders the selected image with a standard crop and rounded corners.
                                 AsyncImage(
                                     model = formatAssetUrl(imageUrl), 
-                                    contentDescription = null, 
+                                    contentDescription = "Course preview", 
                                     modifier = Modifier.fillMaxSize().padding(4.dp).clip(RoundedCornerShape(8.dp)), 
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
+                                // Default placeholder icon for courses.
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
                                         imageVector = Icons.Default.School,
@@ -129,6 +152,7 @@ fun CourseEditDialog(
                     Spacer(Modifier.height(12.dp))
                     
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Triggers the system file picker for images.
                         Button(
                             onClick = { imagePickerLauncher.launch(arrayOf("image/*")) },
                             shape = RoundedCornerShape(8.dp),
@@ -141,6 +165,7 @@ fun CourseEditDialog(
                             Text("Upload", style = AdaptiveTypography.hint(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         
+                        // Toggles manual URL input for remote image hosting.
                         OutlinedButton(
                             onClick = { showUrlInputForImage = !showUrlInputForImage },
                             shape = RoundedCornerShape(8.dp),
@@ -166,7 +191,8 @@ fun CourseEditDialog(
                     }
                 }
 
-                // BASIC INFO
+                // --- SECTION: BASIC COURSE INFO --- //
+                // Primary Course Title
                 OutlinedTextField(
                     value = title, onValueChange = { title = it }, 
                     label = { Text("Course Title", style = AdaptiveTypography.label()) }, 
@@ -177,6 +203,7 @@ fun CourseEditDialog(
                     singleLine = true
                 )
                 
+                // Academic Department
                 OutlinedTextField(
                     value = department, onValueChange = { department = it }, 
                     label = { Text("Department", style = AdaptiveTypography.label()) }, 
@@ -187,16 +214,20 @@ fun CourseEditDialog(
                     singleLine = true
                 )
 
+                // Responsive Pricing and Category layout.
                 if (isTablet) {
+                    // On wide screens, display fields side-by-side.
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price (£)", style = AdaptiveTypography.label()) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Payments, null, modifier = Modifier.size(18.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
                         OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Category", style = AdaptiveTypography.label()) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Category, null, modifier = Modifier.size(18.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
                     }
                 } else {
+                    // On mobile screens, stack fields vertically to maintain readability.
                     OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price (£)", style = AdaptiveTypography.label()) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Payments, null, modifier = Modifier.size(16.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
                     OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Category", style = AdaptiveTypography.label()) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Category, null, modifier = Modifier.size(16.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
                 }
 
+                // Extensive Course Description
                 OutlinedTextField(
                     value = description, onValueChange = { description = it }, 
                     label = { Text("Description", style = AdaptiveTypography.label()) }, 
@@ -208,7 +239,8 @@ fun CourseEditDialog(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                // INSTALLMENT CONFIGURATION
+                // --- SECTION: INSTALLMENT CONFIGURATION --- //
+                // Specialized sub-form for managing payment plans.
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(12.dp),
@@ -221,8 +253,18 @@ fun CourseEditDialog(
                             Spacer(Modifier.width(8.dp))
                             Text("Installment Payments", style = AdaptiveTypography.label(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
+                        // Only show module pricing if installments are enabled.
                         if (isInstallmentAvailable) {
-                            OutlinedTextField(value = modulePrice, onValueChange = { modulePrice = it }, label = { Text("Price/Module (£)", style = AdaptiveTypography.hint()) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.ReceiptLong, null, modifier = Modifier.size(18.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
+                            OutlinedTextField(
+                                value = modulePrice, 
+                                onValueChange = { modulePrice = it }, 
+                                label = { Text("Price/Module (£)", style = AdaptiveTypography.hint()) }, 
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp), 
+                                shape = RoundedCornerShape(12.dp), 
+                                leadingIcon = { Icon(Icons.Default.ReceiptLong, null, modifier = Modifier.size(18.dp)) }, 
+                                textStyle = AdaptiveTypography.caption(), 
+                                singleLine = true
+                            )
                         }
                     }
                 }
@@ -231,8 +273,10 @@ fun CourseEditDialog(
             }
         },
         confirmButton = {
+            // --- ACTION: PERSIST DATA --- //
             Button(
                 onClick = { 
+                    // Pack the local form state back into the [Course] domain model and execute save.
                     onSave(course.copy(
                         title = title, price = price.toDoubleOrNull() ?: 0.0, 
                         description = description, imageUrl = imageUrl, category = category,
@@ -240,13 +284,14 @@ fun CourseEditDialog(
                         modulePrice = modulePrice.toDoubleOrNull() ?: 0.0
                     )) 
                 },
-                enabled = title.isNotBlank() && department.isNotBlank(),
+                enabled = title.isNotBlank() && department.isNotBlank(), // Enforce basic validation rules.
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth().height(if (isTablet) 50.dp else 44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) { Text(if (isCreateMode) "Create Course" else "Save Changes", fontWeight = FontWeight.Bold, fontSize = if (isTablet) 16.sp else 14.sp) }
         },
         dismissButton = { 
+            // --- ACTION: CANCEL --- //
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { 
                 Text(if (isCreateMode) "Cancel" else "Discard", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = AdaptiveTypography.caption()) 
             } 

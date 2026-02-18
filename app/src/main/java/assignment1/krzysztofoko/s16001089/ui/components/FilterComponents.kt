@@ -20,6 +20,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/**
+ * FilterComponents.kt
+ *
+ * A collection of bespoke selection components used for categorising and filtering
+ * content throughout the application. These components are designed to provide a 
+ * professional and interactive experience, helping users narrow down their searches efficiently.
+ */
+
+/**
+ * CategoryChip Composable
+ *
+ * A modern, pill-shaped filter chip for selecting content categories.
+ * It's built upon the Material 3 `FilterChip` but with customised styling to match the
+ * application's aesthetic.
+ *
+ * @param category The text label for the category.
+ * @param isSelected Boolean flag to toggle the chip's selected visual state.
+ * @param onCategorySelected Callback invoked when the user taps the chip.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryChip(
@@ -33,6 +52,7 @@ fun CategoryChip(
         label = {
             Text(
                 text = category,
+                // Colour transitions based on the selection state.
                 color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
             )
         },
@@ -44,6 +64,23 @@ fun CategoryChip(
     )
 }
 
+/**
+ * CategorySquareButton Composable
+ *
+ * A more prominent, icon-driven button for top-level category selection.
+ * This component is ideal for large grids or carousels where categories need a strong visual identity.
+ *
+ * Key Features:
+ * - **Dynamic Scaling:** Supports a `scale` parameter for use in animations (e.g., in a "Cover Flow" style row).
+ * - **Visual Feedback:** Uses distinct elevations, borders, and colour shifts to clearly indicate the selected state.
+ * - **Label Control:** Handles multi-line labels with ellipsis to ensure a tidy layout.
+ *
+ * @param label The category title displayed below the icon.
+ * @param icon The ImageVector icon representing the category.
+ * @param isSelected Whether this category is currently active.
+ * @param scale Float multiplier for the button's size, useful for focus effects.
+ * @param onClick Callback triggered on button tap.
+ */
 @Composable
 fun CategorySquareButton(
     label: String,
@@ -56,6 +93,7 @@ fun CategorySquareButton(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(80.dp)
+            // Apply a scaling transformation for focus animations.
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -65,6 +103,7 @@ fun CategorySquareButton(
             modifier = Modifier
                 .size(60.dp)
                 .clickable(
+                    // Using a null indication to handle custom selection feedback externally.
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = onClick

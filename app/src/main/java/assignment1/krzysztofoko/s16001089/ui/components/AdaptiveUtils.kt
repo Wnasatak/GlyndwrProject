@@ -28,12 +28,16 @@ import coil.compose.AsyncImage
 /**
  * AdaptiveUtils.kt
  *
- * Centralized design tokens for the Glyndŵr Pro system.
- * Handles responsive typography, spacing, and standard component dimensions.
+ * Centralized design tokens and utility components for the Glyndŵr Pro system.
+ * This file handles responsive design logic, ensuring the UI adapts gracefully
+ * between mobile and tablet form factors.
  */
 
+/**
+ * Adaptive typography system that provides scale-aware TextStyles.
+ */
 object AdaptiveTypography {
-    /** Main display titles for headers. */
+    /** Main display titles for headers. Scaled up for tablets. */
     @Composable
     fun display(): TextStyle = if (isTablet()) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineMedium
 
@@ -45,45 +49,48 @@ object AdaptiveTypography {
     @Composable
     fun sectionHeader(): TextStyle = if (isTablet()) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge
 
-    /** Standard body text. */
+    /** Standard body text for primary content. */
     @Composable
     fun body(): TextStyle = if (isTablet()) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium
 
-    /** Smaller body text or captions. */
+    /** Smaller body text or captions for secondary information. */
     @Composable
     fun caption(): TextStyle = if (isTablet()) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.labelSmall
 
-    /** Label text for UI markers. */
+    /** Label text for UI markers and button text. */
     @Composable
     fun label(): TextStyle = if (isTablet()) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelSmall
 
-    /** Hint or secondary metadata text. */
+    /** Hint or secondary metadata text, optimized for small spaces. */
     @Composable
     fun hint(): TextStyle = if (isTablet()) MaterialTheme.typography.bodySmall else MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
 }
 
+/**
+ * Centralized spacing tokens to maintain consistent margins and padding across the app.
+ */
 object AdaptiveSpacing {
-    /** Standard large spacing. */
+    /** Standard large spacing between major UI sections. */
     @Composable
     fun large(): Dp = if (isTablet()) 48.dp else 32.dp
 
-    /** Standard medium spacing. */
+    /** Standard medium spacing for general layout gaps. */
     @Composable
     fun medium(): Dp = if (isTablet()) 32.dp else 24.dp
 
-    /** Small internal spacing. */
+    /** Small internal spacing for grouping related elements. */
     @Composable
     fun small(): Dp = if (isTablet()) 16.dp else 12.dp
 
-    /** Extra small gaps for tight UI. */
+    /** Extra small gaps for tight UI components or tiny margins. */
     @Composable
     fun extraSmall(): Dp = if (isTablet()) 12.dp else 8.dp
 
-    /** Content padding for screen edges. */
+    /** Content padding for screen edges to prevent content from touching the bezel. */
     @Composable
     fun contentPadding(): Dp = if (isTablet()) 32.dp else 16.dp
 
-    /** Corner radius for major cards. */
+    /** Corner radius for major cards and surfaces. */
     @Composable
     fun cornerRadius(): Dp = if (isTablet()) 32.dp else 24.dp
 
@@ -91,11 +98,14 @@ object AdaptiveSpacing {
     @Composable
     fun itemRadius(): Dp = if (isTablet()) 16.dp else 12.dp
     
-    /** Padding used specifically inside dialogs. */
+    /** Padding used specifically inside dialogs for consistent content breathing room. */
     @Composable
     fun dialogPadding(): Dp = if (isTablet()) 32.dp else 24.dp
 }
 
+/**
+ * Fixed dimension tokens for specific UI elements.
+ */
 object AdaptiveDimensions {
     val LoadingDialogSize = 200.dp
     val LoadingIndicatorSize = 60.dp
@@ -110,6 +120,9 @@ object AdaptiveDimensions {
     val SmallAvatar = 32.dp
 }
 
+/**
+ * Maximum width tokens for restricting content width on large screens.
+ */
 object AdaptiveWidths {
     val Standard = 600.dp
     val Medium = 700.dp
@@ -118,12 +131,24 @@ object AdaptiveWidths {
     val ActionButton = 400.dp
 }
 
+/**
+ * Checks if the current screen configuration qualifies as a tablet.
+ * @return true if screen width is 600dp or greater.
+ */
 @Composable
 fun isTablet(): Boolean {
     val configuration = LocalConfiguration.current
     return configuration.screenWidthDp >= 600
 }
 
+/**
+ * A responsive header for dashboard sections.
+ *
+ * @param title Primary header text.
+ * @param subtitle Secondary descriptive text.
+ * @param icon Leading icon for the header.
+ * @param modifier Modifier for the container.
+ */
 @Composable
 fun AdaptiveDashboardHeader(
     title: String,
@@ -168,6 +193,14 @@ fun AdaptiveDashboardHeader(
     }
 }
 
+/**
+ * A card component that adapts its padding and shape based on the screen size.
+ *
+ * @param modifier Modifier for the card.
+ * @param onClick Optional click listener.
+ * @param backgroundColor Background color of the card.
+ * @param content The composable content to be displayed inside the card.
+ */
 @Composable
 fun AdaptiveDashboardCard(
     modifier: Modifier = Modifier,
@@ -199,6 +232,14 @@ fun AdaptiveDashboardCard(
     }
 }
 
+/**
+ * Displays a branded logo with a subtle pulsing glow animation.
+ *
+ * @param model The data model for the logo (URL, Resource, etc.).
+ * @param contentDescription Accessibility description.
+ * @param modifier Modifier for the logo container.
+ * @param logoSize The size of the logo.
+ */
 @Composable
 fun AdaptiveBrandedLogo(
     model: Any?,
@@ -263,16 +304,25 @@ fun AdaptiveBrandedLogo(
     }
 }
 
+/**
+ * Constrains the width of a hero section on tablets while remaining full-width on mobile.
+ */
 @Composable
 fun Modifier.adaptiveHeroWidth(): Modifier {
     return if (isTablet()) this.widthIn(max = AdaptiveWidths.HeroImage) else this.fillMaxWidth()
 }
 
+/**
+ * Constrains the width of an action button on tablets while remaining full-width on mobile.
+ */
 @Composable
 fun Modifier.adaptiveButtonWidth(): Modifier {
     return if (isTablet()) this.widthIn(max = AdaptiveWidths.ActionButton) else this.fillMaxWidth()
 }
 
+/**
+ * Constrains the width of a component to a maximum value on tablets.
+ */
 @Composable
 fun Modifier.adaptiveWidth(maxWidth: Dp = AdaptiveWidths.Standard): Modifier {
     return if (isTablet()) {
@@ -282,6 +332,14 @@ fun Modifier.adaptiveWidth(maxWidth: Dp = AdaptiveWidths.Standard): Modifier {
     }
 }
 
+/**
+ * A top-level container that manages content centering and maximum width for large screens.
+ *
+ * @param modifier Modifier for the root container.
+ * @param maxWidth The maximum width the content should occupy on large screens.
+ * @param contentAlignment How the content should be aligned within the container.
+ * @param content The screen content.
+ */
 @Composable
 fun AdaptiveScreenContainer(
     modifier: Modifier = Modifier,

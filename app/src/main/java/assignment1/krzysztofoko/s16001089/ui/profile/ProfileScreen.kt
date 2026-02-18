@@ -51,15 +51,16 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 /**
- * Composable representing the User Profile and Settings screen.
- * Re-designed to follow the professional Admin/Tutor user details layout.
+ * Main User Profile Screen.
+ * Provides a centralized hub for users to view their university identity,
+ * browse history, academic progress, invoices, and wallet transactions.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    navController: NavController,
-    onLogout: () -> Unit,
-    isDarkTheme: Boolean,
+    navController: NavController,     // Primary navigation control
+    onLogout: () -> Unit,             // Global logout handler
+    isDarkTheme: Boolean,             // UI visual state
     viewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
         userThemeDao = AppDatabase.getDatabase(LocalContext.current).userThemeDao(),
@@ -74,9 +75,11 @@ fun ProfileScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // --- REACIVE DATA STREAMS ---
     val localUser by viewModel.localUser.collectAsState(initial = null)
     val userTheme by viewModel.userTheme.collectAsState(initial = null)
 
+    // Secondary data streams for tab contents
     val invoices by viewModel.invoices.collectAsState()
     val wishlist by viewModel.wishlist.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
@@ -91,10 +94,12 @@ fun ProfileScreen(
     val purchasedBooks by viewModel.purchasedBooks.collectAsState()
     val commentedBooks by viewModel.commentedBooks.collectAsState()
 
+    // Initialize edit fields when user data arrives
     LaunchedEffect(localUser, userTheme) {
         localUser?.let { viewModel.initFields(it, userTheme) }
     }
 
+    // --- TAB SYSTEM CONFIGURATION ---
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf(
         TabItem("Profile", Icons.Rounded.AccountCircle),
@@ -105,11 +110,13 @@ fun ProfileScreen(
         TabItem("Wallet", Icons.Default.AccountBalanceWallet)
     )
 
+    // Logic for infinite scrollable tabs on mobile vs centered on tablets
     val isTablet = isTablet()
     val infiniteCount = Int.MAX_VALUE
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % tabs.size)
     val tabListState = rememberLazyListState(initialFirstVisibleItemIndex = if (isTablet) 0 else startPosition)
 
+    // Activity launcher for profile photo selection
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -121,12 +128,14 @@ fun ProfileScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Themed wavy background animation
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
 
         Scaffold(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
+                // Persistent header containing the title, user metadata, and navigation tabs
                 Surface(
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     shadowElevation = 4.dp
@@ -137,6 +146,7 @@ fun ProfileScreen(
                             title = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (!isTablet) {
+                                        // Small mobile avatar shortcut
                                         UserAvatar(
                                             photoUrl = localUser?.photoUrl,
                                             modifier = Modifier.size(40.dp).clickable { photoPickerLauncher.launch("image/*") }
@@ -145,10 +155,7 @@ fun ProfileScreen(
                                     }
                                     Column {
                                         val displayName = buildString {
-                                            if (!localUser?.title.isNullOrEmpty()) {
-                                                append(localUser?.title)
-                                                append(" ")
-                                            }
+                                            if (!localUser?.title.isNullOrEmpty()) { append(localUser?.title); append(" ") }
                                             append(localUser?.name ?: "User Profile")
                                         }
                                         Text(displayName, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
@@ -169,6 +176,7 @@ fun ProfileScreen(
                             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                         )
 
+                        // Integrated Secondary Navigation Tabs
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                             LazyRow(
                                 state = tabListState,
@@ -178,6 +186,7 @@ fun ProfileScreen(
                                 horizontalArrangement = if (isTablet) Arrangement.Center else Arrangement.Start
                             ) {
                                 if (isTablet) {
+                                    // Static list for tablet
                                     items(tabs.size) { index ->
                                         TabItemView(
                                             tab = tabs[index],
@@ -186,6 +195,7 @@ fun ProfileScreen(
                                         )
                                     }
                                 } else {
+                                    // Infinite loop for mobile
                                     items(infiniteCount) { index ->
                                         val tabIndex = index % tabs.size
                                         TabItemView(
@@ -202,19 +212,20 @@ fun ProfileScreen(
                 }
             }
         ) { padding ->
+            // --- MAIN CONTENT DISPATCHER ---
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                AdaptiveScreenContainer(
-                    maxWidth = AdaptiveWidths.Wide
-                ) { isTablet ->
+                AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
                     AnimatedContent(
                         targetState = selectedTab,
                         transitionSpec = { fadeIn() togetherWith fadeOut() },
                         label = "TabContentTransition"
                     ) { targetIndex ->
                         when (targetIndex) {
+                            // 1. Primary info and quick-edit controls
                             0 -> StudentDetailTab(viewModel, localUser, photoPickerLauncher, snackbarHostState, onNavigateToSettings = {
                                 navController.navigate(AppConstants.ROUTE_EDIT_PROFILE)
                             })
+                            // 2. Aggregate history of browsing, search, and purchases
                             1 -> UserActivityTab(
                                 browseHistory = browseHistory,
                                 wishlist = wishlist,
@@ -227,7 +238,9 @@ fun ProfileScreen(
                                     navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$bookId")
                                 }
                             )
+                            // 3. User feedback and review log
                             2 -> UserCommentsTab(reviews = allReviews, allBooks = allBooks)
+                            // 4. Detailed academic status (Grades, Enrollments, Requests)
                             3 -> StudentAcademicTab(
                                 enrollments = enrollments,
                                 history = enrollmentHistory,
@@ -237,7 +250,9 @@ fun ProfileScreen(
                                 onResignRequest = { viewModel.submitResignationRequest(it) { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } } },
                                 onChangeRequest = { enrollment, newId -> viewModel.submitCourseChangeRequest(enrollment, newId) { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } } }
                             )
+                            // 5. Official purchase receipts
                             4 -> UserInvoicesTab(invoices)
+                            // 6. Detailed financial ledger
                             5 -> UserWalletTab(transactions)
                         }
                     }
@@ -248,7 +263,8 @@ fun ProfileScreen(
 }
 
 /**
- * The primary professional profile tab for students, matching the provided screenshot design.
+ * The primary professional profile tab for students.
+ * Displays large avatar, department info, and quick-access biography cards.
  */
 @Composable
 fun StudentDetailTab(
@@ -261,7 +277,7 @@ fun StudentDetailTab(
     val scope = rememberCoroutineScope()
     var isEditingSettings by remember { mutableStateOf(false) }
 
-    // UI Mock data for biography/department as they are not in the current UserLocal schema yet
+    // local mutable states for draft biography edits
     var editBio by remember { mutableStateOf("Enrolled student focusing on advanced academic development and institutional research.") }
     var editDept by remember { mutableStateOf("Computer Science & Engineering") }
 
@@ -270,7 +286,7 @@ fun StudentDetailTab(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // PROFESSIONAL HEADER
+        // Visual Section Header
         item {
             AdaptiveDashboardHeader(
                 title = "My Profile",
@@ -280,13 +296,14 @@ fun StudentDetailTab(
             )
         }
 
-        // IDENTITY CARD
+        // --- CORE IDENTITY CARD ---
         item {
             AdaptiveDashboardCard { cardIsTablet ->
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // Large portrait with branded border
                     UserAvatar(
                         photoUrl = localUser?.photoUrl,
                         modifier = Modifier.size(if (cardIsTablet) 120.dp else 100.dp),
@@ -311,6 +328,7 @@ fun StudentDetailTab(
 
                     Spacer(Modifier.height(20.dp))
 
+                    // Quick-action navigation buttons
                     Row(
                         modifier = Modifier.adaptiveButtonWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -330,7 +348,7 @@ fun StudentDetailTab(
                         Spacer(Modifier.width(8.dp))
 
                         FilledIconButton(
-                            onClick = onNavigateToSettings,
+                            onClick = onNavigateToSettings, // Go to main account settings
                             modifier = Modifier.size(44.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = IconButtonDefaults.filledIconButtonColors(
@@ -345,6 +363,8 @@ fun StudentDetailTab(
             }
         }
 
+        // --- DYNAMIC CONTENT ---
+        // Toggle between display mode and mini-inline edit mode
         if (isEditingSettings) {
             item {
                 AdaptiveDashboardCard {
@@ -363,6 +383,7 @@ fun StudentDetailTab(
             item {
                 AdaptiveDashboardCard {
                     Column(modifier = Modifier.padding(8.dp)) {
+                        // Section logic mapped from ViewModel states
                         PersonalInfoSection(
                             title = viewModel.title,
                             onTitleChange = { viewModel.title = it },
@@ -373,7 +394,7 @@ fun StudentDetailTab(
                             phoneNumber = viewModel.phoneNumber,
                             onPhoneNumberChange = { viewModel.phoneNumber = it },
                             email = localUser?.email ?: "",
-                            onEditEmail = { /* Popup logic handled in viewModel */ }
+                            onEditEmail = { /* External edit flow */ }
                         )
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -399,6 +420,7 @@ fun StudentDetailTab(
                 }
             }
         } else {
+            // Standard biography display cards
             item {
                 AdaptiveDashboardCard {
                     Column {
@@ -415,6 +437,7 @@ fun StudentDetailTab(
                 }
             }
 
+            // Quick-stats row (Email + ID)
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     AdaptiveDashboardCard(modifier = Modifier.weight(1f)) {
@@ -441,6 +464,6 @@ fun StudentDetailTab(
             }
         }
 
-        item { Spacer(modifier = Modifier.height(80.dp)) }
+        item { Spacer(modifier = Modifier.height(80.dp)) } // Bottom list clearance
     }
 }

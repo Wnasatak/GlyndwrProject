@@ -33,7 +33,34 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
- * Detailed Screen for Audiobook products.
+ * AudioBookDetailScreen.kt
+ *
+ * This file contains the primary UI implementation for the Audiobook details screen.
+ * It provides users with a comprehensive view of an audiobook's metadata, including
+ * narration details, descriptions, and user reviews. It also orchestrates the 
+ * complete purchase and playback workflow.
+ */
+
+/**
+ * AudioBookDetailScreen Composable
+ *
+ * An immersive, data-driven screen that displays the full profile of a digital audiobook.
+ *
+ * Key features:
+ * - **Dynamic Content:** Fetches live data from the `AudioBookViewModel`, including purchase status and reviews.
+ * - **Responsive Design:** Utilises `AdaptiveScreenContainer` and `LazyColumn` to ensure a premium look on all devices.
+ * - **Purchase Lifecycle:** Manages complex interaction states for free claims, paid checkouts, and library removal.
+ * - **Interactive Elements:** Features a global wishlist toggle, narrated-by labels, and an integrated review section.
+ *
+ * @param bookId The unique identifier for the audiobook to be displayed.
+ * @param initialBook Optional pre-fetched book data to improve initial render time.
+ * @param user The current Firebase user session.
+ * @param onLoginRequired Callback to trigger the authentication flow for guest users.
+ * @param onBack Callback for returning to the previous screen.
+ * @param currentTheme The active application theme for background rendering.
+ * @param onPlayAudio Callback to launch the global audio player for this book.
+ * @param onNavigateToProfile Callback to jump to the user's profile settings.
+ * @param onViewInvoice Callback to open the digital receipt for a purchased item.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,10 +86,12 @@ fun AudioBookDetailScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    // Determine if the background should use dark mode variants.
     val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
     
     val isTablet = isTablet()
 
+    // --- VIEWMODEL STATE OBSERVATION --- //
     val book by viewModel.book.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val localUser by viewModel.localUser.collectAsState()
@@ -71,6 +100,7 @@ fun AudioBookDetailScreen(
     val inWishlist by viewModel.inWishlist.collectAsState()
     val allReviews by viewModel.allReviews.collectAsState()
     
+    // Dynamic price calculation with applicable student or role-based discounts.
     val effectiveDiscount = remember(localUser, roleDiscounts) {
         val userRole = localUser?.role ?: "user"
         val roleRate = roleDiscounts.find { it.role == userRole }?.discountPercent ?: 0.0
@@ -78,6 +108,7 @@ fun AudioBookDetailScreen(
         maxOf(roleRate, individualRate)
     }
 
+    // --- UI INTERACTION FLAGS --- //
     var showOrderFlow by remember { mutableStateOf(false) }
     var showRemoveConfirmation by remember { mutableStateOf(false) }
     var showAddConfirm by remember { mutableStateOf(false) }
@@ -86,10 +117,11 @@ fun AudioBookDetailScreen(
     val primaryColor = MaterialTheme.colorScheme.primary
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Branded background layer.
         HorizontalWavyBackground(isDarkTheme = isDarkTheme, wave1HeightFactor = 0.45f, wave2HeightFactor = 0.65f, wave1Amplitude = 80f, wave2Amplitude = 100f)
 
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Let the wavy background shine through.
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
@@ -105,6 +137,7 @@ fun AudioBookDetailScreen(
                     },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) } },
                     actions = {
+                        // Wishlist toggle is only visible to authenticated users.
                         if (user != null) {
                             IconButton(onClick = {
                                 viewModel.toggleWishlist { msg ->
@@ -117,15 +150,17 @@ fun AudioBookDetailScreen(
                                 ) 
                             }
                         }
-                        // ThemeToggleButton removed as it's now global
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                 )
             }
         ) { paddingValues ->
+            // --- MAIN CONTENT AREA --- //
             if (loading && book == null) {
+                // Initial fetch loading state.
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             } else if (book == null) {
+                // Error state for missing data.
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
@@ -144,7 +179,7 @@ fun AudioBookDetailScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(horizontal = if (isTablet) 32.dp else 12.dp, vertical = 16.dp)
                         ) {
-                            
+                            // Section 1: Immersive Header Image.
                             item {
                                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                     Box(modifier = Modifier.adaptiveHeroWidth()) {
@@ -154,18 +189,17 @@ fun AudioBookDetailScreen(
                                 Spacer(Modifier.height(AdaptiveSpacing.medium()))
                             }
 
+                            // Section 2: Core Metadata and Description.
                             item {
                                 Card(
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                                     shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (isDarkTheme) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-                                        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
-                                    )
+                                    border = BorderStroke(1.dp, if (isDarkTheme) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                                 ) {
                                     Column(modifier = Modifier.padding(AdaptiveSpacing.contentPadding())) {
+                                        @Suppress("DEPRECATION")
                                         Text(text = currentBook.title, style = if (isTablet) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                                        @Suppress("DEPRECATION")
                                         Text(text = "${AppConstants.TEXT_NARRATED_BY} ${currentBook.author}", style = if (isTablet) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                                         
                                         Spacer(modifier = Modifier.height(16.dp))
@@ -175,14 +209,18 @@ fun AudioBookDetailScreen(
                                         }
                                         
                                         Spacer(modifier = Modifier.height(AdaptiveSpacing.medium()))
+                                        @Suppress("DEPRECATION")
                                         Text(text = AppConstants.SECTION_ABOUT_AUDIO, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.height(8.dp))
+                                        @Suppress("DEPRECATION")
                                         Text(text = currentBook.description, style = MaterialTheme.typography.bodyLarge, lineHeight = if (isTablet) 28.sp else 24.sp)
                                         
                                         Spacer(modifier = Modifier.height(if (isTablet) 40.dp else 32.dp))
                                         
+                                        // --- PRIMARY ACTION ZONE --- //
                                         Box(modifier = Modifier.fillMaxWidth()) {
                                             if (isOwned) {
+                                                // UI for users who already own the book.
                                                 Column(verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                                                     ViewInvoiceButton(price = currentBook.price, onClick = { onViewInvoice(currentBook.id) }, modifier = Modifier.adaptiveButtonWidth())
 
@@ -193,6 +231,7 @@ fun AudioBookDetailScreen(
                                                             @Suppress("DEPRECATION")
                                                             Text(AppConstants.BTN_LISTEN_NOW, fontWeight = FontWeight.Bold)
                                                         }
+                                                        // Option to remove only if the item was free.
                                                         if (currentBook.price <= 0) {
                                                             @Suppress("DEPRECATION")
                                                             OutlinedButton(
@@ -208,6 +247,7 @@ fun AudioBookDetailScreen(
                                                     }
                                                 }
                                             } else if (user == null) {
+                                                // UI for guest users (Authentication required).
                                                 Card(modifier = Modifier.adaptiveButtonWidth().align(Alignment.Center), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
                                                     Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                                         Icon(Icons.Default.LockPerson, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
@@ -222,8 +262,11 @@ fun AudioBookDetailScreen(
                                                     }
                                                 }
                                             } else {
+                                                // UI for authenticated users who do not yet own the book.
                                                 if (currentBook.price == 0.0) {
+                                                    // Claim for free workflow.
                                                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                                        @Suppress("DEPRECATION")
                                                         Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                                         Spacer(modifier = Modifier.height(24.dp))
                                                         Button(
@@ -233,10 +276,12 @@ fun AudioBookDetailScreen(
                                                         ) {
                                                             Icon(Icons.Default.LibraryAdd, null)
                                                             Spacer(Modifier.width(12.dp))
+                                                            @Suppress("DEPRECATION")
                                                             Text(AppConstants.BTN_ADD_TO_LIBRARY, fontWeight = FontWeight.Bold)
                                                         }
                                                     }
                                                 } else {
+                                                    // Purchase workflow.
                                                     val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
                                                     val discountedPrice = currentBook.price * discountMultiplier
                                                     
@@ -268,6 +313,7 @@ fun AudioBookDetailScreen(
                                 }
                             }
 
+                            // Section 3: Shared User Reviews.
                             item {
                                 Spacer(modifier = Modifier.height(32.dp))
                                 ReviewSection(
@@ -289,6 +335,9 @@ fun AudioBookDetailScreen(
             }
         }
 
+        // --- SECONDARY DIALOGS AND OVERLAYS --- //
+
+        // Handles the paid checkout process.
         if (showOrderFlow && book != null) {
             OrderFlowDialog(
                 book = book!!, 
@@ -303,6 +352,7 @@ fun AudioBookDetailScreen(
             )
         }
 
+        // Confirmation for deleting a free item.
         AppPopups.RemoveFromLibraryConfirmation(
             show = showRemoveConfirmation,
             bookTitle = book?.title ?: "",
@@ -315,6 +365,7 @@ fun AudioBookDetailScreen(
             }
         )
 
+        // Confirmation for claiming a free item.
         AppPopups.AddToLibraryConfirmation(
             show = showAddConfirm,
             itemTitle = book?.title ?: "",
@@ -325,7 +376,7 @@ fun AudioBookDetailScreen(
                 showAddConfirm = false
                 isProcessingAddition = true
                 scope.launch {
-                    delay(2000) 
+                    delay(2000) // Simulated backend delay.
                     viewModel.addFreePurchase(context) { msg ->
                         isProcessingAddition = false
                         scope.launch { snackbarHostState.showSnackbar(msg) }
@@ -334,6 +385,7 @@ fun AudioBookDetailScreen(
             }
         )
 
+        // Branded loading dialog for library additions.
         AppPopups.AddingToLibraryLoading(
             show = isProcessingAddition,
             category = book?.mainCategory ?: AppConstants.CAT_AUDIOBOOKS,

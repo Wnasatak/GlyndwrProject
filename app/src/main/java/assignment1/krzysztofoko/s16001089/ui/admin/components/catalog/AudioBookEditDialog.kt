@@ -1,8 +1,7 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Catalog
+package assignment1.krzysztofoko.s16001089.ui.admin.components.catalog
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,9 +25,21 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import coil.compose.AsyncImage
 
 /**
- * AudioBookEditDialog provides a comprehensive administrative interface for adding or modifying
- * audiobook resources. Features native system file pickers for real image and audio uploading.
- * Now fully optimized for smartphones using centralized Adaptive typography and spacing.
+ * AudioBookEditDialog.kt
+ *
+ * This file provides a comprehensive administrative interface for adding or modifying
+ * audiobook resources. It features native system file pickers for real image and audio 
+ * uploading, and is fully optimised for smartphones using adaptive design principles.
+ */
+
+/**
+ * AudioBookEditDialog Composable
+ *
+ * The primary modal for administrative audiobook management.
+ *
+ * @param audioBook The [AudioBook] object to be edited (or a blank one for creation).
+ * @param onDismiss Callback invoked when the user cancels the operation.
+ * @param onSave Callback invoked with the updated [AudioBook] data upon confirmation.
  */
 @Composable
 fun AudioBookEditDialog(
@@ -36,11 +47,13 @@ fun AudioBookEditDialog(
     onDismiss: () -> Unit, 
     onSave: (AudioBook) -> Unit
 ) {
-    // Detect mode: Create vs Edit
+    // --- MODE & ADAPTIVE LOGIC --- //
+    // Detect if we are in 'Create' or 'Edit' mode based on the initial audiobook state.
     val isCreateMode = audioBook.title.isEmpty() && audioBook.author.isEmpty() && audioBook.price == 0.0
-    val isTablet = isTablet()
+    val isTablet = isTablet() // Responsive check for layout adjustments.
 
-    // Local state management for form fields
+    // --- STATE MANAGEMENT --- //
+    // Local state for form fields, synchronised with the provided audiobook data.
     var title by remember { mutableStateOf(audioBook.title) }
     var author by remember { mutableStateOf(audioBook.author) }
     var price by remember { mutableStateOf(if (isCreateMode) "" else audioBook.price.toString()) }
@@ -49,15 +62,17 @@ fun AudioBookEditDialog(
     var audioUrl by remember { mutableStateOf(audioBook.audioUrl) }
     var category by remember { mutableStateOf(audioBook.category) }
 
-    // UI visibility states
+    // Control visibility for manual URL entry fields.
     var showUrlInputForImage by remember { mutableStateOf(false) }
     var showUrlInputForAudio by remember { mutableStateOf(false) }
 
-    // NATIVE FILE PICKERS
+    // --- NATIVE FILE PICKERS --- //
+    // Launcher for selecting cover images from the device storage.
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let { imageUrl = it.toString() } }
 
+    // Launcher for selecting audio files (MP3/M4A) from the device storage.
     val audioPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let { audioUrl = it.toString() } }
@@ -69,6 +84,7 @@ fun AudioBookEditDialog(
         shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
         modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(0.94f),
         title = {
+            // --- HEADER: Dialog Title and Icon --- //
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
@@ -99,9 +115,9 @@ fun AudioBookEditDialog(
                 verticalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 10.dp), 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()) // Allow the form to scroll on small screens.
             ) {
-                // IMAGE PREVIEW & UPLOAD
+                // --- SECTION: IMAGE PREVIEW & UPLOAD --- //
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Box(contentAlignment = Alignment.Center) {
                         Surface(
@@ -111,6 +127,7 @@ fun AudioBookEditDialog(
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         ) {
                             if (imageUrl.isNotEmpty()) {
+                                // Live preview of the selected cover image.
                                 AsyncImage(
                                     model = formatAssetUrl(imageUrl), 
                                     contentDescription = null, 
@@ -118,6 +135,7 @@ fun AudioBookEditDialog(
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
+                                // Placeholder icon if no image is selected.
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
                                         imageVector = Icons.Default.Headphones,
@@ -133,6 +151,7 @@ fun AudioBookEditDialog(
                     Spacer(Modifier.height(12.dp))
                     
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Launch system file picker.
                         Button(
                             onClick = { imagePickerLauncher.launch(arrayOf("image/*")) },
                             shape = RoundedCornerShape(8.dp),
@@ -145,6 +164,7 @@ fun AudioBookEditDialog(
                             Text("Upload", style = AdaptiveTypography.hint(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         
+                        // Toggle manual URL input field.
                         OutlinedButton(
                             onClick = { showUrlInputForImage = !showUrlInputForImage },
                             shape = RoundedCornerShape(8.dp),
@@ -170,7 +190,7 @@ fun AudioBookEditDialog(
                     }
                 }
 
-                // BASIC INFO
+                // --- SECTION: BASIC RESOURCE INFO --- //
                 OutlinedTextField(
                     value = title, onValueChange = { title = it }, 
                     label = { Text("Audiobook Title", style = AdaptiveTypography.label()) }, 
@@ -191,6 +211,7 @@ fun AudioBookEditDialog(
                     singleLine = true
                 )
 
+                // Layout price and genre side-by-side on tablets, vertically on mobile.
                 if (isTablet) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price (£)", style = AdaptiveTypography.label()) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Payments, null, modifier = Modifier.size(18.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
@@ -212,7 +233,7 @@ fun AudioBookEditDialog(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                // DIGITAL ASSETS: Audio management
+                // --- SECTION: DIGITAL ASSETS (Audio management) --- //
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(12.dp),
@@ -223,6 +244,7 @@ fun AudioBookEditDialog(
                         Text("Audio Resources", style = AdaptiveTypography.sectionHeader(), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                         
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            // Launch system audio picker.
                             Button(
                                 onClick = { audioPickerLauncher.launch(arrayOf("audio/*")) },
                                 shape = RoundedCornerShape(8.dp),
@@ -234,6 +256,7 @@ fun AudioBookEditDialog(
                                 Text("Upload", style = AdaptiveTypography.hint(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             
+                            // Toggle manual audio path input.
                             OutlinedButton(
                                 onClick = { showUrlInputForAudio = !showUrlInputForAudio },
                                 shape = RoundedCornerShape(8.dp),
@@ -249,7 +272,7 @@ fun AudioBookEditDialog(
                         if (showUrlInputForAudio) {
                             OutlinedTextField(
                                 value = audioUrl, onValueChange = { audioUrl = it }, 
-                                label = { Text("Audio URL", style = AdaptiveTypography.hint()) }, 
+                                label = { Text("Audio URL / Path", style = AdaptiveTypography.hint()) }, 
                                 modifier = Modifier.fillMaxWidth(), 
                                 shape = RoundedCornerShape(12.dp),
                                 textStyle = AdaptiveTypography.caption(),
@@ -263,20 +286,23 @@ fun AudioBookEditDialog(
             }
         },
         confirmButton = {
+            // --- ACTION: SAVE RESOURCE --- //
             Button(
                 onClick = { 
+                    // Pack all local state back into the data model and trigger the save callback.
                     onSave(audioBook.copy(
                         title = title, author = author, price = price.toDoubleOrNull() ?: 0.0, 
                         description = description, imageUrl = imageUrl, audioUrl = audioUrl, category = category
                     )) 
                 },
-                enabled = title.isNotBlank() && author.isNotBlank(),
+                enabled = title.isNotBlank() && author.isNotBlank(), // Basic validation.
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth().height(if (isTablet) 50.dp else 44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) { Text(if (isCreateMode) "Add Audiobook" else "Save Changes", fontWeight = FontWeight.Bold, fontSize = if (isTablet) 16.sp else 14.sp) }
         },
         dismissButton = { 
+            // --- ACTION: CANCEL --- //
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { 
                 Text(if (isCreateMode) "Cancel" else "Discard", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = AdaptiveTypography.caption()) 
             } 

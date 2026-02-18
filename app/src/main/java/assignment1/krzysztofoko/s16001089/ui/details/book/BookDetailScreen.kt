@@ -32,7 +32,37 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
- * Detailed Information Screen for a Book item.
+ * BookDetailScreen.kt
+ *
+ * This file contains the primary UI implementation for the Book details screen.
+ * It provides users with a comprehensive view of an academic or leisure book's metadata, 
+ * including author details, descriptions, and user reviews. It also coordinates the 
+ * complete checkout and reading workflows.
+ */
+
+/**
+ * BookDetailScreen Composable
+ *
+ * An immersive, data-driven screen that displays the full profile of a digital book.
+ *
+ * Key features:
+ * - **Dynamic Content:** Fetches live data from the `BookDetailViewModel`, including 
+ *   ownership status and student-specific discounts.
+ * - **Responsive Design:** Utilises `AdaptiveScreenContainer` and `LazyColumn` to ensure 
+ *   a premium reading experience on phones and tablets alike.
+ * - **Interactive Elements:** Features a global wishlist toggle, academic categories, 
+ *   and an integrated review section.
+ * - **Workflow Management:** Orchestrates complex interactions for free library additions, 
+ *   paid purchases via the `OrderFlowDialog`, and reading the book once acquired.
+ *
+ * @param bookId Unique identifier for the book.
+ * @param user The current Firebase user session.
+ * @param onLoginRequired Callback to trigger the auth flow for guest users.
+ * @param onBack Callback for navigation.
+ * @param currentTheme The active visual theme for background rendering.
+ * @param onReadBook Callback to open the PDF reader for this book.
+ * @param onNavigateToProfile Callback to jump to profile settings.
+ * @param onViewInvoice Callback to open the digital receipt.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,8 +88,10 @@ fun BookDetailScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    // Determine if the background should use dark mode variants.
     val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
 
+    // --- VIEWMODEL STATE OBSERVATION --- //
     val book by viewModel.book.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val localUser by viewModel.localUser.collectAsState()
@@ -68,6 +100,7 @@ fun BookDetailScreen(
     val inWishlist by viewModel.inWishlist.collectAsState()
     val allReviews by viewModel.allReviews.collectAsState()
     
+    // Dynamic price calculation based on user role and specific discounts.
     val effectiveDiscount = remember(localUser, roleDiscounts) {
         val uRole = localUser?.role ?: "user"
         val roleRate = roleDiscounts.find { it.role == uRole }?.discountPercent ?: 0.0
@@ -75,6 +108,7 @@ fun BookDetailScreen(
         maxOf(roleRate, individualRate)
     }
 
+    // --- UI INTERACTION FLAGS --- //
     var showOrderFlow by remember { mutableStateOf(false) }
     var showRemoveConfirm by remember { mutableStateOf(false) }
     var showAddConfirm by remember { mutableStateOf(false) }
@@ -83,10 +117,11 @@ fun BookDetailScreen(
     val primaryColor = MaterialTheme.colorScheme.primary
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Branded background layer for visual depth.
         HorizontalWavyBackground(isDarkTheme = isDarkTheme, wave1HeightFactor = 0.45f, wave2HeightFactor = 0.65f, wave1Amplitude = 80f, wave2Amplitude = 100f)
 
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Let the wavy background shine through.
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
@@ -102,6 +137,7 @@ fun BookDetailScreen(
                     },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) } },
                     actions = {
+                        // Wishlist toggle is only available to authenticated users.
                         if (user != null) {
                             IconButton(onClick = {
                                 viewModel.toggleWishlist { msg ->
@@ -114,19 +150,22 @@ fun BookDetailScreen(
                                 ) 
                             }
                         }
-                        // ThemeToggleButton removed - centrally managed
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                 )
             }
         ) { paddingValues ->
+            // --- MAIN CONTENT AREA --- //
             if (loading && book == null) {
+                // Initial data fetch loading state.
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             } else if (book == null) {
+                // Handle case where book data is missing.
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
                         Spacer(Modifier.height(16.dp)); Text(AppConstants.MSG_ITEM_NOT_FOUND)
+                        @Suppress("DEPRECATION")
                         TextButton(onClick = onBack) { Text(AppConstants.BTN_GO_BACK) }
                     }
                 }
@@ -140,6 +179,7 @@ fun BookDetailScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(horizontal = if (isTablet) 32.dp else 12.dp, vertical = 16.dp)
                         ) {
+                            // Section 1: Dynamic Header.
                             item {
                                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                     Box(modifier = Modifier.adaptiveHeroWidth()) {
@@ -149,6 +189,7 @@ fun BookDetailScreen(
                                 Spacer(Modifier.height(AdaptiveSpacing.medium()))
                             }
 
+                            // Section 2: Metadata and Action Card.
                             item {
                                 Card(
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)), 
@@ -156,21 +197,30 @@ fun BookDetailScreen(
                                     border = BorderStroke(1.dp, if (isDarkTheme) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                                 ) {
                                     Column(modifier = Modifier.padding(AdaptiveSpacing.contentPadding())) {
+                                        @Suppress("DEPRECATION")
                                         Text(text = currentBook.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                                        @Suppress("DEPRECATION")
                                         Text(text = "${AppConstants.TEXT_BY} ${currentBook.author}", style = if (isTablet) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                        
                                         Spacer(modifier = Modifier.height(16.dp))
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { 
                                             AssistChip(onClick = {}, label = { Text(currentBook.category) })
                                             AssistChip(onClick = {}, label = { Text(AppConstants.TEXT_ACADEMIC_MATERIAL) }) 
                                         }
+                                        
                                         Spacer(modifier = Modifier.height(AdaptiveSpacing.medium()))
+                                        @Suppress("DEPRECATION")
                                         Text(text = AppConstants.SECTION_ABOUT_ITEM, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.height(8.dp))
+                                        @Suppress("DEPRECATION")
                                         Text(text = currentBook.description, style = MaterialTheme.typography.bodyLarge, lineHeight = if (isTablet) 28.sp else 24.sp)
+                                        
                                         Spacer(modifier = Modifier.height(if (isTablet) 40.dp else 32.dp))
                                         
+                                        // --- PRIMARY ACTION ZONE --- //
                                         Box(modifier = Modifier.fillMaxWidth()) {
                                             if (isOwned) {
+                                                // UI for users who have already acquired the book.
                                                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
                                                     ViewInvoiceButton(price = currentBook.price, onClick = { onViewInvoice(currentBook.id) }, modifier = Modifier.adaptiveButtonWidth())
                                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = if (isTablet) Modifier.widthIn(max = 500.dp) else Modifier.fillMaxWidth()) {
@@ -186,22 +236,27 @@ fun BookDetailScreen(
                                                     }
                                                 }
                                             } else if (user == null) {
+                                                // UI for guest users (Authentication required).
                                                 Card(modifier = Modifier.adaptiveButtonWidth().align(Alignment.Center), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
                                                     Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                                         Icon(Icons.Default.LockPerson, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                                                         Spacer(Modifier.height(12.dp)); @Suppress("DEPRECATION") Text(AppConstants.TITLE_SIGN_IN_REQUIRED, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                                                         Text(AppConstants.MSG_SIGN_IN_PROMPT_BOOK, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
-                                                        Spacer(Modifier.height(20.dp)); Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(AppConstants.BTN_SIGN_IN_REGISTER) }
+                                                        Spacer(Modifier.height(20.dp)); Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); @Suppress("DEPRECATION") Text(AppConstants.BTN_SIGN_IN_REGISTER) }
                                                     }
                                                 }
                                             } else {
+                                                // UI for authenticated users who do not yet own the book.
                                                 if (currentBook.price == 0.0) {
+                                                    // Handle free items.
                                                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                                        @Suppress("DEPRECATION")
                                                         Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                                         Spacer(modifier = Modifier.height(24.dp))
-                                                        Button(onClick = { showAddConfirm = true }, modifier = Modifier.adaptiveButtonWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Default.LibraryAdd, null); Spacer(Modifier.width(12.dp)); Text(AppConstants.BTN_ADD_TO_LIBRARY, fontWeight = FontWeight.Bold) }
+                                                        Button(onClick = { showAddConfirm = true }, modifier = Modifier.adaptiveButtonWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Default.LibraryAdd, null); Spacer(Modifier.width(12.dp)); @Suppress("DEPRECATION") Text(AppConstants.BTN_ADD_TO_LIBRARY, fontWeight = FontWeight.Bold) }
                                                     }
                                                 } else {
+                                                    // Handle paid items with dynamic discounting.
                                                     val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
                                                     val discountedPrice = currentBook.price * discountMultiplier
                                                     
@@ -226,7 +281,7 @@ fun BookDetailScreen(
                                                                 ) 
                                                             }
                                                         }
-                                                        Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.adaptiveButtonWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text(AppConstants.BTN_ORDER_NOW, fontWeight = FontWeight.Bold) }
+                                                        Spacer(modifier = Modifier.height(24.dp)); Button(onClick = { showOrderFlow = true }, modifier = Modifier.adaptiveButtonWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { @Suppress("DEPRECATION") Text(AppConstants.BTN_ORDER_NOW, fontWeight = FontWeight.Bold) }
                                                     }
                                                 }
                                             }
@@ -235,6 +290,7 @@ fun BookDetailScreen(
                                 }
                             }
 
+                            // Section 3: Shared User Reviews.
                             item {
                                 Spacer(modifier = Modifier.height(32.dp))
                                 ReviewSection(productId = bookId, reviews = allReviews, localUser = localUser, isLoggedIn = user != null, db = AppDatabase.getDatabase(LocalContext.current), isDarkTheme = isDarkTheme, onReviewPosted = { scope.launch { snackbarHostState.showSnackbar(AppConstants.MSG_THANKS_REVIEW) } }, onLoginClick = onLoginRequired)
@@ -246,6 +302,9 @@ fun BookDetailScreen(
             }
         }
 
+        // --- SECONDARY DIALOGS AND OVERLAYS --- //
+
+        // Workflow for selecting payment plans and confirming purchase.
         if (showOrderFlow && book != null) {
             OrderFlowDialog(
                 book = book!!, 
@@ -260,16 +319,18 @@ fun BookDetailScreen(
             )
         }
 
+        // Confirmation for deleting free digital material.
         AppPopups.RemoveFromLibraryConfirmation(show = showRemoveConfirm, bookTitle = book?.title ?: "", onDismiss = { showRemoveConfirm = false }, onConfirm = { viewModel.removePurchase { msg -> showRemoveConfirm = false
                     scope.launch { snackbarHostState.showSnackbar(msg) }
                 }
             }
         )
 
+        // Confirmation for claiming zero-cost items.
         AppPopups.AddToLibraryConfirmation(show = showAddConfirm, itemTitle = book?.title ?: "", category = book?.mainCategory ?: AppConstants.CAT_BOOKS, isAudioBook = book?.isAudioBook ?: false, onDismiss = { showAddConfirm = false }, onConfirm = { showAddConfirm = false
                 isProcessingAddition = true
                 scope.launch {
-                    delay(2000)
+                    delay(2000) // Simulated backend delay.
                     viewModel.addFreePurchase(context) { msg ->
                         isProcessingAddition = false
                         scope.launch { snackbarHostState.showSnackbar(msg) }
@@ -278,6 +339,7 @@ fun BookDetailScreen(
             }
         )
 
+        // Branded loading indicator for library additions.
         AppPopups.AddingToLibraryLoading(show = isProcessingAddition, category = book?.mainCategory ?: AppConstants.CAT_BOOKS, isAudioBook = book?.isAudioBook ?: false)
     }
 }

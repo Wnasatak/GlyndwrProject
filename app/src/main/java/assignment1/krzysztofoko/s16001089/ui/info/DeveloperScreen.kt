@@ -31,20 +31,23 @@ import coil.compose.AsyncImage
 
 /**
  * Screen displaying the developer's credentials and project metadata.
+ * Provides institutional context and links to technical version information.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeveloperScreen(
-    onBack: () -> Unit,               
-    onVersionClick: () -> Unit,       
-    onFutureFeaturesClick: () -> Unit, 
-    currentTheme: Theme,
-    userTheme: UserTheme? = null,
-    onThemeChange: (Theme) -> Unit         
+    onBack: () -> Unit,               // Logic to return to the previous screen
+    onVersionClick: () -> Unit,       // Logic to navigate to detailed build notes
+    onFutureFeaturesClick: () -> Unit, // Logic to navigate to the roadmap
+    currentTheme: Theme,              // The active application theme
+    userTheme: UserTheme? = null,     // Custom theme state for background sync
+    onThemeChange: (Theme) -> Unit    // Global theme update handler
 ) {
+    // Collect animation values for the pulsing glow behind the avatar
     val (glowScale, glowAlpha) = rememberGlowAnimation()
-    val vibrantVioletColor = Color(0xFF9D4EDD)
+    val vibrantVioletColor = Color(0xFF9D4EDD) // Branded accent color for the developer section
     
+    // Resolve visual state for background waves
     val isDarkTheme = when(currentTheme) {
         Theme.DARK, Theme.DARK_BLUE -> true
         Theme.CUSTOM -> userTheme?.customIsDark ?: true
@@ -52,11 +55,13 @@ fun DeveloperScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Themed, animated background waves
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Transparent scaffold to show wavy background
             topBar = {
+                // Toolbar with centralized title and theme switcher
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { 
@@ -77,12 +82,14 @@ fun DeveloperScreen(
                             onThemeChange = onThemeChange
                         )
                     },
+                    // Glassmorphic top bar surface
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
                 )
             }
         ) { padding ->
+            // Use adaptive container to ensure content stays centered and readable on tablets
             AdaptiveScreenContainer(
                 modifier = Modifier
                     .padding(padding)
@@ -94,10 +101,12 @@ fun DeveloperScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // --- DEVELOPER AVATAR SECTION ---
                     Box(
                         contentAlignment = Alignment.Center, 
                         modifier = Modifier.size(if (isTablet) 220.dp else 180.dp)
                     ) {
+                        // Background Glow: Pulses in size and transparency
                         Box(
                             modifier = Modifier
                                 .size(if (isTablet) 160.dp else 130.dp)
@@ -111,6 +120,7 @@ fun DeveloperScreen(
                                 )
                         )
 
+                        // Main Portrait Surface with high elevation and branded border
                         Surface(
                             modifier = Modifier.size(if (isTablet) 180.dp else 150.dp),
                             shape = CircleShape,
@@ -122,6 +132,7 @@ fun DeveloperScreen(
                             )
                         ) {
                             Box(contentAlignment = Alignment.Center) {
+                                // Renders the official developer photo from assets
                                 AsyncImage(
                                     model = "file:///android_asset/images/users/avatars/KrzysztofOko.jpeg",
                                     contentDescription = "Official Photo",
@@ -134,6 +145,7 @@ fun DeveloperScreen(
                         }
                     }
                     
+                    // --- PERSONAL IDENTITY CARD ---
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                         shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
@@ -160,6 +172,7 @@ fun DeveloperScreen(
                         }
                     }
                     
+                    // --- PROJECT CONTEXT CARD ---
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
                         shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
@@ -187,6 +200,9 @@ fun DeveloperScreen(
                         }
                     }
 
+                    // --- TECHNICAL NAVIGATION ---
+
+                    // Links to technical build version history
                     Button(
                         onClick = onVersionClick,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -202,6 +218,7 @@ fun DeveloperScreen(
                         Text("Version Information", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                     }
 
+                    // Links to the development roadmap
                     Button(
                         onClick = onFutureFeaturesClick,
                         modifier = Modifier.fillMaxWidth().height(56.dp),

@@ -5,11 +5,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -50,7 +51,7 @@ class MainActivity : ComponentActivity() {
             val windowSizeClass = calculateWindowSizeClass(this)
             
             // GLOBAL THEME STATE: Controls the application's appearance (Defaults to DARK)
-            var currentTheme by remember { mutableStateOf(Theme.DARK) }
+            val (currentTheme, onThemeChange) = remember { mutableStateOf(Theme.DARK) }
             
             // PLAYER STATE: Reactive state to provide the media player instance to child components
             var playerState by remember { mutableStateOf<Player?>(null) }
@@ -59,8 +60,9 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(controllerFuture) {
                 controllerFuture?.addListener({
                     try {
-                        mediaController = controllerFuture?.get()
-                        playerState = mediaController
+                        val controller = controllerFuture?.get()
+                        mediaController = controller
+                        playerState = controller
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
@@ -71,7 +73,7 @@ class MainActivity : ComponentActivity() {
             GlyndwrProjectTheme(theme = currentTheme) {
                 AppNavigation(
                     currentTheme = currentTheme,
-                    onThemeChange = { newTheme -> currentTheme = newTheme },
+                    onThemeChange = onThemeChange,
                     externalPlayer = playerState,
                     windowSizeClass = windowSizeClass
                 )

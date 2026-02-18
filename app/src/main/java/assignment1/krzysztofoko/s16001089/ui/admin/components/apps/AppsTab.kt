@@ -1,10 +1,9 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Apps
+package assignment1.krzysztofoko.s16001089.ui.admin.components.apps
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.*
@@ -29,19 +28,40 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * AppsTab.kt
+ *
+ * This component provides the primary administrative interface for managing course applications.
+ * It features a comprehensive filtering system and an adaptive grid layout to efficiently 
+ * handle student enrolment requests, course changes, and withdrawals.
+ */
+
+/**
+ * ApplicationsTab Composable
+ *
+ * The main container for the enrolment management hub.
+ *
+ * @param viewModel The state holder for administrative operations.
+ * @param onReviewApp Callback to open the detailed review screen for a specific application.
+ */
 @Composable
 fun ApplicationsTab(
-    viewModel: AdminViewModel,
-    onReviewApp: (AdminApplicationItem) -> Unit
+    viewModel: AdminViewModel, // Administrative logic coordinator
+    onReviewApp: (AdminApplicationItem) -> Unit // Navigation trigger for full application details
 ) {
+    // Collect the stream of academic applications from the database via the ViewModel.
     val applications by viewModel.applications.collectAsState()
+    
+    // UI State for managing the current filter selection (All, Pending, etc.).
     var selectedFilter by remember { mutableStateOf("ALL") }
     
+    // Categorise applications by status for quick filtering and counter badges.
     val pending = applications.filter { it.details.status == "PENDING_REVIEW" }
     val enrolled = applications.filter { it.details.status == "ENROLLED" }
     val approved = applications.filter { it.details.status == "APPROVED" }
     val rejected = applications.filter { it.details.status == "REJECTED" }
 
+    // Configuration for the top filter pill items.
     val filterOptions = listOf(
         AppsFilterOption("ALL", "All", Icons.Default.FilterList, applications.size, MaterialTheme.colorScheme.primary),
         AppsFilterOption("PENDING", "Pending", Icons.Default.Timer, pending.size, Color(0xFFFBC02D)),
@@ -50,11 +70,12 @@ fun ApplicationsTab(
         AppsFilterOption("REJECTED", "Declined", Icons.Default.Cancel, rejected.size, MaterialTheme.colorScheme.error)
     )
 
-    val isTablet = isTablet()
-    val infiniteCount = Int.MAX_VALUE
+    val isTablet = isTablet() // Determine if device has a large screen for layout adjustments.
+    val infiniteCount = Int.MAX_VALUE // Used for the infinite carousel effect on mobile.
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % filterOptions.size)
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = if (isTablet) 0 else startPosition)
 
+    // Apply the user's selected filter to the master list.
     val filteredList = when(selectedFilter) {
         "ALL" -> applications
         "PENDING" -> pending
@@ -64,7 +85,7 @@ fun ApplicationsTab(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // --- Integrated Top Filter Menu ---
+        // --- TOP TOOLBAR: Status Filtering --- //
         Surface(
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
             tonalElevation = 2.dp
@@ -77,7 +98,7 @@ fun ApplicationsTab(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (isTablet) {
-                    // Static row for tablets
+                    // Regular row for tablet users.
                     items(filterOptions) { option ->
                         AppsFilterItem(
                             option = option,
@@ -86,7 +107,7 @@ fun ApplicationsTab(
                         )
                     }
                 } else {
-                    // Infinite loop for phones
+                    // Infinite scrolling filter bar for mobile users.
                     items(infiniteCount) { index ->
                         val option = filterOptions[index % filterOptions.size]
                         AppsFilterItem(
@@ -99,11 +120,12 @@ fun ApplicationsTab(
             }
         }
 
-        // --- Adaptive Content Area ---
-        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
-            val columns = if (isTablet) 2 else 1
+        // --- CONTENT AREA: Adaptive Application Grid --- //
+        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { screenIsTablet ->
+            val columns = if (screenIsTablet) 2 else 1 // Multi-column layout for tablets.
             
             if (filteredList.isEmpty()) {
+                // Display informative empty state if current filter has no results.
                 AppsEmptyState(
                     icon = filterOptions.find { it.id == selectedFilter }?.icon ?: Icons.Default.Inbox,
                     message = "No ${selectedFilter.lowercase()} applications found."
@@ -119,9 +141,10 @@ fun ApplicationsTab(
                     items(filteredList) { app ->
                         AdminApplicationCard(
                             app = app,
+                            // Immediate processing actions directly from the card.
                             onApprove = { viewModel.approveApplication(app.details.id, app.details.userId, app.course?.title ?: "Course") },
                             onReject = { viewModel.rejectApplication(app.details.id, app.details.userId, app.course?.title ?: "Course") },
-                            onCheck = { onReviewApp(app) }
+                            onCheck = { onReviewApp(app) } // Navigate to full detail review.
                         )
                     }
                 }
@@ -130,6 +153,11 @@ fun ApplicationsTab(
     }
 }
 
+/**
+ * AppsFilterItem Composable
+ *
+ * An interactive pill for the top filter bar.
+ */
 @Composable
 fun AppsFilterItem(
     option: AppsFilterOption,
@@ -159,6 +187,7 @@ fun AppsFilterItem(
                 modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(8.dp))
+            @Suppress("DEPRECATION")
             Text(
                 text = option.label,
                 style = MaterialTheme.typography.labelLarge,
@@ -166,6 +195,7 @@ fun AppsFilterItem(
                 color = if (isSelected) option.color else Color.Gray
             )
             Spacer(Modifier.width(6.dp))
+            // Badge showing the count of applications in this specific state.
             Surface(
                 color = if (isSelected) option.color else Color.Gray.copy(alpha = 0.2f),
                 shape = CircleShape
@@ -182,16 +212,21 @@ fun AppsFilterItem(
     }
 }
 
+/**
+ * AdminApplicationCard Composable
+ *
+ * Summarised view of a student's enrolment request.
+ */
 @Composable
 fun AdminApplicationCard(
-    app: AdminApplicationItem,
-    onApprove: () -> Unit,
-    onReject: () -> Unit,
-    onCheck: () -> Unit = {}
+    app: AdminApplicationItem, // The data wrapper for the application and related student/course info
+    onApprove: () -> Unit, // Handler for the confirm/approve button
+    onReject: () -> Unit, // Handler for the decline button
+    onCheck: () -> Unit = {} // Handler for opening full detail review
 ) {
     val sdf = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
-    val isChangeRequest = app.details.requestedCourseId != null
-    val isWithdrawal = app.details.isWithdrawal
+    val isChangeRequest = app.details.requestedCourseId != null // True if student wants to swap courses
+    val isWithdrawal = app.details.isWithdrawal // True if student wants to leave the institution
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -200,32 +235,40 @@ fun AdminApplicationCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
+            // --- HEADER: Basic Info & Status Badge --- //
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = app.student?.name ?: "Unknown Student", fontWeight = FontWeight.Black, fontSize = 18.sp)
                     
+                    // Visual indicators for specific request types.
                     if (isWithdrawal) {
                         Surface(color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
+                            @Suppress("DEPRECATION")
                             Text(text = "WITHDRAWAL REQUEST", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
                         }
                     } else if (isChangeRequest) {
                         Surface(color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
+                            @Suppress("DEPRECATION")
                             Text(text = "COURSE CHANGE", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
                         }
                     } else {
+                        @Suppress("DEPRECATION")
                         Text(text = app.course?.title ?: "Applied for Course", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                     }
                 }
+                // Custom badge showing current processing status (e.g., PENDING).
                 EnrollmentStatusBadge(status = app.details.status)
             }
             
             Spacer(modifier = Modifier.height(16.dp))
 
+            // --- NOTIFICATION BLOCKS: Detailed context for special requests --- //
             if (isWithdrawal) {
                 Surface(color = MaterialTheme.colorScheme.error.copy(alpha = 0.05f), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f)), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(12.dp))
+                        @Suppress("DEPRECATION")
                         Text("Student has requested to withdraw from this course.", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -234,12 +277,16 @@ fun AdminApplicationCard(
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Column(modifier = Modifier.weight(1f)) {
+                            @Suppress("DEPRECATION")
                             Text("FROM", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                            @Suppress("DEPRECATION")
                             Text(app.course?.title ?: "Unknown", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(horizontal = 8.dp).size(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
+                            @Suppress("DEPRECATION")
                             Text("TO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                            @Suppress("DEPRECATION")
                             Text(app.requestedCourse?.title ?: "New Program", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.tertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -247,16 +294,19 @@ fun AdminApplicationCard(
                 Spacer(modifier = Modifier.height(12.dp))
             }
             
+            // --- DATA ROWS: Summary of academic qualifications --- //
             AppDetailRowItem("Qualification", app.details.lastQualification)
             AppDetailRowItem("Institution", app.details.institution)
             AppDetailRowItem("Submitted", sdf.format(Date(app.details.submittedAt)))
             
             Spacer(modifier = Modifier.height(12.dp))
+            @Suppress("DEPRECATION")
             Text("Motivation Statement:", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             Text(text = app.details.motivationalText, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             
             Spacer(modifier = Modifier.height(20.dp))
             
+            // --- ACTION BUTTONS --- //
             Button(
                 onClick = onCheck,
                 modifier = Modifier.fillMaxWidth().height(44.dp),
@@ -268,6 +318,7 @@ fun AdminApplicationCard(
                 Text("Check Full Application", fontWeight = FontWeight.Bold)
             }
 
+            // Only show approval/rejection controls if the application is still being reviewed.
             if (app.details.status == "PENDING_REVIEW") {
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -294,6 +345,7 @@ fun AdminApplicationCard(
                     }
                 }
             } else if (app.details.status == "ENROLLED") {
+                // Secondary approval path for already enrolled students.
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = onApprove,
@@ -310,18 +362,30 @@ fun AdminApplicationCard(
     }
 }
 
+/**
+ * Reusable helper for displaying a labelled data value.
+ */
 @Composable
 fun AppDetailRowItem(label: String, value: String) {
     Row(modifier = Modifier.padding(vertical = 2.dp)) {
+        @Suppress("DEPRECATION")
         Text("$label: ", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.Gray)
+        @Suppress("DEPRECATION")
         Text(value, style = MaterialTheme.typography.bodySmall)
     }
 }
 
+/**
+ * Configuration data for the filter categories.
+ */
 data class AppsFilterOption(val id: String, val label: String, val icon: ImageVector, val count: Int, val color: Color)
 
+/**
+ * Standardised view displayed when a filter results in no applications.
+ */
 @Composable
 fun AppsEmptyState(icon: ImageVector, message: String) {
+    @Suppress("DEPRECATION")
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

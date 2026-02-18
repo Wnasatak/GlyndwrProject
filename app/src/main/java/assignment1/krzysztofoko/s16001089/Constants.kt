@@ -11,7 +11,7 @@ import assignment1.krzysztofoko.s16001089.data.Book
 object AppConstants {
     // --- Application Branding & Metadata ---
     // These constants define the app's identity and development status.
-    const val VERSION_NAME = "0.77.631 Under Development"
+    const val VERSION_NAME = "α 0.81.631 (Early Access)"
     const val INSTITUTION = "Wrexham Glyndŵr University"
     const val DEVELOPER_NAME = "Krzysztof Oko"
     const val STUDENT_ID = "S16001089"
@@ -292,7 +292,6 @@ object AppConstants {
     const val MSG_SAVE_CHANGES_DESC = "Do you want to save the changes to your review?"
     const val MSG_LOG_OFF_DESC = "Are you sure you want to sign off?"
     const val MSG_DEMO_MODE_DESC = "For this demonstration, your code is provided below, but please also check your email! 😊"
-    const val MSG_DEMO_MODE_DESC_2 = "For this demonstration, your code is provided below, but please also check your email! 😊"
     const val MSG_PAID_COURSE_LIMIT = "You can only be enrolled in one paid course at a time."
 
 
@@ -300,7 +299,7 @@ object AppConstants {
     // Informational strings for the 'What's New' and 'Roadmap' sections.
     const val VER_READER_TITLE = "ENHANCED PDF READER"
     const val VER_READER_DESC = "Introduced a high-performance PDF renderer with pinch-to-zoom, night mode, sepia mode, and full-screen reading capabilities."
-    const val VER_FINAL_DEMO_TITLE = "VERSION 1.0.0 (FINAL DEMO)"
+    const val VER_FINAL_DEMO_TITLE = "ALPHA VERSION 1.0.0 (Early Access)"
     const val VER_FINAL_DEMO_DESC = "The complete student hub experience is here! This final release brings polished security, interactive features, and a cohesive design across all platforms."
     const val VER_SECURITY_TITLE = "SECURE AUTHENTICATION"
     const val VER_SECURITY_DESC = "Added 2FA (Two-Factor Authentication) verification for all logins to ensure student data protection. Includes a simulated demo mode for presentations."

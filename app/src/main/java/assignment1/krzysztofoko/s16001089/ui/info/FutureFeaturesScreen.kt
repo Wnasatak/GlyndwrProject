@@ -23,15 +23,17 @@ import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 
 /**
  * Screen showcasing the development roadmap and planned upcoming features.
+ * Lists high-level future improvements like AI recommendations and offline mode.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FutureFeaturesScreen(
-    onBack: () -> Unit,
-    currentTheme: Theme,
-    userTheme: UserTheme? = null,
-    onThemeChange: (Theme) -> Unit
+    onBack: () -> Unit,               // Logic to navigate back to the previous screen
+    currentTheme: Theme,              // Active theme for UI styling
+    userTheme: UserTheme? = null,     // User-specific custom theme data
+    onThemeChange: (Theme) -> Unit    // Callback to update global theme state
 ) {
+    // Resolve background wave style based on current theme selection
     val isDarkTheme = when(currentTheme) {
         Theme.DARK, Theme.DARK_BLUE -> true
         Theme.CUSTOM -> userTheme?.customIsDark ?: true
@@ -39,14 +41,22 @@ fun FutureFeaturesScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Themed, animated wavy background
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Allow waves to show through
             topBar = {
+                // Centered Top App Bar with back navigation and theme toggle
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
-                    title = { Text(AppConstants.TITLE_FUTURE_ROADMAP, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    title = { 
+                        Text(
+                            text = AppConstants.TITLE_FUTURE_ROADMAP, 
+                            style = MaterialTheme.typography.titleLarge, 
+                            fontWeight = FontWeight.Bold
+                        ) 
+                    },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -64,6 +74,7 @@ fun FutureFeaturesScreen(
                 )
             }
         ) { padding ->
+            // Adaptive container ensures readability on wide screens (Tablets)
             AdaptiveScreenContainer(
                 modifier = Modifier
                     .padding(padding)
@@ -83,6 +94,8 @@ fun FutureFeaturesScreen(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = if (isTablet) Modifier else Modifier.padding(bottom = 8.dp)
                     )
+
+                    // --- PLANNED ROADMAP ITEMS ---
 
                     RoadmapItem(
                         icon = Icons.Default.SmartToy,
@@ -116,6 +129,7 @@ fun FutureFeaturesScreen(
 
                     Spacer(modifier = Modifier.height(if (isTablet) 24.dp else 8.dp))
 
+                    // Final confirmation action (Navigate back)
                     Button(
                         onClick = onBack,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -134,10 +148,14 @@ fun FutureFeaturesScreen(
     }
 }
 
+/**
+ * Reusable card component representing a single item in the development roadmap.
+ */
 @Composable
 private fun RoadmapItem(icon: ImageVector, title: String, description: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        // Semi-transparent surface matching the app's glassmorphic theme
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
@@ -146,6 +164,7 @@ private fun RoadmapItem(icon: ImageVector, title: String, description: String) {
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Visual accent for the roadmap icon
             Surface(
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(8.dp),
@@ -157,9 +176,17 @@ private fun RoadmapItem(icon: ImageVector, title: String, description: String) {
             }
             Spacer(Modifier.width(16.dp))
             Column {
-                Text(text = title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text(
+                    text = title, 
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = MaterialTheme.colorScheme.primary, 
+                    fontWeight = FontWeight.Bold
+                )
                 @Suppress("DEPRECATION")
-                Text(text = description, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = description, 
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }

@@ -1,8 +1,7 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Catalog
+package assignment1.krzysztofoko.s16001089.ui.admin.components.catalog
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,9 +25,27 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import coil.compose.AsyncImage
 
 /**
- * GearEditDialog provides a comprehensive administrative interface for adding or modifying
- * institutional gear and apparel. Features native system file picking for real image uploading.
- * Now fully optimized for smartphones using centralized Adaptive typography and spacing.
+ * GearEditDialog.kt
+ *
+ * This component provides a specialized administrative interface for managing university gear, 
+ * apparel, and merchandise. It supports complex product data including stock management, 
+ * SKU tracking, and physical attributes like sizes and materials.
+ *
+ * Key Features:
+ * - Dual Asset Support: Handles both primary and secondary product images via native file pickers.
+ * - Inventory Tracking: Integrated fields for stock counts, SKU, and branding.
+ * - Responsive Grid Layout: Adapts input field arrangements for phone and tablet form factors.
+ * - Adaptive Typography: Utilizes project-wide adaptive styling for a consistent visual identity.
+ */
+
+/**
+ * GearEditDialog Composable
+ *
+ * The primary modal for administrative gear and merchandise management.
+ *
+ * @param gear The [Gear] data model representing the item to be edited or created.
+ * @param onDismiss Callback invoked when the user cancels or closes the dialog.
+ * @param onSave Callback invoked with updated [Gear] data for persistence.
  */
 @Composable
 fun GearEditDialog(
@@ -36,11 +53,13 @@ fun GearEditDialog(
     onDismiss: () -> Unit, 
     onSave: (Gear) -> Unit
 ) {
-    // Mode Detection: Create vs Edit
+    // --- MODE & ADAPTIVE LOGIC --- //
+    // Detect if we are in 'Create' or 'Edit' mode based on initial data state.
     val isCreateMode = gear.title.isEmpty() && gear.price == 0.0
-    val isTablet = isTablet()
+    val isTablet = isTablet() // Centralized check for tablet UI optimizations.
 
-    // Local state management for form fields initialized with existing data
+    // --- STATE MANAGEMENT --- //
+    // Local reactive state for all editable gear properties.
     var title by remember { mutableStateOf(gear.title) }
     var price by remember { mutableStateOf(if (isCreateMode) "" else gear.price.toString()) }
     var description by remember { mutableStateOf(gear.description) }
@@ -57,15 +76,17 @@ fun GearEditDialog(
     var productTags by remember { mutableStateOf(gear.productTags) }
     var secondaryImageUrl by remember { mutableStateOf(gear.secondaryImageUrl ?: "") }
 
-    // UI visibility states for manual paths
+    // Visibility controls for manual URL input fields (alternative to file picking).
     var showUrlInputForPrimary by remember { mutableStateOf(false) }
     var showUrlInputForSecondary by remember { mutableStateOf(false) }
 
-    // NATIVE FILE PICKERS
+    // --- NATIVE FILE PICKERS --- //
+    // Launcher for selecting the primary product image from device storage.
     val primaryPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let { imageUrl = it.toString() } }
 
+    // Launcher for selecting an optional secondary (alternate) product image.
     val secondaryPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let { secondaryImageUrl = it.toString() } }
@@ -77,6 +98,7 @@ fun GearEditDialog(
         shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
         modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(0.94f),
         title = {
+            // --- HEADER: Contextual Icon and Title --- //
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
@@ -107,9 +129,9 @@ fun GearEditDialog(
                 verticalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 10.dp), 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()) // Ensures form accessibility.
             ) {
-                // PRIMARY IMAGE PREVIEW & UPLOAD
+                // --- SECTION: PRIMARY IMAGE PREVIEW & UPLOAD --- //
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Box(contentAlignment = Alignment.Center) {
                         Surface(
@@ -119,13 +141,15 @@ fun GearEditDialog(
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         ) {
                             if (imageUrl.isNotEmpty()) {
+                                // Live preview of the product's primary visual.
                                 AsyncImage(
                                     model = formatAssetUrl(imageUrl), 
-                                    contentDescription = null, 
+                                    contentDescription = "Primary Gear Image", 
                                     modifier = Modifier.fillMaxSize().padding(4.dp).clip(RoundedCornerShape(8.dp)), 
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
+                                // Default icon for items without an image.
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
                                         imageVector = Icons.Default.Checkroom,
@@ -141,6 +165,7 @@ fun GearEditDialog(
                     Spacer(Modifier.height(12.dp))
                     
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Triggers system picker for primary product image.
                         Button(
                             onClick = { primaryPickerLauncher.launch(arrayOf("image/*")) },
                             shape = RoundedCornerShape(8.dp),
@@ -153,6 +178,7 @@ fun GearEditDialog(
                             Text("Upload", style = AdaptiveTypography.hint(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         
+                        // Manual URL input toggle.
                         OutlinedButton(
                             onClick = { showUrlInputForPrimary = !showUrlInputForPrimary },
                             shape = RoundedCornerShape(8.dp),
@@ -178,7 +204,8 @@ fun GearEditDialog(
                     }
                 }
 
-                // BASIC INFO
+                // --- SECTION: BASIC INFO --- //
+                // Core product identification.
                 OutlinedTextField(
                     value = title, onValueChange = { title = it }, 
                     label = { Text("Product Title", style = AdaptiveTypography.label()) }, 
@@ -189,6 +216,7 @@ fun GearEditDialog(
                     singleLine = true
                 )
                 
+                // Adaptive layout for Brand and SKU fields.
                 if (isTablet) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(value = brand, onValueChange = { brand = it }, label = { Text("Brand", style = AdaptiveTypography.label()) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Label, null, modifier = Modifier.size(18.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
@@ -199,7 +227,8 @@ fun GearEditDialog(
                     OutlinedTextField(value = sku, onValueChange = { sku = it }, label = { Text("SKU", style = AdaptiveTypography.label()) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.QrCode, null, modifier = Modifier.size(16.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
                 }
 
-                // PRICING & STOCK
+                // --- SECTION: PRICING & STOCK --- //
+                // Financial and availability tracking.
                 if (isTablet) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price (£)", style = AdaptiveTypography.label()) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Payments, null, modifier = Modifier.size(18.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
@@ -210,6 +239,7 @@ fun GearEditDialog(
                     OutlinedTextField(value = stockCount, onValueChange = { stockCount = it }, label = { Text("Stock", style = AdaptiveTypography.label()) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), leadingIcon = { Icon(Icons.Default.Inventory2, null, modifier = Modifier.size(16.dp)) }, textStyle = AdaptiveTypography.caption(), singleLine = true)
                 }
 
+                // Marketing Description.
                 OutlinedTextField(
                     value = description, onValueChange = { description = it }, 
                     label = { Text("Description", style = AdaptiveTypography.label()) }, 
@@ -221,7 +251,8 @@ fun GearEditDialog(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                // PRODUCT SPECS
+                // --- SECTION: PRODUCT SPECS --- //
+                // Specialized physical attributes sub-form.
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(12.dp),
@@ -237,7 +268,8 @@ fun GearEditDialog(
                     }
                 }
 
-                // SECONDARY ASSETS
+                // --- SECTION: SECONDARY ASSETS --- //
+                // Management of supplementary product views.
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(12.dp),
@@ -247,6 +279,7 @@ fun GearEditDialog(
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Secondary Assets", style = AdaptiveTypography.sectionHeader(), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.secondary)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            // Secondary system picker.
                             Button(
                                 onClick = { secondaryPickerLauncher.launch(arrayOf("image/*")) }, 
                                 shape = RoundedCornerShape(8.dp), 
@@ -258,6 +291,7 @@ fun GearEditDialog(
                                 Spacer(Modifier.width(4.dp))
                                 Text("Add Image", style = AdaptiveTypography.hint(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
+                            // Secondary manual URL toggle.
                             OutlinedButton(
                                 onClick = { showUrlInputForSecondary = !showUrlInputForSecondary }, 
                                 shape = RoundedCornerShape(8.dp), 
@@ -275,6 +309,7 @@ fun GearEditDialog(
                     }
                 }
 
+                // Featured Store Listing Flag.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = isFeatured, onCheckedChange = { isFeatured = it }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary), modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(8.dp))
@@ -285,8 +320,10 @@ fun GearEditDialog(
             }
         },
         confirmButton = {
+            // --- ACTION: PERSIST CHANGES --- //
             Button(
                 onClick = { 
+                    // Maps local form state back to the [Gear] data model.
                     onSave(gear.copy(
                         title = title, price = price.toDoubleOrNull() ?: 0.0, 
                         description = description, imageUrl = imageUrl, category = category,
@@ -297,13 +334,14 @@ fun GearEditDialog(
                         secondaryImageUrl = if (secondaryImageUrl.isEmpty()) null else secondaryImageUrl
                     )) 
                 },
-                enabled = title.isNotBlank() && price.isNotBlank(),
+                enabled = title.isNotBlank() && price.isNotBlank(), // Requirement validation.
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth().height(if (isTablet) 50.dp else 44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) { Text(if (isCreateMode) "Add Gear" else "Save Changes", fontWeight = FontWeight.Bold, fontSize = if (isTablet) 16.sp else 14.sp) }
         },
         dismissButton = { 
+            // --- ACTION: CANCEL --- //
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { 
                 Text(if (isCreateMode) "Cancel" else "Discard", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = AdaptiveTypography.caption()) 
             } 

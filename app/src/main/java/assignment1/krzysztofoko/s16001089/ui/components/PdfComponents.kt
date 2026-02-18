@@ -36,6 +36,15 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
+ * PdfComponents.kt
+ *
+ * This file provides a high-performance PDF reading engine for the application. 
+ * It handles the complex task of loading PDF files from assets, rendering them into 
+ * high-resolution bitmaps, and providing an interactive viewer with zoom, pan, and 
+ * specialised reading modes (like night mode and sepia).
+ */
+
+/**
  * Enum defining available visual modes for reading PDFs.
  */
 enum class PdfReadingMode {
@@ -44,35 +53,56 @@ enum class PdfReadingMode {
     SEPIA      // Warm yellowish tint for eye comfort
 }
 
+/**
+ * PdfViewer Composable
+ *
+ * A sophisticated PDF reader component that provides a smooth, scrollable reading experience.
+ * It manages the entire lifecycle of a PDF document, from extraction and rendering to interactive display.
+ *
+ * Key features:
+ * - **On-Demand Rendering:** Uses `PdfRenderer` to convert PDF pages into memory-efficient bitmaps.
+ * - **Interactive Gestures:** Supports multi-touch pinch-to-zoom and panning.
+ * - **Visual Accessibility:** Offers different reading modes (Inverted, Sepia) and adjustable brightness.
+ * - **Responsive List:** Efficiently renders pages in a `LazyColumn` to handle large documents.
+ *
+ * @param pdfPath The asset-relative path to the PDF file.
+ * @param modifier Custom styling for the viewer container.
+ * @param readingMode The current visual filter applied to the pages.
+ * @param brightness Float (0.0 to 1.0) controlling the simulated backlight.
+ * @param scale The base magnification level.
+ * @param listState State for the scrollable list of pages.
+ * @param onPageCountReady Callback providing the total number of pages once loaded.
+ * @param onCurrentPageChanged Callback notifying the parent of the currently visible page index.
+ */
 @Composable
 fun PdfViewer(
-    pdfPath: String,                          // Path to the PDF file (e.g., file:///android_asset/...)
+    pdfPath: String,
     modifier: Modifier = Modifier,
-    readingMode: PdfReadingMode = PdfReadingMode.NORMAL, // Current color mode
-    brightness: Float = 1.0f,                 // Brightness level (0.2 to 1.0)
-    scale: Float = 1.0f,                      // Base zoom level from settings
-    listState: LazyListState = rememberLazyListState(), // State for scrolling list
-    onPageCountReady: (Int) -> Unit = {},     // Callback when total pages are known
-    onCurrentPageChanged: (Int) -> Unit = {}  // Callback when user scrolls to a new page
+    readingMode: PdfReadingMode = PdfReadingMode.NORMAL,
+    brightness: Float = 1.0f,
+    scale: Float = 1.0f,
+    listState: LazyListState = rememberLazyListState(),
+    onPageCountReady: (Int) -> Unit = {},
+    onCurrentPageChanged: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     
-    // State to hold rendered page bitmaps
+    // Internal state for the collection of rendered pages.
     var bitmaps by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     
-    // Internal state for pinch-to-zoom gestures
+    // State management for interactive transformations.
     var gestureScale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     
-    // Logic to handle multi-touch transformations (zoom and pan)
+    // Logic to handle multi-touch transformations (zoom and pan) simultaneously.
     val transformState = rememberTransformableState { zoomChange, offsetChange, _ ->
         gestureScale = (gestureScale * zoomChange).coerceIn(1f, 5f)
         offset += offsetChange
     }
 
-    // Monitor scroll position to calculate the current page index
+    // Monitor scroll position to update the current page label in the parent UI.
     val firstVisibleIndex by remember { derivedStateOf { listState.firstVisibleItemIndex } }
     LaunchedEffect(firstVisibleIndex) {
         if (bitmaps.isNotEmpty()) {
@@ -80,13 +110,13 @@ fun PdfViewer(
         }
     }
 
-    // Core logic to load, copy, and render the PDF pages from Assets
+    // Core IO Effect: Extracts the PDF and renders it on a background thread.
     LaunchedEffect(pdfPath) {
         isLoading = true
         error = null
         withContext(Dispatchers.IO) {
             try {
-                // Sanitize the asset path provided by the database
+                // 1. Normalise the asset path for the Android AssetManager.
                 var assetPath = pdfPath.trim()
                 assetPath = when {
                     assetPath.startsWith("file:///android_asset/") -> assetPath.substring("file:///android_asset/".length)
@@ -95,7 +125,7 @@ fun PdfViewer(
                 }
                 assetPath = assetPath.replace("//", "/")
                 
-                // Copy the PDF from Assets to a temporary file (PdfRenderer needs a file descriptor)
+                // 2. Prepare a temporary cache file. PdfRenderer requires a File Descriptor.
                 val file = File(context.cacheDir, "temp_render.pdf")
                 context.assets.open(assetPath).use { input ->
                     FileOutputStream(file).use { output ->
@@ -103,17 +133,17 @@ fun PdfViewer(
                     }
                 }
 
-                // Open the PDF for rendering
+                // 3. Initialise the native PdfRenderer.
                 val inputDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
                 val renderer = PdfRenderer(inputDescriptor)
                 val pageCount = renderer.pageCount
                 withContext(Dispatchers.Main) { onPageCountReady(pageCount) }
 
-                // Render each page into a Bitmap
+                // 4. Render every page into a high-fidelity Bitmap.
                 val loadedBitmaps = mutableListOf<Bitmap>()
                 for (i in 0 until pageCount) {
                     val page = renderer.openPage(i)
-                    // Scale the bitmap resolution (1080p width base)
+                    // Standardise width at 1080px for a sharp look across device types.
                     val width = 1080 
                     val height = (width.toFloat() / page.width * page.height).toInt()
                     
@@ -123,7 +153,7 @@ fun PdfViewer(
                     page.close()
                 }
                 
-                // Clean up native resources
+                // 5. Clean up temporary files and native handles.
                 renderer.close()
                 inputDescriptor.close()
                 file.delete() 
@@ -142,7 +172,7 @@ fun PdfViewer(
         }
     }
 
-    // Root container that handles pinch-to-zoom gestures
+    // Root Container: Handles the layout and touch interactions.
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -150,14 +180,14 @@ fun PdfViewer(
         contentAlignment = Alignment.Center
     ) {
         if (isLoading) {
-            CircularProgressIndicator() // Show spinner while processing
+            CircularProgressIndicator() // Show a spinner during initial render.
         } else if (error != null) {
-            Text(text = "Error: $error", color = Color.Red) // Show error message if loading fails
+            Text(text = "Error: $error", color = Color.Red) // Standard error feedback.
         } else {
-            // Combined scale: Base zoom + Pinch gesture zoom
+            // Aggregate all scale factors (base + interactive).
             val totalScale = gestureScale * scale
             
-            // Vertically scrollable list of pages
+            // Primary Render Surface: Displays the pages in a scrollable list.
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -166,7 +196,7 @@ fun PdfViewer(
                         when(readingMode) {
                             PdfReadingMode.INVERTED -> Color.Black
                             PdfReadingMode.SEPIA -> Color(0xFFF4ECD8)
-                            else -> Color(0xFF323639) // Classic dark gray reader bg
+                            else -> Color(0xFF323639) // Branded dark grey reader background.
                         }
                     )
                     .graphicsLayer(
@@ -179,12 +209,12 @@ fun PdfViewer(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 itemsIndexed(bitmaps) { index, bitmap ->
-                    // Apply visual mode filter (Inverted or Sepia) to the page bitmap
+                    // Dynamically apply colour filters to each page bitmap based on the reading mode.
                     val displayBitmap = remember(bitmap, readingMode) {
-                        applyColorFilter(bitmap, readingMode)
+                        applyColourFilter(bitmap, readingMode)
                     }
                     
-                    // Display each page as a Card
+                    // Display each page as a sophisticated Card.
                     Card(
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                         colors = CardDefaults.cardColors(
@@ -207,7 +237,7 @@ fun PdfViewer(
             }
         }
         
-        // Transparent black layer to simulate dimming for the brightness setting
+        // Backlight Simulation: A semi-transparent black overlay to control apparent brightness.
         if (brightness < 1.0f) {
             Box(
                 modifier = Modifier
@@ -216,7 +246,7 @@ fun PdfViewer(
             )
         }
         
-        // FAB to quickly reset the zoom level if the user has zoomed in
+        // Navigation Shortcut: Quick-reset button if the user is zoomed in.
         if (gestureScale > 1.1f || scale > 1.1f) {
             SmallFloatingActionButton(
                 onClick = { gestureScale = 1f; offset = Offset.Zero },
@@ -230,9 +260,14 @@ fun PdfViewer(
 }
 
 /**
- * Helper function to apply color matrices (Inversion/Sepia) to a source bitmap.
+ * Helper function: Applies specialised colour matrices (Inversion/Sepia) to a source bitmap.
+ * This is the core logic behind the reader's different visual modes.
+ *
+ * @param src The original rendered page bitmap.
+ * @param mode The desired reading mode filter.
+ * @return A new Bitmap with the requested visual transformation applied.
  */
-private fun applyColorFilter(src: Bitmap, mode: PdfReadingMode): Bitmap {
+private fun applyColourFilter(src: Bitmap, mode: PdfReadingMode): Bitmap {
     if (mode == PdfReadingMode.NORMAL) return src
     
     val bitmap = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
@@ -240,16 +275,16 @@ private fun applyColorFilter(src: Bitmap, mode: PdfReadingMode): Bitmap {
     val paint = Paint()
     
     val matrix = when(mode) {
-        // Inverts RGB values: NewValue = 255 - OldValue
+        // Night Mode Matrix: Inverts RGB values while preserving alpha.
         PdfReadingMode.INVERTED -> ColorMatrix(floatArrayOf(
             -1f, 0f, 0f, 0f, 255f,
             0f, -1f, 0f, 0f, 255f,
             0f, 0f, -1f, 0f, 255f,
             0f, 0f, 0f, 1f, 0f
         ))
-        // Desaturates and shifts blue channel for sepia effect
+        // Sepia Matrix: Desaturates the image and applies a warm tint to the blue channel.
         PdfReadingMode.SEPIA -> ColorMatrix().apply {
-            setSaturation(0f)
+            setSaturation(0f) // Start with grayscale.
             val sepiaMatrix = ColorMatrix(floatArrayOf(
                 1f, 0f, 0f, 0f, 0f,
                 0f, 1f, 0f, 0f, 0f,

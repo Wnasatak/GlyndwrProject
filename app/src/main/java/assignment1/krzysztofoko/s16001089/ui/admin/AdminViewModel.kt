@@ -1,15 +1,21 @@
 package assignment1.krzysztofoko.s16001089.ui.admin
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+/**
+ * AdminViewModel.kt
+ *
+ * This ViewModel acts as the command centre for the administrative dashboard.
+ */
 class AdminViewModel(
     private val userDao: UserDao,
     private val courseDao: CourseDao,
@@ -23,6 +29,18 @@ class AdminViewModel(
     private val auth = FirebaseAuth.getInstance()
     private val _currentAdminId = MutableStateFlow(auth.currentUser?.uid ?: "")
     
+    // UI state for background processing feedback.
+    private val _isProcessing = MutableStateFlow(false)
+    val isProcessing: StateFlow<Boolean> = _isProcessing.asStateFlow()
+
+    // State for temporary status messages (e.g. "Course deleted successfully")
+    private val _statusMessage = MutableStateFlow<String?>(null)
+    val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
+
+    fun clearStatusMessage() {
+        _statusMessage.value = null
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val currentAdminUser: StateFlow<UserLocal?> = _currentAdminId.flatMapLatest { id ->
         if (id.isNotEmpty()) userDao.getUserFlow(id) else flowOf(null)
@@ -71,11 +89,11 @@ class AdminViewModel(
     init {
         viewModelScope.launch {
             auditDao.performLogMaintenance()
-            addLog("MAINTENANCE", "SYSTEM", "Automated log cleanup performed.", "ADMIN")
+            addLog("MAINTENANCE", "SYSTEM", "Automated log cleanup performed.")
         }
     }
 
-    private fun addLog(action: String, targetId: String, details: String, type: String) {
+    private fun addLog(action: String, targetId: String, details: String) {
         viewModelScope.launch {
             val user = auth.currentUser
             auditDao.insertLog(SystemLog(
@@ -84,26 +102,25 @@ class AdminViewModel(
                 action = action,
                 targetId = targetId,
                 details = details,
-                logType = type
+                logType = "ADMIN"
             ))
         }
     }
 
     fun approveApplication(appId: String, studentId: String, courseTitle: String) {
         viewModelScope.launch {
+            _isProcessing.value = true
             val enrollment = userDao.getEnrollmentById(appId)
-            
-            // CRITICAL FIX: Always use the userId from the actual enrollment record
             val targetUserId = enrollment?.userId ?: studentId
             val student = userDao.getUserById(targetUserId)
 
             if (enrollment == null) {
-                addLog("ERROR", appId, "Attempted to approve a non-existent enrollment.", "ADMIN")
+                addLog("ERROR", appId, "Attempted to approve a non-existent enrolment.")
+                _isProcessing.value = false
                 return@launch
             }
 
             if (enrollment.isWithdrawal) {
-                // WITHDRAWAL: RESET TO USER
                 userDao.addEnrollmentHistory(EnrollmentHistory(
                     userId = targetUserId,
                     courseId = enrollment.courseId,
@@ -111,30 +128,28 @@ class AdminViewModel(
                     timestamp = System.currentTimeMillis()
                 ))
                 userDao.deleteEnrollmentById(appId)
-                userDao.deletePurchasesForUser(targetUserId) 
+                userDao.deletePurchasesForUser(targetUserId)
                 student?.let { 
                     userDao.upsertUser(it.copy(role = "user", discountPercent = 0.0))
                 }
-                addLog("APPROVED_WITHDRAWAL", appId, "Confirmed withdrawal for $courseTitle. Student role reverted to user and individual discounts cleared.", "ADMIN")
+                addLog("APPROVED_WITHDRAWAL", appId, "Confirmed withdrawal for $courseTitle.")
             } else if (enrollment.requestedCourseId != null) {
-                val newCourseId = enrollment.requestedCourseId!!
-                // RECORD HISTORY: Store both previous and new IDs correctly
+                val newCourseId = enrollment.requestedCourseId
                 userDao.addEnrollmentHistory(EnrollmentHistory(
                     userId = targetUserId,
-                    courseId = newCourseId, // The course changed TO
+                    courseId = newCourseId, 
                     status = "CHANGED",
                     timestamp = System.currentTimeMillis(),
-                    previousCourseId = enrollment.courseId // The course changed FROM
+                    previousCourseId = enrollment.courseId 
                 ))
                 userDao.updateEnrollmentAfterChange(appId, newCourseId, "APPROVED")
-                addLog("APPROVED_CHANGE", appId, "Approved course change to $courseTitle", "ADMIN")
+                addLog("APPROVED_CHANGE", appId, "Approved course change to $courseTitle")
             } else {
-                // REGULAR ENROLLMENT: SET TO STUDENT
                 userDao.updateEnrollmentStatus(appId, "APPROVED")
                 student?.let {
                     userDao.upsertUser(it.copy(role = "student"))
                 }
-                addLog("APPROVED", appId, "Approved enrollment for $courseTitle. Student role activated.", "ADMIN")
+                addLog("APPROVED", appId, "Approved enrolment for $courseTitle. Student role activated.")
             }
             
             userDao.addNotification(NotificationLocal(
@@ -146,16 +161,20 @@ class AdminViewModel(
                 timestamp = System.currentTimeMillis(),
                 type = "GENERAL"
             ))
+            delay(500)
+            _isProcessing.value = false
+            _statusMessage.value = "Application approved."
         }
     }
 
     fun rejectApplication(appId: String, studentId: String, courseTitle: String) {
         viewModelScope.launch {
+            _isProcessing.value = true
             val enrollment = userDao.getEnrollmentById(appId)
             val targetUserId = enrollment?.userId ?: studentId
             
             userDao.updateEnrollmentStatus(appId, "REJECTED")
-            addLog("REJECTED", appId, "Rejected enrollment for $courseTitle", "ADMIN")
+            addLog("REJECTED", appId, "Rejected enrolment for $courseTitle")
             
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
@@ -166,102 +185,159 @@ class AdminViewModel(
                 timestamp = System.currentTimeMillis(),
                 type = "GENERAL"
             ))
+            delay(500)
+            _isProcessing.value = false
+            _statusMessage.value = "Application rejected."
         }
     }
 
     fun saveUser(user: UserLocal) {
         viewModelScope.launch {
+            _isProcessing.value = true
             val existing = userDao.getUserById(user.id)
             userDao.upsertUser(user)
             val action = if (existing == null) "CREATED" else "EDITED"
-            addLog(action, user.id, "$action user account: ${user.email}", "ADMIN")
+            addLog(action, user.id, "$action user account: ${user.email}")
+            delay(500)
+            _isProcessing.value = false
+            _statusMessage.value = "User saved successfully."
         }
     }
 
     fun deleteUser(userId: String) {
         viewModelScope.launch {
+            _isProcessing.value = true
             userDao.deleteFullUserAccount(userId)
-            addLog("DELETED", userId, "Permanently removed user account", "ADMIN")
+            addLog("DELETED", userId, "Permanently removed user account")
+            delay(500)
+            _isProcessing.value = false
+            _statusMessage.value = "User deleted successfully."
         }
     }
 
     fun saveRoleDiscount(role: String, discount: Double) {
         viewModelScope.launch {
+            _isProcessing.value = true
             userDao.upsertRoleDiscount(RoleDiscount(role, discount))
-            addLog("DISCOUNT_UPDATED", role, "Set $role discount to $discount%", "ADMIN")
+            addLog("DISCOUNT_UPDATED", role, "Set $role discount to $discount%")
+            delay(500)
+            _isProcessing.value = false
+            _statusMessage.value = "Discount updated."
         }
     }
 
     fun saveBook(book: Book) {
         viewModelScope.launch { 
+            _isProcessing.value = true
             bookDao.upsertBook(book)
-            addLog("SAVED", book.id, "Saved book: ${book.title}", "ADMIN")
+            addLog("SAVED", book.id, "Saved book: ${book.title}")
+            delay(500)
+            _isProcessing.value = false
+            _statusMessage.value = "Book saved successfully."
         }
     }
 
     fun deleteBook(id: String) {
         viewModelScope.launch { 
-            bookDao.deleteBook(id) 
-            addLog("DELETED", id, "Removed book", "ADMIN")
+            _isProcessing.value = true
+            bookDao.deleteBook(id)
+            addLog("DELETED", id, "Removed book")
+            delay(500)
+            _isProcessing.value = false
+            _statusMessage.value = "Book deleted."
         }
     }
 
     fun saveAudioBook(audioBook: AudioBook) {
         viewModelScope.launch { 
+            _isProcessing.value = true
             audioBookDao.upsertAudioBook(audioBook)
-            addLog("SAVED", audioBook.id, "Saved audiobook: ${audioBook.title}", "ADMIN")
+            addLog("SAVED", audioBook.id, "Saved audiobook: ${audioBook.title}")
+            delay(500)
+            _isProcessing.value = false
+            _statusMessage.value = "Audiobook saved successfully."
         }
     }
 
     fun deleteAudioBook(id: String) {
         viewModelScope.launch { 
+            _isProcessing.value = true
             audioBookDao.deleteAudioBook(id) 
-            addLog("DELETED", id, "Removed audiobook", "ADMIN")
+            addLog("DELETED", id, "Removed audiobook")
+            delay(500)
+            _isProcessing.value = false
+            _statusMessage.value = "Audiobook deleted."
         }
     }
 
     fun saveCourse(course: Course) {
         viewModelScope.launch { 
-            courseDao.upsertCourse(course) 
-            addLog("SAVED", course.id, "Saved course: ${course.title}", "ADMIN")
+            _isProcessing.value = true
+            courseDao.upsertCourse(course)
+            addLog("SAVED", course.id, "Saved course: ${course.title}")
+            delay(800)
+            _isProcessing.value = false
+            _statusMessage.value = "Course saved successfully."
         }
     }
 
     fun deleteCourse(id: String) {
         viewModelScope.launch { 
+            _isProcessing.value = true
             courseDao.deleteCourse(id) 
-            addLog("DELETED", id, "Removed course", "ADMIN")
+            addLog("DELETED", id, "Removed course")
+            delay(800)
+            _isProcessing.value = false
+            _statusMessage.value = "Course deleted successfully."
         }
     }
 
     fun saveGear(gear: Gear) {
         viewModelScope.launch { 
-            gearDao.upsertGear(gear) 
-            addLog("SAVED", gear.id, "Saved gear: ${gear.title}", "ADMIN")
+            _isProcessing.value = true
+            gearDao.upsertGear(gear)
+            addLog("SAVED", gear.id, "Saved gear: ${gear.title}")
+            delay(500)
+            _isProcessing.value = false
+            _statusMessage.value = "Merchandise saved successfully."
         }
     }
 
     fun deleteGear(id: String) {
         viewModelScope.launch { 
+            _isProcessing.value = true
             gearDao.deleteGear(id) 
-            addLog("DELETED", id, "Removed gear", "ADMIN")
+            addLog("DELETED", id, "Removed gear")
+            delay(500)
+            _isProcessing.value = false
+            _statusMessage.value = "Item removed."
         }
     }
+
+    // --- CLASSROOM MANAGEMENT --- //
 
     fun getModulesForCourse(courseId: String): Flow<List<ModuleContent>> = 
         classroomDao.getModulesForCourse(courseId)
 
     fun saveModule(module: ModuleContent) {
         viewModelScope.launch {
+            _isProcessing.value = true
             classroomDao.upsertModule(module)
-            addLog("MODULE_SAVED", module.id, "Saved module: ${module.title}", "ADMIN")
+            addLog("MODULE_SAVED", module.id, "Saved module: ${module.title}")
+            delay(600)
+            _isProcessing.value = false
+            _statusMessage.value = "Module saved."
         }
     }
 
     fun deleteModule(moduleId: String) {
         viewModelScope.launch {
-            classroomDao.deleteModule(moduleId)
-            addLog("MODULE_DELETED", moduleId, "Deleted module", "ADMIN")
+            _isProcessing.value = true
+            classroomDao.deleteModule(moduleId) 
+            addLog("MODULE_DELETED", moduleId, "Deleted module")
+            delay(600)
+            _isProcessing.value = false
+            _statusMessage.value = "Module deleted."
         }
     }
 
@@ -270,15 +346,23 @@ class AdminViewModel(
 
     fun saveAssignment(assignment: Assignment) {
         viewModelScope.launch {
+            _isProcessing.value = true
             classroomDao.upsertAssignment(assignment)
-            addLog("TASK_SAVED", assignment.id, "Saved task: ${assignment.title}", "ADMIN")
+            addLog("TASK_SAVED", assignment.id, "Saved task: ${assignment.title}")
+            delay(600)
+            _isProcessing.value = false
+            _statusMessage.value = "Assignment saved."
         }
     }
 
     fun deleteAssignment(assignmentId: String) {
         viewModelScope.launch {
-            classroomDao.deleteAssignment(assignmentId)
-            addLog("TASK_DELETED", assignmentId, "Deleted task", "ADMIN")
+            _isProcessing.value = true
+            classroomDao.deleteAssignment(assignmentId) 
+            addLog("TASK_DELETED", assignmentId, "Deleted task")
+            delay(600)
+            _isProcessing.value = false
+            _statusMessage.value = "Assignment deleted."
         }
     }
 
@@ -290,6 +374,7 @@ class AdminViewModel(
         onComplete: (Int) -> Unit
     ) {
         viewModelScope.launch {
+            _isProcessing.value = true
             val usersToNotify = if (specificUserId != null) {
                 listOfNotNull(userDao.getUserById(specificUserId))
             } else {
@@ -312,14 +397,14 @@ class AdminViewModel(
             }
             
             val targetDesc = specificUserId ?: targetRoles.joinToString(", ")
-            addLog("BROADCAST", targetDesc, "Sent announcement to ${usersToNotify.size} users: $title", "ADMIN")
+            addLog("BROADCAST", targetDesc, "Sent announcement to ${usersToNotify.size} users: $title")
+            delay(1000)
+            _isProcessing.value = false
+            _statusMessage.value = "Broadcast sent successfully."
             onComplete(usersToNotify.size)
         }
     }
 
-    fun clearLogs() {
-        viewModelScope.launch { auditDao.clearAllLogs() }
-    }
 }
 
 data class AdminApplicationItem(
@@ -331,8 +416,8 @@ data class AdminApplicationItem(
 
 class AdminViewModelFactory(
     private val db: AppDatabase
-) : androidx.lifecycle.ViewModelProvider.Factory {
-    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")
         return AdminViewModel(
             db.userDao(),

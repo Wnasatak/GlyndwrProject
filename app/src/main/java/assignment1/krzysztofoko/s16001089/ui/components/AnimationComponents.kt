@@ -20,10 +20,15 @@ import kotlin.math.sin
 
 /**
  * Creates and remembers a pair of animated values (scale and alpha) for a "glow" or "pulse" effect.
+ * This is commonly used for loading states or highlighting important UI elements.
+ *
+ * @return A Pair containing the current scale (Float) and alpha (Float) values.
  */
 @Composable
 fun rememberGlowAnimation(): Pair<Float, Float> {
     val infiniteTransition = rememberInfiniteTransition(label = "glow")
+    
+    // Animate scale from 1.0 to 1.4 and back
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = 1.4f,
@@ -33,6 +38,8 @@ fun rememberGlowAnimation(): Pair<Float, Float> {
         ),
         label = "glowScale"
     )
+    
+    // Animate alpha from 0.2 to 0.6 and back
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.2f,
         targetValue = 0.6f,
@@ -46,11 +53,16 @@ fun rememberGlowAnimation(): Pair<Float, Float> {
 }
 
 /**
- * A composable that displays the Glyndwr University logo with a continuous 360-degree rotation.
+ * A composable that displays the Glyndŵr University logo with a continuous 360-degree rotation.
+ * Often used as a branded loading indicator.
+ *
+ * @param modifier Modifier to be applied to the logo image.
  */
 @Composable
 fun SpinningLogo(modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "logoSpin")
+    
+    // Continuous linear rotation from 0 to 360 degrees
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -73,7 +85,14 @@ fun SpinningLogo(modifier: Modifier = Modifier) {
 
 /**
  * Renders a dynamic, animated background with horizontal waves.
- * Updated to use Theme background and specific wave colors for each theme.
+ * The waves adapt their color based on the current application theme.
+ *
+ * @param isDarkTheme Boolean flag indicating if the dark theme is active.
+ * @param animationDuration Duration in milliseconds for one full wave cycle.
+ * @param wave1HeightFactor vertical position of the first wave (0.0 to 1.0).
+ * @param wave2HeightFactor vertical position of the second wave (0.0 to 1.0).
+ * @param wave1Amplitude Peak height of the first wave.
+ * @param wave2Amplitude Peak height of the second wave.
  */
 @Composable
 fun HorizontalWavyBackground(
@@ -85,6 +104,8 @@ fun HorizontalWavyBackground(
     wave2Amplitude: Float = 40f
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "wave")
+    
+    // Animate the phase to shift the sine wave horizontally
     val phase by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = (2 * PI).toFloat(),
@@ -98,6 +119,7 @@ fun HorizontalWavyBackground(
     val bgColor = MaterialTheme.colorScheme.background
     val currentTheme = LocalAppTheme.current
     
+    // Determine wave color based on the active theme
     val waveColor1 = when(currentTheme) {
         Theme.DARK -> WaveSlateDark1
         Theme.SKY -> WaveSky1
@@ -109,11 +131,13 @@ fun HorizontalWavyBackground(
     }
 
     ComposeCanvas(modifier = Modifier.fillMaxSize()) {
+        // Draw the solid background color
         drawRect(color = bgColor)
 
         val width = size.width
         val height = size.height
 
+        // Path for the first (primary) wave
         val path1 = Path().apply {
             moveTo(0f, height)
             for (x in 0..width.toInt() step 10) {
@@ -126,6 +150,7 @@ fun HorizontalWavyBackground(
         }
         drawPath(path1, color = waveColor1)
 
+        // Path for the second (secondary) wave with different parameters for a more complex look
         val path2 = Path().apply {
             moveTo(0f, height)
             for (x in 0..width.toInt() step 10) {
@@ -142,7 +167,14 @@ fun HorizontalWavyBackground(
 
 /**
  * Renders a dynamic, animated background with vertical waves.
- * Updated to use Theme background and specific wave colors for each theme.
+ * Typically used on side panels or as a decorative element on larger screens.
+ *
+ * @param isDarkTheme Boolean flag indicating if the dark theme is active.
+ * @param animationDuration Duration in milliseconds for one full wave cycle.
+ * @param wave1WidthFactor Horizontal position of the first wave.
+ * @param wave2WidthFactor Horizontal position of the second wave.
+ * @param wave1Amplitude Peak width of the first wave.
+ * @param wave2Amplitude Peak width of the second wave.
  */
 @Composable
 fun VerticalWavyBackground(
@@ -154,6 +186,8 @@ fun VerticalWavyBackground(
     wave2Amplitude: Float = 60f
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "wave")
+    
+    // Animate the phase to shift the sine wave vertically
     val phase by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = (2 * PI).toFloat(),
@@ -167,6 +201,7 @@ fun VerticalWavyBackground(
     val bgColor = MaterialTheme.colorScheme.background
     val currentTheme = LocalAppTheme.current
 
+    // Determine primary and secondary wave colors based on the active theme
     val waveColor1 = when(currentTheme) {
         Theme.DARK -> WaveSlateDark1
         Theme.SKY -> WaveSky1
@@ -188,10 +223,12 @@ fun VerticalWavyBackground(
     }
 
     ComposeCanvas(modifier = Modifier.fillMaxSize()) {
+        // Draw the solid background color
         drawRect(color = bgColor)
         val width = size.width
         val height = size.height
 
+        // Path for the first vertical wave
         val path1 = Path().apply {
             moveTo(width, 0f)
             for (y in 0..height.toInt() step 10) {
@@ -204,6 +241,7 @@ fun VerticalWavyBackground(
         }
         drawPath(path1, color = waveColor1)
 
+        // Path for the second vertical wave
         val path2 = Path().apply {
             moveTo(width, 0f)
             for (y in 0..height.toInt() step 10) {

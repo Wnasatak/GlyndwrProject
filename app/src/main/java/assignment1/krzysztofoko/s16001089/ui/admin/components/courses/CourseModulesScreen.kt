@@ -1,13 +1,17 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Courses
+package assignment1.krzysztofoko.s16001089.ui.admin.components.courses
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,14 +27,27 @@ import assignment1.krzysztofoko.s16001089.data.Course
 import assignment1.krzysztofoko.s16001089.data.ModuleContent
 import assignment1.krzysztofoko.s16001089.data.Assignment
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
-import assignment1.krzysztofoko.s16001089.ui.admin.components.Catalog.CatalogDeleteDialog
+import assignment1.krzysztofoko.s16001089.ui.admin.components.catalog.CatalogDeleteDialog
 import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveScreenContainer
 import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveWidths
+import assignment1.krzysztofoko.s16001089.ui.components.adaptiveWidth
 import java.util.UUID
 
 /**
- * Optimized Course Modules Screen.
- * Fully adaptive for tablets using AdaptiveScreenContainer.
+ * CourseModulesScreen.kt
+ *
+ * This screen provides a centralized hub for managing the educational structure of a course.
+ * It allows administrators to organize learning materials into modules and assignments.
+ */
+
+/**
+ * CourseModulesScreen Composable
+ *
+ * @param course Parent course.
+ * @param viewModel Administrative logic holder.
+ * @param isDarkTheme Visual flag.
+ * @param onBack Navigation callback.
+ * @param onModuleSelected Callback for module selection.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +79,7 @@ fun CourseModulesScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -83,7 +100,7 @@ fun CourseModulesScreen(
             )
         }
     ) { padding ->
-        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { _ ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
@@ -93,7 +110,7 @@ fun CourseModulesScreen(
                     HeaderSection(
                         title = "Course Syllabus",
                         subtitle = "Organize modules and learning content.",
-                        icon = Icons.Default.LibraryBooks,
+                        icon = Icons.AutoMirrored.Filled.LibraryBooks,
                         isDarkTheme = isDarkTheme
                     )
                 }
@@ -121,11 +138,11 @@ fun CourseModulesScreen(
     }
 
     if (moduleToEdit != null) {
-        ModuleEditDialog(
+        LocalModuleEditDialog(
             module = moduleToEdit!!,
             onDismiss = { moduleToEdit = null },
-            onSave = {
-                viewModel.saveModule(it)
+            onSave = { updatedModule ->
+                viewModel.saveModule(updatedModule)
                 moduleToEdit = null
             }
         )
@@ -143,6 +160,9 @@ fun CourseModulesScreen(
     }
 }
 
+/**
+ * ModuleItemCard Composable
+ */
 @Composable
 fun ModuleItemCard(
     module: ModuleContent,
@@ -203,6 +223,9 @@ fun ModuleItemCard(
     }
 }
 
+/**
+ * ModuleTasksOverlay Composable
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModuleTasksOverlay(
@@ -232,7 +255,7 @@ fun ModuleTasksOverlay(
                 },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -243,7 +266,7 @@ fun ModuleTasksOverlay(
                             moduleId = module.id,
                             title = "",
                             description = "",
-                            dueDate = System.currentTimeMillis() + 604800000 // +1 week
+                            dueDate = System.currentTimeMillis() + 604800000
                         )
                     }) {
                         Icon(Icons.Default.Add, contentDescription = "Add Task")
@@ -252,7 +275,7 @@ fun ModuleTasksOverlay(
             )
         }
     ) { padding ->
-        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+        AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { _ ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
@@ -262,7 +285,7 @@ fun ModuleTasksOverlay(
                     HeaderSection(
                         title = "Tasks & Assignments",
                         subtitle = "Create and manage student work.",
-                        icon = Icons.Default.Assignment,
+                        icon = Icons.AutoMirrored.Filled.Assignment,
                         isDarkTheme = isDarkTheme
                     )
                 }
@@ -289,11 +312,11 @@ fun ModuleTasksOverlay(
     }
 
     if (taskToEdit != null) {
-        AssignmentEditDialog(
+        LocalAssignmentEditDialog(
             assignment = taskToEdit!!,
             onDismiss = { taskToEdit = null },
-            onSave = {
-                viewModel.saveAssignment(it)
+            onSave = { updatedAssignment ->
+                viewModel.saveAssignment(updatedAssignment)
                 taskToEdit = null
             }
         )
@@ -311,6 +334,9 @@ fun ModuleTasksOverlay(
     }
 }
 
+/**
+ * TaskItemCard Composable
+ */
 @Composable
 fun TaskItemCard(
     task: Assignment,
@@ -333,7 +359,7 @@ fun TaskItemCard(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Assignment, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
+                    Icon(Icons.AutoMirrored.Filled.Assignment, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
                 }
             }
             
@@ -364,6 +390,9 @@ fun TaskItemCard(
     }
 }
 
+/**
+ * HeaderSection Composable
+ */
 @Composable
 private fun HeaderSection(title: String, subtitle: String, icon: ImageVector, isDarkTheme: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
@@ -394,3 +423,148 @@ private fun HeaderSection(title: String, subtitle: String, icon: ImageVector, is
         }
     }
 }
+
+/**
+ * LocalModuleEditDialog
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LocalModuleEditDialog(
+    module: ModuleContent,
+    onDismiss: () -> Unit,
+    onSave: (ModuleContent) -> Unit
+) {
+    val isCreateMode = module.title.isBlank()
+    var title by remember { mutableStateOf(module.title) }
+    var description by remember { mutableStateOf(module.description) }
+    var contentType by remember { mutableStateOf(module.contentType) }
+    var contentUrl by remember { mutableStateOf(module.contentUrl) }
+
+    BasicAlertDialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.padding(24.dp).adaptiveWidth(AdaptiveWidths.Standard)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+        ) {
+            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
+                Text(text = if (isCreateMode) "Add Syllabus Module" else "Edit Module Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(24.dp))
+                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Module Title") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Module Summary") }, modifier = Modifier.fillMaxWidth(), minLines = 3, shape = RoundedCornerShape(12.dp))
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(value = contentType, onValueChange = { contentType = it }, label = { Text("Content Type") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(value = contentUrl, onValueChange = { contentUrl = it }, label = { Text("Content URL") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                Spacer(Modifier.height(32.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Spacer(Modifier.width(12.dp))
+                    Button(onClick = { onSave(module.copy(title = title, description = description, contentType = contentType, contentUrl = contentUrl)) }, enabled = title.isNotBlank(), shape = RoundedCornerShape(12.dp)) { Text("Save") }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * LocalAssignmentEditDialog
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LocalAssignmentEditDialog(
+    assignment: Assignment,
+    onDismiss: () -> Unit,
+    onSave: (Assignment) -> Unit
+) {
+    val isCreateMode = assignment.title.isBlank()
+    var title by remember { mutableStateOf(assignment.title) }
+    var description by remember { mutableStateOf(assignment.description) }
+    var status by remember { mutableStateOf(assignment.status) }
+    var allowedFileTypes by remember { mutableStateOf(assignment.allowedFileTypes) }
+    var statusExpanded by remember { mutableStateOf(false) }
+    val statusOptions = listOf("PENDING", "SUBMITTED", "GRADED")
+
+    BasicAlertDialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.padding(24.dp).adaptiveWidth(AdaptiveWidths.Standard)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+        ) {
+            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = if (isCreateMode) "Create New Task" else "Edit Task Details", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                }
+                Spacer(Modifier.height(24.dp))
+                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Task Title") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Instructions") }, modifier = Modifier.fillMaxWidth(), minLines = 3, shape = RoundedCornerShape(12.dp))
+                Spacer(Modifier.height(16.dp))
+                ExposedDropdownMenuBox(expanded = statusExpanded, onExpandedChange = { statusExpanded = !statusExpanded }) {
+                    OutlinedTextField(value = status, onValueChange = {}, readOnly = true, label = { Text("Status") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusExpanded) }, modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                    ExposedDropdownMenu(expanded = statusExpanded, onDismissRequest = { statusExpanded = false }) {
+                        statusOptions.forEach { option -> DropdownMenuItem(text = { Text(text = option) }, onClick = { status = option; statusExpanded = false }) }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(value = allowedFileTypes, onValueChange = { allowedFileTypes = it }, label = { Text("Allowed Extensions") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                Spacer(Modifier.height(32.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Spacer(Modifier.width(12.dp))
+                    Button(onClick = { onSave(assignment.copy(title = title, description = description, status = status, allowedFileTypes = allowedFileTypes)) }, enabled = title.isNotBlank(), shape = RoundedCornerShape(12.dp)) { Text("Save") }
+                }
+            }
+        }
+    }
+}
+
+/*
+ * --- COMMENTED OUT FUNCTIONS FOR FUTURE ENHANCEMENTS ---
+ *
+ * Below are placeholder functions for features planned for future iterations.
+ */
+
+/*
+/**
+ * bulkDeleteModules
+ * 
+ * Allows the administrator to delete multiple modules in a single batch operation.
+ */
+private fun bulkDeleteModules(moduleIds: List<String>, viewModel: AdminViewModel) {
+    // moduleIds.forEach { id -> viewModel.deleteModule(id) }
+}
+*/
+
+/*
+/**
+ * exportSyllabusToPdf
+ * 
+ * Generates a formatted PDF document of the course curriculum for student distribution.
+ */
+private fun exportSyllabusToPdf(course: Course, modules: List<ModuleContent>) {
+    // Logic for PDF generation here using a library like iText or OpenPDF.
+}
+*/
+
+/*
+/**
+ * duplicateModule
+ * 
+ * Creates a carbon copy of an existing module to allow for rapid creation of similar modules.
+ */
+private fun duplicateModule(module: ModuleContent, viewModel: AdminViewModel) {
+    // val newModule = module.copy(id = UUID.randomUUID().toString(), title = "Copy of ${module.title}")
+    // viewModel.saveModule(newModule)
+}
+*/
