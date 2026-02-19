@@ -1,4 +1,4 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Users
+package assignment1.krzysztofoko.s16001089.ui.admin.components.users
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -26,6 +26,28 @@ import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import coil.compose.AsyncImage
 
+/**
+ * UserEditDialog.kt
+ *
+ * This component provides a comprehensive administrative interface for creating or modifying 
+ * institutional user accounts. It manages sensitive profile data including contact 
+ * information, financial balances, and system-wide roles.
+ *
+ * Key Features:
+ * - Reactive Form State: Manages temporary buffers for all user profile fields.
+ * - Image Picker Integration: Allows admins to upload profile photos directly from the device gallery.
+ * - Dynamic Role Configuration: Employs a Material 3 Exposed Dropdown for strictly governed role assignment.
+ * - Adaptive Layout: Incorporates a scrollable column to ensure the large form remains accessible on compact screens.
+ */
+
+/**
+ * Main form for user account administration.
+ *
+ * @param user The initial user data to populate the form (or a blank template for new users).
+ * @param isNew Flag determining if the dialog is in "Creation" mode or "Edit" mode.
+ * @param onDismiss Callback invoked when the admin cancels the operation.
+ * @param onSave Callback invoked with the updated [UserLocal] object upon confirmation.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserEditDialog(
@@ -34,6 +56,8 @@ fun UserEditDialog(
     onDismiss: () -> Unit,
     onSave: (UserLocal) -> Unit
 ) {
+    // --- FORM BUFFERS ---
+    // These states hold the current input values before they are committed to the database.
     var name by remember { mutableStateOf(user.name) }
     var title by remember { mutableStateOf(user.title ?: "") }
     var email by remember { mutableStateOf(user.email) }
@@ -43,15 +67,15 @@ fun UserEditDialog(
     var role by remember { mutableStateOf(user.role) }
     var phoneNumber by remember { mutableStateOf(user.phoneNumber ?: "") }
 
-    // Role Dropdown State
+    // --- DROPDOWN & MEDIA LOGIC ---
     var roleExpanded by remember { mutableStateOf(false) }
     val roles = listOf("student", "teacher", "tutor", "admin")
 
-    // Image Picker Integration
+    // Activity Result Launcher for selecting a profile image from the system gallery.
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { photoUrl = it.toString() }
+        uri?.let { photoUrl = it.toString() } // Store the local URI as the new photo source.
     }
 
     AlertDialog(
@@ -61,9 +85,20 @@ fun UserEditDialog(
         shape = RoundedCornerShape(28.dp),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.PersonAdd, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                // High-impact context icon (PersonAdd for new, otherwise Person).
+                Icon(
+                    imageVector = if (isNew) Icons.Default.PersonAdd else Icons.Default.ManageAccounts, 
+                    contentDescription = null, 
+                    tint = MaterialTheme.colorScheme.primary, 
+                    modifier = Modifier.size(24.dp)
+                )
                 Spacer(Modifier.width(12.dp))
-                Text(if (isNew) "Create New User" else "Edit User Account", fontWeight = FontWeight.Black, fontSize = 20.sp)
+                @Suppress("DEPRECATION")
+                Text(
+                    text = if (isNew) "Create New User" else "Edit User Account", 
+                    fontWeight = FontWeight.Black, 
+                    fontSize = 20.sp
+                )
             }
         },
         text = {
@@ -73,7 +108,8 @@ fun UserEditDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Friendly Photo Selector
+                // --- AVATAR SELECTION AREA ---
+                // Interactive profile picture component with an integrated "Edit" badge.
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
@@ -91,15 +127,16 @@ fun UserEditDialog(
                             if (photoUrl.isNotEmpty()) {
                                 AsyncImage(
                                     model = photoUrl,
-                                    contentDescription = null,
+                                    contentDescription = "Profile Preview",
                                     modifier = Modifier.fillMaxSize().clip(CircleShape),
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
-                                Icon(Icons.Default.AddAPhoto, null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Default.AddAPhoto, "Change Photo", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
+                    // Small floating badge indicating the avatar is editable.
                     Surface(
                         modifier = Modifier.align(Alignment.BottomEnd).size(32.dp),
                         shape = CircleShape,
@@ -110,7 +147,9 @@ fun UserEditDialog(
                     }
                 }
 
-                // Friendly Input Group
+                // --- CORE PROFILE INFORMATION ---
+                
+                // Institutional Title (e.g., Professor, Dr., Mr.)
                 OutlinedTextField(
                     value = title, onValueChange = { title = it }, 
                     label = { Text("Title (Prof, Dr, etc.)") }, 
@@ -119,6 +158,7 @@ fun UserEditDialog(
                     shape = RoundedCornerShape(12.dp)
                 )
                 
+                // Full Legal Name
                 OutlinedTextField(
                     value = name, onValueChange = { name = it }, 
                     label = { Text("Full Name") }, 
@@ -127,6 +167,7 @@ fun UserEditDialog(
                     shape = RoundedCornerShape(12.dp)
                 )
 
+                // Email Address (Primary key - usually locked for existing users)
                 OutlinedTextField(
                     value = email, onValueChange = { email = it }, 
                     label = { Text("Email Address") }, 
@@ -136,7 +177,8 @@ fun UserEditDialog(
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                // Role Dropdown Selector
+                // --- SYSTEM ROLE ASSIGNMENT ---
+                // strictly controlled dropdown to prevent invalid role strings.
                 ExposedDropdownMenuBox(
                     expanded = roleExpanded,
                     onExpandedChange = { roleExpanded = !roleExpanded }
@@ -145,7 +187,7 @@ fun UserEditDialog(
                         value = role.replaceFirstChar { it.uppercase() },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("System Role") },
+                        label = { Text("Institutional Role") },
                         leadingIcon = { Icon(Icons.Default.Shield, null, modifier = Modifier.size(20.dp)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleExpanded) },
                         modifier = Modifier.menuAnchor().fillMaxWidth(),
@@ -170,26 +212,30 @@ fun UserEditDialog(
                     }
                 }
 
+                // --- FINANCIAL & CONTACT INFO ---
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Manual Balance Adjustment (for corrections or scholarships)
                     OutlinedTextField(
                         value = balance, onValueChange = { balance = it }, 
-                        label = { Text("Balance (£)") }, 
+                        label = { Text("Wallet Balance (£)") }, 
                         leadingIcon = { Icon(Icons.Default.AccountBalanceWallet, null, modifier = Modifier.size(18.dp)) },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     )
+                    // Institutional Contact Number
                     OutlinedTextField(
                         value = phoneNumber, onValueChange = { phoneNumber = it }, 
-                        label = { Text("Phone") }, 
+                        label = { Text("Phone Number") }, 
                         leadingIcon = { Icon(Icons.Default.Phone, null, modifier = Modifier.size(18.dp)) },
                         modifier = Modifier.weight(1.2f),
                         shape = RoundedCornerShape(12.dp)
                     )
                 }
 
+                // Residential or Postal Address
                 OutlinedTextField(
                     value = address, onValueChange = { address = it }, 
-                    label = { Text("Home Address") }, 
+                    label = { Text("Primary Address") }, 
                     leadingIcon = { Icon(Icons.Default.HomeWork, null, modifier = Modifier.size(20.dp)) },
                     modifier = Modifier.fillMaxWidth(), 
                     minLines = 2,
@@ -198,6 +244,7 @@ fun UserEditDialog(
             }
         },
         confirmButton = {
+            // Validation: Ensure core identity fields are populated before saving.
             Button(
                 enabled = name.isNotEmpty() && email.isNotEmpty(),
                 onClick = {
@@ -214,11 +261,22 @@ fun UserEditDialog(
                 },
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) { Text(if (isNew) "Create User" else "Save Changes", fontWeight = FontWeight.Bold) }
+            ) { 
+                @Suppress("DEPRECATION")
+                Text(
+                    text = if (isNew) "Confirm Registration" else "Commit Changes", 
+                    fontWeight = FontWeight.Bold
+                ) 
+            }
         },
         dismissButton = { 
+            @Suppress("DEPRECATION")
             TextButton(onClick = onDismiss) { 
-                Text("Cancel", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) 
+                Text(
+                    text = "Discard Edits", 
+                    color = MaterialTheme.colorScheme.primary, 
+                    fontWeight = FontWeight.Bold
+                ) 
             } 
         }
     )

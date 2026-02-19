@@ -3,8 +3,26 @@ package assignment1.krzysztofoko.s16001089.data
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * AppDaos.kt
+ *
+ * This file serves as the core persistence layer definition for the Room database.
+ * It contains all Entity definitions (tables) and Data Access Objects (DAOs) required
+ * to manage local data across the application's different modules (Staff, Student, Tutor).
+ *
+ * Key Areas Covered:
+ * 1. Inventory Management (Books, Audiobooks, Courses, Gear)
+ * 2. User & Personalisation (Local User Profiles, Themes)
+ * 3. Commerce & Finance (Purchases, Invoices, Wallet Transactions)
+ * 4. Academic Workflows (Enrolments, Assignments, History)
+ * 5. Social & Feedback (Reviews, Interactions)
+ */
+
 const val LOCAL_USER_ID = "local_student_001"
 
+/**
+ * Entity representing a link between a Tutor and a Course.
+ */
 @Entity(tableName = "assigned_courses", primaryKeys = ["tutorId", "courseId"])
 data class AssignedCourse(
     val tutorId: String,
@@ -12,6 +30,9 @@ data class AssignedCourse(
     val assignedAt: Long = System.currentTimeMillis()
 )
 
+/**
+ * DAO for managing tutor assignments.
+ */
 @Dao
 interface AssignedCourseDao {
     @Query("SELECT * FROM assigned_courses WHERE tutorId = :tutorId")
@@ -27,6 +48,9 @@ interface AssignedCourseDao {
     suspend fun deleteAll()
 }
 
+/**
+ * DAO for managing the local academic book catalogue.
+ */
 @Dao
 interface BookDao {
     @Query("SELECT * FROM books")
@@ -48,6 +72,9 @@ interface BookDao {
     suspend fun deleteAll()
 }
 
+/**
+ * DAO for managing audio-based learning materials.
+ */
 @Dao
 interface AudioBookDao {
     @Query("SELECT * FROM audiobooks")
@@ -69,6 +96,9 @@ interface AudioBookDao {
     suspend fun deleteAll()
 }
 
+/**
+ * DAO for managing university courses and curriculum metadata.
+ */
 @Dao
 interface CourseDao {
     @Query("SELECT * FROM courses")
@@ -90,6 +120,10 @@ interface CourseDao {
     suspend fun deleteAll()
 }
 
+/**
+ * DAO for managing official university merchandise and gear.
+ * Includes inventory control logic.
+ */
 @Dao
 interface GearDao {
     @Query("SELECT * FROM gear")
@@ -107,6 +141,9 @@ interface GearDao {
     @Query("SELECT * FROM gear WHERE id = :id")
     suspend fun getGearById(id: String): Gear?
 
+    /**
+     * Atomically reduces stock count for an item, ensuring it doesn't drop below zero.
+     */
     @Query("UPDATE gear SET stockCount = CASE WHEN stockCount >= :quantity THEN stockCount - :quantity ELSE 0 END WHERE id = :id")
     suspend fun reduceStock(id: String, quantity: Int)
 
@@ -117,6 +154,10 @@ interface GearDao {
     suspend fun deleteAll()
 }
 
+/**
+ * Local representation of a university member.
+ * Stores role-based permissions and financial balance.
+ */
 @Entity(tableName = "users_local")
 data class UserLocal(
     @PrimaryKey val id: String,
@@ -132,6 +173,9 @@ data class UserLocal(
     val discountPercent: Double = 0.0
 )
 
+/**
+ * Entity for storing complex UI theme preferences and custom colour definitions.
+ */
 @Entity(tableName = "user_themes")
 data class UserTheme(
     @PrimaryKey val userId: String,
@@ -156,6 +200,9 @@ data class UserTheme(
     val customIsDark: Boolean = true
 )
 
+/**
+ * DAO for managing user interface customisations.
+ */
 @Dao
 interface UserThemeDao {
     @Query("SELECT * FROM user_themes WHERE userId = :userId")
@@ -171,9 +218,15 @@ interface UserThemeDao {
     suspend fun deleteTheme(userId: String)
 }
 
+/**
+ * Local record for wishlist tracking.
+ */
 @Entity(tableName = "wishlist", primaryKeys = ["userId", "productId"])
 data class WishlistItem(val userId: String, val productId: String, val addedAt: Long = System.currentTimeMillis())
 
+/**
+ * Audit record for a successful user purchase.
+ */
 @Entity(tableName = "purchases")
 data class PurchaseItem(
     @PrimaryKey val purchaseId: String, 
@@ -189,6 +242,9 @@ data class PurchaseItem(
     val orderConfirmation: String? = null
 )
 
+/**
+ * Formal financial record generated after a commerce transaction.
+ */
 @Entity(tableName = "invoices")
 data class Invoice(
     @PrimaryKey val invoiceNumber: String,
@@ -208,6 +264,9 @@ data class Invoice(
     val billingAddress: String? = null
 )
 
+/**
+ * Entity for tracking in-app alerts and notifications.
+ */
 @Entity(tableName = "notifications")
 data class NotificationLocal(
     @PrimaryKey val id: String,
@@ -220,6 +279,9 @@ data class NotificationLocal(
     val type: String = "GENERAL"
 )
 
+/**
+ * Recent search query tracking for the user search bar.
+ */
 @Entity(tableName = "search_history")
 data class SearchHistoryItem(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
@@ -228,6 +290,9 @@ data class SearchHistoryItem(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+/**
+ * Tracks modular payment progress for university courses.
+ */
 @Entity(tableName = "course_installments", primaryKeys = ["userId", "courseId"])
 data class CourseInstallment(
     val userId: String,
@@ -238,9 +303,15 @@ data class CourseInstallment(
     val lastPaymentDate: Long = System.currentTimeMillis()
 )
 
+/**
+ * Tracking for recently viewed products to power recommendation engines.
+ */
 @Entity(tableName = "history", primaryKeys = ["userId", "productId"])
 data class HistoryItem(val userId: String, val productId: String, val viewedAt: Long = System.currentTimeMillis())
 
+/**
+ * Local storage for product reviews and feedback.
+ */
 @Entity(tableName = "reviews")
 data class ReviewLocal(
     @PrimaryKey(autoGenerate = true) val reviewId: Int = 0,
@@ -256,6 +327,9 @@ data class ReviewLocal(
     val dislikes: Int = 0
 )
 
+/**
+ * Tracks unique interactions (Likes/Dislikes) to prevent duplicate votes.
+ */
 @Entity(tableName = "review_interactions", primaryKeys = ["reviewId", "userId"])
 data class ReviewInteraction(
     val reviewId: Int,
@@ -264,6 +338,9 @@ data class ReviewInteraction(
     val interactionType: String
 )
 
+/**
+ * Ledger for the user's digital wallet.
+ */
 @Entity(tableName = "wallet_history")
 data class WalletTransaction(
     @PrimaryKey val id: String,
@@ -278,6 +355,9 @@ data class WalletTransaction(
     val purchaseId: String? = null
 )
 
+/**
+ * Extensive data structure for course enrolment applications and review metadata.
+ */
 @Entity(tableName = "course_enrollment_details")
 data class CourseEnrollmentDetails(
     @PrimaryKey val id: String, // userId_courseId
@@ -302,6 +382,9 @@ data class CourseEnrollmentDetails(
     val submittedAt: Long = System.currentTimeMillis()
 )
 
+/**
+ * Log entry for academic enrolment changes (audit trail).
+ */
 @Entity(tableName = "enrollment_history")
 data class EnrollmentHistory(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
@@ -312,12 +395,19 @@ data class EnrollmentHistory(
     val previousCourseId: String? = null
 )
 
+/**
+ * Configuration for global role-based pricing perks.
+ */
 @Entity(tableName = "global_discounts")
 data class RoleDiscount(
     @PrimaryKey val role: String, // "admin", "student", "teacher", "user"
     val discountPercent: Double
 )
 
+/**
+ * Comprehensive DAO managing user profiles, commerce, social features, and academic status.
+ * This is the primary interface for user-centric data operations.
+ */
 @Dao
 interface UserDao {
     @Query("SELECT * FROM users_local WHERE id = :id")
@@ -335,6 +425,9 @@ interface UserDao {
     @Query("DELETE FROM users_local WHERE id = :userId")
     suspend fun deleteUserOnly(userId: String)
 
+    /**
+     * Atomically removes all data associated with a specific user (GDPR compliance).
+     */
     @Transaction
     suspend fun deleteFullUserAccount(userId: String) {
         deleteWishlistForUser(userId)
@@ -492,6 +585,10 @@ interface UserDao {
     @Query("SELECT * FROM review_interactions WHERE reviewId = :reviewId")
     fun getInteractionsForReview(reviewId: Int): Flow<List<ReviewInteraction>>
 
+    /**
+     * Logic for toggling a user's reaction to a review.
+     * Prevents multiple reactions and manages like/dislike counts automatically.
+     */
     @Transaction
     suspend fun toggleInteraction(reviewId: Int, userId: String, userName: String, type: String) {
         val existing = getInteraction(reviewId, userId)
@@ -500,7 +597,7 @@ interface UserDao {
             deleteInteraction(reviewId, userId)
             if (existing.interactionType == type) return
         }
-        if (type == "LIKE") incrementLikes(reviewId) else decrementDislikes(reviewId)
+        if (type == "LIKE") incrementLikes(reviewId) else incrementDislikes(reviewId)
         insertInteraction(ReviewInteraction(reviewId, userId, userName, type))
     }
 

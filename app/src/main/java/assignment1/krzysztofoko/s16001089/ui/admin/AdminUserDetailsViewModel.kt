@@ -15,61 +15,92 @@ import kotlinx.coroutines.launch
  * It aggregates a vast array of student-specific data streams, including browsing history,
  * financial transactions, academic enrolments, and social activity (reviews).
  * 
- * It also provides the administrative logic for updating student profiles, changing
- * enrolment statuses, and moderating user-generated content.
+ * Key Responsibilities:
+ * - Reactive Data Aggregation: Combines multiple database flows to provide a unified student profile.
+ * - Administrative Logic: Handles profile updates, enrolment status changes, and content moderation.
+ * - Audit Integration: Records all administrative actions performed on student data.
  */
 class AdminUserDetailsViewModel(
-    private val userId: String, // The ID of the student being managed.
-    private val userDao: UserDao, // DAO for user-centric data.
-    courseDao: CourseDao, // Injected for enrolment management logic.
-    classroomDao: ClassroomDao, // Injected for VLE data access.
-    private val auditDao: AuditDao, // DAO for recording admin interventions.
-    bookRepository: BookRepository // Repository for master catalogue access.
+    private val userId: String, // The unique identifier of the user being managed.
+    private val userDao: UserDao, // Access to user profile, wishlist, and financial records.
+    courseDao: CourseDao, // Access to global course catalog for enrolment logic.
+    classroomDao: ClassroomDao, // Access to module grades and academic progress.
+    private val auditDao: AuditDao, // records administrative interventions for compliance.
+    bookRepository: BookRepository // Access to the master product catalogue.
 ) : ViewModel() {
 
-    private val auth = FirebaseAuth.getInstance() // Handle for current admin session.
+    private val auth = FirebaseAuth.getInstance() // Handle for identifying the active administrator.
     
-    // Internal state for the student's profile data.
+    // --- STATE MANAGEMENT ---
+    // Internal flow for the student's core profile record.
     private val _user = MutableStateFlow<UserLocal?>(null)
     val user = _user.asStateFlow()
 
-    // --- AGGREGATED DATA STREAMS --- //
+    // --- REACTIVE DATA STREAMS --- //
 
-    // Master list of all books/courses for cross-referencing.
+    /**
+     * Master Catalogue Flow: 
+     * Provides all products (Books, Courses, Gear) available in the system.
+     * Used as a lookup table for cross-referencing user activity IDs.
+     */
     val allBooks = bookRepository.getAllCombinedData(userId)
-        .map { it } // Mapping directly as the list is guaranteed non-null.
+        .map { it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // All invoices issued to this specific student.
+    /**
+     * Financial Records:
+     * Stream of all university invoices issued to this specific student.
+     */
     val invoices = userDao.getInvoicesForUser(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // The student's historical search queries for auditing.
+    /**
+     * Audit Information:
+     * Provides the historical search queries made by the student.
+     */
     val searchHistory = userDao.getRecentSearches(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Every review and comment posted by this student.
+    /**
+     * Social Activity:
+     * All reviews and comments authored by the student for moderation.
+     */
     val allReviews = userDao.getReviewsForUser(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Current academic application and enrolment records.
+    /**
+     * Academic Status:
+     * Current course applications and active enrolment records.
+     */
     val courseEnrollments = userDao.getEnrollmentsForUserFlow(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Live grade data from the virtual learning environment.
+    /**
+     * Performance Data:
+     * Real-time grades and module submissions from the VLE.
+     */
     val userGrades = classroomDao.getAllGradesForUser(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Complete transaction history for the student's university wallet.
+    /**
+     * Ledger History:
+     * Detailed chronological log of all deposits and expenditures.
+     */
     val transactions = userDao.getWalletHistory(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Derived: Recent items the student has browsed.
+    /**
+     * DERIVED FLOW: Browse History
+     * Resolves a list of product IDs into full Book/Product objects for UI display.
+     */
     val browseHistory = combine(allBooks, userDao.getHistoryIds(userId)) { books, ids ->
         ids.mapNotNull { id -> books.find { it.id == id } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Derived: Items currently in the student's wishlist.
+    /**
+     * DERIVED FLOW: Wishlist
+     * Combines wishlist timestamps with product data to show exactly what the student desires.
+     */
     val wishlist = combine(allBooks, userDao.getWishlistItems(userId)) { books, wishItems ->
         wishItems.mapNotNull { wish -> 
             books.find { it.id == wish.productId }?.let { book ->
@@ -78,29 +109,42 @@ class AdminUserDetailsViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Derived: Store items the student has commented on.
+    /**
+     * DERIVED FLOW: Engaged Products
+     * Items that the student has actively reviewed or commented on.
+     */
     val commentedBooks = combine(allBooks, userDao.getCommentedProductIds(userId)) { books, ids ->
         ids.mapNotNull { id -> books.find { it.id == id } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Derived: List of all products and courses currently owned by the student.
+    /**
+     * DERIVED FLOW: Digital Library
+     * All products and courses currently successfully purchased by the user.
+     */
     val purchasedBooks = combine(allBooks, userDao.getPurchaseIds(userId)) { books, ids ->
         ids.mapNotNull { id -> books.find { it.id == id } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // List of all available courses for enrolment management.
+    /**
+     * Course Directory:
+     * List of all available university courses for enrolment modification logic.
+     */
     val allCourses = courseDao.getAllCourses()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        // Automatically start observing the student's profile on initialisation.
+        // Automatically initiate observation of the student's profile upon ViewModel creation.
         viewModelScope.launch {
             userDao.getUserFlow(userId).collect { _user.value = it }
         }
     }
 
     /**
-     * Internal utility to record administrative interventions into the system audit trail.
+     * Internal Auditor:
+     * Inserts an entry into the system logs to document administrative changes.
+     * @param action The specific action performed (e.g., EDITED, REMOVED).
+     * @param targetId The ID of the student or record affected.
+     * @param details Human-readable context for the audit trail.
      */
     private fun addLog(action: String, targetId: String, details: String) {
         viewModelScope.launch {
@@ -117,41 +161,45 @@ class AdminUserDetailsViewModel(
     }
 
     /**
-     * Directly updates the student's profile information in the local database.
+     * Account Modification:
+     * Persists updates to the student's core record (name, balance, status).
      */
     fun updateUser(updated: UserLocal) {
         viewModelScope.launch {
-            userDao.upsertUser(updated) // Perform atomic database update.
+            userDao.upsertUser(updated) // Atomic update in local DB.
             addLog("EDITED", updated.id, "Admin updated details for student: ${updated.email}")
         }
     }
 
     /**
-     * Modifies the status of a specific academic enrolment (e.g., from PENDING to APPROVED).
+     * Academic Regulation:
+     * Changes the status of a course application or enrolment record.
      */
     fun updateEnrollmentStatus(enrollmentId: String, newStatus: String) {
         viewModelScope.launch {
-            userDao.updateEnrollmentStatus(enrollmentId, newStatus) // Update the record.
+            userDao.updateEnrollmentStatus(enrollmentId, newStatus)
             addLog("ENROLMENT_STATUS_CHANGED", enrollmentId, "Admin updated enrolment status to $newStatus for user $userId")
         }
     }
 
     /**
-     * Moderation tool: Permanently removes a student's review or comment.
+     * Content Moderation:
+     * Removes a student's review or comment if it violates institutional policy.
      */
     fun deleteComment(reviewId: Int) {
         viewModelScope.launch {
-            userDao.deleteReview(reviewId) // Wipe the record from the database.
+            userDao.deleteReview(reviewId)
             addLog("REMOVED", reviewId.toString(), "Admin deleted a comment (Review ID: $reviewId)")
         }
     }
 
     /**
-     * Moderation tool: Allows an admin to edit the text of a student's review.
+     * Content Moderation:
+     * Edits the existing text of a student's review.
      */
     fun updateReview(review: ReviewLocal) {
         viewModelScope.launch {
-            userDao.addReview(review) // Persist the edited review.
+            userDao.addReview(review)
             addLog("EDITED", review.reviewId.toString(), "Admin edited a comment for student (Review ID: ${review.reviewId})")
         }
     }
@@ -160,7 +208,8 @@ class AdminUserDetailsViewModel(
 /**
  * AdminUserDetailsViewModelFactory.kt
  * 
- * Standard factory for injecting Room DAOs and the target user ID into the ViewModel.
+ * Standard ViewModelProvider Factory for correctly injecting Room DAOs 
+ * and specific user IDs into the [AdminUserDetailsViewModel].
  */
 class AdminUserDetailsViewModelFactory(
     private val userId: String,
@@ -168,7 +217,7 @@ class AdminUserDetailsViewModelFactory(
 ) : ViewModelProvider.Factory {
     
     /**
-     * Instantiates the complex ViewModel with all its required dependencies.
+     * Instantiates the ViewModel with all required data layers and Master Repository.
      */
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")

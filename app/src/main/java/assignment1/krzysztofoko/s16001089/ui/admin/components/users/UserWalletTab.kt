@@ -1,8 +1,7 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Users
+package assignment1.krzysztofoko.s16001089.ui.admin.components.users
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,17 +28,39 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * UserWalletTab provides an administrative ledger of a user's financial activity.
+ * UserWalletTab.kt
+ *
+ * This component provides a comprehensive administrative ledger of a user's financial activity
+ * within the university system. It allows administrators (or users themselves) to audit
+ * deposits (top-ups) and purchases (books, courses, gear).
+ *
+ * Features:
+ * - Chronological transaction list with color-coded status indicators.
+ * - Dynamic date and time formatting using SimpleDateFormat.
+ * - Detailed transaction drill-down via a high-end themed Dialog.
+ * - Empty state handling for users with no financial history.
+ */
+
+/**
+ * The main tab for displaying wallet transaction history.
+ *
+ * @param transactions The list of [WalletTransaction] objects to be displayed.
+ * @param isAdmin Flag to customize the header text (e.g., "Transaction Ledger" for admins).
  */
 @Composable
 fun UserWalletTab(
     transactions: List<WalletTransaction>,
     isAdmin: Boolean = false
 ) {
+    // --- STATE MANAGEMENT ---
+    // Tracks the transaction currently being inspected in the detail dialog.
     var selectedTransaction by remember { mutableStateOf<WalletTransaction?>(null) }
+    
+    // Formatting utilities for consistent display of timestamps.
     val sdfDate = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val sdfTime = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
+    // Handle the case where the user has no transactions.
     if (transactions.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -55,6 +76,7 @@ fun UserWalletTab(
             }
         }
     } else {
+        // --- TRANSACTION LEDGER ---
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -65,6 +87,7 @@ fun UserWalletTab(
 
             items(transactions) { tx ->
                 val isTopUp = tx.type == "TOP_UP"
+                // Semantic coloring: Green for deposits, Red for expenditures.
                 val statusColor = if (isTopUp) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
                 
                 Card(
@@ -81,6 +104,7 @@ fun UserWalletTab(
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Icon indicator for transaction type.
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
@@ -112,6 +136,7 @@ fun UserWalletTab(
                             )
                         }
 
+                        // Financial summary (Amount and Type Label).
                         Column(horizontalAlignment = Alignment.End) {
                             val prefix = if (isTopUp) "+" else "-"
                             @Suppress("DEPRECATION")
@@ -138,11 +163,13 @@ fun UserWalletTab(
                     }
                 }
             }
+            // Ensure content doesn't get clipped by the bottom navigation bar.
             item { Spacer(Modifier.height(80.dp)) }
         }
     }
 
-    // High-end Themed Transaction Detail Dialog
+    // --- TRANSACTION DETAIL DIALOG ---
+    // Provides a full breakdown of the selected transaction including metadata.
     if (selectedTransaction != null) {
         val tx = selectedTransaction!!
         val isTopUp = tx.type == "TOP_UP"
@@ -186,6 +213,7 @@ fun UserWalletTab(
                     Spacer(Modifier.height(24.dp))
 
                     // HIGH-CONTRAST SUMMARY CARD
+                    // Summarizes the core financial impact of the transaction.
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = statusColor.copy(alpha = 0.05f),
@@ -224,7 +252,8 @@ fun UserWalletTab(
 
                     Spacer(Modifier.height(24.dp))
 
-                    // METADATA LIST
+                    // METADATA LISTING
+                    // Displays supplementary information like date, time, and payment method.
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         TransactionMetadataRow("Date", sdfDate.format(Date(tx.timestamp)))
                         TransactionMetadataRow("Time", sdfTime.format(Date(tx.timestamp)))
@@ -240,7 +269,7 @@ fun UserWalletTab(
 
                     Spacer(Modifier.height(32.dp))
 
-                    // ACTION BUTTON
+                    // DISMISSAL ACTION
                     Button(
                         onClick = { selectedTransaction = null },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -254,6 +283,9 @@ fun UserWalletTab(
     }
 }
 
+/**
+ * Reusable row for displaying key-value pairs in the transaction detail view.
+ */
 @Composable
 private fun TransactionMetadataRow(label: String, value: String) {
     Row(

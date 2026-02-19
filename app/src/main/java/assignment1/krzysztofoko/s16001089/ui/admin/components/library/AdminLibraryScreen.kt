@@ -1,4 +1,4 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Library
+package assignment1.krzysztofoko.s16001089.ui.admin.components.library
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -24,9 +24,13 @@ import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.ui.components.*
 
 /**
- * AdminLibraryScreen displays all books and audiobooks purchased by the Admin.
- * It provides a categorized view with search functionality and a way to explore more items.
+ * AdminLibraryScreen.kt
+ *
+ * This screen displays a collection of academic assets (Books and Audiobooks) that the Admin
+ * has acquired or purchased. It acts as a personal repository for educational materials, 
+ * separate from the global catalog management.
  */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminLibraryScreen(
@@ -35,29 +39,43 @@ fun AdminLibraryScreen(
     onExploreMore: () -> Unit,
     isDarkTheme: Boolean
 ) {
-    // FILTER: Only show items that are purchased (have an order confirmation)
-    // and are either Books or Audiobooks.
+    // --- 1. DATA FILTERING (PRE-PROCESSING) ---
+    // Extract items that belong in the library.
+    // Logic: Item must have an order confirmation (purchased). 
+    // We filter to ensure we only show items that are meant for the library (Books/Audiobooks/Courses).
     val libraryItems = remember(allBooks) {
-        allBooks.filter { 
-            it.orderConfirmation != null && 
-            (it.mainCategory == AppConstants.CAT_BOOKS || it.mainCategory == AppConstants.CAT_AUDIOBOOKS)
+        allBooks.filter { item ->
+            item.orderConfirmation != null && 
+            (item.mainCategory == AppConstants.CAT_BOOKS || 
+             item.mainCategory == AppConstants.CAT_AUDIOBOOKS || 
+             item.isAudioBook)
         }
     }
 
+    // --- 2. LOCAL UI STATE ---
     var searchQuery by remember { mutableStateOf("") }
     var selectedTab by remember { mutableIntStateOf(0) }
 
+    // --- 3. DYNAMIC FILTERING (REACTIVE) ---
+    // Refines the library collection based on user interaction (Search + Tabs).
     val filteredItems = remember(libraryItems, searchQuery, selectedTab) {
         libraryItems.filter { item ->
+            // Check if title or author matches the search query (case-insensitive).
             val matchesSearch = item.title.contains(searchQuery, ignoreCase = true) || 
                                 item.author.contains(searchQuery, ignoreCase = true)
-            val matchesTab = if (selectedTab == 0) true // All
-                             else if (selectedTab == 1) item.mainCategory == AppConstants.CAT_BOOKS
-                             else item.mainCategory == AppConstants.CAT_AUDIOBOOKS
+            
+            // Filter by selected tab using the robust 'isAudioBook' flag instead of just category strings.
+            val matchesTab = when (selectedTab) {
+                0 -> true // "All"
+                1 -> !item.isAudioBook // E-Books (not an audiobook)
+                else -> item.isAudioBook // Audiobooks
+            }
+            
             matchesSearch && matchesTab
         }
     }
 
+    // --- 4. UI COMPOSITION ---
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { screenIsTablet ->
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(Modifier.height(12.dp))
@@ -69,12 +87,11 @@ fun AdminLibraryScreen(
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
+            // SEARCH INTERFACE
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 placeholder = { Text("Search your assets...") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 shape = RoundedCornerShape(12.dp),
@@ -84,6 +101,7 @@ fun AdminLibraryScreen(
                 )
             )
 
+            // CATEGORY NAVIGATION (TABS)
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.Transparent,
@@ -91,23 +109,12 @@ fun AdminLibraryScreen(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 divider = {}
             ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("All", fontWeight = if(selectedTab == 0) FontWeight.Black else FontWeight.Normal) }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("Books", fontWeight = if(selectedTab == 1) FontWeight.Black else FontWeight.Normal) }
-                )
-                Tab(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    text = { Text("Audiobooks", fontWeight = if(selectedTab == 2) FontWeight.Black else FontWeight.Normal) }
-                )
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("All", fontWeight = if(selectedTab == 0) FontWeight.Black else FontWeight.Normal) })
+                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Books", fontWeight = if(selectedTab == 1) FontWeight.Black else FontWeight.Normal) })
+                Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Audiobooks", fontWeight = if(selectedTab == 2) FontWeight.Black else FontWeight.Normal) })
             }
 
+            // ASSET GRID
             LazyVerticalGrid(
                 columns = GridCells.Fixed(if (screenIsTablet) 2 else 1),
                 modifier = Modifier.fillMaxSize(),
@@ -146,49 +153,29 @@ fun AdminLibraryScreen(
                                         containerColor = if (book.isAudioBook) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
                                     )
                                 ) {
-                                    Icon(
-                                        if (book.isAudioBook) Icons.Default.PlayArrow else Icons.Default.LibraryBooks, 
-                                        null, 
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                                    Icon(imageVector = if (book.isAudioBook) Icons.Default.PlayArrow else Icons.Default.LibraryBooks, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))
-                                    Text(if (book.isAudioBook) "Listen Now" else "Read Now", fontWeight = FontWeight.Bold)
+                                    @Suppress("DEPRECATION")
+                                    Text(text = if (book.isAudioBook) "Listen Now" else "Read Now", fontWeight = FontWeight.Bold)
                                 }
                             }
                         )
                     }
                 }
 
-                // EXPLORE MORE SECTION: Prompt user to find more items in the store
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Not found what you looking for?",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray,
-                            textAlign = TextAlign.Center
-                        )
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        @Suppress("DEPRECATION")
+                        Text(text = "Not finding what you're looking for?", style = MaterialTheme.typography.bodyMedium, color = Color.Gray, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = onExploreMore,
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 24.dp)
-                        ) {
+                        Button(onClick = onExploreMore, shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 24.dp)) {
                             Icon(Icons.Default.ShoppingCart, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = "Search for more",
-                                fontWeight = FontWeight.Bold
-                            )
+                            @Suppress("DEPRECATION")
+                            Text(text = "Search for more", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
-
                 item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }

@@ -32,29 +32,28 @@ import java.util.UUID
  * CatalogTab.kt
  *
  * This component implements the primary inventory management hub for administrators.
- * it allows for comprehensive CRUD operations across various product categories including
- * academic books, audio learning, university courses, and official merchandise.
+ * It facilitates comprehensive CRUD operations across multiple product categories:
+ * - Academic Books
+ * - Audio Learning (Audiobooks)
+ * - University Courses
+ * - Official Gear (Merchandise)
  *
- * FOLDER ANALYSIS & INTEGRATION:
- * 1. SHARED UI (CatalogShared.kt): Utilizes common UI elements like 'CatalogItemCard' for list consistency
- *    and 'CatalogDeleteDialog' to enforce a secure "type-to-confirm" deletion pattern.
- * 2. MODULAR EDITORS: Integrates category-specific dialogs (BookEditDialog, AudioBookEditDialog, 
- *    CourseEditDialog, GearEditDialog) for creating and updating inventory.
- * 3. REACTIVE DATA: Bridges the AdminViewModel's data streams (Books, Gear, etc.) to the UI.
- * 4. ADAPTIVE LAYOUT: Automatically switches between mobile-first carousel filters and tablet-optimized 
- *    grid systems.
+ * UI Integration Summary:
+ * 1. SHARED COMPONENTS: Uses 'CatalogItemCard' for listing and 'CatalogDeleteDialog' 
+ *    for high-security deletion verification.
+ * 2. MODULAR EDITORS: Integrates specialized dialogs (BookEditDialog, CourseEditDialog, etc.) 
+ *    to handle unique metadata for each category.
+ * 3. ADAPTIVE LOGIC: Automatically scales from a 1-column mobile list to a 2-column tablet grid.
  */
 
 /**
- * CatalogTab Composable
+ * The main administrative portal for inventory control.
  *
- * The main administrative dashboard for product and inventory control.
- *
- * @param viewModel The primary state holder for administrative data and operations.
- * @param isDarkTheme Flag to adjust visual elements for dark or light modes.
- * @param showAddProductDialog Trigger state for the 'Add New' selection menu.
- * @param onAddProductDialogConsumed Callback to reset the dialog visibility state.
- * @param onNavigateToDetails Navigation trigger to view high-level item specifics.
+ * @param viewModel The primary data architect for administrative operations.
+ * @param isDarkTheme Flag to ensure correct contrast for category indicators and cards.
+ * @param showAddProductDialog External trigger state to open the 'Category Picker'.
+ * @param onAddProductDialogConsumed Callback to reset the external dialog trigger.
+ * @param onNavigateToDetails Callback to view item specifics.
  */
 @Composable
 fun CatalogTab(
@@ -64,15 +63,14 @@ fun CatalogTab(
     onAddProductDialogConsumed: () -> Unit,
     onNavigateToDetails: (String) -> Unit
 ) {
-    // --- DATA COLLECTION --- //
-    // Observe live streams of different inventory categories from the database.
+    // --- 1. DATA STREAM OBSERVATION ---
+    // Subscribes to live database streams for all inventory segments.
     val books by viewModel.allBooks.collectAsState(emptyList())
     val audioBooks by viewModel.allAudioBooks.collectAsState(emptyList())
     val courses by viewModel.allCourses.collectAsState(emptyList())
     val gear by viewModel.allGear.collectAsState(emptyList())
 
-    // --- FILTERING LOGIC --- //
-    // State for the active category filter (All, Books, Audio, etc.).
+    // --- 2. NAVIGATION & FILTERING STATE ---
     var selectedFilter by remember { mutableStateOf("ALL") }
     val filters = listOf(
         CatalogFilter("ALL", "All", Icons.Default.GridView),
@@ -82,23 +80,24 @@ fun CatalogTab(
         CatalogFilter("GEAR", "Gear", Icons.Default.Checkroom)
     )
 
-    // --- OVERLAY & EDIT STATE --- //
-    // Tracks which specific item is being targeted for deletion or modification.
-    // These states are passed to the specialized *EditDialogs found in this folder.
+    // --- 3. MODAL WORKFLOW STATES ---
+    // itemToDelete: Pair containing the target ID and human-readable type (e.g., "Book").
     var itemToDelete by remember { mutableStateOf<Pair<String, String>?>(null) }
+    
+    // Category-specific edit buffers.
     var bookToEdit by remember { mutableStateOf<Book?>(null) }
     var audioToEdit by remember { mutableStateOf<AudioBook?>(null) }
     var courseToEdit by remember { mutableStateOf<Course?>(null) }
     var gearToEdit by remember { mutableStateOf<Gear?>(null) }
     
-    // --- RESPONSIVE CONFIGURATION --- //
+    // --- 4. RESPONSIVE SETUP ---
     val isTablet = isTablet()
-    val infiniteCount = Int.MAX_VALUE // For the infinite carousel effect on mobile filter bars.
+    val infiniteCount = Int.MAX_VALUE // Enables infinite looping for the mobile filter bar.
     val startPosition = infiniteCount / 2 - (infiniteCount / 2 % filters.size)
     val tabListState = rememberLazyListState(initialFirstVisibleItemIndex = if (isTablet) 0 else startPosition)
 
     AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { screenIsTablet ->
-        val columns = if (screenIsTablet) 2 else 1 // Multi-column layout for tablets.
+        val columns = if (screenIsTablet) 2 else 1
         val horizontalPadding = 16.dp 
 
         LazyVerticalGrid(
@@ -108,18 +107,18 @@ fun CatalogTab(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // --- SECTION: HEADER --- //
-            item(span = { GridItemSpan(this.maxLineSpan) }) {
+            // HEADER SECTION: Branded title for the hub.
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 HeaderSection(
                     title = "Global Catalog",
-                    subtitle = "Manage all products and inventory.",
+                    subtitle = "Central inventory management unit",
                     icon = Icons.Default.Inventory,
                     modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 12.dp)
                 )
             }
 
-            // --- SECTION: CATEGORY FILTER BAR --- //
-            item(span = { GridItemSpan(this.maxLineSpan) }) {
+            // FILTER CAROUSEL: Scrollable category switcher.
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 LazyRow(
                     state = tabListState,
                     modifier = Modifier.fillMaxWidth().height(60.dp),
@@ -128,32 +127,21 @@ fun CatalogTab(
                     horizontalArrangement = if (screenIsTablet) Arrangement.Center else Arrangement.spacedBy(8.dp)
                 ) {
                     if (screenIsTablet) {
-                        // Standard layout for wide screens.
                         items(filters) { filter ->
-                            CatalogFilterItem(
-                                filter = filter,
-                                isSelected = selectedFilter == filter.id,
-                                onClick = { selectedFilter = filter.id }
-                            )
+                            CatalogFilterItem(filter = filter, isSelected = selectedFilter == filter.id, onClick = { selectedFilter = filter.id })
                         }
                     } else {
-                        // Infinite scrolling carousel for smaller mobile screens.
                         items(infiniteCount) { index ->
                             val filter = filters[index % filters.size]
-                            CatalogFilterItem(
-                                filter = filter,
-                                isSelected = selectedFilter == filter.id,
-                                onClick = { selectedFilter = filter.id }
-                            )
+                            CatalogFilterItem(filter = filter, isSelected = selectedFilter == filter.id, onClick = { selectedFilter = filter.id })
                         }
                     }
                 }
             }
 
-            // --- SECTION: BOOKS --- //
-            // Renders items using 'CatalogItemCard' from CatalogShared.kt
+            // --- CATEGORY: ACADEMIC BOOKS ---
             if (selectedFilter == "ALL" || selectedFilter == "BOOKS") {
-                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Academic Books", books.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
+                item(span = { GridItemSpan(maxLineSpan) }) { CatalogSectionHeader("Academic Books", books.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(books) { item ->
                     Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
                         CatalogItemCard(
@@ -171,9 +159,9 @@ fun CatalogTab(
                 }
             }
 
-            // --- SECTION: AUDIOBOOKS --- //
+            // --- CATEGORY: AUDIOBOOKS ---
             if (selectedFilter == "ALL" || selectedFilter == "AUDIO") {
-                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Audio Learning", audioBooks.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
+                item(span = { GridItemSpan(maxLineSpan) }) { CatalogSectionHeader("Audio Learning", audioBooks.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(audioBooks) { item ->
                     Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
                         CatalogItemCard(
@@ -191,9 +179,9 @@ fun CatalogTab(
                 }
             }
 
-            // --- SECTION: COURSES --- //
+            // --- CATEGORY: UNIVERSITY COURSES ---
             if (selectedFilter == "ALL" || selectedFilter == "COURSES") {
-                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("University Courses", courses.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
+                item(span = { GridItemSpan(maxLineSpan) }) { CatalogSectionHeader("University Courses", courses.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(courses) { item ->
                     Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
                         CatalogItemCard(
@@ -211,9 +199,9 @@ fun CatalogTab(
                 }
             }
 
-            // --- SECTION: GEAR --- //
+            // --- CATEGORY: OFFICIAL GEAR ---
             if (selectedFilter == "ALL" || selectedFilter == "GEAR") {
-                item(span = { GridItemSpan(this.maxLineSpan) }) { CatalogSectionHeader("Official Gear", gear.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
+                item(span = { GridItemSpan(maxLineSpan) }) { CatalogSectionHeader("Official Gear", gear.size, modifier = Modifier.padding(horizontal = horizontalPadding)) }
                 items(gear) { item ->
                     Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
                         CatalogItemCard(
@@ -231,12 +219,12 @@ fun CatalogTab(
                 }
             }
 
-            // Gutter spacing at the end of the grid.
-            item(span = { GridItemSpan(this.maxLineSpan) }) { Spacer(Modifier.height(80.dp)) }
+            // Ensure content doesn't get cut off by the navigation bar.
+            item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(80.dp)) }
         }
     }
 
-    // --- OVERLAYS: Global Add Product Dialog --- //
+    // --- OVERLAY: CATEGORY SELECTOR FOR NEW ITEMS ---
     if (showAddProductDialog) {
         AlertDialog(
             onDismissRequest = { onAddProductDialogConsumed() },
@@ -248,8 +236,8 @@ fun CatalogTab(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     @Suppress("DEPRECATION")
                     Text("Select a category to begin adding to the inventory.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-                    // Logic for initialising new template objects for each category.
-                    // Clicking these initiates a specific EditDialog flow.
+                    
+                    // Initialises new template objects based on selection.
                     AddCategoryButton("Academic Book", Icons.AutoMirrored.Filled.MenuBook) {
                         bookToEdit = Book(id = UUID.randomUUID().toString(), title = "", author = "", mainCategory = AppConstants.CAT_BOOKS)
                         onAddProductDialogConsumed()
@@ -263,7 +251,7 @@ fun CatalogTab(
                         onAddProductDialogConsumed()
                     }
                     AddCategoryButton("Official Gear", Icons.Default.Checkroom) {
-                        gearToEdit = Gear(id = UUID.randomUUID().toString(), title = "", brand = "Wrexham University", mainCategory = AppConstants.CAT_GEAR)
+                        gearToEdit = Gear(id = UUID.randomUUID().toString(), title = "", brand = "University Merch", mainCategory = AppConstants.CAT_GEAR)
                         onAddProductDialogConsumed()
                     }
                 }
@@ -277,13 +265,10 @@ fun CatalogTab(
         )
     }
 
-    // --- OVERLAYS: Confirmation & Editing --- //
-    
-    // Destructive confirmation dialog (from CatalogShared.kt)
+    // --- OVERLAY: DELETE CONFIRMATION ---
     if (itemToDelete != null) {
         val (id, cat) = itemToDelete!!
         CatalogDeleteDialog(itemName = cat, onDismiss = { itemToDelete = null }, onConfirm = {
-            // Determine which repository deletion method to call based on the category.
             when(cat) {
                 "Book" -> viewModel.deleteBook(id)
                 "Audiobook" -> viewModel.deleteAudioBook(id)
@@ -294,8 +279,7 @@ fun CatalogTab(
         })
     }
 
-    // Integration of Specialized Editor Dialogs:
-    // Each dialog handles its own complex form state and native file picking logic.
+    // --- OVERLAYS: SPECIALIZED EDITOR DIALOGS ---
     if (bookToEdit != null) BookEditDialog(book = bookToEdit!!, onDismiss = { bookToEdit = null }, onSave = { viewModel.saveBook(it); bookToEdit = null })
     if (audioToEdit != null) AudioBookEditDialog(audioBook = audioToEdit!!, onDismiss = { audioToEdit = null }, onSave = { viewModel.saveAudioBook(it); audioToEdit = null })
     if (courseToEdit != null) CourseEditDialog(course = courseToEdit!!, onDismiss = { courseToEdit = null }, onSave = { viewModel.saveCourse(it); courseToEdit = null })
@@ -305,7 +289,7 @@ fun CatalogTab(
 /**
  * CatalogFilterItem Composable
  *
- * An interactive filter pill for switching between product categories.
+ * A high-contrast selectable pill for narrowing down the global catalog.
  */
 @Composable
 fun CatalogFilterItem(
@@ -344,8 +328,8 @@ fun CatalogFilterItem(
 
 /**
  * HeaderSection Composable
- *
- * Top-level branding and title section for the catalog tab.
+ * 
+ * Provides the visual identity for the Catalog Tab.
  */
 @Composable
 private fun HeaderSection(title: String, subtitle: String, icon: ImageVector, modifier: Modifier = Modifier) {
@@ -360,19 +344,10 @@ private fun HeaderSection(title: String, subtitle: String, icon: ImageVector, mo
             }
         }
         Spacer(Modifier.width(16.dp))
+        @Suppress("DEPRECATION")
         Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -380,7 +355,7 @@ private fun HeaderSection(title: String, subtitle: String, icon: ImageVector, mo
 /**
  * AddCategoryButton Composable
  *
- * A stylized action item used inside the 'Add New' dialog to select a product type.
+ * Selection item for the global 'Add New' workflow.
  */
 @Composable
 fun AddCategoryButton(label: String, icon: ImageVector, onClick: () -> Unit) {
@@ -394,6 +369,7 @@ fun AddCategoryButton(label: String, icon: ImageVector, onClick: () -> Unit) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(16.dp))
+            @Suppress("DEPRECATION")
             Text(label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.weight(1f))
             Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp), tint = Color.Gray.copy(alpha = 0.5f))
@@ -402,6 +378,6 @@ fun AddCategoryButton(label: String, icon: ImageVector, onClick: () -> Unit) {
 }
 
 /**
- * Configuration data class for the catalog filter bar.
+ * Configuration for the catalog filter bar.
  */
 data class CatalogFilter(val id: String, val title: String, val icon: ImageVector)

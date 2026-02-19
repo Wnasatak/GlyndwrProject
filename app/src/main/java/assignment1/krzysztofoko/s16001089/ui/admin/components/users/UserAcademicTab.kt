@@ -1,7 +1,6 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Users
+package assignment1.krzysztofoko.s16001089.ui.admin.components.users
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -27,8 +25,23 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Administrative Academic Tab for managing student course enrollments.
- * This component is reserved for institutional staff to audit and update academic statuses.
+ * UserAcademicTab.kt
+ *
+ * This administrative component provides institutional staff with a comprehensive overview 
+ * of a student's academic standing. It facilitates the auditing of course enrollments, 
+ * performance tracking (grades), and feedback from tutors.
+ *
+ * It is designed to be high-impact and professional, using semantic coloring to distinguish 
+ * between different enrollment stages and academic results.
+ */
+
+/**
+ * Main academic view for administrators.
+ * 
+ * @param enrollments List of the student's active and historical course applications.
+ * @param grades List of academic scores and feedback provided by tutors.
+ * @param allCourses Reference list of all system courses for title mapping.
+ * @param onUpdateStatus Callback to persist enrollment status changes (e.g., Approve/Reject).
  */
 @Composable
 fun UserAcademicTab(
@@ -37,15 +50,29 @@ fun UserAcademicTab(
     allCourses: List<Course>,
     onUpdateStatus: (String, String) -> Unit
 ) {
+    // Tracks which enrollment is currently being modified in the StatusEditDialog.
     var statusToEdit by remember { mutableStateOf<CourseEnrollmentDetails?>(null) }
 
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(16.dp), 
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        // --- 1. COURSE ENROLLMENTS SECTION ---
         item { SectionHeaderDetails("Course Enrollments") }
+        
         if (enrollments.isEmpty()) { 
-            item { Text("No active course enrollments.", color = Color.Gray, modifier = Modifier.padding(horizontal = 8.dp)) } 
+            item { 
+                Text(
+                    text = "No active course enrollments.", 
+                    color = Color.Gray, 
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) 
+            } 
         } else {
             items(enrollments) { enrollment ->
+                // Resolve the course title from the master course list.
                 val course = allCourses.find { it.id == enrollment.courseId }
+                
                 Card(
                     modifier = Modifier.fillMaxWidth(), 
                     shape = RoundedCornerShape(20.dp),
@@ -60,14 +87,25 @@ fun UserAcademicTab(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 @Suppress("DEPRECATION")
-                                Text(course?.title ?: "Unknown Course", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium, fontSize = 18.sp)
-                                Text("Course ID: ${enrollment.courseId}", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                Text(
+                                    text = course?.title ?: "Unknown Course", 
+                                    fontWeight = FontWeight.Black, 
+                                    style = MaterialTheme.typography.titleMedium, 
+                                    fontSize = 18.sp
+                                )
+                                Text(
+                                    text = "Course ID: ${enrollment.courseId}", 
+                                    style = MaterialTheme.typography.labelSmall, 
+                                    color = Color.Gray
+                                )
                             }
+                            // Visual indicator of application stage (Pending, Enrolled, etc.)
                             EnrollmentStatusBadge(status = enrollment.status)
                         }
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
+                        // TIMESTAMP FORMATTING
                         val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
                         Text(
                             text = "Enrollment Date:",
@@ -84,6 +122,7 @@ fun UserAcademicTab(
                         
                         Spacer(modifier = Modifier.height(20.dp))
                         
+                        // ADMINISTRATIVE ACTION: Trigger Status Change
                         Button(
                             onClick = { statusToEdit = enrollment },
                             modifier = Modifier.fillMaxWidth().height(44.dp),
@@ -103,9 +142,18 @@ fun UserAcademicTab(
             }
         }
 
+        // --- 2. ACADEMIC PERFORMANCE SECTION ---
         item { SectionHeaderDetails("Grades & Tutor Feedback") }
+        
         if (grades.isEmpty()) { 
-            item { Text("No grades available.", color = Color.Gray, modifier = Modifier.padding(horizontal = 8.dp)) } 
+            item { 
+                @Suppress("DEPRECATION")
+                Text(
+                    text = "No grades available.", 
+                    color = Color.Gray, 
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) 
+            } 
         } else {
             items(grades) { grade ->
                 Card(
@@ -115,18 +163,38 @@ fun UserAcademicTab(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 ) {
                     ListItem(
-                        headlineContent = { Text("Score: ${grade.score}%", fontWeight = FontWeight.Black, color = if (grade.score >= 40) Color(0xFF4CAF50) else Color.Red) },
-                        supportingContent = { Text(grade.feedback ?: "No feedback provided", style = MaterialTheme.typography.bodyMedium) },
-                        trailingContent = { Text(SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(grade.gradedAt)), style = MaterialTheme.typography.labelSmall) },
+                        headlineContent = { 
+                            // Semantic Coloring: Green for pass (>=40), Red for fail.
+                            Text(
+                                text = "Score: ${grade.score}%", 
+                                fontWeight = FontWeight.Black, 
+                                color = if (grade.score >= 40) Color(0xFF4CAF50) else Color.Red
+                            ) 
+                        },
+                        supportingContent = { 
+                            Text(
+                                text = grade.feedback ?: "No feedback provided", 
+                                style = MaterialTheme.typography.bodyMedium
+                            ) 
+                        },
+                        trailingContent = { 
+                            // Compact date for the list view.
+                            Text(
+                                text = SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(grade.gradedAt)), 
+                                style = MaterialTheme.typography.labelSmall
+                            ) 
+                        },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                     )
                 }
             }
         }
         
+        // Ensure content is not hidden by the bottom navigation bar.
         item { Spacer(Modifier.height(40.dp)) }
     }
 
+    // --- OVERLAY: STATUS EDITOR ---
     if (statusToEdit != null) {
         StatusEditDialog(
             currentStatus = statusToEdit!!.status,
@@ -139,14 +207,20 @@ fun UserAcademicTab(
     }
 }
 
+/**
+ * Specialized dialog for modifying institutional enrollment statuses.
+ * Provides a curated list of valid status transitions with descriptive icons.
+ */
 @Composable
 fun StatusEditDialog(currentStatus: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    // DEFINITION: Valid enrollment lifecycle stages.
     val statuses = listOf(
         StatusOption("PENDING_REVIEW", "Pending Review", Icons.Default.PendingActions, Color(0xFFFBC02D)),
         StatusOption("ENROLLED", "Enrolled", Icons.Default.School, Color(0xFF673AB7)),
         StatusOption("APPROVED", "Approved", Icons.Default.CheckCircle, Color(0xFF4CAF50)),
         StatusOption("REJECTED", "Rejected", Icons.Default.Cancel, Color(0xFFF44336))
     )
+    
     var selectedStatus by remember { mutableStateOf(currentStatus) }
     val dialogShape = RoundedCornerShape(28.dp)
 
@@ -167,10 +241,12 @@ fun StatusEditDialog(currentStatus: String, onDismiss: () -> Unit, onConfirm: (S
                 Spacer(Modifier.height(12.dp))
                 @Suppress("DEPRECATION")
                 Text("Update Status", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
+                @Suppress("DEPRECATION")
                 Text("Select the new enrollment stage", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
         },
         text = {
+            // SELECTION LIST: Displays all status options as selectable cards.
             Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
                 statuses.forEach { option ->
                     val isSelected = selectedStatus == option.id
@@ -190,6 +266,7 @@ fun StatusEditDialog(currentStatus: String, onDismiss: () -> Unit, onConfirm: (S
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Branded icon wrapper for each option.
                             Surface(
                                 color = if (isSelected) option.color else Color.Gray.copy(alpha = 0.1f),
                                 shape = RoundedCornerShape(8.dp),
@@ -205,6 +282,7 @@ fun StatusEditDialog(currentStatus: String, onDismiss: () -> Unit, onConfirm: (S
                                 }
                             }
                             Spacer(Modifier.width(12.dp))
+                            @Suppress("DEPRECATION")
                             Text(
                                 text = option.label,
                                 modifier = Modifier.weight(1f),
@@ -212,6 +290,7 @@ fun StatusEditDialog(currentStatus: String, onDismiss: () -> Unit, onConfirm: (S
                                 fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
                                 color = if (isSelected) option.color else MaterialTheme.colorScheme.onSurface
                             )
+                            // Selection indicator.
                             if (isSelected) {
                                 Icon(Icons.Default.Check, null, tint = option.color, modifier = Modifier.size(16.dp))
                             }
@@ -245,4 +324,7 @@ fun StatusEditDialog(currentStatus: String, onDismiss: () -> Unit, onConfirm: (S
     )
 }
 
+/**
+ * Data model representing a selectable enrollment lifecycle stage.
+ */
 data class StatusOption(val id: String, val label: String, val icon: ImageVector, val color: Color)

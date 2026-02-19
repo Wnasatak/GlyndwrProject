@@ -30,13 +30,15 @@ import assignment1.krzysztofoko.s16001089.data.ModuleContent
 import assignment1.krzysztofoko.s16001089.ui.admin.components.apps.ApplicationDetailScreen
 import assignment1.krzysztofoko.s16001089.ui.admin.components.apps.ApplicationsTab
 import assignment1.krzysztofoko.s16001089.ui.admin.components.catalog.CatalogTab
-import assignment1.krzysztofoko.s16001089.ui.admin.components.courses.*
-import assignment1.krzysztofoko.s16001089.ui.admin.components.Dashboard.AdminDashboardTab
-import assignment1.krzysztofoko.s16001089.ui.admin.components.Dashboard.BroadcastAnnouncementDialog
-import assignment1.krzysztofoko.s16001089.ui.admin.components.Library.AdminLibraryScreen
-import assignment1.krzysztofoko.s16001089.ui.admin.components.Profile.AdminDetailScreen
-import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.UserManagementTab
-import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.UsersLogsTab
+import assignment1.krzysztofoko.s16001089.ui.admin.components.courses.CourseModulesScreen
+import assignment1.krzysztofoko.s16001089.ui.admin.components.courses.CoursesTab
+import assignment1.krzysztofoko.s16001089.ui.admin.components.courses.ModuleTasksOverlay
+import assignment1.krzysztofoko.s16001089.ui.admin.components.dashboard.AdminDashboardTab
+import assignment1.krzysztofoko.s16001089.ui.admin.components.dashboard.BroadcastAnnouncementDialog
+import assignment1.krzysztofoko.s16001089.ui.admin.components.library.AdminLibraryScreen
+import assignment1.krzysztofoko.s16001089.ui.admin.components.profile.AdminDetailScreen
+import assignment1.krzysztofoko.s16001089.ui.admin.components.users.UserManagementTab
+import assignment1.krzysztofoko.s16001089.ui.admin.components.users.UsersLogsTab
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationScreen
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
@@ -44,12 +46,30 @@ import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 /**
  * AdminPanelScreen.kt
  *
- * Grand administrative hub. Manages navigation and overlays for system-wide operations.
- * Fix: Removed redundant back button on main dashboard and resolved hierarchical navigation.
+ * Grand administrative command centre. Manages navigation and detail overlays for university staff.
+ * Refactored to provide responsive typography for mobile and tablet devices.
  */
 
+/**
+ * Enum representing different sections of the Admin Panel.
+ */
 enum class AdminSection { DASHBOARD, APPLICATIONS, USERS, CATALOG, COURSES, LOGS, LIBRARY, PROFILE, NOTIFICATIONS, BROADCAST }
 
+/**
+ * The main screen for administrative tasks.
+ * 
+ * @param onBack Callback when the user wants to go back.
+ * @param onNavigateToUserDetails Callback to navigate to a specific user's details.
+ * @param onNavigateToProfile Callback to navigate to the current user's profile settings.
+ * @param onNavigateToBookDetails Callback to navigate to a book's detail screen.
+ * @param onExploreMore Callback for exploratory actions.
+ * @param allBooks List of all books available in the system.
+ * @param currentTheme The currently active theme.
+ * @param onThemeChange Callback to update the system theme.
+ * @param onLogoutClick Callback for signing out.
+ * @param initialSection Optional section to display upon entry.
+ * @param viewModel The state holder for admin operations.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminPanelScreen(
@@ -67,12 +87,13 @@ fun AdminPanelScreen(
         db = AppDatabase.getDatabase(LocalContext.current)
     ))
 ) {
-    // --- DATA STREAMS --- //
+    // --- DATA STREAMS FROM VIEWMODEL --- //
     val currentSectionState by viewModel.currentSection.collectAsState()
     val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
     val isProcessing by viewModel.isProcessing.collectAsState()
 
-    // --- INITIAL NAVIGATION --- //
+    // --- INITIAL NAVIGATION LOGIC --- //
+    // If an initial section is provided (e.g., via notification deep link), switch to it.
     LaunchedEffect(initialSection) {
         if (initialSection != null) {
             try {
@@ -84,7 +105,7 @@ fun AdminPanelScreen(
         }
     }
 
-    // --- OVERLAY & DIALOG STATES --- //
+    // --- OVERLAY & DIALOG UI STATES --- //
     var selectedAppForReview by remember { mutableStateOf<AdminApplicationItem?>(null) }
     var selectedCourseForModules by remember { mutableStateOf<Course?>(null) }
     var selectedModuleForTasks by remember { mutableStateOf<ModuleContent?>(null) }
@@ -94,15 +115,16 @@ fun AdminPanelScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showThemeSubMenu by remember { mutableStateOf(false) }
 
+    // --- UI CONFIGURATION --- //
     val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || (currentTheme == Theme.CUSTOM)
     val isTablet = isTablet()
 
-    // Flag to determine if a detail view is covering the main dashboard.
+    // Flag to determine if a detail view (overlay) is currently covering the main dashboard/tabs.
     val isShowingOverlay = selectedAppForReview != null || selectedCourseForModules != null || selectedModuleForTasks != null
 
     /**
      * Unified Back Navigation Handler
-     * Manages hierarchical dismissal: Tasks -> Modules -> Hub -> Exit
+     * Manages hierarchical dismissal: Tasks -> Modules -> Main Tab -> Exit Admin Panel
      */
     val handleBackNavigation = {
         when {
@@ -114,9 +136,10 @@ fun AdminPanelScreen(
         }
     }
 
-    // Intercept hardware and gesture back navigation.
+    // Intercept hardware back button and gesture navigation.
     BackHandler(enabled = true, onBack = handleBackNavigation)
 
+    // Centralized title management for the TopAppBar based on current section.
     val sectionTitle = when(currentSectionState) {
         AdminSection.DASHBOARD -> "Admin Hub"
         AdminSection.APPLICATIONS -> "Enrolment Hub"
@@ -131,8 +154,10 @@ fun AdminPanelScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Aesthetic wavy background consistent with the app's visual identity.
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
 
+        // Only show the main Scaffold if no detail overlay is active.
         if (!isShowingOverlay) {
             Scaffold(
                 containerColor = Color.Transparent,
@@ -141,15 +166,19 @@ fun AdminPanelScreen(
                         windowInsets = WindowInsets(0, 0, 0, 0),
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                // Adaptive typography: ensure titles are legible but fit on smaller screens.
                                 Text(
                                     text = sectionTitle, 
                                     fontWeight = FontWeight.Black, 
-                                    style = if(sectionTitle == "Product Inventory") MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontSize = if (isTablet) 20.sp else 15.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         },
                         navigationIcon = {
-                            // Back button only visible when NOT on the main Dashboard hub.
+                            // Show back arrow if not on the main dashboard; otherwise show university logo.
                             if (currentSectionState != AdminSection.DASHBOARD) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(onClick = handleBackNavigation) {
@@ -163,7 +192,6 @@ fun AdminPanelScreen(
                                     )
                                 }
                             } else {
-                                // Just the logo on the main hub.
                                 AdaptiveBrandedLogo(
                                     model = formatAssetUrl("images/media/GlyndwrUniversity.jpg"),
                                     contentDescription = "University Logo",
@@ -173,7 +201,7 @@ fun AdminPanelScreen(
                             }
                         },
                         actions = {
-                            // Contextual 'Add' actions depending on the active system hub.
+                            // Contextual actions (e.g., "Add" buttons) based on current tab.
                             if (currentSectionState == AdminSection.CATALOG) {
                                 IconButton(onClick = { showAddProductDialog = true }) { Icon(Icons.Default.Add, "Add Product") }
                             }
@@ -184,19 +212,27 @@ fun AdminPanelScreen(
                                 IconButton(onClick = { showAddUserDialog = true }) { Icon(Icons.Default.Add, "Add User") }
                             }
 
+                            // Notification badge icon.
                             ProNotificationIcon(
                                 count = unreadCount,
                                 isDarkTheme = isDarkTheme,
                                 onClick = { viewModel.setSection(AdminSection.NOTIFICATIONS) }
                             )
 
+                            // Quick theme toggle for tablet users.
                             if (isTablet) {
                                 ThemeToggleButton(currentTheme = currentTheme, onThemeChange = onThemeChange, isLoggedIn = true)
                             }
 
+                            // Overflow menu for profile, settings, and logout.
                             Box {
                                 IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, "More") }
-                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, shape = RoundedCornerShape(16.dp), containerColor = MaterialTheme.colorScheme.surface) {
+                                DropdownMenu(
+                                    expanded = showMenu, 
+                                    onDismissRequest = { showMenu = false }, 
+                                    shape = RoundedCornerShape(16.dp), 
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                ) {
                                     ProMenuHeader("ADMIN HUB")
                                     DropdownMenuItem(text = { Text("My Profile") }, onClick = { showMenu = false; viewModel.setSection(AdminSection.PROFILE) }, leadingIcon = { Icon(Icons.Default.AccountCircle, null, tint = MaterialTheme.colorScheme.primary) })
                                     DropdownMenuItem(text = { Text(AppConstants.TITLE_PROFILE_SETTINGS) }, onClick = { showMenu = false; onNavigateToProfile() }, leadingIcon = { Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary) })
@@ -212,7 +248,7 @@ fun AdminPanelScreen(
                     )
                 },
                 bottomBar = {
-                    // Main System Hub Navigation.
+                    // Global navigation bar for switching between primary admin modules.
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                         tonalElevation = 0.dp,
@@ -227,6 +263,7 @@ fun AdminPanelScreen(
                     }
                 }
             ) { padding ->
+                // MAIN CONTENT AREA: Animates transitions between sections.
                 Column(modifier = Modifier.padding(padding).fillMaxSize()) {
                     AnimatedContent(
                         targetState = currentSectionState,
@@ -240,7 +277,7 @@ fun AdminPanelScreen(
                             AdminSection.COURSES -> CoursesTab(
                                 viewModel = viewModel, 
                                 isDarkTheme = isDarkTheme, 
-                                onCourseSelected = { course: Course -> selectedCourseForModules = course }, 
+                                onCourseSelected = { course -> selectedCourseForModules = course }, 
                                 showAddCourseDialog = showAddCourseDialog, 
                                 onAddCourseDialogConsumed = { showAddCourseDialog = false }
                             )
@@ -253,7 +290,15 @@ fun AdminPanelScreen(
                             }
                             AdminSection.BROADCAST -> {
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    BroadcastAnnouncementDialog(viewModel = viewModel, onDismiss = { viewModel.setSection(AdminSection.DASHBOARD) }, onSend = { title, message, roles, specificUserId -> viewModel.sendBroadcastToRoleOrUser(title, message, roles, specificUserId) { _ -> viewModel.setSection(AdminSection.DASHBOARD) } })
+                                    BroadcastAnnouncementDialog(
+                                        viewModel = viewModel, 
+                                        onDismiss = { viewModel.setSection(AdminSection.DASHBOARD) }, 
+                                        onSend = { title: String, msg: String, roles: List<String>, id: String? -> 
+                                            viewModel.sendBroadcastToRoleOrUser(title, msg, roles, id) { count: Int -> 
+                                                viewModel.setSection(AdminSection.DASHBOARD) 
+                                            } 
+                                        }
+                                    )
                                 }
                             }
                         }
@@ -261,8 +306,9 @@ fun AdminPanelScreen(
                 }
             }
         } else {
-            // Renders immersive full-screen management overlays.
+            // DETAIL OVERLAYS: These cover the main UI when specific items are being inspected or edited.
             Box(modifier = Modifier.fillMaxSize()) {
+                // Application Review Overlay
                 if (selectedAppForReview != null) {
                     ApplicationDetailScreen(
                         app = selectedAppForReview!!,
@@ -273,25 +319,26 @@ fun AdminPanelScreen(
                     )
                 }
 
+                // Course Modules Overlay
                 if (selectedCourseForModules != null && selectedModuleForTasks == null) {
-                    // Back button in course modules screen should return to the courses tab.
                     CourseModulesScreen(course = selectedCourseForModules!!, viewModel = viewModel, isDarkTheme = isDarkTheme, onBack = { selectedCourseForModules = null }, onModuleSelected = { selectedModuleForTasks = it })
                 }
 
+                // Module Tasks Overlay (Nested inside Modules)
                 if (selectedModuleForTasks != null) {
-                    // Back button in module tasks overlay should return to the module screen.
                     ModuleTasksOverlay(module = selectedModuleForTasks!!, viewModel = viewModel, isDarkTheme = isDarkTheme, onDismiss = { selectedModuleForTasks = null })
                 }
             }
         }
 
-        // Global Processing Feedback Overlay.
+        // Global processing indicator (e.g., during database writes or network calls).
         LoadingOverlay(isVisible = isProcessing, label = "Updating System...")
     }
 }
 
 /**
- * Branded Navigation Item for the Admin Command Centre.
+ * Branded Navigation Button for the Admin Command Centre bottom bar.
+ * Provides consistent styling and responsive labels.
  */
 @Composable
 fun RowScope.AdminNavButton(selected: Boolean, onClick: () -> Unit, icon: ImageVector, label: String) {

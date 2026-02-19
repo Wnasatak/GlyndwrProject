@@ -29,10 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.EnrollmentStatusBadge
-import assignment1.krzysztofoko.s16001089.ui.admin.components.Users.SectionHeaderDetails
+import assignment1.krzysztofoko.s16001089.ui.admin.components.users.SectionHeaderDetails
 import java.text.SimpleDateFormat
 import java.util.*
 

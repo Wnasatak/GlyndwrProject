@@ -1,9 +1,6 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Users
+package assignment1.krzysztofoko.s16001089.ui.admin.components.users
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,8 +27,26 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * UserCommentsTab provides an interface for auditing student reviews.
- * Refactored to support both Admin and Student Profile views without a direct ViewModel dependency.
+ * UserCommentsTab.kt
+ *
+ * This administrative component is responsible for moderation and auditing of user-generated feedback.
+ * It provides a specialized interface for institutional staff to review, edit, or remove comments
+ * posted by students across the catalog.
+ *
+ * Design Architecture:
+ * - Decoupled View: Designed to work in both Admin-context (moderation) and User-context (personal history).
+ * - Safety First: Implements hierarchical confirmation dialogs for destructive actions.
+ * - Administrative Override: Explicitly warns staff when modifying public institutional data.
+ */
+
+/**
+ * Main comments/reviews tab for auditing.
+ *
+ * @param reviews List of [ReviewLocal] objects to be displayed.
+ * @param allBooks The global catalog list used to resolve product IDs to titles.
+ * @param isAdmin Flag determining if moderation tools (override warnings) are active.
+ * @param onDeleteComment Callback invoked when a comment is permanently removed.
+ * @param onUpdateReview Callback invoked when a comment is administratively edited.
  */
 @Composable
 fun UserCommentsTab(
@@ -42,40 +56,62 @@ fun UserCommentsTab(
     onDeleteComment: (Int) -> Unit = {},
     onUpdateReview: (ReviewLocal) -> Unit = {}
 ) {
+    // --- DIALOG & MODERATION STATE ---
+    // Tracks the specific review being edited or deleted.
     var editingReview by remember { mutableStateOf<ReviewLocal?>(null) }
     var reviewToDelete by remember { mutableStateOf<ReviewLocal?>(null) }
+    
+    // Buffer for the edited text.
     var editedCommentText by remember { mutableStateOf("") }
+    
+    // Policy safeguard state.
     var showAdminWarning by remember { mutableStateOf(false) }
 
+    // --- EMPTY STATE HANDLING ---
     if (reviews.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.RateReview, null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
+                Icon(
+                    Icons.Default.RateReview, 
+                    null, 
+                    modifier = Modifier.size(64.dp), 
+                    tint = Color.Gray.copy(alpha = 0.3f)
+                )
                 Spacer(Modifier.height(16.dp))
+                @Suppress("DEPRECATION")
                 Text("No academic reviews found.", color = Color.Gray) 
             }
         }
     } else {
+        // --- FEEDBACK AUDIT LIST ---
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(16.dp), 
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                SectionHeaderDetails(if (isAdmin) "Student Feedback Audit (${reviews.size})" else "My Comments (${reviews.size})")
+                SectionHeaderDetails(
+                    if (isAdmin) "Student Feedback Audit (${reviews.size})" 
+                    else "My Comments (${reviews.size})"
+                )
             }
             
             items(reviews) { review ->
-                val book = allCoursesFixed(allBooks).find { it.id == review.productId } ?: allBooks.find { it.id == review.productId }
+                // RESOLUTION: Find the corresponding book/course for the review ID.
+                val book = allCoursesFixed(allBooks).find { it.id == review.productId } 
+                           ?: allBooks.find { it.id == review.productId }
                 
                 Card(
                     modifier = Modifier.fillMaxWidth(), 
                     shape = RoundedCornerShape(16.dp), 
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                    ),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
+                                @Suppress("DEPRECATION")
                                 Text(
                                     text = book?.title ?: "Unknown Item", 
                                     style = MaterialTheme.typography.titleMedium, 
@@ -91,6 +127,7 @@ fun UserCommentsTab(
                                 )
                             }
                             
+                            // MODERATION ACTIONS
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 IconButton(onClick = { 
                                     editingReview = review
@@ -109,6 +146,7 @@ fun UserCommentsTab(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                         )
                         
+                        // THE FEEDBACK BODY
                         Text(
                             text = "\"${review.comment}\"", 
                             style = MaterialTheme.typography.bodyMedium,
@@ -117,9 +155,15 @@ fun UserCommentsTab(
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
                         
-                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                        // METADATA FOOTER
+                        Row(
+                            modifier = Modifier.fillMaxWidth(), 
+                            verticalAlignment = Alignment.CenterVertically, 
+                            horizontalArrangement = Arrangement.End
+                        ) {
                             Icon(Icons.Default.Schedule, null, modifier = Modifier.size(12.dp), tint = Color.Gray)
-                            Spacer(Modifier.width(6.6.dp))
+                            Spacer(Modifier.width(6.dp))
+                            @Suppress("DEPRECATION")
                             Text(
                                 text = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(review.timestamp)), 
                                 style = MaterialTheme.typography.labelSmall, 
@@ -130,11 +174,13 @@ fun UserCommentsTab(
                     }
                 }
             }
+            // Ensure visibility above bottom navigation bars.
             item { Spacer(Modifier.height(80.dp)) }
         }
     }
 
-    // --- EDIT DIALOG ---
+    // --- DIALOG: EDIT FEEDBACK ---
+    // Provides a text interface for modifying review content.
     if (editingReview != null) {
         Dialog(onDismissRequest = { editingReview = null }) {
             Surface(
@@ -147,7 +193,9 @@ fun UserCommentsTab(
                 Column(modifier = Modifier.padding(24.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), shape = CircleShape, modifier = Modifier.size(40.dp)) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.EditNote, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) }
+                            Box(contentAlignment = Alignment.Center) { 
+                                Icon(Icons.Default.EditNote, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) 
+                            }
                         }
                         Spacer(Modifier.width(16.dp))
                         @Suppress("DEPRECATION")
@@ -167,18 +215,32 @@ fun UserCommentsTab(
 
                     Spacer(Modifier.height(32.dp))
 
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { editingReview = null }) { Text("Discard", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(), 
+                        horizontalArrangement = Arrangement.End, 
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { editingReview = null }) { 
+                            Text("Discard", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) 
+                        }
                         Spacer(Modifier.width(12.dp))
-                        Button(onClick = { 
-                            if (isAdmin) showAdminWarning = true 
-                            else {
-                                onUpdateReview(editingReview!!.copy(comment = editedCommentText))
-                                editingReview = null
-                            }
-                        }, shape = RoundedCornerShape(12.dp)) {
+                        Button(
+                            onClick = { 
+                                if (isAdmin) showAdminWarning = true 
+                                else {
+                                    onUpdateReview(editingReview!!.copy(comment = editedCommentText))
+                                    editingReview = null
+                                }
+                            }, 
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
                             Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp)); Text(if (isAdmin) "Review Update" else "Save Update", fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.width(8.dp))
+                            @Suppress("DEPRECATION")
+                            Text(
+                                if (isAdmin) "Review Update" else "Save Update", 
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -186,7 +248,8 @@ fun UserCommentsTab(
         }
     }
 
-    // --- POLICY WARNING OVERRIDE ---
+    // --- DIALOG: ADMINISTRATIVE OVERRIDE WARNING ---
+    // A mandatory step for admins before committing changes to institutional feedback.
     if (showAdminWarning && editingReview != null) {
         Dialog(onDismissRequest = { showAdminWarning = false }) {
             Surface(
@@ -197,7 +260,12 @@ fun UserCommentsTab(
                 border = BorderStroke(2.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
             ) {
                 Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Gavel, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                    Icon(
+                        Icons.Default.Gavel, 
+                        null, 
+                        tint = MaterialTheme.colorScheme.error, 
+                        modifier = Modifier.size(48.dp)
+                    )
                     Spacer(Modifier.height(16.dp))
                     @Suppress("DEPRECATION")
                     Text("Administrative Audit", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
@@ -211,7 +279,9 @@ fun UserCommentsTab(
                     )
                     Spacer(Modifier.height(32.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedButton(onClick = { showAdminWarning = false }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Re-Evaluate") }
+                        OutlinedButton(onClick = { showAdminWarning = false }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { 
+                            Text("Re-Evaluate") 
+                        }
                         Button(
                             onClick = {
                                 onUpdateReview(editingReview!!.copy(comment = editedCommentText))
@@ -221,14 +291,17 @@ fun UserCommentsTab(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) { Text("Confirm Override", fontWeight = FontWeight.Bold) }
+                        ) { 
+                            Text("Confirm Override", fontWeight = FontWeight.Bold) 
+                        }
                     }
                 }
             }
         }
     }
 
-    // --- SAFETY DELETE CONFIRMATION ---
+    // --- DIALOG: SAFETY DELETE CONFIRMATION ---
+    // Prevents accidental deletion of student records.
     if (reviewToDelete != null) {
         Dialog(onDismissRequest = { reviewToDelete = null }) {
             Surface(
@@ -239,7 +312,12 @@ fun UserCommentsTab(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
             ) {
                 Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                    Icon(
+                        Icons.Default.DeleteForever, 
+                        null, 
+                        tint = MaterialTheme.colorScheme.error, 
+                        modifier = Modifier.size(48.dp)
+                    )
                     Spacer(Modifier.height(16.dp))
                     @Suppress("DEPRECATION")
                     Text("Remove Comment?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
@@ -253,7 +331,9 @@ fun UserCommentsTab(
                     )
                     Spacer(Modifier.height(32.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        TextButton(onClick = { reviewToDelete = null }, modifier = Modifier.weight(1f)) { Text("Keep Comment") }
+                        TextButton(onClick = { reviewToDelete = null }, modifier = Modifier.weight(1f)) { 
+                            Text("Keep Comment") 
+                        }
                         Button(
                             onClick = {
                                 onDeleteComment(reviewToDelete!!.reviewId)
@@ -262,7 +342,9 @@ fun UserCommentsTab(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) { Text("Delete Now", fontWeight = FontWeight.Bold) }
+                        ) { 
+                            Text("Delete Now", fontWeight = FontWeight.Bold) 
+                        }
                     }
                 }
             }
@@ -270,4 +352,7 @@ fun UserCommentsTab(
     }
 }
 
-private fun allCoursesFixed(books: List<Book>) = books // Fallback
+/**
+ * Fallback resolver for courses.
+ */
+private fun allCoursesFixed(books: List<Book>) = books 

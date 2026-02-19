@@ -1,4 +1,4 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Dashboard
+package assignment1.krzysztofoko.s16001089.ui.admin.components.dashboard
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
@@ -21,15 +21,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.data.UserLocal
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
 import assignment1.krzysztofoko.s16001089.ui.components.*
 
 /**
- * A professional, high-impact component for sending system-wide announcements.
- * Refactored for High Contrast: Ensures visibility in custom themes (like Light Green) 
- * by avoiding tonal tints and using sharp outlines.
+ * BroadcastAnnouncementDialog.kt
+ *
+ * This component provides a professional administrative interface for sending system-wide 
+ * or targeted announcements. It features a responsive design, accessibility-focused 
+ * high-contrast UI, and an integrated user search for individual targeting.
+ *
+ * Design Architecture:
+ * - Uses a centered Surface acting as a modal dialog.
+ * - Employs a scrollable Column to handle variable content heights on smaller screens.
+ * - Utilizes AnimatedVisibility for smooth transitions between target modes.
+ */
+
+/**
+ * The primary composable for composing and sending broadcasts.
+ *
+ * @param viewModel The shared AdminViewModel used to access the user directory and system state.
+ * @param onDismiss Invoked when the user cancels the operation; typically closes the dialog.
+ * @param onSend Invoked when the 'Transmit' button is clicked. 
+ *               Parameters: (title, message, targetRoles, targetUserId)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,28 +53,45 @@ fun BroadcastAnnouncementDialog(
     onDismiss: () -> Unit,
     onSend: (String, String, List<String>, String?) -> Unit
 ) {
+    // --- PERSISTENT UI STATE ---
+    // Tracks the text content of the announcement.
     var title by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    
+    // Tracks the processing state to prevent double-submission and show progress.
     var isSending by remember { mutableStateOf(false) }
     
+    // --- TARGETING CONFIGURATION ---
+    // Pre-defined segments for broadcasting. These are mapped to database roles.
     val targetOptions = remember {
         listOf(
-            BroadcastTarget("All", "Everyone", Icons.Default.Public),
-            BroadcastTarget("Students", "Enrolled students", Icons.Default.School),
-            BroadcastTarget("Teachers", "Faculty members", Icons.Default.Person),
-            BroadcastTarget("Admins", "System admins", Icons.Default.AdminPanelSettings),
-            BroadcastTarget("Users", "Standard users", Icons.Default.PeopleOutline),
-            BroadcastTarget("Specific", "Single individual", Icons.Default.PersonSearch)
+            BroadcastTarget("All", "Everyone in the system", Icons.Default.Public),
+            BroadcastTarget("Students", "Enrolled student accounts", Icons.Default.School),
+            BroadcastTarget("Teachers", "Faculty and staff accounts", Icons.Default.Person),
+            BroadcastTarget("Admins", "Administrative personnel", Icons.Default.AdminPanelSettings),
+            BroadcastTarget("Users", "Standard registered users", Icons.Default.PeopleOutline),
+            BroadcastTarget("Specific", "Target a single individual", Icons.Default.PersonSearch)
         )
     }
     
+    // Tracks which target category is currently selected.
     var selectedTargetId by remember { mutableStateOf<String?>("All") }
+    // State for the Material 3 Exposed Dropdown Menu.
     var isMenuExpanded by remember { mutableStateOf(false) }
     
+    // --- INDIVIDUAL USER SEARCH LOGIC ---
+    // Only used if selectedTargetId == "Specific".
     var userSearchQuery by remember { mutableStateOf("") }
+    // Observes the global user list from the ViewModel.
     val allUsers by viewModel.allUsers.collectAsState()
+    // Stores the user selected from search results.
     var selectedUser by remember { mutableStateOf<UserLocal?>(null) }
 
+    /**
+     * Filtered User Results:
+     * Dynamically filters the global user list based on the search query.
+     * Logic: Starts searching after 2 characters, matches name or email, limits to 3 results.
+     */
     val filteredUsers = remember(userSearchQuery, allUsers) {
         if (userSearchQuery.length < 2) emptyList()
         else allUsers.filter { 
@@ -68,10 +100,12 @@ fun BroadcastAnnouncementDialog(
         }.take(3)
     }
 
+    // Identifies the active target object for UI mapping (icons, descriptions).
     val selectedTarget = remember(selectedTargetId) { targetOptions.find { it.id == selectedTargetId } }
     val isTablet = isTablet()
 
     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+        // Main dialog container with high-contrast styling.
         Surface(
             modifier = Modifier
                 .widthIn(max = 500.dp)
@@ -80,12 +114,11 @@ fun BroadcastAnnouncementDialog(
                 .padding(vertical = AdaptiveSpacing.medium())
                 .animateContentSize(),
             shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
-            // HIGH CONTRAST FIX: Use pure surface without tonal elevation to avoid "muddy" green tints.
-            // Added real shadowElevation to make it pop from the background.
+            // DESIGN CHOICE: We use pure surface color instead of tonal elevation to maintain 
+            // brand color integrity in custom themes like Light Green or Dark Blue.
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp,
             shadowElevation = 6.dp,
-            // HIGH CONTRAST FIX: Increased border alpha and used 'outline' for a sharper edge.
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
         ) {
             Column(
@@ -94,14 +127,20 @@ fun BroadcastAnnouncementDialog(
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // --- HEADER ---
+                // --- HEADER SECTION ---
+                // Visual indicator (Campaign icon) and branding.
                 Surface(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                     shape = CircleShape,
                     modifier = Modifier.size(AdaptiveDimensions.MediumAvatar)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Campaign, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(AdaptiveDimensions.SmallIconSize))
+                        Icon(
+                            imageVector = Icons.Default.Campaign, 
+                            contentDescription = "Broadcast Icon", 
+                            tint = MaterialTheme.colorScheme.primary, 
+                            modifier = Modifier.size(AdaptiveDimensions.SmallIconSize)
+                        )
                     }
                 }
                 Spacer(Modifier.height(AdaptiveSpacing.small()))
@@ -112,7 +151,7 @@ fun BroadcastAnnouncementDialog(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Urgent group communication tool", 
+                    text = "System-wide notification utility", 
                     style = AdaptiveTypography.hint(), 
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
@@ -120,9 +159,15 @@ fun BroadcastAnnouncementDialog(
                 
                 Spacer(Modifier.height(AdaptiveSpacing.medium()))
 
-                // --- AUDIENCE SELECTOR ---
+                // --- AUDIENCE SELECTION SECTION ---
+                // Uses a Material 3 Exposed Dropdown to select the target group.
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("TARGET AUDIENCE", style = AdaptiveTypography.label(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = "RECIPIENT GROUP", 
+                        style = AdaptiveTypography.label(), 
+                        fontWeight = FontWeight.Bold, 
+                        color = MaterialTheme.colorScheme.primary
+                    )
                     Spacer(Modifier.height(AdaptiveSpacing.extraSmall()))
                     
                     ExposedDropdownMenuBox(
@@ -130,24 +175,41 @@ fun BroadcastAnnouncementDialog(
                         onExpandedChange = { isMenuExpanded = !isMenuExpanded },
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // The "Anchor" or the field that triggers the dropdown.
                         Surface(
                             modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            // HIGH CONTRAST FIX: Pure surface for the input field background.
                             color = MaterialTheme.colorScheme.surface,
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
                             shape = RoundedCornerShape(AdaptiveSpacing.itemRadius())
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(imageVector = selectedTarget?.icon ?: Icons.Default.Groups, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Icon(
+                                    imageVector = selectedTarget?.icon ?: Icons.Default.Groups, 
+                                    contentDescription = null, 
+                                    tint = MaterialTheme.colorScheme.primary, 
+                                    modifier = Modifier.size(20.dp)
+                                )
                                 Spacer(Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = selectedTarget?.id ?: "Select", style = AdaptiveTypography.body(), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-                                    Text(text = selectedTarget?.description ?: "Choose", style = AdaptiveTypography.hint(), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(
+                                        text = selectedTarget?.id ?: "Select Group", 
+                                        style = AdaptiveTypography.body(), 
+                                        fontWeight = FontWeight.Black, 
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = selectedTarget?.description ?: "Choose target", 
+                                        style = AdaptiveTypography.hint(), 
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant, 
+                                        maxLines = 1, 
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded)
                             }
                         }
 
+                        // The actual list of target options.
                         ExposedDropdownMenu(
                             expanded = isMenuExpanded,
                             onDismissRequest = { isMenuExpanded = false },
@@ -168,6 +230,7 @@ fun BroadcastAnnouncementDialog(
                                     onClick = {
                                         selectedTargetId = target.id
                                         isMenuExpanded = false
+                                        // Reset specific user if switching away from 'Specific'.
                                         selectedUser = null 
                                     }
                                 )
@@ -176,7 +239,8 @@ fun BroadcastAnnouncementDialog(
                     }
                 }
 
-                // --- USER SEARCH ---
+                // --- CONDITIONAL USER SEARCH ---
+                // Appears only when targeting a specific individual.
                 AnimatedVisibility(
                     visible = selectedTargetId == "Specific",
                     enter = expandVertically() + fadeIn(),
@@ -192,9 +256,11 @@ fun BroadcastAnnouncementDialog(
                                 userSearchQuery = it
                                 if (selectedUser != null) selectedUser = null 
                             },
-                            placeholder = { Text(text = "Find user...", style = AdaptiveTypography.caption()) },
+                            placeholder = { Text(text = "Search by name or email...", style = AdaptiveTypography.caption()) },
                             leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp)) },
-                            trailingIcon = { if(selectedUser != null) Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp)) },
+                            trailingIcon = { 
+                                if(selectedUser != null) Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp)) 
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(AdaptiveSpacing.itemRadius()),
                             singleLine = true,
@@ -205,6 +271,7 @@ fun BroadcastAnnouncementDialog(
                             )
                         )
 
+                        // UI for the dynamic search results.
                         if (filteredUsers.isNotEmpty() && selectedUser == null) {
                             Card(
                                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
@@ -237,11 +304,12 @@ fun BroadcastAnnouncementDialog(
 
                 Spacer(Modifier.height(AdaptiveSpacing.medium()))
 
-                // --- COMPOSE ---
+                // --- CONTENT COMPOSITION ---
+                // Title Field
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Title") },
+                    label = { Text("Announcement Title") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(AdaptiveSpacing.itemRadius()),
                     singleLine = true,
@@ -254,10 +322,11 @@ fun BroadcastAnnouncementDialog(
 
                 Spacer(Modifier.height(AdaptiveSpacing.small()))
 
+                // Message Body Field
                 OutlinedTextField(
                     value = message,
                     onValueChange = { message = it },
-                    label = { Text("Message") },
+                    label = { Text("Detailed Message") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(AdaptiveSpacing.itemRadius()),
                     minLines = 3,
@@ -270,12 +339,18 @@ fun BroadcastAnnouncementDialog(
 
                 Spacer(Modifier.height(AdaptiveSpacing.medium()))
 
-                // --- ACTIONS ---
+                // --- ACTION BUTTONS ---
+                // Transmission Button
                 Button(
                     enabled = title.isNotBlank() && message.isNotBlank() && 
                              (selectedTargetId != "Specific" || selectedUser != null) && !isSending,
                     onClick = {
                         isSending = true
+                        /**
+                         * Role Mapping Logic:
+                         * Translates the UI friendly target categories into 
+                         * specific database role identifiers.
+                         */
                         val roles = when(selectedTargetId) {
                             "All" -> listOf("student", "teacher", "admin", "user", "tutor")
                             "Students" -> listOf("student")
@@ -292,21 +367,39 @@ fun BroadcastAnnouncementDialog(
                     if (isSending) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                     } else {
-                        Text("Transmit Announcement", fontWeight = FontWeight.Bold, style = AdaptiveTypography.sectionHeader())
+                        Text(
+                            text = "Transmit Announcement", 
+                            fontWeight = FontWeight.Bold, 
+                            style = AdaptiveTypography.sectionHeader()
+                        )
                     }
                 }
 
+                // Cancellation Button
                 TextButton(
                     onClick = onDismiss, 
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                 ) {
-                    Text("Discard Draft", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = AdaptiveTypography.sectionHeader())
+                    Text(
+                        text = "Discard Draft", 
+                        color = MaterialTheme.colorScheme.primary, 
+                        fontWeight = FontWeight.Bold, 
+                        style = AdaptiveTypography.sectionHeader()
+                    )
                 }
             }
         }
     }
 }
 
+/**
+ * BroadcastTarget Data Model
+ * 
+ * Represents a selectable audience segment.
+ * @param id The display name of the target group.
+ * @param description A short summary of who is included in this group.
+ * @param icon The visual symbol representing the group.
+ */
 data class BroadcastTarget(
     val id: String,
     val description: String,

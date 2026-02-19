@@ -1,4 +1,4 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Users
+package assignment1.krzysztofoko.s16001089.ui.admin.components.users
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -35,9 +35,23 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * UserInvoicesTab provides an administrative interface for reviewing a user's transaction history.
- * It displays a chronological list of academic receipts and provides a detailed drill-down 
- * view for each specific transaction.
+ * UserInvoicesTab.kt
+ *
+ * This administrative component provides a structured ledger of all financial transactions 
+ * (purchases and top-ups) for a specific user. It allows staff to audit expenditures, 
+ * verify billing details, and generate PDF replicas of official university receipts.
+ *
+ * Design Architecture:
+ * - Reactive Ledger: Dynamically lists all invoice records associated with the user.
+ * - Drill-Down Detail: Utilizes a high-end modal Dialog to provide granular transaction metadata.
+ * - External Integration: Provides a bridge to the system's PDF generation utility for "Print" functionality.
+ */
+
+/**
+ * Main financial audit tab for student accounts.
+ *
+ * @param invoices Chronological list of [Invoice] records for the user.
+ * @param isAdmin Flag to customize header labels for administrative context.
  */
 @Composable
 fun UserInvoicesTab(
@@ -45,29 +59,40 @@ fun UserInvoicesTab(
     isAdmin: Boolean = false
 ) {
     val context = LocalContext.current
+    
+    // --- LOCAL STATE ---
+    // Tracks the specific invoice currently being viewed in the detail dialog.
     var selectedInvoice by remember { mutableStateOf<Invoice?>(null) }
+    
+    // Formatting utility for consistent chronological display.
     val sdf = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
 
+    // EMPTY STATE: Displayed when the user has no transaction history.
     if (invoices.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ReceiptLong, 
-                    null, 
+                    imageVector = Icons.AutoMirrored.Filled.ReceiptLong, 
+                    contentDescription = null, 
                     modifier = Modifier.size(64.dp), 
                     tint = Color.Gray.copy(alpha = 0.3f)
                 )
                 Spacer(Modifier.height(16.dp))
+                @Suppress("DEPRECATION")
                 Text("No purchase history found.", color = Color.Gray) 
             }
         }
     } else {
+        // --- INVOICE LEDGER LIST ---
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(16.dp), 
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                SectionHeaderDetails(if (isAdmin) "University Receipts (${invoices.size})" else "My Receipts (${invoices.size})")
+                SectionHeaderDetails(
+                    if (isAdmin) "University Receipts (${invoices.size})" 
+                    else "My Receipts (${invoices.size})"
+                )
             }
             
             items(invoices) { inv ->
@@ -83,6 +108,7 @@ fun UserInvoicesTab(
                 ) {
                     ListItem(
                         leadingContent = {
+                            // Category-based icon indicator.
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
@@ -107,11 +133,13 @@ fun UserInvoicesTab(
                             Text(inv.itemTitle, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) 
                         },
                         supportingContent = { 
+                            @Suppress("DEPRECATION")
                             Text("Inv: ${inv.invoiceNumber} • ${sdf.format(Date(inv.purchasedAt))}") 
                         },
                         trailingContent = { 
+                            @Suppress("DEPRECATION")
                             Text(
-                                "£${String.format(Locale.US, "%.2f", inv.pricePaid)}", 
+                                text = "£${String.format(Locale.US, "%.2f", inv.pricePaid)}", 
                                 fontWeight = FontWeight.Black,
                                 color = MaterialTheme.colorScheme.primary
                             ) 
@@ -120,10 +148,13 @@ fun UserInvoicesTab(
                     )
                 }
             }
+            // Ensure content isn't obscured by the bottom navigation bar.
             item { Spacer(Modifier.height(80.dp)) }
         }
     }
 
+    // --- TRANSACTION DETAIL DIALOG ---
+    // Provides a full breakdown of the selected receipt including billing info and print options.
     if (selectedInvoice != null) {
         val inv = selectedInvoice!!
         Dialog(
@@ -140,6 +171,7 @@ fun UserInvoicesTab(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
+                    // HEADER: Title and PDF Export Action.
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
@@ -154,6 +186,8 @@ fun UserInvoicesTab(
                         @Suppress("DEPRECATION")
                         Text("Official Receipt", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                         Spacer(Modifier.weight(1f))
+                        
+                        // Action: Invoke external PDF generation utility.
                         IconButton(
                             onClick = {
                                 val pRecord = PurchaseItem(
@@ -173,12 +207,13 @@ fun UserInvoicesTab(
                             },
                             colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                         ) {
-                            Icon(Icons.Default.Print, "Print", tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Default.Print, "Export PDF", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
 
                     Spacer(Modifier.height(24.dp))
 
+                    // SECTION: BILLING ENTITY (Issued To)
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -186,22 +221,29 @@ fun UserInvoicesTab(
                             .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
                             .padding(16.dp)
                     ) {
+                        @Suppress("DEPRECATION")
                         Text("ISSUED TO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                         Spacer(Modifier.height(4.dp))
                         @Suppress("DEPRECATION")
                         Text(inv.billingName, fontWeight = FontWeight.Black, style = MaterialTheme.typography.bodyLarge)
+                        @Suppress("DEPRECATION")
                         Text(inv.billingEmail, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                         if (!inv.billingAddress.isNullOrBlank()) {
+                            @Suppress("DEPRECATION")
                             Text(inv.billingAddress!!, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                         }
                     }
 
                     Spacer(Modifier.height(20.dp))
 
+                    // SECTION: ITEM SUMMARY
                     Column {
+                        @Suppress("DEPRECATION")
                         Text("PURCHASED ITEM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                         Spacer(Modifier.height(8.dp))
+                        @Suppress("DEPRECATION")
                         Text(inv.itemTitle, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium)
+                        @Suppress("DEPRECATION")
                         Text("${inv.itemCategory} ${if (inv.itemVariant != null) "• ${inv.itemVariant}" else ""}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                     }
 
@@ -209,6 +251,7 @@ fun UserInvoicesTab(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                     Spacer(Modifier.height(16.dp))
 
+                    // SECTION: TRANSACTION METADATA
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         DetailRow("Invoice Number", inv.invoiceNumber)
                         DetailRow("Payment Method", inv.paymentMethod)
@@ -218,6 +261,7 @@ fun UserInvoicesTab(
                         
                         Spacer(Modifier.height(12.dp))
                         
+                        // HIGHLIGHT: Total Consideration
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
@@ -229,6 +273,7 @@ fun UserInvoicesTab(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                @Suppress("DEPRECATION")
                                 Text("TOTAL PAID", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                 @Suppress("DEPRECATION")
                                 Text("£${String.format(Locale.US, "%.2f", inv.pricePaid)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
@@ -238,6 +283,7 @@ fun UserInvoicesTab(
                     
                     Spacer(Modifier.height(24.dp))
                     
+                    @Suppress("DEPRECATION")
                     Text(
                         text = "Processed on ${sdf.format(Date(inv.purchasedAt))}",
                         style = MaterialTheme.typography.labelSmall,
@@ -249,6 +295,7 @@ fun UserInvoicesTab(
 
                     Spacer(Modifier.height(24.dp))
 
+                    // DISMISSAL
                     Button(
                         onClick = { selectedInvoice = null },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -262,10 +309,18 @@ fun UserInvoicesTab(
     }
 }
 
+/**
+ * Reusable layout row for displaying key-value data points in the invoice detail view.
+ */
 @Composable
 private fun DetailRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(
+        modifier = Modifier.fillMaxWidth(), 
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        @Suppress("DEPRECATION")
         Text(text = "$label:", style = MaterialTheme.typography.bodySmall, color = Color.Gray, fontWeight = FontWeight.Medium)
+        @Suppress("DEPRECATION")
         Text(text = value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
     }
 }

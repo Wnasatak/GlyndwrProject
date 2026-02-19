@@ -1,4 +1,4 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Users
+package assignment1.krzysztofoko.s16001089.ui.admin.components.users
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,14 +16,36 @@ import assignment1.krzysztofoko.s16001089.ui.admin.AdminViewModel
 import assignment1.krzysztofoko.s16001089.ui.components.AdaptiveContent
 import java.util.*
 
+/**
+ * UsersTab.kt
+ *
+ * This tab provides administrators with an overview of all system users.
+ * It allows for the management of user accounts, including creation, deletion,
+ * and navigation to detailed user profiles.
+ */
+
+/**
+ * Renders the main User Management tab.
+ *
+ * @param viewModel The shared [AdminViewModel] for state management and user operations.
+ * @param onNavigateToUserDetails Callback to navigate to a specific user's detail screen.
+ */
 @Composable
 fun UsersTab(viewModel: AdminViewModel, onNavigateToUserDetails: (String) -> Unit) {
+    // --- DATA OBSERVATION ---
+    // Reactively observe the list of all system users.
     val users by viewModel.allUsers.collectAsState()
+    
+    // --- UI STATE MANAGEMENT ---
+    // Tracks the visibility of the creation dialog.
     var isCreatingNew by remember { mutableStateOf(false) }
+    // Tracks the user currently targeted for deletion.
     var userToDelete by remember { mutableStateOf<UserLocal?>(null) }
 
     AdaptiveContent {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // --- HEADER ACTION ---
+            // Prominent button to initiate the creation of a new user account.
             item {
                 Button(
                     onClick = { isCreatingNew = true },
@@ -36,12 +58,21 @@ fun UsersTab(viewModel: AdminViewModel, onNavigateToUserDetails: (String) -> Uni
                     Text("Create New Account", fontWeight = FontWeight.Black)
                 }
             }
+            
+            // --- USER LIST ---
+            // Efficiently renders individual user cards for every system account.
             items(users) { user ->
-                AdminUserCard(user = user, onClick = { onNavigateToUserDetails(user.id) }, onDelete = { userToDelete = user })
+                AdminUserCard(
+                    user = user, 
+                    onClick = { onNavigateToUserDetails(user.id) }, 
+                    onDelete = { userToDelete = user }
+                )
             }
         }
     }
 
+    // --- OVERLAY: USER CREATION DIALOG ---
+    // Opens when isCreatingNew is true, providing a form for new account data.
     if (isCreatingNew) {
         UserEditDialog(
             user = UserLocal(id = UUID.randomUUID().toString(), name = "", email = "", role = "student"), 
@@ -54,6 +85,8 @@ fun UsersTab(viewModel: AdminViewModel, onNavigateToUserDetails: (String) -> Uni
         )
     }
 
+    // --- OVERLAY: DELETE CONFIRMATION ---
+    // Opens when userToDelete is not null, requesting verification before permanent removal.
     if (userToDelete != null) {
         DeleteUserConfirmationDialog(
             userName = userToDelete!!.name, 

@@ -1,4 +1,4 @@
-package assignment1.krzysztofoko.s16001089.ui.admin.components.Users
+package assignment1.krzysztofoko.s16001089.ui.admin.components.users
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -24,9 +24,19 @@ import assignment1.krzysztofoko.s16001089.ui.components.formatAssetUrl
 import coil.compose.AsyncImage
 
 /**
- * Shared UI components for the User Management administrative views.
+ * UserShared.kt
+ *
+ * This file contains reusable UI components specifically designed for the Administrative 
+ * User Management views. These components provide a consistent visual language for 
+ * displaying student profiles, activity logs, and academic records.
  */
 
+/**
+ * A container component for grouping related user information into a titled card.
+ *
+ * @param title The section heading (e.g., "Contact Information").
+ * @param content The composable content to be rendered inside the card.
+ */
 @Composable
 fun InfoSectionDetails(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -40,6 +50,7 @@ fun InfoSectionDetails(title: String, content: @Composable ColumnScope.() -> Uni
         Card(
             modifier = Modifier.fillMaxWidth(), 
             shape = RoundedCornerShape(20.dp), 
+            // Semi-transparent surface ensures the wavy background is visible while keeping text legible.
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         ) {
@@ -50,9 +61,17 @@ fun InfoSectionDetails(title: String, content: @Composable ColumnScope.() -> Uni
     }
 }
 
+/**
+ * A single row within an information section, typically representing a key-value pair.
+ *
+ * @param icon The visual icon representing the data type.
+ * @param label The descriptive label (e.g., "Phone Number").
+ * @param value The actual data string.
+ */
 @Composable
 fun InfoRowDetails(icon: ImageVector, label: String, value: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
+        // Branded icon container with a subtle tint.
         Surface(
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
             shape = RoundedCornerShape(8.dp),
@@ -70,6 +89,13 @@ fun InfoRowDetails(icon: ImageVector, label: String, value: String) {
     }
 }
 
+/**
+ * Displays a horizontal, scrollable list of products (Books/Courses) related to user activity.
+ *
+ * @param title The category title (e.g., "Recently Viewed").
+ * @param items The list of Book objects to display.
+ * @param onItemClick Triggered when a specific item card is pressed.
+ */
 @Composable
 fun ActivitySectionDetails(title: String, items: List<Book>, onItemClick: (Book) -> Unit = {}) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -80,8 +106,14 @@ fun ActivitySectionDetails(title: String, items: List<Book>, onItemClick: (Book)
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(Modifier.height(12.dp))
+        
         if (items.isEmpty()) {
-            Text("No activity recorded.", color = Color.Gray, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp))
+            Text(
+                text = "No activity recorded.", 
+                color = Color.Gray, 
+                style = MaterialTheme.typography.bodySmall, 
+                modifier = Modifier.padding(start = 4.dp)
+            )
         } else {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -97,6 +129,7 @@ fun ActivitySectionDetails(title: String, items: List<Book>, onItemClick: (Book)
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(10.dp)) {
+                            // Render the product thumbnail.
                             AsyncImage(
                                 model = formatAssetUrl(book.imageUrl), 
                                 contentDescription = null, 
@@ -124,6 +157,9 @@ fun ActivitySectionDetails(title: String, items: List<Book>, onItemClick: (Book)
     }
 }
 
+/**
+ * Simple uppercase header text used to separate major sections in user tabs.
+ */
 @Composable
 fun SectionHeaderDetails(title: String) {
     Text(
@@ -135,6 +171,9 @@ fun SectionHeaderDetails(title: String) {
     )
 }
 
+/**
+ * A wrapper for FlowRow that applies standard administrative spacing.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FlowRowDetails(

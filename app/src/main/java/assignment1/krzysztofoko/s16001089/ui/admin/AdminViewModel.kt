@@ -15,6 +15,8 @@ import java.util.UUID
  * AdminViewModel.kt
  *
  * This ViewModel acts as the command centre for the administrative dashboard.
+ * It manages the state and logic for administrative tasks including user management,
+ * course application processing, catalog maintenance, and system auditing.
  */
 class AdminViewModel(
     private val userDao: UserDao,
@@ -27,25 +29,36 @@ class AdminViewModel(
 ) : ViewModel() {
 
     private val auth = FirebaseAuth.getInstance()
+    
+    // Tracks the current administrator's ID for data synchronization.
     private val _currentAdminId = MutableStateFlow(auth.currentUser?.uid ?: "")
     
-    // UI state for background processing feedback.
+    // UI state for background processing feedback (e.g., showing a loading overlay).
     private val _isProcessing = MutableStateFlow(false)
     val isProcessing: StateFlow<Boolean> = _isProcessing.asStateFlow()
 
-    // State for temporary status messages (e.g. "Course deleted successfully")
+    // State for temporary status messages (e.g., "Course deleted successfully") shown via snackbars or popups.
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
+    /**
+     * Clears the current status message after it has been displayed.
+     */
     fun clearStatusMessage() {
         _statusMessage.value = null
     }
 
+    /**
+     * Reactive stream providing the currently authenticated administrator's local user data.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     val currentAdminUser: StateFlow<UserLocal?> = _currentAdminId.flatMapLatest { id ->
         if (id.isNotEmpty()) userDao.getUserFlow(id) else flowOf(null)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /**
+     * Reactive stream providing the count of unread notifications for the current administrator.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     val unreadNotificationsCount: StateFlow<Int> = _currentAdminId.flatMapLatest { id ->
         if (id.isNotEmpty()) {
@@ -53,13 +66,21 @@ class AdminViewModel(
         } else flowOf(0)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    // Current active section in the Admin Hub (Dashboard, Users, Catalog, etc.).
     private val _currentSection = MutableStateFlow(AdminSection.DASHBOARD)
     val currentSection: StateFlow<AdminSection> = _currentSection.asStateFlow()
 
+    /**
+     * Updates the currently active administrative section.
+     */
     fun setSection(section: AdminSection) {
         _currentSection.value = section
     }
 
+    /**
+     * Reactive stream providing a list of all course applications (enrollments),
+     * enriched with related course and user information for display.
+     */
     val applications: StateFlow<List<AdminApplicationItem>> = flow {
         userDao.getAllEnrollmentsFlow().collect { list ->
             val mapped = list.map { app ->
@@ -72,9 +93,13 @@ class AdminViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /**
+     * Reactive stream providing all registered users in the system.
+     */
     val allUsers: StateFlow<List<UserLocal>> = userDao.getAllUsersFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Direct data streams for catalog items and configurations.
     val allBooks: Flow<List<Book>> = bookDao.getAllBooks()
     val allAudioBooks: Flow<List<AudioBook>> = audioBookDao.getAllAudioBooks()
     val allCourses: Flow<List<Course>> = courseDao.getAllCourses()
@@ -83,16 +108,24 @@ class AdminViewModel(
     val roleDiscounts: StateFlow<List<RoleDiscount>> = userDao.getAllRoleDiscounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Audit and user activity logs.
     val adminLogs: Flow<List<SystemLog>> = auditDao.getAdminLogs()
     val userLogs: Flow<List<SystemLog>> = auditDao.getUserLogs()
 
     init {
+        // Initial setup: clean up old logs and record system maintenance start.
         viewModelScope.launch {
             auditDao.performLogMaintenance()
             addLog("MAINTENANCE", "SYSTEM", "Automated log cleanup performed.")
         }
     }
 
+    /**
+     * Records a system action in the audit logs.
+     * @param action The type of action (e.g., "SAVED", "DELETED").
+     * @param targetId The ID of the entity affected.
+     * @param details Additional textual information about the event.
+     */
     private fun addLog(action: String, targetId: String, details: String) {
         viewModelScope.launch {
             val user = auth.currentUser
@@ -107,6 +140,10 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Logic for approving a student's course application.
+     * Handles normal enrollments, course change requests, and withdrawal requests.
+     */
     fun approveApplication(appId: String, studentId: String, courseTitle: String) {
         viewModelScope.launch {
             _isProcessing.value = true
@@ -121,6 +158,7 @@ class AdminViewModel(
             }
 
             if (enrollment.isWithdrawal) {
+                // Process Withdrawal: delete enrollment and purchases, reset user role.
                 userDao.addEnrollmentHistory(EnrollmentHistory(
                     userId = targetUserId,
                     courseId = enrollment.courseId,
@@ -134,6 +172,7 @@ class AdminViewModel(
                 }
                 addLog("APPROVED_WITHDRAWAL", appId, "Confirmed withdrawal for $courseTitle.")
             } else if (enrollment.requestedCourseId != null) {
+                // Process Course Change: update to new course ID and record history.
                 val newCourseId = enrollment.requestedCourseId
                 userDao.addEnrollmentHistory(EnrollmentHistory(
                     userId = targetUserId,
@@ -145,6 +184,7 @@ class AdminViewModel(
                 userDao.updateEnrollmentAfterChange(appId, newCourseId, "APPROVED")
                 addLog("APPROVED_CHANGE", appId, "Approved course change to $courseTitle")
             } else {
+                // Process standard Application: activate student role and set status.
                 userDao.updateEnrollmentStatus(appId, "APPROVED")
                 student?.let {
                     userDao.upsertUser(it.copy(role = "student"))
@@ -152,6 +192,7 @@ class AdminViewModel(
                 addLog("APPROVED", appId, "Approved enrolment for $courseTitle. Student role activated.")
             }
             
+            // Notify the user of approval.
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
                 userId = targetUserId,
@@ -167,6 +208,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Logic for rejecting a course application.
+     */
     fun rejectApplication(appId: String, studentId: String, courseTitle: String) {
         viewModelScope.launch {
             _isProcessing.value = true
@@ -176,6 +220,7 @@ class AdminViewModel(
             userDao.updateEnrollmentStatus(appId, "REJECTED")
             addLog("REJECTED", appId, "Rejected enrolment for $courseTitle")
             
+            // Notify the user of rejection.
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
                 userId = targetUserId,
@@ -191,6 +236,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Updates or creates a user account record in the local database.
+     */
     fun saveUser(user: UserLocal) {
         viewModelScope.launch {
             _isProcessing.value = true
@@ -204,6 +252,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Permanently removes a user and all their associated data from the system.
+     */
     fun deleteUser(userId: String) {
         viewModelScope.launch {
             _isProcessing.value = true
@@ -215,6 +266,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Configures a global discount percentage for a specific user role (e.g., student).
+     */
     fun saveRoleDiscount(role: String, discount: Double) {
         viewModelScope.launch {
             _isProcessing.value = true
@@ -226,6 +280,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Saves or updates a book entry in the catalog.
+     */
     fun saveBook(book: Book) {
         viewModelScope.launch { 
             _isProcessing.value = true
@@ -237,6 +294,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Removes a book from the catalog.
+     */
     fun deleteBook(id: String) {
         viewModelScope.launch { 
             _isProcessing.value = true
@@ -248,6 +308,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Saves or updates an audiobook entry in the catalog.
+     */
     fun saveAudioBook(audioBook: AudioBook) {
         viewModelScope.launch { 
             _isProcessing.value = true
@@ -259,6 +322,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Removes an audiobook from the catalog.
+     */
     fun deleteAudioBook(id: String) {
         viewModelScope.launch { 
             _isProcessing.value = true
@@ -270,6 +336,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Saves or updates a course entry in the catalog.
+     */
     fun saveCourse(course: Course) {
         viewModelScope.launch { 
             _isProcessing.value = true
@@ -281,6 +350,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Removes a course from the catalog.
+     */
     fun deleteCourse(id: String) {
         viewModelScope.launch { 
             _isProcessing.value = true
@@ -292,6 +364,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Saves or updates gear/merchandise in the catalog.
+     */
     fun saveGear(gear: Gear) {
         viewModelScope.launch { 
             _isProcessing.value = true
@@ -303,6 +378,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Removes gear/merchandise from the catalog.
+     */
     fun deleteGear(id: String) {
         viewModelScope.launch { 
             _isProcessing.value = true
@@ -316,9 +394,15 @@ class AdminViewModel(
 
     // --- CLASSROOM MANAGEMENT --- //
 
+    /**
+     * Retrieves modules associated with a specific course.
+     */
     fun getModulesForCourse(courseId: String): Flow<List<ModuleContent>> = 
         classroomDao.getModulesForCourse(courseId)
 
+    /**
+     * Saves or updates a curriculum module.
+     */
     fun saveModule(module: ModuleContent) {
         viewModelScope.launch {
             _isProcessing.value = true
@@ -330,6 +414,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Deletes a module and its contents.
+     */
     fun deleteModule(moduleId: String) {
         viewModelScope.launch {
             _isProcessing.value = true
@@ -341,9 +428,15 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Retrieves assignments associated with a module.
+     */
     fun getAssignmentsForModule(moduleId: String): Flow<List<Assignment>> =
         classroomDao.getAssignmentsForModule(moduleId)
 
+    /**
+     * Saves or updates a classroom assignment/task.
+     */
     fun saveAssignment(assignment: Assignment) {
         viewModelScope.launch {
             _isProcessing.value = true
@@ -355,6 +448,9 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Removes an assignment from a module.
+     */
     fun deleteAssignment(assignmentId: String) {
         viewModelScope.launch {
             _isProcessing.value = true
@@ -366,6 +462,14 @@ class AdminViewModel(
         }
     }
 
+    /**
+     * Sends a mass notification to users based on their role or to a single target user.
+     * @param title The announcement header.
+     * @param message The body content of the announcement.
+     * @param targetRoles List of roles to receive the message (if not targeting a specific user).
+     * @param specificUserId The ID of a single user to notify (overrides roles).
+     * @param onComplete Callback invoked with the total number of users notified.
+     */
     fun sendBroadcastToRoleOrUser(
         title: String, 
         message: String, 
@@ -376,14 +480,17 @@ class AdminViewModel(
         viewModelScope.launch {
             _isProcessing.value = true
             val usersToNotify = if (specificUserId != null) {
+                // Single target.
                 listOfNotNull(userDao.getUserById(specificUserId))
             } else {
+                // Role-based target.
                 val allUsersList = userDao.getAllUsersFlow().first() 
                 allUsersList.filter { user ->
                     targetRoles.any { role -> role.equals(user.role.trim(), ignoreCase = true) }
                 }
             }
             
+            // Dispatch notifications to each target.
             usersToNotify.forEach { user ->
                 userDao.addNotification(NotificationLocal(
                     id = UUID.randomUUID().toString(),
@@ -407,6 +514,10 @@ class AdminViewModel(
 
 }
 
+/**
+ * Data wrapper for displaying course enrollment applications in the UI.
+ * Combines the raw enrollment data with associated user and course objects.
+ */
 data class AdminApplicationItem(
     val details: CourseEnrollmentDetails,
     val course: Course?,
@@ -414,6 +525,9 @@ data class AdminApplicationItem(
     val requestedCourse: Course? = null
 )
 
+/**
+ * Factory for creating [AdminViewModel] with required DAO dependencies.
+ */
 class AdminViewModelFactory(
     private val db: AppDatabase
 ) : ViewModelProvider.Factory {
