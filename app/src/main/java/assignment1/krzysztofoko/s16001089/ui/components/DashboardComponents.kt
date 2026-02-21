@@ -257,7 +257,12 @@ private fun WalletTransactionItem(tx: WalletTransaction, sdf: SimpleDateFormat, 
             if (tx.productId != null) {
                 Box {
                     IconButton(onClick = { showItemMenu = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.MoreVert, "Options", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) }
-                    DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
+                    DropdownMenu(
+                        expanded = showItemMenu, 
+                        onDismissRequest = { showItemMenu = false },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
                         if (isPurchase) { DropdownMenuItem(text = { Text("Product Details") }, onClick = { showItemMenu = false; onNavigateToProduct(tx.productId); onDismissSheet() }, leadingIcon = { Icon(Icons.Default.Info, null) }) }
                         DropdownMenuItem(text = { Text("View Invoice") }, onClick = { showItemMenu = false; onViewInvoice(tx.productId, tx.orderReference); onDismissSheet() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, null) })
                     }

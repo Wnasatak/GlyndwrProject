@@ -126,13 +126,20 @@ fun NotificationScreen(
             }
         ) { paddingValues ->
             // Tablet-aware container to prevent the list from becoming too wide
-            AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { _ ->
+            AdaptiveScreenContainer(
+                modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
+                maxWidth = AdaptiveWidths.Wide
+            ) { _ ->
                 if (notifications.isEmpty()) {
                     // Placeholder when no data is available
-                    EmptyNotificationsView(modifier = Modifier.padding(paddingValues))
+                    EmptyNotificationsView()
                 } else {
                     // Core Notification List
-                    LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                         items(notifications, key = { it.id }) { notification ->
                             val isVisible = !dismissingIds.value.contains(notification.id)
                             // Background task: cleanup specific item after its removal animation
@@ -158,6 +165,7 @@ fun NotificationScreen(
                                 )
                             }
                         }
+                        item { Spacer(Modifier.height(16.dp)) }
                     }
                 }
             }

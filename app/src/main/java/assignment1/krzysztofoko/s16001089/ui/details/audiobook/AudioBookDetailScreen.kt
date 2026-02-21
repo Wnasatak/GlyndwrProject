@@ -137,7 +137,7 @@ fun AudioBookDetailScreen(
                     },
                     navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) } },
                     actions = {
-                        // Wishlist toggle is only visible to authenticated users.
+                        // Wishlist toggle is only available to authenticated users.
                         if (user != null) {
                             IconButton(onClick = {
                                 viewModel.toggleWishlist { msg ->
@@ -172,7 +172,7 @@ fun AudioBookDetailScreen(
             } else {
                 book?.let { currentBook ->
                     AdaptiveScreenContainer(
-                        modifier = Modifier.padding(paddingValues),
+                        modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
                         maxWidth = AdaptiveWidths.Medium
                     ) { isTablet ->
                         LazyColumn(
@@ -328,7 +328,7 @@ fun AudioBookDetailScreen(
                                 )
                             }
                             
-                            item { Spacer(modifier = Modifier.height(48.dp)) }
+                            item { Spacer(modifier = Modifier.height(16.dp)) }
                         }
                     }
                 }

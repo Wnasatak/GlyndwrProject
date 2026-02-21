@@ -172,7 +172,7 @@ fun BookDetailScreen(
             } else {
                 book?.let { currentBook ->
                     AdaptiveScreenContainer(
-                        modifier = Modifier.padding(paddingValues),
+                        modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
                         maxWidth = AdaptiveWidths.Medium
                     ) { isTablet ->
                         LazyColumn(
@@ -295,7 +295,7 @@ fun BookDetailScreen(
                                 Spacer(modifier = Modifier.height(32.dp))
                                 ReviewSection(productId = bookId, reviews = allReviews, localUser = localUser, isLoggedIn = user != null, db = AppDatabase.getDatabase(LocalContext.current), isDarkTheme = isDarkTheme, onReviewPosted = { scope.launch { snackbarHostState.showSnackbar(AppConstants.MSG_THANKS_REVIEW) } }, onLoginClick = onLoginRequired)
                             }
-                            item { Spacer(modifier = Modifier.height(48.dp)) }
+                            item { Spacer(modifier = Modifier.height(16.dp)) }
                         }
                     }
                 }

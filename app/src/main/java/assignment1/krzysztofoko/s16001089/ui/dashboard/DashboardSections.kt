@@ -347,7 +347,12 @@ fun LazyGridScope.ownedBooksGrid(
                             IconButton(onClick = { showItemMenu = true }, modifier = Modifier.size(40.dp).padding(4.dp)) {
                                 Icon(Icons.Default.MoreVert, null, modifier = Modifier.size(24.dp), tint = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.outline)
                             }
-                            DropdownMenu(expanded = showItemMenu, onDismissRequest = { showItemMenu = false }) {
+                            DropdownMenu(
+                                expanded = showItemMenu, 
+                                onDismissRequest = { showItemMenu = false },
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
                                 // Dynamic menu items based on product type and ownership state.
                                 if (book.mainCategory == AppConstants.CAT_COURSES && !isRejected) {
                                     DropdownMenuItem(

@@ -141,14 +141,13 @@ fun HomeScreen(
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize()) {
                 AdaptiveScreenContainer(
+                    modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
                     maxWidth = AdaptiveWidths.Wide
                 ) { screenIsTablet ->
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(columns),
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .padding(paddingValues),
-                        contentPadding = PaddingValues(bottom = AdaptiveSpacing.large()),
+                            .fillMaxHeight(),
                         horizontalArrangement = if (screenIsTablet) Arrangement.spacedBy(AdaptiveSpacing.small()) else Arrangement.Start
                     ) {
                         // Add extra top spacing only on tablets for a more balanced layout.
@@ -269,7 +268,7 @@ fun HomeScreen(
                                 }
                             }
                         }
-                        item(span = { GridItemSpan(this.maxLineSpan) }) { Spacer(modifier = Modifier.height(AdaptiveSpacing.medium())) }
+                        item(span = { GridItemSpan(this.maxLineSpan) }) { Spacer(modifier = Modifier.height(16.dp)) }
                     }
                 }
 

@@ -85,6 +85,7 @@ fun TutorPanelScreen(
     externalPlayer: Player? = null,
     onStopPlayer: () -> Unit = {},
     currentPlayingBookId: String? = null,
+    currentPlayingBook: Book? = null,
     isAudioPlaying: Boolean = false,
     initialSection: String? = null,
     viewModel: TutorViewModel = viewModel(factory = TutorViewModelFactory(
@@ -94,7 +95,7 @@ fun TutorPanelScreen(
 ) {
     val currentSectionState by viewModel.currentSection.collectAsState()
     
-    // PREVENT FLICKER: Resolve the section immediately during the first render
+    // Resolve the section immediately to prevent flickering
     val resolvedSection = remember(currentSectionState, initialSection) {
         if (initialSection != null && currentSectionState == TutorSection.DASHBOARD) {
             try {
@@ -119,6 +120,9 @@ fun TutorPanelScreen(
     val isReaderOpen = resolvedSection == TutorSection.READ_BOOK
     val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
     var showMenu by remember { mutableStateOf(false) }
+    
+    // Track maximized state for the audio player
+    var isPlayerMaximized by remember { mutableStateOf(false) }
 
     val infiniteTransitionBell = rememberInfiniteTransition(label = "bellRing")
     val rotation by infiniteTransitionBell.animateFloat(
@@ -146,13 +150,16 @@ fun TutorPanelScreen(
                                     Spacer(Modifier.width(12.dp))
                                     Column {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
+                                            @Suppress("DEPRECATION")
                                             Text(text = selectedStudent?.name ?: "User", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                             Spacer(Modifier.width(8.dp))
                                             val roleText = (selectedStudent?.role ?: "user").uppercase()
                                             Surface(color = if (roleText == "ADMIN" || roleText == "TUTOR") MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(4.dp)) {
+                                                @Suppress("DEPRECATION")
                                                 Text(text = roleText, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = if (roleText == "ADMIN" || roleText == "TUTOR") MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
+                                        @Suppress("DEPRECATION")
                                         Text(text = "Online", style = MaterialTheme.typography.labelSmall, color = Color(0xFF4CAF50))
                                     }
                                 }
@@ -183,6 +190,7 @@ fun TutorPanelScreen(
                                         else -> ""
                                     }
                                     if (sectionTitle.isNotEmpty()) {
+                                        @Suppress("DEPRECATION")
                                         Text(text = " • $sectionTitle", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                                     }
                                 }
@@ -211,15 +219,6 @@ fun TutorPanelScreen(
                         },
                         actions = {
                             if (!isChatOpen) {
-                                if (currentPlayingBookId != null) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        IconButton(onClick = { if (isAudioPlaying) externalPlayer?.pause() else externalPlayer?.play() }) {
-                                            Icon(imageVector = if (isAudioPlaying) Icons.Default.PauseCircleFilled else Icons.Default.PlayCircleFilled, contentDescription = "Toggle Audio", tint = MaterialTheme.colorScheme.primary)
-                                        }
-                                        IconButton(onClick = onStopPlayer) { Icon(Icons.Default.Close, "Stop", modifier = Modifier.size(20.dp)) }
-                                        VerticalDivider(modifier = Modifier.height(24.dp).padding(horizontal = 4.dp))
-                                    }
-                                }
                                 Box(contentAlignment = Alignment.TopEnd) {
                                     val bellColor = if (unreadCount > 0 && isDarkTheme) Color(0xFFFFEB3B) else if (unreadCount > 0) Color(0xFFFBC02D) else MaterialTheme.colorScheme.onSurface
                                     IconButton(onClick = { viewModel.setSection(TutorSection.NOTIFICATIONS) }, modifier = Modifier.size(36.dp)) {
@@ -227,7 +226,7 @@ fun TutorPanelScreen(
                                     }
                                     if (unreadCount > 0) {
                                         Surface(color = Color(0xFFE53935), shape = CircleShape, border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.surface), modifier = Modifier.size(18.dp).offset(x = 4.dp, y = (-2).dp).align(Alignment.TopEnd)) {
-                                            Box(contentAlignment = Alignment.Center) { Text(text = if (unreadCount > 9) "!" else unreadCount.toString(), style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp), color = Color.White, textAlign = TextAlign.Center) }
+                                            Box(contentAlignment = Alignment.Center) { @Suppress("DEPRECATION") Text(text = if (unreadCount > 9) "!" else unreadCount.toString(), style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp), color = Color.White, textAlign = TextAlign.Center) }
                                         }
                                     }
                                 }
@@ -273,56 +272,86 @@ fun TutorPanelScreen(
             },
             bottomBar = {
                 val hideBottomBar = isChatOpen || resolvedSection == TutorSection.BOOKS || resolvedSection == TutorSection.AUDIOBOOKS || resolvedSection == TutorSection.READ_BOOK || resolvedSection == TutorSection.LISTEN_AUDIOBOOK || resolvedSection == TutorSection.SELECTED_COURSE || resolvedSection == TutorSection.COURSE_STUDENTS || resolvedSection == TutorSection.COURSE_MODULES || resolvedSection == TutorSection.COURSE_ASSIGNMENTS || resolvedSection == TutorSection.COURSE_GRADES || resolvedSection == TutorSection.COURSE_LIVE || resolvedSection == TutorSection.COURSE_ARCHIVED_BROADCASTS || resolvedSection == TutorSection.TEACHER_DETAIL || resolvedSection == TutorSection.CREATE_ASSIGNMENT || resolvedSection == TutorSection.START_LIVE_STREAM || resolvedSection == TutorSection.STUDENT_PROFILE || resolvedSection == TutorSection.NOTIFICATIONS || resolvedSection == TutorSection.ABOUT || resolvedSection == TutorSection.COURSE_ATTENDANCE || resolvedSection == TutorSection.INDIVIDUAL_ATTENDANCE_DETAIL
-                if (!hideBottomBar) {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                        tonalElevation = 0.dp,
-                        windowInsets = WindowInsets(0, 0, 0, 0), 
-                        modifier = Modifier.height(80.dp) 
-                    ) {
-                        TutorNavButton(selected = resolvedSection == TutorSection.DASHBOARD, onClick = { viewModel.setSection(TutorSection.DASHBOARD) }, icon = Icons.Default.Dashboard, label = "Home")
-                        TutorNavButton(selected = resolvedSection == TutorSection.MY_COURSES, onClick = { viewModel.setSection(TutorSection.MY_COURSES) }, icon = Icons.Default.School, label = "Classes")
-                        TutorNavButton(selected = resolvedSection == TutorSection.LIBRARY, onClick = { viewModel.setSection(TutorSection.LIBRARY) }, icon = Icons.AutoMirrored.Filled.LibraryBooks, label = "Library")
-                        TutorNavButton(selected = resolvedSection == TutorSection.STUDENTS, onClick = { viewModel.setSection(TutorSection.STUDENTS) }, icon = Icons.Default.People, label = "Students")
-                        TutorNavButton(selected = resolvedSection == TutorSection.MESSAGES, onClick = { viewModel.setSection(TutorSection.MESSAGES) }, icon = Icons.AutoMirrored.Filled.Chat, label = "Messages")
+                
+                Column {
+                    // Audio bar layer: Exactly like student dashboard. Opens ON TOP of the navbar.
+                    if (currentPlayingBookId != null && !isPlayerMaximized && currentPlayingBook != null && !isReaderOpen) {
+                        IntegratedAudioBar(
+                            currentBook = currentPlayingBook,
+                            externalPlayer = externalPlayer,
+                            onToggleMinimize = { isPlayerMaximized = true },
+                            onClose = onStopPlayer
+                        )
+                    }
+
+                    if (!hideBottomBar) {
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                            tonalElevation = 0.dp,
+                            windowInsets = WindowInsets(0, 0, 0, 0),
+                            modifier = Modifier.height(80.dp)
+                        ) {
+                            TutorNavButton(selected = resolvedSection == TutorSection.DASHBOARD, onClick = { viewModel.setSection(TutorSection.DASHBOARD) }, icon = Icons.Default.Dashboard, label = "Home")
+                            TutorNavButton(selected = resolvedSection == TutorSection.MY_COURSES, onClick = { viewModel.setSection(TutorSection.MY_COURSES) }, icon = Icons.Default.School, label = "Classes")
+                            TutorNavButton(selected = resolvedSection == TutorSection.LIBRARY, onClick = { viewModel.setSection(TutorSection.LIBRARY) }, icon = Icons.AutoMirrored.Filled.LibraryBooks, label = "Library")
+                            TutorNavButton(selected = resolvedSection == TutorSection.STUDENTS, onClick = { viewModel.setSection(TutorSection.STUDENTS) }, icon = Icons.Default.People, label = "Students")
+                            TutorNavButton(selected = resolvedSection == TutorSection.MESSAGES, onClick = { viewModel.setSection(TutorSection.MESSAGES) }, icon = Icons.AutoMirrored.Filled.Chat, label = "Messages")
+                        }
                     }
                 }
             }
         ) { padding ->
-            Column(modifier = Modifier.fillMaxSize().padding(top = if (isReaderOpen) 0.dp else padding.calculateTopPadding())) {
-                Box(modifier = Modifier.weight(1f).padding(bottom = if (isChatOpen || resolvedSection == TutorSection.ABOUT || resolvedSection == TutorSection.NOTIFICATIONS || resolvedSection == TutorSection.COURSE_ATTENDANCE || resolvedSection == TutorSection.INDIVIDUAL_ATTENDANCE_DETAIL) 0.dp else padding.calculateBottomPadding())) {
-                    AnimatedContent(targetState = resolvedSection, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "TutorSectionTransition") { section ->
-                        when (section) {
-                            TutorSection.DASHBOARD -> TutorDashboardTab(viewModel, isDarkTheme, onPlayAudio)
-                            TutorSection.MY_COURSES -> TutorCoursesTab(viewModel)
-                            TutorSection.SELECTED_COURSE -> TutorCourseDetailScreen(viewModel)
-                            TutorSection.COURSE_STUDENTS -> TutorClassStudentsTab(viewModel)
-                            TutorSection.COURSE_MODULES -> TutorCourseModulesTab(viewModel)
-                            TutorSection.COURSE_ASSIGNMENTS -> TutorCourseAssignmentsTab(viewModel)
-                            TutorSection.COURSE_GRADES -> TutorCourseGradesTab(viewModel)
-                            TutorSection.COURSE_LIVE -> TutorCourseLiveTab(viewModel)
-                            TutorSection.COURSE_ARCHIVED_BROADCASTS -> ArchivedBroadcastsScreen(viewModel)
-                            TutorSection.COURSE_ATTENDANCE -> TutorCourseAttendanceTab(viewModel)
-                            TutorSection.INDIVIDUAL_ATTENDANCE_DETAIL -> TutorStudentAttendanceDetailScreen(viewModel)
-                            TutorSection.STUDENTS -> TutorStudentsTab(viewModel)
-                            TutorSection.MESSAGES -> TutorMessagesTab(viewModel)
-                            TutorSection.CHAT -> TutorChatTab(viewModel)
-                            TutorSection.LIBRARY -> TutorLibraryTab(viewModel, onPlayAudio)
-                            TutorSection.BOOKS -> TutorBooksTab(viewModel)
-                            TutorSection.AUDIOBOOKS -> TutorAudioBooksTab(viewModel, onPlayAudio)
-                            TutorSection.TEACHER_DETAIL -> TutorDetailScreen(viewModel,  onNavigateToProfile = onNavigateToProfile)
-                            TutorSection.CREATE_ASSIGNMENT -> CreateAssignmentScreen(viewModel)
-                            TutorSection.START_LIVE_STREAM -> TutorCourseLiveTab(viewModel)
-                            TutorSection.STUDENT_PROFILE -> TutorStudentProfileScreen(viewModel)
-                            TutorSection.NOTIFICATIONS -> NotificationScreen(onNavigateToItem = {}, onNavigateToInvoice = {}, onNavigateToMessages = { viewModel.setSection(TutorSection.MESSAGES) }, onBack = { viewModel.setSection(TutorSection.DASHBOARD) }, isDarkTheme = isDarkTheme)
-                            TutorSection.ABOUT -> AboutScreen(onBack = { viewModel.setSection(TutorSection.DASHBOARD) }, onDeveloperClick = onNavigateToDeveloper, onInstructionClick = onNavigateToInstruction, onOpenThemeBuilder = onOpenThemeBuilder, currentTheme = currentTheme, onThemeChange = onThemeChange)
-                            TutorSection.READ_BOOK -> activeBook?.let { book -> PdfReaderScreen(bookId = book.id, onBack = { viewModel.setSection(TutorSection.LIBRARY) }, currentTheme = currentTheme, onThemeChange = onThemeChange) }
-                            TutorSection.LISTEN_AUDIOBOOK -> {
-                                LaunchedEffect(Unit) { activeAudioBook?.let { ab -> onPlayAudio((ab as AudioBook).toBook()); viewModel.setSection(TutorSection.LIBRARY) } }
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Ensure main content takes up remaining space
+                Column(modifier = Modifier.fillMaxSize().padding(top = if (isReaderOpen) 0.dp else padding.calculateTopPadding(), bottom = padding.calculateBottomPadding())) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        AnimatedContent(targetState = resolvedSection, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "TutorSectionTransition") { section ->
+                            when (section) {
+                                TutorSection.DASHBOARD -> TutorDashboardTab(viewModel, isDarkTheme, onPlayAudio)
+                                TutorSection.MY_COURSES -> TutorCoursesTab(viewModel)
+                                TutorSection.SELECTED_COURSE -> TutorCourseDetailScreen(viewModel)
+                                TutorSection.COURSE_STUDENTS -> TutorClassStudentsTab(viewModel)
+                                TutorSection.COURSE_MODULES -> TutorCourseModulesTab(viewModel)
+                                TutorSection.COURSE_ASSIGNMENTS -> TutorCourseAssignmentsTab(viewModel)
+                                TutorSection.COURSE_GRADES -> TutorCourseGradesTab(viewModel)
+                                TutorSection.COURSE_LIVE -> TutorCourseLiveTab(viewModel)
+                                TutorSection.COURSE_ARCHIVED_BROADCASTS -> ArchivedBroadcastsScreen(viewModel)
+                                TutorSection.COURSE_ATTENDANCE -> TutorCourseAttendanceTab(viewModel)
+                                TutorSection.INDIVIDUAL_ATTENDANCE_DETAIL -> TutorStudentAttendanceDetailScreen(viewModel)
+                                TutorSection.STUDENTS -> TutorStudentsTab(viewModel)
+                                TutorSection.MESSAGES -> TutorMessagesTab(viewModel)
+                                TutorSection.CHAT -> TutorChatTab(viewModel)
+                                TutorSection.LIBRARY -> TutorLibraryTab(viewModel, onPlayAudio)
+                                TutorSection.BOOKS -> TutorBooksTab(viewModel)
+                                TutorSection.AUDIOBOOKS -> TutorAudioBooksTab(viewModel, onPlayAudio)
+                                TutorSection.TEACHER_DETAIL -> TutorDetailScreen(viewModel,  onNavigateToProfile = onNavigateToProfile)
+                                TutorSection.CREATE_ASSIGNMENT -> CreateAssignmentScreen(viewModel)
+                                TutorSection.START_LIVE_STREAM -> TutorCourseLiveTab(viewModel)
+                                TutorSection.STUDENT_PROFILE -> TutorStudentProfileScreen(viewModel)
+                                TutorSection.NOTIFICATIONS -> NotificationScreen(onNavigateToItem = {}, onNavigateToInvoice = {}, onNavigateToMessages = { viewModel.setSection(TutorSection.MESSAGES) }, onBack = { viewModel.setSection(TutorSection.DASHBOARD) }, isDarkTheme = isDarkTheme)
+                                TutorSection.ABOUT -> AboutScreen(onBack = { viewModel.setSection(TutorSection.DASHBOARD) }, onDeveloperClick = onNavigateToDeveloper, onInstructionClick = onNavigateToInstruction, onOpenThemeBuilder = onOpenThemeBuilder, currentTheme = currentTheme, onThemeChange = onThemeChange)
+                                TutorSection.READ_BOOK -> activeBook?.let { book -> PdfReaderScreen(bookId = book.id, onBack = { viewModel.setSection(TutorSection.LIBRARY) }, currentTheme = currentTheme, onThemeChange = onThemeChange) }
+                                TutorSection.LISTEN_AUDIOBOOK -> {
+                                    LaunchedEffect(Unit) { activeAudioBook?.let { ab -> onPlayAudio((ab as AudioBook).toBook()); viewModel.setSection(TutorSection.LIBRARY) } }
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                                }
                             }
                         }
                     }
+                }
+                
+                // Full-screen player overlay
+                if (isPlayerMaximized && currentPlayingBook != null) {
+                    MaximizedAudioPlayerOverlay(
+                        currentBook = currentPlayingBook,
+                        isDarkTheme = isDarkTheme,
+                        externalPlayer = externalPlayer,
+                        onToggleMinimize = { isPlayerMaximized = false },
+                        onClose = { 
+                            onStopPlayer()
+                            isPlayerMaximized = false
+                        }
+                    )
                 }
             }
         }
@@ -338,7 +367,7 @@ fun RowScope.TutorNavButton(selected: Boolean, onClick: () -> Unit, icon: ImageV
         selected = selected, 
         onClick = onClick, 
         icon = { Icon(icon, null, modifier = Modifier.size(24.dp)) }, 
-        label = { Text(text = label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis) }, 
+        label = { @Suppress("DEPRECATION") Text(text = label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis) }, 
         alwaysShowLabel = true,
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = MaterialTheme.colorScheme.primary,

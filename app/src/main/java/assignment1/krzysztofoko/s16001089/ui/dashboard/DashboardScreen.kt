@@ -49,12 +49,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * DashboardScreen.kt
- *
- * This file implements the primary management hub for the user. It provides a centralised 
- * overview of their academic profile, financial status (university wallet), course 
- * enrolments, and personal collection. The dashboard is highly adaptive, changing its 
- * functionality and layout based on user roles (Student, Tutor, Admin).
+ * DashboardScreen acts as the main hub for users, providing access to their profile, 
+ * wallet, enrolled courses, and personal library. It adapts its UI based on the 
+ * user's role (Student, Tutor, Admin).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +81,7 @@ fun DashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     // --- VIEWMODEL STATE OBSERVATION --- //
+    // Observing various data flows from the ViewModel to update the UI reactively.
     val localUser by viewModel.localUser.collectAsState()
     val wishlistBooks by viewModel.wishlistBooks.collectAsState()
     val lastViewedBooks by viewModel.lastViewedBooks.collectAsState()
@@ -98,11 +96,12 @@ fun DashboardScreen(
     val latestAnnouncement by viewModel.latestAnnouncement.collectAsState()
     val currentTip by viewModel.currentTip.collectAsState()
     
-    // Networking & Interop Visibility States
+    // UI visibility flags for educational/informational sections.
     val dailyInsight by viewModel.dailyInsight.collectAsState()
     val showAcademicInsight by viewModel.showAcademicInsight.collectAsState()
     val showCampusNotice by viewModel.showCampusNotice.collectAsState()
 
+    // Search and overlay interaction states.
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearchVisible by viewModel.isSearchVisible.collectAsState()
     val showPaymentPopup by viewModel.showPaymentPopup.collectAsState()
@@ -110,6 +109,7 @@ fun DashboardScreen(
     val suggestions by viewModel.suggestions.collectAsState()
     val searchHistory by viewModel.searchHistory.collectAsState()
 
+    // Notification and Messaging indicators.
     val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
     val hasMessages by viewModel.hasMessages.collectAsState()
     val unreadMessagesCount by viewModel.unreadMessagesCount.collectAsState()
@@ -121,10 +121,10 @@ fun DashboardScreen(
     var showWalletHistory by remember { mutableStateOf(false) }
     var showClassroomPicker by remember { mutableStateOf(false) }
 
-    // REQUIREMENT: "Glanceable" title peeking behavior
+    // Adaptive header title behavior: expands for a few seconds on entry, then collapses.
     var showFullTitle by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
-        delay(5000L) // Show full text for 5 seconds
+        delay(5000L) 
         showFullTitle = false
     }
 
@@ -137,7 +137,7 @@ fun DashboardScreen(
     val columns = if (isTablet) 2 else 1
     val gridState = rememberLazyGridState()
 
-    // Pre-calculate course groupings for specialised headers.
+    // Filter enrolled items for quick-access sections.
     val enrolledPaidCourse = remember(allBooks, purchasedIds) {
         allBooks.find { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
     }
@@ -148,13 +148,14 @@ fun DashboardScreen(
         listOfNotNull(enrolledPaidCourse) + enrolledFreeCourses
     }
 
+    // Role-based visibility flags.
     val isAdmin = localUser?.role == "admin"
     val isTutor = localUser?.role == "teacher" || localUser?.role == "tutor"
     val showApplications = applicationCount > 0 && enrolledPaidCourse == null
 
-    val collectionIndex = 8 // Target index for collection grid
+    val collectionIndex = 8 
 
-    // Animation for the notification bell badge.
+    // Animation: Ringing effect for the notification bell icon.
     val infiniteTransition = rememberInfiniteTransition(label = "bellRing")
     val rotation by infiniteTransition.animateFloat(
         initialValue = -15f, targetValue = 15f,
@@ -162,13 +163,12 @@ fun DashboardScreen(
         label = "rotation"
     )
 
-    // Collection filter options.
+    // Collection filtering configuration.
     val filterOptions = listOf(AppConstants.FILTER_ALL, AppConstants.FILTER_BOOKS, AppConstants.FILTER_AUDIOBOOKS, AppConstants.FILTER_GEAR, AppConstants.FILTER_COURSES)
     val filterListState = rememberLazyListState(initialFirstVisibleItemIndex = (Int.MAX_VALUE / 2))
 
-    // Root container with a global search-dismiss handler.
+    // Root layout container.
     Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) viewModel.setSearchVisible(false) }) {
-        // Branded background.
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
 
         Scaffold(
@@ -181,6 +181,7 @@ fun DashboardScreen(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = {
                         Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.fillMaxHeight()) {
+                            // Animated Hub title that expands/collapses.
                             AnimatedContent(
                                 targetState = showFullTitle,
                                 transitionSpec = {
@@ -196,6 +197,7 @@ fun DashboardScreen(
                                             .wrapContentWidth(align = Alignment.Start, unbounded = true)
                                             .zIndex(20f)
                                     ) {
+                                        @Suppress("DEPRECATION")
                                         Text(
                                             text = if (isAdmin) "Admin Hub" else if (isTutor) "Tutor Hub" else "Student Hub",
                                             style = MaterialTheme.typography.titleSmall,
@@ -206,6 +208,7 @@ fun DashboardScreen(
                                         )
                                     }
                                 } else {
+                                    @Suppress("DEPRECATION")
                                     Text(
                                         text = "Hub",
                                         style = MaterialTheme.typography.titleSmall,
@@ -221,14 +224,12 @@ fun DashboardScreen(
                         }
                     },
                     navigationIcon = {
-                        // Completely hide navigation icon when full title is shown
                         if (!showFullTitle) {
                             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) }
                         }
                     },
                     actions = {
                         val iconSize = 40.dp
-                        // Grouping all icons with consistent sizing and spacing
                         TopBarSearchAction(isSearchVisible = isSearchVisible, modifier = Modifier.size(iconSize)) { 
                             viewModel.setSearchVisible(true) 
                         }
@@ -236,7 +237,7 @@ fun DashboardScreen(
                             Icon(Icons.Rounded.Storefront, AppConstants.TITLE_STORE) 
                         }
 
-                        // Message Center Badge.
+                        // Message Hub access with unread badge.
                         if (hasMessages) {
                             Box(contentAlignment = Alignment.TopEnd) {
                                 val chatColor = if (unreadMessagesCount > 0 && isDarkTheme) Color(0xFFFFEB3B) else if (unreadMessagesCount > 0) Color(0xFFFBC02D) else MaterialTheme.colorScheme.onSurface
@@ -253,7 +254,7 @@ fun DashboardScreen(
                             }
                         }
 
-                        // Notification Center Badge.
+                        // Notification Hub access with unread badge and animation.
                         Box(contentAlignment = Alignment.TopEnd) {
                             val bellColor = if (unreadCount > 0 && isDarkTheme) Color(0xFFFFEB3B) else if (unreadCount > 0) Color(0xFFFBC02D) else MaterialTheme.colorScheme.onSurface
                             IconButton(onClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) }, modifier = Modifier.size(iconSize)) {
@@ -270,9 +271,11 @@ fun DashboardScreen(
 
                         ThemeToggleButton(currentTheme = currentTheme, onThemeChange = onThemeChange, onOpenCustomBuilder = onOpenThemeBuilder, isLoggedIn = true, modifier = Modifier.size(iconSize))
 
+                        // Overflow menu for secondary dashboard actions.
                         Box {
                             IconButton(onClick = { showMenu = true }, modifier = Modifier.size(iconSize)) { Icon(Icons.Rounded.MoreVert, AppConstants.TITLE_MORE_OPTIONS) }
                             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, shape = RoundedCornerShape(16.dp), containerColor = MaterialTheme.colorScheme.surface, modifier = Modifier.width(220.dp)) {
+                                @Suppress("DEPRECATION")
                                 Text(text = "DASHBOARD OPTIONS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
                                 HorizontalDivider(modifier = Modifier.padding(bottom = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
@@ -297,22 +300,26 @@ fun DashboardScreen(
                 )
             }
         ) { paddingValues ->
-            // --- MAIN SCROLLABLE CONTENT GRID --- //
+            // --- MAIN SCROLLABLE CONTENT --- //
             Box(modifier = Modifier.fillMaxSize()) {
-                AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { screenIsTablet ->
+                AdaptiveScreenContainer(
+                    modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
+                    maxWidth = AdaptiveWidths.Wide
+                ) { screenIsTablet ->
                     LazyVerticalGrid(
                         state = gridState,
                         columns = GridCells.Fixed(columns),
-                        modifier = Modifier.fillMaxSize().padding(paddingValues),
-                        contentPadding = PaddingValues(bottom = 80.dp), // Adjust this to match Nav/Audio height
+                        modifier = Modifier.fillMaxSize(),
                         horizontalArrangement = if (screenIsTablet) Arrangement.spacedBy(16.dp) else Arrangement.Start
                     ) {
+                        // Section 1: User Profile & Wallet Header.
                         dashboardHeaderSection(
                             user = localUser, isTablet = screenIsTablet, onProfileClick = { navController.navigate(AppConstants.ROUTE_PROFILE) },
                             onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) },
                             onViewHistory = { showWalletHistory = true }
                         )
 
+                        // Section 2: Educational Tips (Academic Insights).
                         if (showAcademicInsight) {
                             item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
                                 Card(
@@ -324,6 +331,7 @@ fun DashboardScreen(
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Icon(currentTip.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                                 Spacer(Modifier.width(8.dp))
+                                                @Suppress("DEPRECATION")
                                                 Text("APP USAGE TIP", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
                                             }
                                             Row {
@@ -337,12 +345,14 @@ fun DashboardScreen(
                                             }
                                         }
                                         Spacer(Modifier.height(8.dp))
+                                        @Suppress("DEPRECATION")
                                         Text(text = currentTip.content, style = MaterialTheme.typography.bodyLarge, fontStyle = FontStyle.Italic)
                                     }
                                 }
                             }
                         }
 
+                        // Section 3: Campus Announcements (Broadcast Notices).
                         if (showCampusNotice) {
                             item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
                                 Box(modifier = Modifier.padding(bottom = 8.dp)) {
@@ -361,12 +371,17 @@ fun DashboardScreen(
                             }
                         }
 
+                        // Section 4: Course Enrolments and Academic Progress.
                         applicationsSection(showApplications, screenIsTablet, onClick = { navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) })
                         enrolledCoursesSection(enrolledPaidCourse, enrolledFreeCourses, activeLiveSessions, screenIsTablet, onEnterClassroom = { id -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$id") })
                         quickActionsSection(isAdmin, isTutor, onAdminClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) }, onTutorClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) })
                         activityRowsSection(lastViewedBooks, commentedBooks, wishlistBooks, onBookClick = { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") })
+                        
+                        // Section 5: Personal Collection & Filtering.
                         collectionControlsSection(isTablet = screenIsTablet, selectedFilter = selectedFilter, filterOptions = filterOptions, filterListState = filterListState, infiniteCount = Int.MAX_VALUE, onFilterClick = { filter -> viewModel.setCollectionFilter(filter); scope.launch { gridState.animateScrollToItem(collectionIndex) } })
                         ownedBooksGrid(books = filteredOwnedBooks, purchasedIds = purchasedIds, applicationsMap = applicationsMap, isDarkTheme = isDarkTheme, isAudioPlaying = isAudioPlaying, currentPlayingBookId = currentPlayingBookId, onBookClick = { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") }, onPlayAudio = onPlayAudio, onViewInvoice = onViewInvoice, onPickupInfo = { selectedBookForPickup = it }, onRemoveFromLibrary = { viewModel.setBookToRemove(it) }, onEnterClassroom = { id -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$id") } )
+                        
+                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(16.dp)) }
                     }
                 }
                 // Floating Search Overlay.
@@ -376,7 +391,9 @@ fun DashboardScreen(
             }
         }
 
-        // Financial and Library confirmation popups.
+        // --- SECONDARY UI LAYERS (Sheets & Dialogs) --- //
+
+        // Classroom picker sheet.
         if (showClassroomPicker) {
             ModalBottomSheet(onDismissRequest = { showClassroomPicker = false }, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 40.dp)) {
@@ -397,6 +414,7 @@ fun DashboardScreen(
             }
         }
 
+        // Wallet history, Top-up flow, and library removal confirmation.
         if (showWalletHistory) { WalletHistorySheet(transactions = walletHistory, onNavigateToProduct = { id -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") }, onViewInvoice = { id, ref -> val route = if (ref != null) "${AppConstants.ROUTE_INVOICE_CREATING}/$id?ref=$ref" else "${AppConstants.ROUTE_INVOICE_CREATING}/$id"; navController.navigate(route) }, onDismiss = { showWalletHistory = false }) }
         if (selectedBookForPickup != null) { PickupInfoDialog(orderConfirmation = selectedBookForPickup?.orderConfirmation, onDismiss = { selectedBookForPickup = null }) }
         AppPopups.WalletTopUp(show = showPaymentPopup, user = localUser, onDismiss = { viewModel.setShowPaymentPopup(false) }, onTopUpComplete = { amount -> viewModel.topUp(amount) { msg -> viewModel.setShowPaymentPopup(false); scope.launch { snackbarHostState.showSnackbar(msg) } } }, onManageProfile = { viewModel.setShowPaymentPopup(false); navController.navigate(AppConstants.ROUTE_EDIT_PROFILE) })

@@ -49,12 +49,6 @@ import java.util.UUID
  *
  * A high-quality image gallery for showcasing product photos. 
  * Features an interactive paging indicator and a "FEATURED" badge for high-priority items.
- *
- * @param images A list of image URLs to display.
- * @param selectedImageIndex The index of the currently visible image.
- * @param onImageClick Callback for when a user selects a different image from the indicator.
- * @param isFeatured Boolean flag to display the featured badge.
- * @param title Accessibility title for the product.
  */
 @Composable
 fun GearImageGallery(
@@ -65,7 +59,6 @@ fun GearImageGallery(
     title: String
 ) {
     Box(modifier = Modifier.fillMaxWidth().height(350.dp)) {
-        // Main product image display.
         AsyncImage(
             model = images.getOrNull(selectedImageIndex) ?: "",
             contentDescription = title,
@@ -73,7 +66,6 @@ fun GearImageGallery(
             contentScale = ContentScale.Crop
         )
         
-        // Render the "FEATURED" badge in the top corner if applicable.
         if (isFeatured) {
             Surface(
                 modifier = Modifier.padding(16.dp).align(Alignment.TopEnd),
@@ -90,7 +82,6 @@ fun GearImageGallery(
             }
         }
 
-        // Paging indicators for galleries with multiple images.
         if (images.size > 1) {
             Row(
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
@@ -112,11 +103,6 @@ fun GearImageGallery(
 
 /**
  * GearHeaderSection Composable
- *
- * Displays the primary product details: brand, title, and price. 
- * Includes support for showing a struck-through original price if an item is on sale.
- *
- * @param gear The `Gear` data model containing product details.
  */
 @Composable
 fun GearHeaderSection(gear: Gear) {
@@ -126,7 +112,6 @@ fun GearHeaderSection(gear: Gear) {
             Text(text = gear.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
         }
         Column(horizontalAlignment = Alignment.End) {
-            // Display the original price with a line-through if the item is discounted.
             if (gear.originalPrice > gear.price) {
                 Text(
                     text = "£${String.format(Locale.US, "%.2f", gear.originalPrice)}",
@@ -134,7 +119,6 @@ fun GearHeaderSection(gear: Gear) {
                     color = Color.Gray
                 )
             }
-            // Display the current price or a "FREE" badge.
             if (gear.price > 0) {
                 Text(text = "£${String.format(Locale.US, "%.2f", gear.price)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
             } else {
@@ -146,10 +130,6 @@ fun GearHeaderSection(gear: Gear) {
 
 /**
  * GearTagsSection Composable
- *
- * Renders a set of hashtag-style tags for the product using a flexible flow layout.
- *
- * @param tags A comma-separated string of tags.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -174,14 +154,6 @@ fun GearTagsSection(tags: String) {
 
 /**
  * GearOptionSelectors Composable
- *
- * Provides a set of interactive selectors for product variations like size and colour.
- * Only renders selectors for options that actually have data available.
- *
- * @param sizes Comma-separated list of available sizes.
- * @param selectedSize The currently chosen size.
- * @param colors Comma-separated list of available colours.
- * @param selectedColor The currently chosen colour.
  */
 @Composable
 fun GearOptionSelectors(
@@ -194,7 +166,6 @@ fun GearOptionSelectors(
     onColorClick: (String) -> Unit
 ) {
     Column {
-        // Render size selectors if multi-size product.
         if (sizes.isNotEmpty() && sizes != "One Size" && sizes != "Default") {
             Text(text = "Size: $selectedSize", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
@@ -207,7 +178,7 @@ fun GearOptionSelectors(
                         border = if (selectedSize == size) null else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text(text = size, fontWeight = FontWeight.Bold, color = if (selectedSize == size) Color.White else MaterialTheme.colorScheme.onSurface)
+                            Text(text = size, fontWeight = FontWeight.Bold, color = if (selectedSize == size) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
@@ -215,7 +186,6 @@ fun GearOptionSelectors(
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // Render colour selectors if multi-colour product.
         if (colors.isNotEmpty() && colors != "Default") {
             Text(text = "Colour: $selectedColor", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
@@ -231,7 +201,7 @@ fun GearOptionSelectors(
                         border = if (selectedColor == color) null else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f))
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 16.dp)) {
-                            Text(text = color, fontWeight = FontWeight.Bold, color = if (selectedColor == color) Color.White else MaterialTheme.colorScheme.onSurface)
+                            Text(text = color, fontWeight = FontWeight.Bold, color = if (selectedColor == color) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
@@ -243,9 +213,6 @@ fun GearOptionSelectors(
 
 /**
  * GearStockIndicator Composable
- *
- * Displays current stock levels with colour-coded feedback (Green for healthy stock, Orange for low stock).
- * Includes quantity controls for items that are not free.
  */
 @Composable
 fun GearStockIndicator(
@@ -266,7 +233,7 @@ fun GearStockIndicator(
                     modifier = Modifier.size(14.dp), 
                     tint = if (stockCount > 5) StoreStockGreen else StoreLowStockOrange
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(6.6.dp))
                 Text(
                     text = if (stockCount > 0) "$stockCount in stock" else "Out of stock",
                     style = MaterialTheme.typography.labelSmall,
@@ -276,7 +243,6 @@ fun GearStockIndicator(
             }
         }
         
-        // Quantity controls: Increment/Decrement buttons.
         if (stockCount > 0 && !isFree) {
             Spacer(Modifier.weight(1f))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -294,8 +260,6 @@ fun GearStockIndicator(
 
 /**
  * GearSpecsCard Composable
- *
- * A compact information card detailing the product's technical specifications and physical pick-up location.
  */
 @Composable
 fun GearSpecsCard(material: String, sku: String, category: String) {
@@ -314,10 +278,6 @@ fun GearSpecsCard(material: String, sku: String, category: String) {
 
 /**
  * GearBottomActionBar Composable
- *
- * The primary action bar at the bottom of the product screen. 
- * Intelligently changes its layout and actions based on the user's authentication status, 
- * whether they already own the item, and the product's price (Free vs Paid).
  */
 @Composable
 fun GearBottomActionBar(
@@ -334,16 +294,12 @@ fun GearBottomActionBar(
 ) {
     Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)).padding(16.dp).navigationBarsPadding()) {
         if (!isLoggedIn) {
-            // Case: User not logged in.
             Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-                @Suppress("DEPRECATION")
                 Text("Sign In to Shop")
             }
         } else if (stockCount > 0) {
-            // Case: Product is in stock.
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (isOwned) {
-                    // Action set for users who already own the item.
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (price > 0) {
                             OutlinedButton(
@@ -367,7 +323,6 @@ fun GearBottomActionBar(
                             }
                         }
 
-                        // Option to re-order the same item.
                         if (price > 0) {
                             Button(
                                 onClick = onCheckout,
@@ -396,7 +351,6 @@ fun GearBottomActionBar(
                         }
                     }
                 } else {
-                    // Action set for initial purchase.
                     if (price > 0) {
                         Button(onClick = onCheckout, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -422,7 +376,6 @@ fun GearBottomActionBar(
                 }
             }
         } else {
-            // Case: Sold out.
             Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                 Text("Out of Stock")
             }
@@ -432,9 +385,6 @@ fun GearBottomActionBar(
 
 /**
  * SimilarProductsSlider Composable
- *
- * A horizontally-scrolling carousel of other products in the same category, 
- * encouraging cross-shopping.
  */
 @Composable
 fun SimilarProductsSlider(
@@ -484,9 +434,6 @@ fun SimilarProductsSlider(
 
 /**
  * PickupInfoDialog Composable
- *
- * A dialog that provides clear instructions to the user on where and how to collect their 
- * ordered physical items. It includes a generated order confirmation reference.
  */
 @Composable
 fun PickupInfoDialog(orderConfirmation: String? = null, onDismiss: () -> Unit) {
@@ -494,58 +441,69 @@ fun PickupInfoDialog(orderConfirmation: String? = null, onDismiss: () -> Unit) {
     
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(28.dp),
         icon = { Icon(Icons.Default.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp)) },
-        title = { Text(text = "Pick-up Location", fontWeight = FontWeight.Bold) },
+        title = { Text(text = "Pick-up Location", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary) },
         text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Please visit the Wrexham Student Hub to collect your item.",
                     textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "Order Confirmation #", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "Order Confirmation #", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f), fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
                         Text(
                             text = if (displayOrderNumber.startsWith("WREX-")) displayOrderNumber else "WREX-$displayOrderNumber", 
                             style = MaterialTheme.typography.headlineSmall, 
-                            fontWeight = FontWeight.ExtraBold,
+                            fontWeight = FontWeight.Black,
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "Hub Hours:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
-                        Text(text = "Mon-Fri: 9:00 AM - 5:00 PM", style = MaterialTheme.typography.bodySmall)
-                        Text(text = "Sat-Sun: Closed", style = MaterialTheme.typography.bodySmall)
+                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "Hub Hours:", fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
+                        Spacer(Modifier.height(4.dp))
+                        Text(text = "Mon-Fri: 9:00 AM - 5:00 PM", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Text(text = "Sat-Sun: Closed", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                     }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Show this confirmation number and your student ID to the staff at the hub.",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Center
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 16.sp
                 )
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                Text("Got it!")
+            Button(
+                onClick = onDismiss, 
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Got it!", fontWeight = FontWeight.Bold)
             }
         }
     )
@@ -553,8 +511,6 @@ fun PickupInfoDialog(orderConfirmation: String? = null, onDismiss: () -> Unit) {
 
 /**
  * FreeOrderConfirmationDialog Composable
- *
- * A celebratory success dialog shown specifically after a user claims a free item.
  */
 @Composable
 fun FreeOrderConfirmationDialog(
@@ -565,14 +521,17 @@ fun FreeOrderConfirmationDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(28.dp),
         icon = { Icon(Icons.Default.CheckCircle, contentDescription = null, tint = StoreFreeGreen, modifier = Modifier.size(48.dp)) },
-        title = { Text(text = "Order Confirmed!", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center) },
+        title = { Text(text = "Order Confirmed!", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.primary) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "You have successfully claimed your:",
                     style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = gearTitle,
@@ -585,9 +544,9 @@ fun FreeOrderConfirmationDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = "Order Confirmation #", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
@@ -604,16 +563,17 @@ fun FreeOrderConfirmationDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "Next Steps:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                        Text(text = "Next Steps:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "1. Go to Wrexham Student Hub\n2. Show your student ID\n3. Collect your items!",
                             style = MaterialTheme.typography.bodySmall,
-                            lineHeight = 20.sp
+                            lineHeight = 20.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -622,10 +582,11 @@ fun FreeOrderConfirmationDialog(
         confirmButton = {
             Button(
                 onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("Awesome!")
+                Text("Awesome!", fontWeight = FontWeight.Bold)
             }
         }
     )

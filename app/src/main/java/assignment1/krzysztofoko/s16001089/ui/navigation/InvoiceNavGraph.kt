@@ -21,8 +21,8 @@ fun NavGraphBuilder.invoiceNavGraph(
     currentTheme: Theme,            // Current theme for UI styling
     onThemeChange: (Theme) -> Unit  // Theme update callback
 ) {
-    // Utility flag for consistent theme styling
-    val isDarkTheme = currentTheme == Theme.DARK
+    // Correctly determine if the theme is dark based on all supported dark variants
+    val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
     
     // Compact helper for theme toggling within the invoice screens
     val onToggleTheme = {

@@ -51,7 +51,33 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
- * TopLevelScaffold acts as the primary layout wrapper for the application.
+ * TopLevelScaffold acts as the primary layout wrapper for the application, providing
+ * consistent navigation (TopBar, BottomBar, NavRail) and theme management.
+ *
+ * @param currentUser The currently authenticated Firebase user.
+ * @param localUser User data stored locally (role, balance, etc.).
+ * @param userTheme Custom theme configuration for the user.
+ * @param currentRoute The current navigation destination.
+ * @param currentTutorSection Active section within the Tutor Hub.
+ * @param currentAdminSection Active section within the Admin Hub.
+ * @param unreadCount Number of unread notifications.
+ * @param onDashboardClick Callback when Dashboard/Admin Hub is clicked.
+ * @param onHomeClick Callback when Home is clicked.
+ * @param onProfileClick Callback when Profile is clicked.
+ * @param onWalletClick Callback when Wallet pill is clicked.
+ * @param onNotificationsClick Callback when Notifications icon is clicked.
+ * @param onMyApplicationsClick Callback to view applications.
+ * @param onMessagesClick Callback to view messages/chat.
+ * @param onLogoutClick Callback to initiate sign out.
+ * @param onThemeChange Callback when a new theme is selected.
+ * @param currentTheme The active theme enum.
+ * @param windowSizeClass Adaptive layout information (Compact vs. Expanded).
+ * @param onClassroomClick Callback to navigate to a specific classroom.
+ * @param showThemeBuilder Whether the custom theme builder dialog is visible.
+ * @param onOpenThemeBuilder Controls the visibility of the theme builder.
+ * @param onLiveThemeUpdate Real-time theme updates during editing.
+ * @param hideBars If true, top and bottom bars are completely hidden.
+ * @param content The main screen content.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,30 +113,35 @@ fun TopLevelScaffold(
     onOpenThemeBuilder: (Boolean) -> Unit = {},
     onLiveThemeUpdate: (UserTheme) -> Unit = {},
     onAboutClick: () -> Unit = {},
+    hideBars: Boolean = false,
     bottomContent: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
 ) {
     val userId = currentUser?.uid ?: ""
+    // Use Navigation Rail for tablet/desktop (Expanded) widths
     val useNavRail = windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val db = remember { AppDatabase.getDatabase(context) }
 
+    // Re-initialize state when the user changes
     key(userId) {
         var showMoreMenu by remember { mutableStateOf(false) }
         var showThemePicker by remember { mutableStateOf(false) }
         var showClassroomPicker by remember { mutableStateOf(false) }
 
+        // Determine user permissions based on role
         val isAdmin = localUser?.role?.lowercase(Locale.ROOT) == "admin"
         val isTutor = localUser?.role?.lowercase(Locale.ROOT) in listOf("teacher", "tutor")
         
+        // Check if the current theme is considered 'dark' for UI contrast adjustments
         val isDarkTheme = when(currentTheme) {
             Theme.DARK, Theme.DARK_BLUE -> true
             Theme.CUSTOM -> userTheme?.customIsDark ?: true
             else -> false
         }
 
-        // Updated helper logic to satisfy lambda types
+        // Helper to update theme settings in the local database
         val onToggleRequest: (Boolean, Theme) -> Unit = { enabled, targetTheme ->
             scope.launch {
                 val currentT = userTheme
@@ -123,6 +154,7 @@ fun TopLevelScaffold(
             }
         }
 
+        // Fetch user-specific data like enrolled courses and applications
         val dashboardViewModel: DashboardViewModel = viewModel(
             key = "dashboard_vm_$userId",
             factory = DashboardViewModelFactory(
@@ -139,6 +171,7 @@ fun TopLevelScaffold(
         val filteredOwnedBooks by dashboardViewModel.filteredOwnedBooks.collectAsState()
         val purchasedIds by dashboardViewModel.purchasedIds.collectAsState()
 
+        // Filter and categorize courses user has access to
         val enrolledPaidCourse = filteredOwnedBooks.find { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
         val enrolledFreeCourses = filteredOwnedBooks.filter { it.mainCategory == AppConstants.CAT_COURSES && it.price <= 0.0 && purchasedIds.contains(it.id) }
         val enrolledCourses = listOfNotNull(enrolledPaidCourse) + enrolledFreeCourses
@@ -146,6 +179,14 @@ fun TopLevelScaffold(
         val hasActiveEnrolledCourse = filteredOwnedBooks.any { it.mainCategory == AppConstants.CAT_COURSES && it.price > 0.0 && purchasedIds.contains(it.id) }
         val showApplications = applicationCount > 0 && !hasActiveEnrolledCourse
         val hasCourses = enrolledCourses.isNotEmpty()
+
+        val navColors = NavigationBarItemDefaults.colors(
+            selectedIconColor = MaterialTheme.colorScheme.primary,
+            selectedTextColor = MaterialTheme.colorScheme.primary,
+            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         val railColors = NavigationRailItemDefaults.colors(
             selectedIconColor = MaterialTheme.colorScheme.primary,
@@ -156,7 +197,8 @@ fun TopLevelScaffold(
         )
 
         Row(modifier = Modifier.fillMaxSize()) {
-            if (useNavRail && currentUser != null && currentRoute != null && currentRoute != AppConstants.ROUTE_SPLASH && currentRoute != AppConstants.ROUTE_AUTH) {
+            // Left-side Navigation Rail (Expanded screens only)
+            if (!hideBars && useNavRail && currentUser != null && currentRoute != null && currentRoute != AppConstants.ROUTE_SPLASH && currentRoute != AppConstants.ROUTE_AUTH) {
                 NavigationRail(
                     containerColor = MaterialTheme.colorScheme.surface,
                     header = {
@@ -184,6 +226,7 @@ fun TopLevelScaffold(
                         colors = railColors
                     )
 
+                    // Role-specific rail items
                     if (isTutor) {
                         NavigationRailItem(selected = currentTutorSection == TutorSection.MESSAGES, onClick = onMessagesClick, icon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }, label = { Text("Messages") }, colors = railColors)
                         NavigationRailItem(selected = currentTutorSection == TutorSection.LIBRARY, onClick = onLibraryClick, icon = { Icon(Icons.Default.LibraryBooks, null) }, label = { Text("Library") }, colors = railColors)
@@ -193,6 +236,7 @@ fun TopLevelScaffold(
                         if (hasCourses) {
                             Box {
                                 NavigationRailItem(selected = currentRoute?.contains(AppConstants.ROUTE_CLASSROOM) == true, onClick = { showClassroomPicker = true }, icon = { Icon(Icons.Default.School, null) }, label = { Text("Classroom") }, colors = railColors)
+                                // Classroom picker dropdown for student role
                                 DropdownMenu(
                                     expanded = showClassroomPicker, 
                                     onDismissRequest = { showClassroomPicker = false }, 
@@ -227,6 +271,7 @@ fun TopLevelScaffold(
                         if (showApplications) { NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_MY_APPLICATIONS, onClick = onMyApplicationsClick, icon = { Icon(Icons.Default.Assignment, null) }, label = { Text("Apps") }, colors = railColors) }
                         NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_MESSAGES, onClick = onMessagesClick, icon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }, label = { Text("Chat") }, colors = railColors)
                     } else {
+                        // Admin-specific rail items
                         NavigationRailItem(selected = currentRoute == AppConstants.ROUTE_MESSAGES, onClick = onMessagesClick, icon = { Icon(Icons.AutoMirrored.Filled.Chat, null) }, label = { Text("Chat") }, colors = railColors)
                         NavigationRailItem(selected = currentAdminSection == AdminSection.LIBRARY, onClick = onLibraryClick, icon = { Icon(Icons.Default.LibraryBooks, null) }, label = { Text("Library") }, colors = railColors)
                         NavigationRailItem(selected = currentAdminSection == AdminSection.LOGS, onClick = onLogsClick, icon = { Icon(Icons.Default.Security, null) }, label = { Text("Logs") }, colors = railColors)
@@ -237,13 +282,13 @@ fun TopLevelScaffold(
                 }
             }
 
+            // Main Scaffold for standard Top/Bottom bars and content
             Scaffold(
                 topBar = {
                     val isHome = currentRoute == AppConstants.ROUTE_HOME || currentRoute?.startsWith("${AppConstants.ROUTE_HOME}?") == true
-                    val isAdminHub = currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_PANEL) == true || currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_USER_DETAILS) == true
-                    val isTutorHub = currentRoute?.startsWith(AppConstants.ROUTE_TUTOR_PANEL) == true
                     
-                    val shouldShowTopBar = if (currentUser == null) {
+                    // Logic to hide/show TopBar depending on current route and user role
+                    val shouldShowTopBar = if (currentUser == null || hideBars) {
                         false
                     } else if (isAdmin || isTutor) {
                         isHome // Hide top bar in Admin/Tutor hubs, show only on Home
@@ -264,6 +309,7 @@ fun TopLevelScaffold(
                     if (shouldShowTopBar) {
                         Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
                             Row(modifier = Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                                // User Greeting and Profile access
                                 val firstName = localUser?.name?.split(" ")?.firstOrNull() ?: currentUser?.displayName?.split(" ")?.firstOrNull() ?: "User"
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable {
                                     if (isAdmin) onProfileClick() else onDashboardClick()
@@ -276,6 +322,7 @@ fun TopLevelScaffold(
                                     Text(text = "Hi, $firstName", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
 
+                                // Right-side actions: Wallet, Notifications, and Overflow Menu
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (!isAdmin) {
                                         ProWalletPill(balance = localUser?.balance ?: 0.0, onClick = onWalletClick)
@@ -290,6 +337,7 @@ fun TopLevelScaffold(
                                             IconButton(onClick = { showMoreMenu = true }, modifier = Modifier.size(32.dp)) { 
                                                 Icon(Icons.Default.MoreVert, "More", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(22.dp)) 
                                             }
+                                            // Main App Options Menu
                                             DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }, shape = RoundedCornerShape(16.dp), containerColor = MaterialTheme.colorScheme.surface, modifier = Modifier.width(220.dp)) {
                                                 ProMenuHeader("APP OPTIONS")
                                                 if (isAdmin) {
@@ -316,12 +364,13 @@ fun TopLevelScaffold(
                     }
                 },
                 bottomBar = {
-                    if (currentUser != null && !useNavRail && currentRoute != AppConstants.ROUTE_SPLASH) {
+                    // Standard Bottom Navigation for Mobile (Compact) widths
+                    if (!hideBars && currentUser != null && !useNavRail && currentRoute != AppConstants.ROUTE_SPLASH) {
                         val isHome = currentRoute == AppConstants.ROUTE_HOME || currentRoute?.startsWith("${AppConstants.ROUTE_HOME}?") == true
                         val isAdminHub = currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_PANEL) == true || currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_USER_DETAILS) == true
                         val isTutorHub = currentRoute?.startsWith(AppConstants.ROUTE_TUTOR_PANEL) == true
                         
-                        // Hide global bottom bar in both Admin and Tutor Hubs
+                        // Hide global bottom bar when viewing Admin/Tutor internal panels
                         if (!isAdminHub && !isTutorHub) {
                             NavigationBar(
                                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
@@ -331,13 +380,15 @@ fun TopLevelScaffold(
                                     selected = isHome, 
                                     onClick = onHomeClick, 
                                     icon = { Icon(Icons.Default.Home, null) }, 
-                                    label = { Text("Home") }
+                                    label = { Text("Home") },
+                                    colors = navColors
                                 )
                                 NavigationBarItem(
                                     selected = (currentRoute?.startsWith(AppConstants.ROUTE_DASHBOARD) == true) || (currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_PANEL) == true && currentAdminSection == AdminSection.DASHBOARD) || currentTutorSection == TutorSection.DASHBOARD, 
                                     onClick = onDashboardClick, 
                                     icon = { Icon(imageVector = if (isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Dashboard, contentDescription = null) }, 
-                                    label = { Text(if (isAdmin) "Admin" else "Dashboard") }
+                                    label = { Text(if (isAdmin) "Admin" else "Dashboard") },
+                                    colors = navColors
                                 )
                                 NavigationBarItem(
                                     selected = currentRoute == AppConstants.ROUTE_NOTIFICATIONS || currentAdminSection == AdminSection.NOTIFICATIONS, 
@@ -347,19 +398,22 @@ fun TopLevelScaffold(
                                             Icon(Icons.Default.Notifications, null) 
                                         }
                                     }, 
-                                    label = { Text("Alerts") }
+                                    label = { Text("Alerts") },
+                                    colors = navColors
                                 )
                                 NavigationBarItem(
                                     selected = currentRoute == AppConstants.ROUTE_PROFILE || currentTutorSection == TutorSection.TEACHER_DETAIL || currentAdminSection == AdminSection.PROFILE, 
                                     onClick = onProfileClick, 
                                     icon = { Icon(Icons.Default.Person, null) }, 
-                                    label = { Text("Profile") }
+                                    label = { Text("Profile") },
+                                    colors = navColors
                                 )
                             }
                         }
                     }
                 },
                 floatingActionButton = {
+                    // Custom Theme Builder Dialog - only accessible when logged in
                     if (showThemeBuilder && userId.isNotEmpty()) {
                         ThemeBuilderDialog(
                             show = showThemeBuilder,
@@ -399,9 +453,11 @@ fun TopLevelScaffold(
                     }
                 }
             ) { paddingValues ->
+                // Render the main content provided by the caller
                 Box(modifier = Modifier.fillMaxSize()) {
                     content(paddingValues)
                     
+                    // Optional overlay content (e.g., Snackbars, specific bottom-aligned components)
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)

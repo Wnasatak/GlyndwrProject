@@ -139,7 +139,7 @@ fun GearDetailScreen(
                 // Specialized action bar for merchandise.
                 if (gear != null && !loading) {
                     val unitPrice = gear!!.price * ((100.0 - effectiveDiscount) / 100.0)
-                    Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)).padding(bottom = 16.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)).padding(bottom = 0.dp), contentAlignment = Alignment.Center) {
                         Box(modifier = Modifier.widthIn(max = AdaptiveWidths.Medium)) {
                             GearBottomActionBar(
                                 isOwned = isOwned,
@@ -167,10 +167,10 @@ fun GearDetailScreen(
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text("Item not found") }
             } else {
                 gear?.let { item ->
-                    Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+                    Box(modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding()), contentAlignment = Alignment.TopCenter) {
                         LazyColumn(
                             modifier = Modifier.fillMaxHeight().widthIn(max = AdaptiveWidths.Medium),
-                            contentPadding = PaddingValues(bottom = 32.dp)
+                            contentPadding = PaddingValues(bottom = 0.dp)
                         ) {
                             // Section 1: Immersive Header.
                             item {

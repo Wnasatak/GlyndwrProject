@@ -154,6 +154,7 @@ fun ProfileScreen(
                                             append(localUser?.name ?: "User Profile")
                                         }
                                         Text(displayName, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                                        @Suppress("DEPRECATION")
                                         Text(localUser?.email ?: "", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     }
                                 }
@@ -208,7 +209,7 @@ fun ProfileScreen(
             }
         ) { padding ->
             // --- MAIN CONTENT DISPATCHER ---
-            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Box(modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
                 AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
                     AnimatedContent(
                         targetState = selectedTab,
@@ -279,8 +280,8 @@ fun StudentDetailTab(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Visual Section Header
         item {
@@ -306,8 +307,10 @@ fun StudentDetailTab(
                         isLarge = true,
                         onClick = { photoPickerLauncher.launch("image/*") }
                     )
+                    @Suppress("DEPRECATION")
                     Spacer(Modifier.height(16.dp))
 
+                    @Suppress("DEPRECATION")
                     Text(
                         text = localUser?.name ?: "Loading...",
                         style = if (cardIsTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
@@ -365,6 +368,7 @@ fun StudentDetailTab(
             item {
                 AdaptiveDashboardCard {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        @Suppress("DEPRECATION")
                         Text("Update Professional Info", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
                         OutlinedTextField(value = editDept, onValueChange = { editDept = it }, label = { Text("Major / Department") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
                         OutlinedTextField(value = editBio, onValueChange = { editBio = it }, label = { Text("Biography") }, modifier = Modifier.fillMaxWidth(), minLines = 3, shape = RoundedCornerShape(12.dp))
@@ -425,6 +429,7 @@ fun StudentDetailTab(
                                 Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }
                             }
                             Spacer(Modifier.width(12.dp))
+                            @Suppress("DEPRECATION")
                             Text("Biography", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
                         }
                         Spacer(Modifier.height(12.dp))
@@ -457,6 +462,7 @@ fun StudentDetailTab(
                             }
                             Spacer(Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
+                                @Suppress("DEPRECATION")
                                 Text("Digital Student ID", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleSmall)
                                 Text("Show your digital card for campus access", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -474,7 +480,9 @@ fun StudentDetailTab(
                             Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), shape = CircleShape, modifier = Modifier.size(32.dp)) {
                                 Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }
                             }
+                            @Suppress("DEPRECATION")
                             Spacer(Modifier.height(12.dp))
+                            @Suppress("DEPRECATION")
                             Text("Email", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                             Text(localUser?.email ?: "Not available", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
@@ -484,7 +492,9 @@ fun StudentDetailTab(
                             Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), shape = CircleShape, modifier = Modifier.size(32.dp)) {
                                 Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AssignmentInd, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }
                             }
+                            @Suppress("DEPRECATION")
                             Spacer(Modifier.height(12.dp))
+                            @Suppress("DEPRECATION")
                             Text("Ref No.", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                             Text(localUser?.id?.take(8)?.uppercase() ?: "S16001089", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
@@ -492,7 +502,5 @@ fun StudentDetailTab(
                 }
             }
         }
-
-        item { Spacer(modifier = Modifier.height(80.dp)) } // Bottom list clearance
     }
 }

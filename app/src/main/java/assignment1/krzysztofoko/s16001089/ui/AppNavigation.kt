@@ -28,6 +28,7 @@ import assignment1.krzysztofoko.s16001089.ui.navigation.*
 import assignment1.krzysztofoko.s16001089.ui.splash.SplashScreen
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.details.course.MyApplicationsScreen
+import assignment1.krzysztofoko.s16001089.ui.details.pdf.PdfReaderScreen
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import assignment1.krzysztofoko.s16001089.ui.theme.GlyndwrProjectTheme
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
@@ -100,6 +101,7 @@ fun AppNavigation(
     // --- THEME STATE MANAGEMENT --- //
     var showThemeBuilder by remember { mutableStateOf(false) }
     var liveTheme by remember(userThemeFromDb) { mutableStateOf(userThemeFromDb) }
+    var isReaderFullScreen by remember { mutableStateOf(false) }
 
     val isDarkTheme = when(currentTheme) {
         Theme.DARK, Theme.DARK_BLUE -> true
@@ -130,8 +132,12 @@ fun AppNavigation(
             }
             syncedUserId = userId
         } else if (userId == null && syncedUserId != null) {
+            // REQUIREMENT: Security & Cleanup.
+            // When user logs out, reset theme and ENSURE player stops.
             onThemeChange(Theme.DARK)
             syncedUserId = null
+            externalPlayer?.stop()
+            externalPlayer?.clearMediaItems()
         }
     }
 
@@ -166,6 +172,7 @@ fun AppNavigation(
             currentTutorSection = currentTutorSection,
             currentAdminSection = currentAdminSection,
             unreadCount = unreadCount,
+            hideBars = isReaderFullScreen,
             onDashboardClick = {
                 val target = when (localUser?.role) {
                     "admin" -> AppConstants.ROUTE_ADMIN_PANEL
@@ -230,20 +237,32 @@ fun AppNavigation(
             },
             onAboutClick = { navController.navigate(AppConstants.ROUTE_ABOUT) },
             bottomContent = {
-                if (mainVm.showPlayer && mainVm.isPlayerMinimized) {
-                    IntegratedAudioBar(
-                        currentBook = mainVm.currentPlayingBook,
-                        externalPlayer = externalPlayer,
-                        onToggleMinimize = { mainVm.isPlayerMinimized = false },
-                        onClose = { mainVm.stopPlayer(externalPlayer) }
-                    )
+                // Ensure the global audio bar remains active for all roles unless specifically hidden by reader state
+                if (!isReaderFullScreen && mainVm.showPlayer && mainVm.isPlayerMinimized) {
+                    val isTutorHub = currentRoute?.startsWith(AppConstants.ROUTE_TUTOR_PANEL) == true
+                    val isAdminHub = currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_PANEL) == true
+                    val isAdminUserDetails = currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_USER_DETAILS) == true
+                    
+                    // REQUIREMENT: Professional Layout. 
+                    // Add extra padding if we are in a hub that has its own local bottom bar (80dp height)
+                    // to ensure the audio bar sits ON TOP of the navbar, not overlaying it.
+                    val bottomNavPadding = if (isTutorHub || isAdminHub || isAdminUserDetails) 80.dp else 0.dp
+                    
+                    Box(modifier = Modifier.padding(bottom = bottomNavPadding)) {
+                        IntegratedAudioBar(
+                            currentBook = mainVm.currentPlayingBook,
+                            externalPlayer = externalPlayer,
+                            onToggleMinimize = { mainVm.isPlayerMinimized = false },
+                            onClose = { mainVm.stopPlayer(externalPlayer) }
+                        )
+                    }
                 }
             }
         ) { paddingValues ->
             AppNavigationPopups(
                 showLogoutConfirm = mainVm.showLogoutConfirm,
                 showSignedOutPopup = mainVm.showSignedOutPopup,
-                onLogoutConfirm = { mainVm.signOut(navController) },
+                onLogoutConfirm = { mainVm.signOut(navController, externalPlayer) },
                 onLogoutDismiss = { mainVm.showLogoutConfirm = false },
                 onSignedOutDismiss = { mainVm.showSignedOutPopup = false }
             )
@@ -296,7 +315,7 @@ fun AppNavigation(
                         homeNavGraph(navController, mainVm.currentUser, isDataLoading, loadError, currentTheme, handleThemeChange, { showThemeBuilder = true }, { mainVm.refreshData() }, { mainVm.onPlayAudio(it, externalPlayer) }, mainVm.currentPlayingBook?.id, mainVm.isAudioPlaying)
                         authNavGraph(navController, currentTheme, handleThemeChange)
                         storeNavGraph(navController, mainVm.currentUser, allBooks, currentTheme, handleThemeChange) { mainVm.onPlayAudio(it, externalPlayer) }
-                        dashboardNavGraph(navController, mainVm.currentUser, allBooks, currentTheme, handleThemeChange, { showThemeBuilder = true }, { mainVm.onPlayAudio(it, externalPlayer) }, mainVm.isAudioPlaying, mainVm.currentPlayingBook?.id) { mainVm.showLogoutConfirm = true }
+                        dashboardNavGraph(navController, mainVm.currentUser, allBooks, currentTheme, handleThemeChange, { showThemeBuilder = true }, { mainVm.onPlayAudio(it, externalPlayer) }, externalPlayer, mainVm.isAudioPlaying, mainVm.currentPlayingBook?.id, mainVm.currentPlayingBook) { mainVm.showLogoutConfirm = true }
                         infoNavGraph(navController, currentTheme, liveTheme, handleThemeChange) { showThemeBuilder = true }
                         invoiceNavGraph(navController, allBooks, currentUser?.displayName ?: AppConstants.TEXT_STUDENT, currentTheme, handleThemeChange)
                         composable(AppConstants.ROUTE_MY_APPLICATIONS) {
@@ -307,6 +326,17 @@ fun AppNavigation(
                                     else -> navController.popBackStack()
                                 }
                             }, onNavigateToCourse = { id -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") }, isDarkTheme = isDarkTheme, onToggleTheme = {})
+                        }
+                        // Re-register PDF Reader with the full-screen callback
+                        composable("${AppConstants.ROUTE_PDF_READER}/{bookId}") { backStackEntry -> 
+                            val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
+                            PdfReaderScreen(
+                                bookId = bookId,
+                                onBack = { navController.popBackStack() },
+                                currentTheme = currentTheme,
+                                onThemeChange = handleThemeChange,
+                                onToggleFullScreen = { isReaderFullScreen = it }
+                            ) 
                         }
                     }
                 }

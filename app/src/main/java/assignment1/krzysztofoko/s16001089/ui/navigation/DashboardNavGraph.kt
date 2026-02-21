@@ -20,6 +20,7 @@ import assignment1.krzysztofoko.s16001089.ui.tutor.TutorPanelScreen
 import assignment1.krzysztofoko.s16001089.ui.messages.MessagesScreen
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseUser
+import androidx.media3.common.Player
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -34,8 +35,10 @@ fun NavGraphBuilder.dashboardNavGraph(
     onThemeChange: (Theme) -> Unit, // Callback to update the global theme
     onOpenThemeBuilder: () -> Unit, // Callback to launch the custom theme creation tool
     onPlayAudio: (Book) -> Unit, // Trigger for playing an audiobook
+    externalPlayer: Player? = null, // Global media player instance
     isAudioPlaying: Boolean, // State of the global audio player
     currentPlayingBookId: String?, // ID of the book currently active in the player
+    currentPlayingBook: Book?, // Full book object currently active in the player
     onLogoutClick: () -> Unit // Global sign-out logic
 ) {
     // Utility flag to determine if the UI should render in a "Dark" style based on theme choice
@@ -191,9 +194,15 @@ fun NavGraphBuilder.dashboardNavGraph(
             currentTheme = currentTheme,
             onThemeChange = onFullThemeChange,
             onPlayAudio = onPlayAudio,
+            externalPlayer = externalPlayer,
             currentPlayingBookId = currentPlayingBookId,
+            currentPlayingBook = currentPlayingBook,
             isAudioPlaying = isAudioPlaying,
-            initialSection = section
+            initialSection = section,
+            onStopPlayer = {
+                externalPlayer?.stop()
+                externalPlayer?.clearMediaItems()
+            }
         )
     }
 }

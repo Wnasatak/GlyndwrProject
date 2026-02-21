@@ -53,6 +53,7 @@ import kotlinx.coroutines.launch
  * @param onBack Callback to return to the previous screen.
  * @param currentTheme The active application theme.
  * @param onThemeChange Callback to update the application theme.
+ * @param onToggleFullScreen Callback to notify parent layout when full-screen mode changes.
  * @param viewModel The state holder for PDF rendering logic.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,7 +62,8 @@ fun PdfReaderScreen(
     bookId: String,                   
     onBack: () -> Unit,               
     currentTheme: Theme,             
-    onThemeChange: (Theme) -> Unit,        
+    onThemeChange: (Theme) -> Unit,
+    onToggleFullScreen: (Boolean) -> Unit = {},
     viewModel: PdfViewModel = viewModel()
 ) {
     // --- STATE OBSERVATION --- //
@@ -75,6 +77,11 @@ fun PdfReaderScreen(
     var showSettings by remember { mutableStateOf(false) }
     var isFullScreen by remember { mutableStateOf(false) }
     
+    // Notify parent about full screen state
+    LaunchedEffect(isFullScreen) {
+        onToggleFullScreen(isFullScreen)
+    }
+
     // Persistent scroll state for the document list.
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -85,6 +92,7 @@ fun PdfReaderScreen(
         viewModel.loadBook(bookId, isDarkTheme)
         onDispose {
             viewModel.reset() // Prevent memory leaks by clearing cached bitmaps.
+            onToggleFullScreen(false) // Reset global UI when leaving
         }
     }
 
@@ -129,6 +137,7 @@ fun PdfReaderScreen(
                                 )
                                 // Displays live progress indicator (e.g., "Page 5 of 120").
                                 if (uiState is PdfUiState.Ready) {
+                                    @Suppress("DEPRECATION")
                                     Text(
                                         text = "Page $currentPage of ${(uiState as PdfUiState.Ready).pageCount}", 
                                         style = MaterialTheme.typography.labelSmall, 
@@ -333,37 +342,111 @@ fun ReaderSettingsSheet(
     onZoomChange: (Float) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(24.dp)) {
-            Text("Reader Settings", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface, // Solid background for readability
+        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+        tonalElevation = 12.dp
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 40.dp)) {
+            Text(
+                text = "Reader Settings", 
+                style = MaterialTheme.typography.headlineSmall, 
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
+            )
             Spacer(Modifier.height(24.dp))
             
             // --- MODE SELECTOR --- //
-            Text("Reading Mode", style = MaterialTheme.typography.titleMedium)
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                FilterChip(selected = readingMode == PdfReadingMode.NORMAL, onClick = { onModeChange(PdfReadingMode.NORMAL) }, label = { Text("Normal") })
-                FilterChip(selected = readingMode == PdfReadingMode.INVERTED, onClick = { onModeChange(PdfReadingMode.INVERTED) }, label = { Text("Night") })
-                FilterChip(selected = readingMode == PdfReadingMode.SEPIA, onClick = { onModeChange(PdfReadingMode.SEPIA) }, label = { Text("Sepia") })
+            @Suppress("DEPRECATION")
+            Text(
+                text = "Reading Mode", 
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            val chipColors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                FilterChip(
+                    selected = readingMode == PdfReadingMode.NORMAL, 
+                    onClick = { onModeChange(PdfReadingMode.NORMAL) }, 
+                    label = { Text("Normal") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = chipColors,
+                    border = null
+                )
+                FilterChip(
+                    selected = readingMode == PdfReadingMode.INVERTED, 
+                    onClick = { onModeChange(PdfReadingMode.INVERTED) }, 
+                    label = { Text("Night") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = chipColors,
+                    border = null
+                )
+                FilterChip(
+                    selected = readingMode == PdfReadingMode.SEPIA, 
+                    onClick = { onModeChange(PdfReadingMode.SEPIA) }, 
+                    label = { Text("Sepia") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = chipColors,
+                    border = null
+                )
             }
             
             Spacer(Modifier.height(16.dp))
             
             // --- BRIGHTNESS SLIDER --- //
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.BrightnessLow, null, Modifier.size(20.dp))
-                Slider(value = brightness, onValueChange = onBrightnessChange, valueRange = 0.2f..1.0f, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-                Icon(Icons.Default.BrightnessHigh, null, Modifier.size(20.dp))
+                Icon(Icons.Default.BrightnessLow, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                Slider(
+                    value = brightness, 
+                    onValueChange = onBrightnessChange, 
+                    valueRange = 0.2f..1.0f, 
+                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+                Icon(Icons.Default.BrightnessHigh, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
             }
             
             Spacer(Modifier.height(16.dp))
             
             // --- ZOOM SCALE SLIDER --- //
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.TextFields, null, Modifier.size(16.dp))
-                Slider(value = zoomScale, onValueChange = onZoomChange, valueRange = 1.0f..2.0f, modifier = Modifier.weight(1f).padding(horizontal = 12.dp))
-                Icon(Icons.Default.TextFields, null, Modifier.size(24.dp))
+                Icon(Icons.Default.TextFields, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                Slider(
+                    value = zoomScale, 
+                    onValueChange = onZoomChange, 
+                    valueRange = 1.0f..2.0f, 
+                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+                Icon(Icons.Default.TextFields, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
             }
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(16.dp))
+            
+            @Suppress("DEPRECATION")
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Close Reader Settings", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }

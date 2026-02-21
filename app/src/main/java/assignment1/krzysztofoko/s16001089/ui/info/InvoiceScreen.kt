@@ -95,7 +95,7 @@ fun InvoiceScreen(
                         Text(
                             text = AppConstants.TITLE_OFFICIAL_INVOICE, 
                             style = MaterialTheme.typography.titleLarge, 
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.ExtraBold
                         ) 
                     },
                     navigationIcon = {
@@ -131,7 +131,7 @@ fun InvoiceScreen(
                 
                 // Adaptive container ensures content remains centered and correctly sized on tablets
                 AdaptiveScreenContainer(
-                    modifier = Modifier.padding(padding).verticalScroll(rememberScrollState()),
+                    modifier = Modifier.padding(top = padding.calculateTopPadding()).verticalScroll(rememberScrollState()),
                     maxWidth = AdaptiveWidths.Standard
                 ) { isTablet ->
                     Column(
@@ -142,21 +142,22 @@ fun InvoiceScreen(
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(AdaptiveSpacing.cornerRadius()),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         ) {
-                            Column(modifier = Modifier.padding(24.dp)) {
+                            Column(modifier = Modifier.padding(if (isTablet) 32.dp else 24.dp)) {
                                 // Header: Branding and Logo
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Column(modifier = Modifier.weight(1f)) {
+                                        @Suppress("DEPRECATION")
                                         Text(text = AppConstants.APP_NAME, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                                        Text(text = AppConstants.LABEL_STORE_TAGLINE, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                        @Suppress("DEPRECATION")
+                                        Text(text = AppConstants.LABEL_STORE_TAGLINE, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    AsyncImage(
+                                    AdaptiveBrandedLogo(
                                         model = "file:///android_asset/images/media/GlyndwrUniversity.jpg",
                                         contentDescription = "Logo",
-                                        modifier = Modifier.size(52.dp).graphicsLayer { rotationZ = rotation.value }.clip(CircleShape),
-                                        contentScale = ContentScale.Crop
+                                        logoSize = if (isTablet) 60.dp else 52.dp
                                     )
                                 }
                                 
@@ -165,25 +166,28 @@ fun InvoiceScreen(
                                 // User and Technical Metadata
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(AppConstants.TITLE_ISSUED_TO, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                                        Text(currentInvoice.billingName, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text("${AppConstants.TEXT_EMAIL}: ${currentInvoice.billingEmail}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                        @Suppress("DEPRECATION")
+                                        Text(AppConstants.TITLE_ISSUED_TO, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                        Text(currentInvoice.billingName, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
+                                        Text("${AppConstants.TEXT_EMAIL}: ${currentInvoice.billingEmail}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         if (!currentInvoice.billingAddress.isNullOrBlank()) {
-                                            Text(currentInvoice.billingAddress, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                            Text(currentInvoice.billingAddress, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
                                     Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
-                                        Text(AppConstants.TITLE_INVOICE_NO, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                                        Text(text = currentInvoice.invoiceNumber, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text(formattedDate, style = MaterialTheme.typography.labelSmall, color = Color.Gray, textAlign = TextAlign.End)
+                                        @Suppress("DEPRECATION")
+                                        Text(AppConstants.TITLE_INVOICE_NO, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                        Text(text = currentInvoice.invoiceNumber, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(formattedDate, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
                                     }
                                 }
                                 
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                                 
                                 // Detailed Item Information
-                                Text(AppConstants.TITLE_PURCHASED_ITEM, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                                Spacer(modifier = Modifier.height(12.dp))
+                                @Suppress("DEPRECATION")
+                                Text(AppConstants.TITLE_PURCHASED_ITEM, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(16.dp))
                                 
                                 val pricePaid = currentInvoice.pricePaid
                                 val basePrice = if (pricePaid > 0) pricePaid + currentInvoice.discountApplied else 0.0
@@ -191,50 +195,57 @@ fun InvoiceScreen(
 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     // Item Visual Category Icon
-                                    Box(modifier = Modifier.size(50.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = when(currentInvoice.itemCategory) {
-                                                AppConstants.CAT_AUDIOBOOKS -> Icons.Default.Headphones
-                                                AppConstants.CAT_COURSES -> Icons.Default.School
-                                                AppConstants.CAT_GEAR -> Icons.Default.Inventory
-                                                AppConstants.CAT_FINANCE -> Icons.Default.AccountBalanceWallet
-                                                else -> Icons.AutoMirrored.Filled.MenuBook
-                                            },
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
+                                    Surface(modifier = Modifier.size(50.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f), shape = RoundedCornerShape(12.dp)) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = when(currentInvoice.itemCategory) {
+                                                    AppConstants.CAT_AUDIOBOOKS -> Icons.Default.Headphones
+                                                    AppConstants.CAT_COURSES -> Icons.Default.School
+                                                    AppConstants.CAT_GEAR -> Icons.Default.Inventory
+                                                    AppConstants.CAT_FINANCE -> Icons.Default.AccountBalanceWallet
+                                                    else -> Icons.AutoMirrored.Filled.MenuBook
+                                                },
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
                                     }
                                     Spacer(Modifier.width(16.dp))
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(currentInvoice.itemTitle, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(currentInvoice.itemTitle, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge)
                                         var categoryText = currentInvoice.itemCategory
                                         if (!currentInvoice.itemVariant.isNullOrEmpty()) { categoryText = "$categoryText • ${currentInvoice.itemVariant}" }
-                                        Text(categoryText, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                        Text(categoryText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     // Original price before potential student discounts
-                                    Text("£" + String.format(Locale.US, "%.2f", basePrice), fontWeight = FontWeight.Medium)
+                                    Text("£" + String.format(Locale.US, "%.2f", basePrice), fontWeight = FontWeight.Black, style = MaterialTheme.typography.bodyLarge)
                                 }
                                 
                                 Spacer(modifier = Modifier.height(32.dp))
                                 
                                 // --- FINANCIAL SUMMARY ---
-                                Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp)).padding(16.dp)) {
+                                Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp)).padding(20.dp)) {
                                     InvoiceSummaryRow(AppConstants.LABEL_SUBTOTAL, "£" + String.format(Locale.US, "%.2f", basePrice))
                                     // Highlight student discount in green if applied
-                                    if (discount > 0) { InvoiceSummaryRow(AppConstants.LABEL_STUDENT_DISCOUNT_VAL, "-£" + String.format(Locale.US, "%.2f", discount), color = Color(0xFF2E7D32)) }
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                                    if (discount > 0) { 
+                                        Spacer(Modifier.height(8.dp))
+                                        InvoiceSummaryRow(AppConstants.LABEL_STUDENT_DISCOUNT_VAL, "-£" + String.format(Locale.US, "%.2f", discount), color = Color(0xFF4CAF50)) 
+                                    }
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                                     // Final amount charged
                                     InvoiceSummaryRow(AppConstants.LABEL_TOTAL_PAID, "£" + String.format(Locale.US, "%.2f", pricePaid), isTotal = true)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(text = "${AppConstants.LABEL_PAID_VIA} ${currentInvoice.paymentMethod}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f))
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    @Suppress("DEPRECATION")
+                                    Text(text = "${AppConstants.LABEL_PAID_VIA} ${currentInvoice.paymentMethod}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                     if (!currentInvoice.orderReference.isNullOrEmpty()) {
-                                        Text(text = "${AppConstants.LABEL_REFERENCE}: ${currentInvoice.orderReference}", style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(top = 2.dp))
+                                        Text(text = "${AppConstants.LABEL_REFERENCE}: ${currentInvoice.orderReference}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), modifier = Modifier.padding(top = 2.dp))
                                     }
                                 }
                                 
                                 Spacer(modifier = Modifier.height(40.dp))
                                 // Receipt validation text
-                                Text(text = "${AppConstants.MSG_THANK_YOU_STORE}\n${AppConstants.LABEL_COMPUTER_GENERATED}", style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, color = Color.Gray, modifier = Modifier.fillMaxWidth())
+                                @Suppress("DEPRECATION")
+                                Text(text = "${AppConstants.MSG_THANK_YOU_STORE}\n${AppConstants.LABEL_COMPUTER_GENERATED}", style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.fillMaxWidth(), lineHeight = 16.sp)
                             }
                         }
                         
@@ -247,12 +258,15 @@ fun InvoiceScreen(
                                 generateAndSaveInvoicePdf(context, book, currentInvoice.billingName, currentInvoice.invoiceNumber, formattedDate, pRecord)
                             },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
-                            shape = RoundedCornerShape(16.dp)
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Icon(Icons.Default.PictureAsPdf, null)
                             Spacer(Modifier.width(12.dp))
+                            @Suppress("DEPRECATION")
                             Text(AppConstants.BTN_DOWNLOAD_PDF, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
@@ -275,18 +289,21 @@ fun InvoiceSummaryRow(
         horizontalArrangement = Arrangement.SpaceBetween, 
         verticalAlignment = Alignment.CenterVertically
     ) {
+        @Suppress("DEPRECATION")
         Text(
             text = label, 
             modifier = Modifier.weight(1f),
             style = if (isTotal) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium, 
-            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal,
+            fontWeight = if (isTotal) FontWeight.Black else FontWeight.Bold,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            color = if (isTotal) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
         )
+        @Suppress("DEPRECATION")
         Text(
             text = value, 
-            style = if (isTotal) MaterialTheme.typography.titleLarge else MaterialTheme.typography.bodyMedium, 
-            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal, 
+            style = if (isTotal) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.bodyLarge, 
+            fontWeight = if (isTotal) FontWeight.Black else FontWeight.Bold, 
             color = if (isTotal) MaterialTheme.colorScheme.primary else color,
             textAlign = TextAlign.End,
             modifier = Modifier.padding(start = 8.dp)

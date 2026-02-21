@@ -124,7 +124,7 @@ fun EditProfileScreen(
             // Adaptive container ensures the form stays centered and correctly sized on tablets
             AdaptiveScreenContainer(
                 modifier = Modifier
-                    .padding(padding)
+                    .padding(top = padding.calculateTopPadding())
                     .verticalScroll(rememberScrollState()), // Enables vertical scrolling
                 maxWidth = 600.dp // Max width for content container
             ) { isTablet ->
@@ -203,13 +203,14 @@ fun EditProfileScreen(
                                 if (viewModel.isUploading) { // Show progress indicator if uploading
                                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                                 } else { // Default button label
+                                    @Suppress("DEPRECATION")
                                     Text(AppConstants.BTN_SAVE_PROFILE, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
                     }
                     // Bottom spacing for ergonomic scrolling
-                    Spacer(modifier = Modifier.height(40.dp)) // Spacing at the bottom of the screen
+                    Spacer(modifier = Modifier.height(16.dp)) // Spacing at the bottom of the screen
                 }
             }
         }

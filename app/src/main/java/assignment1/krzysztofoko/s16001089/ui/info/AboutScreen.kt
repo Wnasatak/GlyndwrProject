@@ -42,13 +42,21 @@ import com.google.firebase.auth.FirebaseAuth
 /**
  * Main 'About' screen of the application.
  * Displays institutional information, project details, and provides navigation to help and developer information.
- * 
+ *
  * REQUIREMENT: Intents (8%) - Implicit Intent Demonstration.
  * This screen provides one-click access to system apps via Implicit Intents:
  * 1. ACTION_SENDTO (Email)
  * 2. ACTION_DIAL (Phone)
  * 3. ACTION_VIEW (Maps)
  * 4. ACTION_VIEW (Web Browser)
+ *
+ * @param onBack Callback to navigate to the previous screen.
+ * @param onDeveloperClick Callback to navigate to the developer info screen.
+ * @param onInstructionClick Callback to navigate to the app usage/instructions screen.
+ * @param onOpenThemeBuilder Callback to open the custom theme builder dialog.
+ * @param currentTheme The currently selected application theme enum.
+ * @param userTheme The custom theme data for the user, if available.
+ * @param onThemeChange Callback to handle theme selection changes.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,29 +72,33 @@ fun AboutScreen(
     val context = LocalContext.current
     
     // --- ANIMATION STATE ---
+    // Animate the logo rotation once when the screen appears.
     val logoRotation = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         logoRotation.animateTo(360f, tween(1200, easing = FastOutSlowInEasing))
     }
 
+    // Determine if the current theme is dark to adjust background and other elements.
     val isDarkTheme = when(currentTheme) {
         Theme.DARK, Theme.DARK_BLUE -> true
         Theme.CUSTOM -> userTheme?.customIsDark ?: true
         else -> false
     }
     
+    // A continuous pulsating glow animation for the logo's background.
     val glowAnim = rememberGlowAnimation()
     val accentColor = MaterialTheme.colorScheme.primary
     val currentUser = FirebaseAuth.getInstance().currentUser
 
+    // Root container with a decorative background.
     Box(modifier = Modifier.fillMaxSize()) {
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Make Scaffold transparent to show the wavy background.
             topBar = {
                 CenterAlignedTopAppBar(
-                    windowInsets = WindowInsets(0, 0, 0, 0),
+                    windowInsets = WindowInsets(0, 0, 0, 0), // Remove default insets to manage padding manually.
                     title = { 
                         Text(
                             text = AppConstants.TITLE_ABOUT_APP, 
@@ -100,6 +112,7 @@ fun AboutScreen(
                         }
                     },
                     actions = {
+                        // Theme toggle button in the top app bar for quick access.
                         ThemeToggleButton(
                             currentTheme = currentTheme,
                             onThemeChange = onThemeChange,
@@ -108,11 +121,12 @@ fun AboutScreen(
                         )
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f) // Semi-transparent for a modern look.
                     )
                 )
             }
         ) { padding ->
+            // Adaptive container handles different screen sizes gracefully (e.g., tablets).
             AdaptiveScreenContainer(
                 modifier = Modifier.padding(padding).verticalScroll(rememberScrollState()),
                 maxWidth = AdaptiveWidths.Standard
@@ -122,7 +136,9 @@ fun AboutScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // --- BRANDED LOGO SECTION ---
+                    // A decorative logo display with multiple layers for a dynamic effect.
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(if (isTablet) 180.dp else 140.dp)) {
+                        // Pulsating glow effect behind the logo.
                         Box(
                             modifier = Modifier
                                 .size(if (isTablet) 140.dp else 110.dp)
@@ -130,6 +146,7 @@ fun AboutScreen(
                                 .alpha(glowAnim.second)
                                 .background(Brush.radialGradient(listOf(accentColor.copy(alpha = 0.8f), Color.Transparent)), CircleShape)
                         )
+                        // Main logo surface with shadow and border.
                         Surface(
                             modifier = Modifier.size(if (isTablet) 120.dp else 90.dp),
                             shape = CircleShape,
@@ -142,7 +159,7 @@ fun AboutScreen(
                                 contentDescription = "Logo",
                                 modifier = Modifier
                                     .size(if (isTablet) 110.dp else 80.dp)
-                                    .graphicsLayer { rotationZ = logoRotation.value }
+                                    .graphicsLayer { rotationZ = logoRotation.value } // Apply rotation animation.
                                     .clip(CircleShape),
                                 contentScale = ContentScale.Crop
                             )
@@ -160,6 +177,7 @@ fun AboutScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // --- INSTITUTIONAL CARDS ---
+                    // Reusable cards displaying key information.
                     InfoCard(
                         icon = Icons.Default.School, 
                         title = "INSTITUTION", 
@@ -177,6 +195,7 @@ fun AboutScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // --- PROFESSIONAL SUPPORT HUB (IMPLICIT INTENTS) ---
+                    // This section demonstrates implicit intents to interact with other Android apps.
                     Text(
                         text = "UNIVERSITY SUPPORT HUB", 
                         style = MaterialTheme.typography.labelMedium,
@@ -192,7 +211,7 @@ fun AboutScreen(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            // 1. IMPLICIT INTENT: EMAIL
+                            // 1. IMPLICIT INTENT: EMAIL - Opens an email client.
                             SupportItem(
                                 icon = Icons.Default.Email,
                                 title = "Email Admissions",
@@ -208,7 +227,7 @@ fun AboutScreen(
                             )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                             
-                            // 2. IMPLICIT INTENT: PHONE
+                            // 2. IMPLICIT INTENT: PHONE - Opens the phone dialer.
                             SupportItem(
                                 icon = Icons.Default.Phone,
                                 title = "Call Main Campus",
@@ -220,7 +239,7 @@ fun AboutScreen(
                             )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                             
-                            // 3. IMPLICIT INTENT: MAPS
+                            // 3. IMPLICIT INTENT: MAPS - Opens a map application to a specific location.
                             SupportItem(
                                 icon = Icons.Default.LocationOn,
                                 title = "Visit Wrexham Campus",
@@ -228,13 +247,13 @@ fun AboutScreen(
                                 onClick = {
                                     val gmmIntentUri = Uri.parse("geo:53.0526,-3.0062?q=Wrexham+University")
                                     val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
-                                    mapIntent.setPackage("com.google.android.apps.maps")
+                                    mapIntent.setPackage("com.google.android.apps.maps") // Explicitly prefer Google Maps if available.
                                     context.startActivity(mapIntent)
                                 }
                             )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                            // 4. IMPLICIT INTENT: WEB BROWSER
+                            // 4. IMPLICIT INTENT: WEB BROWSER - Opens a web browser to a URL.
                             SupportItem(
                                 icon = Icons.Default.Language,
                                 title = "Official Website",
@@ -250,6 +269,7 @@ fun AboutScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // --- NAVIGATION ACTIONS ---
+                    // Buttons to navigate to other informational screens.
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(
                             onClick = onInstructionClick, 
@@ -272,6 +292,7 @@ fun AboutScreen(
                         }
                     }
                     
+                    // --- APP VERSION ---
                     Text(
                         text = "Version ${AppConstants.VERSION_NAME}", 
                         style = MaterialTheme.typography.labelSmall, 
@@ -284,6 +305,14 @@ fun AboutScreen(
     }
 }
 
+/**
+ * A reusable list item for the Support Hub.
+ *
+ * @param icon The leading icon for the item.
+ * @param title The primary text for the item.
+ * @param description The secondary text (subtitle).
+ * @param onClick The action to perform when the item is clicked.
+ */
 @Composable
 private fun SupportItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -299,6 +328,7 @@ private fun SupportItem(
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Icon container with a colored background.
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -308,10 +338,12 @@ private fun SupportItem(
             Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
         }
         Spacer(Modifier.width(16.dp))
+        // Text content.
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        // Trailing chevron to indicate it's clickable.
         Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
     }
 }

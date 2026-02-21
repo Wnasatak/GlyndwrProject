@@ -127,6 +127,9 @@ class MainViewModel(
         _currentUser.value = user
         if (wasLoggedIn && user == null) {
             showSignedOutPopup = true
+            // Reset player UI state internally when user logs out
+            showPlayer = false
+            currentPlayingBook = null
         }
     }
 
@@ -153,6 +156,9 @@ class MainViewModel(
     }
 
     fun onPlayAudio(book: Book, player: Player?) {
+        // Requirement: Only logged in users can play audiobooks.
+        if (auth.currentUser == null) return
+
         if (currentPlayingBook?.id == book.id) {
             if (player?.isPlaying == true) player.pause() else player?.play()
         } else {
@@ -183,11 +189,14 @@ class MainViewModel(
     fun stopPlayer(player: Player?) {
         showPlayer = false
         player?.stop()
+        player?.clearMediaItems()
         currentPlayingBook = null
     }
 
-    fun signOut(navController: NavController) {
+    fun signOut(navController: NavController, player: Player?) {
         showLogoutConfirm = false
+        // Ensure player is stopped before signing out
+        stopPlayer(player)
         auth.signOut() 
         navController.navigate(AppConstants.ROUTE_HOME) {
             popUpTo(0) { inclusive = true } 
