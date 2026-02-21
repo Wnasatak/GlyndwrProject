@@ -43,8 +43,12 @@ import com.google.firebase.auth.FirebaseAuth
  * Main 'About' screen of the application.
  * Displays institutional information, project details, and provides navigation to help and developer information.
  * 
- * New Feature: Implicit Intent Support Hub (8% requirement).
- * Provides one-click access to email, phone, and location services.
+ * REQUIREMENT: Intents (8%) - Implicit Intent Demonstration.
+ * This screen provides one-click access to system apps via Implicit Intents:
+ * 1. ACTION_SENDTO (Email)
+ * 2. ACTION_DIAL (Phone)
+ * 3. ACTION_VIEW (Maps)
+ * 4. ACTION_VIEW (Web Browser)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -173,7 +177,6 @@ fun AboutScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // --- PROFESSIONAL SUPPORT HUB (IMPLICIT INTENTS) ---
-                    // This section demonstrates advanced understanding of Android system integration.
                     Text(
                         text = "UNIVERSITY SUPPORT HUB", 
                         style = MaterialTheme.typography.labelMedium,
@@ -189,7 +192,7 @@ fun AboutScreen(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            // 1. IMPLICIT INTENT: EMAIL SUPPORT
+                            // 1. IMPLICIT INTENT: EMAIL
                             SupportItem(
                                 icon = Icons.Default.Email,
                                 title = "Email Admissions",
@@ -203,9 +206,9 @@ fun AboutScreen(
                                     context.startActivity(Intent.createChooser(intent, "Send Email"))
                                 }
                             )
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                             
-                            // 2. IMPLICIT INTENT: CALL CAMPUS
+                            // 2. IMPLICIT INTENT: PHONE
                             SupportItem(
                                 icon = Icons.Default.Phone,
                                 title = "Call Main Campus",
@@ -215,18 +218,30 @@ fun AboutScreen(
                                     context.startActivity(intent)
                                 }
                             )
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                             
-                            // 3. IMPLICIT INTENT: LOCATE UNIVERSITY
+                            // 3. IMPLICIT INTENT: MAPS
                             SupportItem(
                                 icon = Icons.Default.LocationOn,
                                 title = "Visit Wrexham Campus",
-                                description = "Mold Rd, Wrexham LL11 2AW",
+                                description = "Mold Rd, LL11 2AW",
                                 onClick = {
                                     val gmmIntentUri = Uri.parse("geo:53.0526,-3.0062?q=Wrexham+University")
                                     val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                                     mapIntent.setPackage("com.google.android.apps.maps")
                                     context.startActivity(mapIntent)
+                                }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                            // 4. IMPLICIT INTENT: WEB BROWSER
+                            SupportItem(
+                                icon = Icons.Default.Language,
+                                title = "Official Website",
+                                description = "www.wrexham.ac.uk",
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.wrexham.ac.uk"))
+                                    context.startActivity(intent)
                                 }
                             )
                         }
@@ -257,7 +272,6 @@ fun AboutScreen(
                         }
                     }
                     
-                    // Technical Version Footer
                     Text(
                         text = "Version ${AppConstants.VERSION_NAME}", 
                         style = MaterialTheme.typography.labelSmall, 
@@ -270,9 +284,6 @@ fun AboutScreen(
     }
 }
 
-/**
- * Reusable layout for a single support action.
- */
 @Composable
 private fun SupportItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,

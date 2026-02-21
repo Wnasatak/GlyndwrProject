@@ -43,28 +43,7 @@ import java.util.Locale
 import kotlin.math.abs
 
 /**
- * HomeComponents.kt
- *
- * This file brings together all the major UI components that construct the application's home screen.
- * It includes the top navigation bar, the main item display cards, and various state-specific banners
- * and filter bars, all designed to create a dynamic and user-friendly front page.
- */
-
-/**
- * HomeTopBar Composable
- *
- * The main application top bar, featuring the app's branding, a search action, and dynamic
- * user-centric actions that change based on authentication state.
- *
- * @param isSearchVisible Whether the search UI is currently active.
- * @param isLoggedIn The user's current authentication status.
- * @param currentTheme The active visual theme.
- * @param userRole The role of the logged-in user, used to display the correct dashboard icon.
- * @param onSearchClick Callback to toggle the search bar's visibility.
- * @param onThemeChange Callback to cycle through available themes.
- * @param onAboutClick Callback to show the 'About' dialog.
- * @param onAuthClick Callback for navigating to the authentication screen.
- * @param onDashboardClick Callback for navigating to the user-specific dashboard.
+ * HomeTopBar Composable: The main top navigation bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,31 +72,22 @@ fun HomeTopBar(
             }
         },
         actions = {
-            // The search icon is always visible.
             TopBarSearchAction(isSearchVisible = isSearchVisible) { onSearchClick() }
 
-            // Theme toggle is available to guests.
             if (!isLoggedIn) {
-                ThemeToggleButton(
-                    currentTheme = currentTheme,
-                    onThemeChange = onThemeChange,
-                    isLoggedIn = false
-                )
+                ThemeToggleButton(currentTheme = currentTheme, onThemeChange = onThemeChange, isLoggedIn = false)
             }
 
-            // 'About' information is always accessible.
             IconButton(onClick = onAboutClick) {
                 Icon(Icons.Default.Info, "About")
             }
-            
-            // Actions change based on whether the user is logged in or not.
+
             if (!isLoggedIn) {
                 IconButton(onClick = onAuthClick) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = "Sign In / Register")
+                    Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = "Sign In")
                 }
             } else {
                 IconButton(onClick = onDashboardClick) {
-                    // Icon adapts to the user's role (Admin, Tutor, etc.).
                     val icon = when (userRole?.lowercase()) {
                         "admin" -> Icons.Default.AdminPanelSettings
                         "teacher", "tutor" -> Icons.Default.School
@@ -133,10 +103,6 @@ fun HomeTopBar(
 
 /**
  * HomeBookItem Composable
- *
- * A comprehensive card for displaying a single item (Book, Course, etc.) on the home screen.
- * It's highly stateful, adapting its appearance and actions based on user permissions, purchase
- * status, and media type (e.g., showing a play button for owned audiobooks).
  */
 @Composable
 fun HomeBookItem(
@@ -155,9 +121,7 @@ fun HomeBookItem(
 ) {
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
-    // Fetches all role-based discounts from the local database.
     val roleDiscounts by db.userDao().getAllRoleDiscounts().collectAsState(initial = emptyList<RoleDiscount>())
-    // Fetches the current user's data if they are logged in.
     val userFlow = if (isLoggedIn && !FirebaseAuth.getInstance().currentUser?.uid.isNullOrEmpty()) {
         db.userDao().getUserFlow(FirebaseAuth.getInstance().currentUser!!.uid)
     } else {
@@ -165,7 +129,6 @@ fun HomeBookItem(
     }
     val localUser by userFlow.collectAsState(initial = null)
 
-    // Calculates the best available discount for the user (role vs. individual).
     val effectiveDiscount = remember(localUser, roleDiscounts) {
         val uRole = localUser?.role ?: "user"
         val roleRate = roleDiscounts.find { it.role == uRole }?.discountPercent ?: 0.0
@@ -178,59 +141,30 @@ fun HomeBookItem(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         onClick = onItemClick,
         imageOverlay = {
-            // If the user owns this audiobook, display the spinning play/pause button.
             if (isLoggedIn && book.isAudioBook && isPurchased) {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
                     SpinningAudioButton(isPlaying = isAudioPlaying, onToggle = onPlayAudio, size = 40)
                 }
             }
         },
         trailingContent = {
-            // Wishlist toggle for logged-in users.
             if (isLoggedIn) {
                 IconButton(onClick = onToggleWishlist, modifier = Modifier.size(24.dp)) {
-                    Icon(
-                        imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "Like",
-                        tint = if (isLiked) MaterialTheme.colorScheme.onSurface else Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Icon(imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = "Like", tint = if (isLiked) MaterialTheme.colorScheme.onSurface else Color.Gray, modifier = Modifier.size(20.dp))
                 }
             }
         },
         bottomContent = {
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // The bottom label changes based on the item's status.
                 if (isPendingReview) {
-                    // Shows a "Reviewing" badge for items awaiting admin approval.
-                    Surface(
-                        color = Color(0xFFFBC02D).copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, Color(0xFFFBC02D).copy(alpha = 0.5f))
-                    ) {
+                    Surface(color = Color(0xFFFBC02D).copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, Color(0xFFFBC02D).copy(alpha = 0.5f))) {
                         @Suppress("DEPRECATION")
-                        Text(
-                            text = "REVIEWING",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color(0xFFFBC02D),
-                            fontWeight = FontWeight.ExtraBold
-                        )
+                        Text(text = "REVIEWING", modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.labelLarge, color = Color(0xFFFBC02D), fontWeight = FontWeight.ExtraBold)
                     }
                 } else if (isPurchased) {
-                    // Shows ownership status and related actions (view invoice, remove).
-                    HomePurchasedLabel(
-                        book = book,
-                        onInvoiceClick = onInvoiceClick,
-                        onRemoveClick = onRemoveClick,
-                        isLoggedIn = isLoggedIn
-                    )
+                    HomePurchasedLabel(book = book, onInvoiceClick = onInvoiceClick, onRemoveClick = onRemoveClick, isLoggedIn = isLoggedIn)
                 } else {
-                    // Shows the price, including any applicable discounts.
                     HomePriceLabel(book = book, effectiveDiscount = effectiveDiscount, userRole = localUser?.role)
                 }
             }
@@ -238,128 +172,63 @@ fun HomeBookItem(
     )
 }
 
-/**
- * A private composable for displaying the status of an already purchased item.
- */
 @Composable
-private fun HomePurchasedLabel(
-    book: Book,
-    onInvoiceClick: () -> Unit,
-    onRemoveClick: () -> Unit,
-    isLoggedIn: Boolean
-) {
+private fun HomePurchasedLabel(book: Book, onInvoiceClick: () -> Unit, onRemoveClick: () -> Unit, isLoggedIn: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         val label = AppConstants.getItemStatusLabel(book)
-
         if (book.price > 0) {
-            // For paid items, shows the status and an invoice button.
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-            ) {
+            Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))) {
                 Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (book.mainCategory == AppConstants.CAT_COURSES) Icons.Default.School else Icons.AutoMirrored.Filled.ReceiptLong,
-                        null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary
-                    )
+                    Icon(if (book.mainCategory == AppConstants.CAT_COURSES) Icons.Default.School else Icons.AutoMirrored.Filled.ReceiptLong, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(6.6.dp))
                     @Suppress("DEPRECATION")
                     Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                 }
             }
             Spacer(Modifier.width(8.dp))
-            IconButton(onClick = onInvoiceClick, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.AutoMirrored.Filled.ReceiptLong, "Invoice", tint = MaterialTheme.colorScheme.primary)
-            }
+            IconButton(onClick = onInvoiceClick, modifier = Modifier.size(32.dp)) { Icon(Icons.AutoMirrored.Filled.ReceiptLong, "Invoice", tint = MaterialTheme.colorScheme.primary) }
         } else {
-            // For free items, shows the status and a remove button (if applicable).
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-            ) {
+            Surface(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))) {
                 Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (book.mainCategory == AppConstants.CAT_COURSES) Icons.Default.School else Icons.Default.LibraryAddCheck,
-                        null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary
-                    )
+                    Icon(if (book.mainCategory == AppConstants.CAT_COURSES) Icons.Default.School else Icons.Default.LibraryAddCheck, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(6.6.dp))
                     @Suppress("DEPRECATION")
                     Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                 }
             }
-            if (book.mainCategory != AppConstants.CAT_GEAR) { // Physical gear cannot be removed.
+            if (book.mainCategory != AppConstants.CAT_GEAR) {
                 Spacer(Modifier.width(8.dp))
-                IconButton(onClick = { if (isLoggedIn) onRemoveClick() }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.DeleteOutline, "Remove", tint = MaterialTheme.colorScheme.error)
-                }
+                IconButton(onClick = { if (isLoggedIn) onRemoveClick() }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.DeleteOutline, "Remove", tint = MaterialTheme.colorScheme.error) }
             }
         }
     }
 }
 
-/**
- * A private composable for displaying an item's price, handling free items and discounts.
- */
 @Composable
 private fun HomePriceLabel(book: Book, effectiveDiscount: Double, userRole: String?) {
     if (book.price == 0.0) {
-        // Display a "FREE" badge for zero-cost items.
         Text(text = AppConstants.LABEL_FREE, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = Color(0xFF4CAF50))
     } else if (effectiveDiscount > 0) {
-        // Display the discounted price with the original price struck through.
         val discountMultiplier = (100.0 - effectiveDiscount) / 100.0
         val discountPrice = "£" + String.format(Locale.US, "%.2f", book.price * discountMultiplier)
-
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "£" + String.format(Locale.US, "%.2f", book.price),
-                    style = MaterialTheme.typography.bodySmall.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough),
-                    color = Color.Gray
-                )
+                Text(text = "£" + String.format(Locale.US, "%.2f", book.price), style = MaterialTheme.typography.bodySmall.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough), color = Color.Gray)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = discountPrice,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color(0xFF2E7D32),
-                    fontWeight = FontWeight.Black
-                )
+                Text(text = discountPrice, style = MaterialTheme.typography.titleLarge, color = Color(0xFF2E7D32), fontWeight = FontWeight.Black)
             }
             Spacer(modifier = Modifier.height(4.dp))
-            // Display a badge explaining the discount.
-            Surface(
-                color = Color(0xFFE8F5E9),
-                shape = RoundedCornerShape(6.dp),
-                border = BorderStroke(0.5.dp, Color(0xFF2E7D32).copy(alpha = 0.3f))
-            ) {
+            Surface(color = Color(0xFFE8F5E9), shape = RoundedCornerShape(6.dp), border = BorderStroke(0.5.dp, Color(0xFF2E7D32).copy(alpha = 0.3f))) {
                 val roleLabel = userRole?.uppercase() ?: "USER"
-                Text(
-                    text = "$roleLabel DISCOUNT (-${effectiveDiscount.toInt()}% )",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF2E7D32),
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                    letterSpacing = 0.5.sp
-                )
+                Text(text = "$roleLabel DISCOUNT (-${effectiveDiscount.toInt()}% )", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), letterSpacing = 0.5.sp)
             }
         }
     } else {
-        // Display the standard, non-discounted price.
         @Suppress("DEPRECATION")
-        Text(
-            text = "£" + String.format(Locale.US, "%.2f", book.price),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Text(text = "£" + String.format(Locale.US, "%.2f", book.price), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
-/**
- * A simple loading indicator for when the home screen is fetching data.
- */
 @Composable
 fun HomeLoadingState() {
     Box(modifier = Modifier.fillMaxWidth().height(250.dp), contentAlignment = Alignment.Center) {
@@ -372,9 +241,6 @@ fun HomeLoadingState() {
     }
 }
 
-/**
- * An error message display with a retry button for when data fetching fails.
- */
 @Composable
 fun HomeErrorState(error: String, onRetry: () -> Unit) {
     Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -387,9 +253,6 @@ fun HomeErrorState(error: String, onRetry: () -> Unit) {
     }
 }
 
-/**
- * A simple message shown when a filter or search yields no results.
- */
 @Composable
 fun HomeEmptyState(onClick: () -> Unit) {
     Box(modifier = Modifier.fillMaxWidth().padding(32.dp).clickable { onClick() }, contentAlignment = Alignment.Center) {
@@ -397,9 +260,6 @@ fun HomeEmptyState(onClick: () -> Unit) {
     }
 }
 
-/**
- * A promotional banner shown to logged-out users, encouraging them to register.
- */
 @Composable
 fun PromotionBanner(theme: Theme, onRegisterClick: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(24.dp)) {
@@ -414,40 +274,24 @@ fun PromotionBanner(theme: Theme, onRegisterClick: () -> Unit) {
     }
 }
 
-/**
- * A personalised welcome banner for logged-in users, displaying their name and discount status.
- */
 @Composable
 fun MemberWelcomeBanner(user: UserLocal?, theme: Theme, onProfileClick: () -> Unit) {
     val role = user?.role ?: "user"
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
     val roleDiscounts by db.userDao().getAllRoleDiscounts().collectAsState(initial = emptyList<RoleDiscount>())
-
     val effectiveDiscount = remember(user, roleDiscounts) {
         val userRole = user?.role ?: "user"
         val roleRate = roleDiscounts.find { it.role == userRole }?.discountPercent ?: 0.0
         val individualRate = user?.discountPercent ?: 0.0
         maxOf(roleRate, individualRate)
     }
-
     val displayRole = role.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-
-    // Construct a formal display name using the user's title if available.
     val displayName = buildString {
-        if (!user?.title.isNullOrEmpty()) {
-            append(user?.title)
-            append(" ")
-        }
+        if (!user?.title.isNullOrEmpty()) { append(user?.title); append(" ") }
         append(user?.name ?: displayRole)
     }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-    ) {
+    Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))) {
         Box(modifier = Modifier.background(getBannerBrush(theme)).padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 UserAvatar(photoUrl = user?.photoUrl, modifier = Modifier.size(64.dp))
@@ -455,23 +299,15 @@ fun MemberWelcomeBanner(user: UserLocal?, theme: Theme, onProfileClick: () -> Un
                 @Suppress("DEPRECATION")
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = "Welcome, $displayName", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = Color.White)
-                    if (effectiveDiscount > 0) {
-                        Text(text = "${effectiveDiscount.toInt()}% $displayRole discount activated! Enjoy your perks ✨", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
-                    } else {
-                        Text(text = "Logged in as $displayRole. Access your management dashboard!", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
-                    }
+                    if (effectiveDiscount > 0) { Text(text = "${effectiveDiscount.toInt()}% $displayRole discount activated! Enjoy your perks ✨", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f)) }
+                    else { Text(text = "Logged in as $displayRole. Access your management dashboard!", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f)) }
                 }
-                IconButton(onClick = onProfileClick) {
-                    Icon(Icons.Default.AccountBox, null, tint = Color.White)
-                }
+                IconButton(onClick = onProfileClick) { Icon(Icons.Default.AccountBox, null, tint = Color.White) }
             }
         }
     }
 }
 
-/**
- * A private helper to generate a theme-appropriate gradient brush for banners.
- */
 @Composable
 private fun getBannerBrush(theme: Theme): Brush {
     val colors = when (theme) {
@@ -484,86 +320,32 @@ private fun getBannerBrush(theme: Theme): Brush {
     return Brush.linearGradient(colors = colors, start = androidx.compose.ui.geometry.Offset(0f, 0f), end = androidx.compose.ui.geometry.Offset(1000f, 1000f))
 }
 
-/**
- * A filter bar for the main, top-level content categories.
- * On mobile, it features a "Cover Flow" effect where the central item is enlarged for focus.
- * On tablets, it displays a standard, clean row of category buttons.
- */
 @Composable
 fun MainCategoryFilterBar(categories: List<String>, selectedCategory: String, onCategorySelected: (String) -> Unit) {
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
-
     if (isTablet) {
-        // Standard LazyRow for larger screens.
         val listState = rememberLazyListState()
-        LazyRow(
-            state = listState,
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        LazyRow(state = listState, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
             items(categories) { category ->
-                CategorySquareButton(
-                    label = category,
-                    icon = getMainCategoryIcon(category),
-                    isSelected = selectedCategory == category,
-                    scale = 1f,
-                    onClick = { onCategorySelected(category) }
-                )
+                CategorySquareButton(label = category, icon = getMainCategoryIcon(category), isSelected = selectedCategory == category, scale = 1f, onClick = { onCategorySelected(category) })
             }
         }
     } else {
-        // A pseudo-infinite "Cover Flow" implementation for mobile.
         val infiniteCategories = Int.MAX_VALUE
         val startPosition = infiniteCategories / 2 - (infiniteCategories / 2 % categories.size)
         val listState = rememberLazyListState(initialFirstVisibleItemIndex = startPosition)
-
-        LazyRow(
-            state = listState,
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        LazyRow(state = listState, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
             items(infiniteCategories) { index ->
                 val categoryIndex = index % categories.size
                 val category = categories[categoryIndex]
-
-                // Dynamically calculate the scale of each item based on its distance from the centre.
-                val scale by remember {
-                    derivedStateOf {
-                        val layoutInfo = listState.layoutInfo
-                        val visibleItemsInfo = layoutInfo.visibleItemsInfo
-                        val itemInfo = visibleItemsInfo.find { it.index == index }
-
-                        if (itemInfo != null) {
-                            val center = layoutInfo.viewportEndOffset / 2
-                            val itemCenter = itemInfo.offset + (itemInfo.size / 2)
-                            val distanceFromCenter = abs(center - itemCenter).toFloat()
-                            val normalizedDistance = (distanceFromCenter / center).coerceIn(0f, 1f)
-                            // The item is largest at the centre and smallest at the edges.
-                            1.25f - (normalizedDistance * 0.4f)
-                        } else {
-                            0.85f // Default scale for items not in view.
-                        }
-                    }
-                }
-
-                CategorySquareButton(
-                    label = category,
-                    icon = getMainCategoryIcon(category),
-                    isSelected = selectedCategory == category,
-                    scale = scale, // Apply the calculated scale.
-                    onClick = { onCategorySelected(category) }
-                )
+                val scale by remember { derivedStateOf { val layoutInfo = listState.layoutInfo; val visibleItemsInfo = layoutInfo.visibleItemsInfo; val itemInfo = visibleItemsInfo.find { it.index == index }; if (itemInfo != null) { val center = layoutInfo.viewportEndOffset / 2; val itemCenter = itemInfo.offset + (itemInfo.size / 2); val distanceFromCenter = abs(center - itemCenter).toFloat(); val normalizedDistance = (distanceFromCenter / center).coerceIn(0f, 1f); 1.25f - (normalizedDistance * 0.4f) } else { 0.85f } } }
+                CategorySquareButton(label = category, icon = getMainCategoryIcon(category), isSelected = selectedCategory == category, scale = scale, onClick = { onCategorySelected(category) })
             }
         }
     }
 }
 
-/**
- * A simple horizontal filter bar using standard chips for sub-category filtering.
- */
 @Composable
 fun SubCategoryFilterBar(categories: List<String>, selectedCategory: String, onCategorySelected: (String) -> Unit) {
     LazyRow(contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -573,9 +355,6 @@ fun SubCategoryFilterBar(categories: List<String>, selectedCategory: String, onC
     }
 }
 
-/**
- * A private helper function that maps a category name string to a specific Material Icon.
- */
 private fun getMainCategoryIcon(category: String): ImageVector {
     return when (category) {
         AppConstants.CAT_ALL -> Icons.Default.GridView
@@ -584,6 +363,6 @@ private fun getMainCategoryIcon(category: String): ImageVector {
         AppConstants.CAT_GEAR -> Icons.Default.Checkroom
         AppConstants.CAT_BOOKS -> Icons.AutoMirrored.Filled.MenuBook
         AppConstants.CAT_AUDIOBOOKS -> Icons.Default.Headphones
-        else -> Icons.Default.Category // Fallback icon.
+        else -> Icons.Default.Category
     }
 }

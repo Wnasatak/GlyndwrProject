@@ -251,8 +251,7 @@ fun SearchHistoryList(
                         .fillMaxWidth()
                         .clickable { onQueryClick(query) }
                         .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                    verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.History, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(12.dp))
                     Text(query, style = MaterialTheme.typography.bodyMedium)
@@ -319,10 +318,11 @@ fun <T> SearchSuggestionsList(
 @Composable
 fun TopBarSearchAction(
     isSearchVisible: Boolean,
+    modifier: Modifier = Modifier,
     onSearchIconClick: () -> Unit
 ) {
     if (!isSearchVisible) {
-        IconButton(onClick = onSearchIconClick) {
+        IconButton(onClick = onSearchIconClick, modifier = modifier) {
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Open Search"

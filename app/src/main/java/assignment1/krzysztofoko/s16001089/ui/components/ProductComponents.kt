@@ -111,7 +111,7 @@ fun UniversalProductSlider(
  * Key features:
  * - **Dynamic Gradient:** Uses an infinite transition to shift a radial gradient across the image.
  * - **Contextual Styling:** Switches between rounded and rectangular shapes based on product category.
- * - **Ownership Feedback:** Displays "APPROVED" or "ENROLLED" badges if the user owns the item.
+ * - **Ownership Feedback:** Displays status badges if the user owns the item.
  *
  * @param book The product data.
  * @param isOwned Whether the current user has already purchased/enrolled in this item.
@@ -129,12 +129,12 @@ fun ProductHeaderImage(
     val infiniteTransition = rememberInfiniteTransition(label = "shadeAnimation")
     val xPos by infiniteTransition.animateFloat(
         initialValue = -0.2f, targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(animation = tween(12000, easing = LinearOutSlowInEasing), repeatMode = RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(animation = tween(12000, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse),
         label = "xPos"
     )
     val yPos by infiniteTransition.animateFloat(
         initialValue = -0.2f, targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(animation = tween(18000, easing = LinearOutSlowInEasing), repeatMode = RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(animation = tween(18000, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse),
         label = "yPos"
     )
 
@@ -179,16 +179,14 @@ fun ProductHeaderImage(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (book.price <= 0 && book.mainCategory != AppConstants.CAT_COURSES) {
+                    if (book.price <= 0) {
+                        // For free items
                         EnrollmentStatusBadge(status = "PICKED_UP")
-                        EnrollmentStatusBadge(status = "FREE_COLLECTION")
+                        EnrollmentStatusBadge(status = "IN_LIBRARY")
                     } else {
-                        if (book.price > 0) {
-                            EnrollmentStatusBadge(status = "APPROVED")
-                        } else {
-                            Spacer(Modifier.width(1.dp))
-                        }
-                        EnrollmentStatusBadge(status = if (book.mainCategory == AppConstants.CAT_COURSES) "ENROLLED" else "APPROVED")
+                        // For paid items
+                        EnrollmentStatusBadge(status = "APPROVED") // Displays as "PAID"
+                        EnrollmentStatusBadge(status = "IN_LIBRARY")
                     }
                 }
             }

@@ -51,8 +51,7 @@ fun IntegratedAudioBar(
     if (currentBook != null) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding(), // Ensures the bar doesn't overlap with system controls.
+                .fillMaxWidth(), // Removed navigationBarsPadding to avoid gaps when stacked with NavigationBar.
             color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
             tonalElevation = 4.dp,
             border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))

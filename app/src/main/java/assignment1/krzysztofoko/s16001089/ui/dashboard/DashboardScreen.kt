@@ -1,5 +1,6 @@
 package assignment1.krzysztofoko.s16001089.ui.dashboard
 
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -24,10 +25,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +45,7 @@ import assignment1.krzysztofoko.s16001089.data.*
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -51,24 +55,6 @@ import kotlinx.coroutines.launch
  * overview of their academic profile, financial status (university wallet), course 
  * enrolments, and personal collection. The dashboard is highly adaptive, changing its 
  * functionality and layout based on user roles (Student, Tutor, Admin).
- */
-
-/**
- * DashboardScreen Composable
- *
- * An immersive, role-aware dashboard that serves as the user's primary workstation.
- *
- * Key features:
- * - **Role-Based Orchestration:** Dynamically renders admin and tutor controls only for 
- *   authorised personnel.
- * - **Financial Integration:** Provides a real-time wallet overview with top-up and 
- *   transaction history capabilities.
- * - **Academic Tracking:** Displays application statuses and provides quick-access 
- *   headers for active VLE (Virtual Learning Environment) classrooms.
- * - **Interactive Collections:** Implements a filtered grid of owned items with context-specific 
- *   actions (Listen, Read, View Invoice).
- * - **Adaptive Layout:** Manages grid columns and component sizing for both compact 
- *   mobile devices and large-screen tablets.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +72,7 @@ fun DashboardScreen(
     currentTheme: Theme,
     onOpenThemeBuilder: () -> Unit,
     viewModel: DashboardViewModel = viewModel(factory = DashboardViewModelFactory(
+        context = LocalContext.current,
         repository = BookRepository(AppDatabase.getDatabase(LocalContext.current)),
         userDao = AppDatabase.getDatabase(LocalContext.current).userDao(),
         classroomDao = AppDatabase.getDatabase(LocalContext.current).classroomDao(),
@@ -108,6 +95,13 @@ fun DashboardScreen(
     val applicationCount by viewModel.applicationCount.collectAsState()
     val applicationsMap by viewModel.applicationsMap.collectAsState()
     val activeLiveSessions by viewModel.activeLiveSessions.collectAsState()
+    val latestAnnouncement by viewModel.latestAnnouncement.collectAsState()
+    val currentTip by viewModel.currentTip.collectAsState()
+    
+    // Networking & Interop Visibility States
+    val dailyInsight by viewModel.dailyInsight.collectAsState()
+    val showAcademicInsight by viewModel.showAcademicInsight.collectAsState()
+    val showCampusNotice by viewModel.showCampusNotice.collectAsState()
 
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearchVisible by viewModel.isSearchVisible.collectAsState()
@@ -126,6 +120,13 @@ fun DashboardScreen(
     var showThemePicker by remember { mutableStateOf(false) }
     var showWalletHistory by remember { mutableStateOf(false) }
     var showClassroomPicker by remember { mutableStateOf(false) }
+
+    // REQUIREMENT: "Glanceable" title peeking behavior
+    var showFullTitle by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        delay(5000L) // Show full text for 5 seconds
+        showFullTitle = false
+    }
 
     // --- RESPONSIVE CONFIGURATION --- //
     val configuration = LocalConfiguration.current
@@ -149,25 +150,9 @@ fun DashboardScreen(
 
     val isAdmin = localUser?.role == "admin"
     val isTutor = localUser?.role == "teacher" || localUser?.role == "tutor"
-    // Show applications link only if the student has pending requests and isn't yet in a paid course.
     val showApplications = applicationCount > 0 && enrolledPaidCourse == null
 
-    /**
-     * Calculated scroll target for the collection grid.
-     */
-    val collectionIndex = remember(showApplications, enrolledPaidCourse, enrolledFreeCourses, isAdmin, isTutor) {
-        var count = 1
-        if (showApplications) count++
-        if (enrolledPaidCourse != null || enrolledFreeCourses.isNotEmpty()) {
-            count++
-            if (enrolledPaidCourse != null) count++
-            count += enrolledFreeCourses.size
-        }
-        if (isAdmin) count++
-        if (isTutor) count++
-        count += 6
-        count
-    }
+    val collectionIndex = 8 // Target index for collection grid
 
     // Animation for the notification bell badge.
     val infiniteTransition = rememberInfiniteTransition(label = "bellRing")
@@ -179,7 +164,7 @@ fun DashboardScreen(
 
     // Collection filter options.
     val filterOptions = listOf(AppConstants.FILTER_ALL, AppConstants.FILTER_BOOKS, AppConstants.FILTER_AUDIOBOOKS, AppConstants.FILTER_GEAR, AppConstants.FILTER_COURSES)
-    val filterListState = rememberLazyListState(initialFirstVisibleItemIndex = (Int.MAX_VALUE / 2) - ((Int.MAX_VALUE / 2) % filterOptions.size))
+    val filterListState = rememberLazyListState(initialFirstVisibleItemIndex = (Int.MAX_VALUE / 2))
 
     // Root container with a global search-dismiss handler.
     Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (isSearchVisible) viewModel.setSearchVisible(false) }) {
@@ -191,93 +176,111 @@ fun DashboardScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 // --- TOP NAVIGATION BAR --- //
+                val appBarColor = MaterialTheme.colorScheme.surface
                 TopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = {
-                        Text(
-                            text = when {
-                                isAdmin -> AppConstants.TITLE_ADMIN_HUB
-                                isTutor -> AppConstants.TITLE_TUTOR_HUB
-                                else -> AppConstants.TITLE_STUDENT_HUB
-                            },
-                            style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
-                        )
+                        Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.fillMaxHeight()) {
+                            AnimatedContent(
+                                targetState = showFullTitle,
+                                transitionSpec = {
+                                    (fadeIn() + expandHorizontally()).togetherWith(fadeOut() + shrinkHorizontally())
+                                },
+                                label = "titleAnimation"
+                            ) { isFull ->
+                                if (isFull) {
+                                    Surface(
+                                        color = appBarColor,
+                                        shape = RectangleShape,
+                                        modifier = Modifier
+                                            .wrapContentWidth(align = Alignment.Start, unbounded = true)
+                                            .zIndex(20f)
+                                    ) {
+                                        Text(
+                                            text = if (isAdmin) "Admin Hub" else if (isTutor) "Tutor Hub" else "Student Hub",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            modifier = Modifier.padding(start = 0.dp, end = 12.dp, top = 8.dp, bottom = 8.dp)
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = "Hub",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        modifier = Modifier
+                                            .clickable { showFullTitle = true }
+                                            .padding(horizontal = 8.dp, vertical = 8.dp)
+                                    )
+                                }
+                            }
+                        }
                     },
-                    navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) } },
+                    navigationIcon = {
+                        // Completely hide navigation icon when full title is shown
+                        if (!showFullTitle) {
+                            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, AppConstants.BTN_BACK) }
+                        }
+                    },
                     actions = {
-                        // Compact-aware actions: some are hidden or moved to the menu on small phones.
-                        if (!isCompact) {
-                            TopBarSearchAction(isSearchVisible = isSearchVisible) { viewModel.setSearchVisible(true) }
-                            IconButton(onClick = { navController.navigate(AppConstants.ROUTE_HOME) }) { Icon(Icons.Rounded.Storefront, AppConstants.TITLE_STORE) }
+                        val iconSize = 40.dp
+                        // Grouping all icons with consistent sizing and spacing
+                        TopBarSearchAction(isSearchVisible = isSearchVisible, modifier = Modifier.size(iconSize)) { 
+                            viewModel.setSearchVisible(true) 
+                        }
+                        IconButton(onClick = { navController.navigate(AppConstants.ROUTE_HOME) }, modifier = Modifier.size(iconSize)) { 
+                            Icon(Icons.Rounded.Storefront, AppConstants.TITLE_STORE) 
                         }
 
                         // Message Center Badge.
                         if (hasMessages) {
                             Box(contentAlignment = Alignment.TopEnd) {
                                 val chatColor = if (unreadMessagesCount > 0 && isDarkTheme) Color(0xFFFFEB3B) else if (unreadMessagesCount > 0) Color(0xFFFBC02D) else MaterialTheme.colorScheme.onSurface
-                                IconButton(onClick = { navController.navigate(AppConstants.ROUTE_MESSAGES) }, modifier = Modifier.size(36.dp)) {
+                                IconButton(onClick = { navController.navigate(AppConstants.ROUTE_MESSAGES) }, modifier = Modifier.size(iconSize)) {
                                     Icon(imageVector = Icons.AutoMirrored.Rounded.Chat, contentDescription = AppConstants.TITLE_MESSAGES, tint = chatColor, modifier = Modifier.size(22.dp))
                                 }
                                 if (unreadMessagesCount > 0) {
                                     Surface(color = Color(0xFFE53935), shape = CircleShape, border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.surface), modifier = Modifier.size(18.dp).offset(x = 4.dp, y = (-2).dp).align(Alignment.TopEnd)) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Text(text = if (unreadMessagesCount > 9) "!" else unreadMessagesCount.toString(), style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp), color = Color.White, textAlign = TextAlign.Center)
+                                            Text(text = if (unreadMessagesCount > 9) "!" else unreadMessagesCount.toString(), style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.Black, lineHeight = 8.sp), color = Color.White, textAlign = TextAlign.Center)
                                         }
                                     }
                                 }
                             }
                         }
 
-                        // Notification Center Badge with Ringing Animation.
+                        // Notification Center Badge.
                         Box(contentAlignment = Alignment.TopEnd) {
                             val bellColor = if (unreadCount > 0 && isDarkTheme) Color(0xFFFFEB3B) else if (unreadCount > 0) Color(0xFFFBC02D) else MaterialTheme.colorScheme.onSurface
-                            IconButton(onClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) }, modifier = Modifier.size(36.dp)) {
+                            IconButton(onClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_NOTIFICATIONS) }, modifier = Modifier.size(iconSize)) {
                                 Icon(imageVector = if (unreadCount > 0) Icons.Rounded.NotificationsActive else Icons.Rounded.Notifications, contentDescription = AppConstants.TITLE_NOTIFICATIONS, tint = bellColor, modifier = Modifier.size(24.dp).graphicsLayer { if (unreadCount > 0) { rotationZ = rotation } })
                             }
                             if (unreadCount > 0) {
                                 Surface(color = Color(0xFFE53935), shape = CircleShape, border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.surface), modifier = Modifier.size(18.dp).offset(x = 4.dp, y = (-2).dp).align(Alignment.TopEnd)) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Text(text = if (unreadCount > 9) "!" else unreadCount.toString(), style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp), color = Color.White, textAlign = TextAlign.Center)
+                                        Text(text = if (unreadCount > 9) "!" else unreadCount.toString(), style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.Black, lineHeight = 8.sp), color = Color.White, textAlign = TextAlign.Center)
                                     }
                                 }
                             }
                         }
 
-                        if (!isCompact) {
-                            ThemeToggleButton(currentTheme = currentTheme, onThemeChange = onThemeChange, onOpenCustomBuilder = onOpenThemeBuilder, isLoggedIn = true)
-                        }
+                        ThemeToggleButton(currentTheme = currentTheme, onThemeChange = onThemeChange, onOpenCustomBuilder = onOpenThemeBuilder, isLoggedIn = true, modifier = Modifier.size(iconSize))
 
-                        // Overflow Menu for additional actions and role-specific panels.
                         Box {
-                            IconButton(onClick = { showMenu = true }) { Icon(Icons.Rounded.MoreVert, AppConstants.TITLE_MORE_OPTIONS) }
+                            IconButton(onClick = { showMenu = true }, modifier = Modifier.size(iconSize)) { Icon(Icons.Rounded.MoreVert, AppConstants.TITLE_MORE_OPTIONS) }
                             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, shape = RoundedCornerShape(16.dp), containerColor = MaterialTheme.colorScheme.surface, modifier = Modifier.width(220.dp)) {
                                 Text(text = "DASHBOARD OPTIONS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
                                 HorizontalDivider(modifier = Modifier.padding(bottom = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                                if (isCompact) {
-                                    DropdownMenuItem(text = { Text("Search Products", style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; viewModel.setSearchVisible(true) }, leadingIcon = { Icon(Icons.Rounded.Search, null) })
-                                    DropdownMenuItem(text = { Text(AppConstants.TITLE_STORE, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_HOME) }, leadingIcon = { Icon(Icons.Rounded.Storefront, null) })
-                                    DropdownMenuItem(text = { Text("Appearance", style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; showThemePicker = true }, leadingIcon = { Icon(Icons.Rounded.Palette, null) })
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                                }
-
-                                if (showApplications) {
-                                    DropdownMenuItem(text = { Text(AppConstants.TITLE_MY_APPLICATIONS, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) }, leadingIcon = { Icon(Icons.Rounded.Assignment, null) })
-                                }
-
+                                DropdownMenuItem(text = { Text("My Profile") }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_PROFILE) }, leadingIcon = { Icon(Icons.Rounded.AccountCircle, null) })
                                 if (enrolledCourses.isNotEmpty()) {
-                                    DropdownMenuItem(text = { Text(AppConstants.TITLE_CLASSROOM, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; showClassroomPicker = true }, leadingIcon = { Icon(Icons.Rounded.School, null) })
+                                    DropdownMenuItem(text = { Text(AppConstants.TITLE_CLASSROOM) }, onClick = { showMenu = false; showClassroomPicker = true }, leadingIcon = { Icon(Icons.Rounded.School, null) })
                                 }
-
                                 DropdownMenuItem(text = { Text(AppConstants.TITLE_MESSAGES, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_MESSAGES) }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Chat, null) })
-
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                                if (!isCompact) {
-                                    DropdownMenuItem(text = { Text("Appearance", style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; showThemePicker = true }, leadingIcon = { Icon(Icons.Rounded.Palette, null) })
-                                }
-
-                                DropdownMenuItem(text = { Text("My Profile", style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_PROFILE) }, leadingIcon = { Icon(Icons.Rounded.AccountCircle, null) })
                                 DropdownMenuItem(text = { Text(AppConstants.TITLE_PROFILE_SETTINGS, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_EDIT_PROFILE) }, leadingIcon = { Icon(Icons.Rounded.Settings, null) })
                                 DropdownMenuItem(text = { Text("About App", style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; navController.navigate(AppConstants.ROUTE_ABOUT) }, leadingIcon = { Icon(Icons.Rounded.Info, null) })
 
@@ -288,40 +291,81 @@ fun DashboardScreen(
 
                                 DropdownMenuItem(text = { Text("Sign Off", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium) }, onClick = { showMenu = false; onLogout() }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Logout, null, tint = MaterialTheme.colorScheme.error) })
                             }
-
-                            ThemeSelectionDropdown(expanded = showThemePicker, onDismissRequest = { showThemePicker = false }, onThemeChange = { theme -> onThemeChange(theme) }, onOpenCustomBuilder = { onOpenThemeBuilder() }, isLoggedIn = true, offset = DpOffset(x = (-150).dp, y = 0.dp))
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = appBarColor)
                 )
             }
         ) { paddingValues ->
             // --- MAIN SCROLLABLE CONTENT GRID --- //
             Box(modifier = Modifier.fillMaxSize()) {
-                AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { isTablet ->
+                AdaptiveScreenContainer(maxWidth = AdaptiveWidths.Wide) { screenIsTablet ->
                     LazyVerticalGrid(
                         state = gridState,
                         columns = GridCells.Fixed(columns),
                         modifier = Modifier.fillMaxSize().padding(paddingValues),
-                        contentPadding = PaddingValues(bottom = 300.dp),
-                        horizontalArrangement = if (isTablet) Arrangement.spacedBy(16.dp) else Arrangement.Start
+                        contentPadding = PaddingValues(bottom = 80.dp), // Adjust this to match Nav/Audio height
+                        horizontalArrangement = if (screenIsTablet) Arrangement.spacedBy(16.dp) else Arrangement.Start
                     ) {
-                        // Section 1: Welcome Header and Wallet Balance.
                         dashboardHeaderSection(
-                            user = localUser, isTablet = isTablet, onProfileClick = { navController.navigate(AppConstants.ROUTE_PROFILE) },
+                            user = localUser, isTablet = screenIsTablet, onProfileClick = { navController.navigate(AppConstants.ROUTE_PROFILE) },
                             onTopUp = { viewModel.setSearchVisible(false); viewModel.setShowPaymentPopup(true) },
                             onViewHistory = { showWalletHistory = true }
                         )
-                        // Section 2: Active Academic Applications.
-                        applicationsSection(showApplications, isTablet, onClick = { navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) })
-                        // Section 3: Classroom Access.
-                        enrolledCoursesSection(enrolledPaidCourse, enrolledFreeCourses, activeLiveSessions, isTablet, onEnterClassroom = { id -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$id") })
-                        // Section 4: Staff-Only Management Shortcuts.
+
+                        if (showAcademicInsight) {
+                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp), 
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f))
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(currentTip.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                Spacer(Modifier.width(8.dp))
+                                                Text("APP USAGE TIP", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
+                                            }
+                                            Row {
+                                                IconButton(onClick = { viewModel.nextAppTip() }, modifier = Modifier.size(24.dp)) {
+                                                    Icon(Icons.Default.Refresh, "Next Tip")
+                                                }
+                                                Spacer(Modifier.width(8.dp))
+                                                IconButton(onClick = { viewModel.dismissAcademicInsight() }, modifier = Modifier.size(24.dp)) { 
+                                                    Icon(Icons.Default.Close, "Dismiss") 
+                                                }
+                                            }
+                                        }
+                                        Spacer(Modifier.height(8.dp))
+                                        Text(text = currentTip.content, style = MaterialTheme.typography.bodyLarge, fontStyle = FontStyle.Italic)
+                                    }
+                                }
+                            }
+                        }
+
+                        if (showCampusNotice) {
+                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                Box(modifier = Modifier.padding(bottom = 8.dp)) {
+                                    LegacyCampusNotice(
+                                        title = latestAnnouncement?.title ?: "CAMPUS OFFICIAL NOTICE",
+                                        content = latestAnnouncement?.message ?: "Welcome to the Student Hub! Check here for important university updates.",
+                                        onAcknowledge = { viewModel.dismissCampusNotice() }
+                                    )
+                                    IconButton(
+                                        onClick = { viewModel.dismissCampusNotice() }, 
+                                        modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+                                    ) { 
+                                        Icon(Icons.Default.Close, null) 
+                                    }
+                                }
+                            }
+                        }
+
+                        applicationsSection(showApplications, screenIsTablet, onClick = { navController.navigate(AppConstants.ROUTE_MY_APPLICATIONS) })
+                        enrolledCoursesSection(enrolledPaidCourse, enrolledFreeCourses, activeLiveSessions, screenIsTablet, onEnterClassroom = { id -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$id") })
                         quickActionsSection(isAdmin, isTutor, onAdminClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) }, onTutorClick = { viewModel.setSearchVisible(false); navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) })
-                        // Section 5: Recent History and Activity.
                         activityRowsSection(lastViewedBooks, commentedBooks, wishlistBooks, onBookClick = { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") })
-                        // Section 6: Collection Filtering and the Main Ownership Grid.
-                        collectionControlsSection(isTablet = isTablet, selectedFilter = selectedFilter, filterOptions = filterOptions, filterListState = filterListState, infiniteCount = Int.MAX_VALUE, onFilterClick = { filter -> viewModel.setCollectionFilter(filter); scope.launch { gridState.animateScrollToItem(collectionIndex) } })
+                        collectionControlsSection(isTablet = screenIsTablet, selectedFilter = selectedFilter, filterOptions = filterOptions, filterListState = filterListState, infiniteCount = Int.MAX_VALUE, onFilterClick = { filter -> viewModel.setCollectionFilter(filter); scope.launch { gridState.animateScrollToItem(collectionIndex) } })
                         ownedBooksGrid(books = filteredOwnedBooks, purchasedIds = purchasedIds, applicationsMap = applicationsMap, isDarkTheme = isDarkTheme, isAudioPlaying = isAudioPlaying, currentPlayingBookId = currentPlayingBookId, onBookClick = { book -> viewModel.setSearchVisible(false); navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/${book.id}") }, onPlayAudio = onPlayAudio, onViewInvoice = onViewInvoice, onPickupInfo = { selectedBookForPickup = it }, onRemoveFromLibrary = { viewModel.setBookToRemove(it) }, onEnterClassroom = { id -> navController.navigate("${AppConstants.ROUTE_CLASSROOM}/$id") } )
                     }
                 }
@@ -332,9 +376,7 @@ fun DashboardScreen(
             }
         }
 
-        // --- SECONDARY DIALOGS AND OVERLAYS --- //
-
-        // Quick-picker for multiple classrooms.
+        // Financial and Library confirmation popups.
         if (showClassroomPicker) {
             ModalBottomSheet(onDismissRequest = { showClassroomPicker = false }, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 40.dp)) {
@@ -355,7 +397,6 @@ fun DashboardScreen(
             }
         }
 
-        // Financial and Library confirmation popups.
         if (showWalletHistory) { WalletHistorySheet(transactions = walletHistory, onNavigateToProduct = { id -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") }, onViewInvoice = { id, ref -> val route = if (ref != null) "${AppConstants.ROUTE_INVOICE_CREATING}/$id?ref=$ref" else "${AppConstants.ROUTE_INVOICE_CREATING}/$id"; navController.navigate(route) }, onDismiss = { showWalletHistory = false }) }
         if (selectedBookForPickup != null) { PickupInfoDialog(orderConfirmation = selectedBookForPickup?.orderConfirmation, onDismiss = { selectedBookForPickup = null }) }
         AppPopups.WalletTopUp(show = showPaymentPopup, user = localUser, onDismiss = { viewModel.setShowPaymentPopup(false) }, onTopUpComplete = { amount -> viewModel.topUp(amount) { msg -> viewModel.setShowPaymentPopup(false); scope.launch { snackbarHostState.showSnackbar(msg) } } }, onManageProfile = { viewModel.setShowPaymentPopup(false); navController.navigate(AppConstants.ROUTE_EDIT_PROFILE) })
@@ -363,21 +404,7 @@ fun DashboardScreen(
     }
 }
 
-/**
- * Factory for injecting DAOs and User Session info into the DashboardViewModel.
- */
-class DashboardViewModelFactory(
-    private val repository: BookRepository,
-    private val userDao: UserDao,
-    private val classroomDao: ClassroomDao,
-    private val auditDao: AuditDao,
-    private val userId: String
-) : androidx.lifecycle.ViewModelProvider.Factory {
-    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return DashboardViewModel(repository, userDao, classroomDao, auditDao, userId) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
+private fun getCampusTip(raw: String?): String {
+    if (raw == null) return "Connecting to the University Knowledge Hub..."
+    return "Campus Instruction: $raw."
 }

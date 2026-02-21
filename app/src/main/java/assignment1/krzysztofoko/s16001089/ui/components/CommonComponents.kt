@@ -398,7 +398,7 @@ fun InfoCard(
  * item's status (e.g., an application's approval state). It maps a raw status string to a
  * visually distinct combination of colour, label, and icon.
  *
- * @param status The raw status string (e.g., "PENDING_REVIEW", "APPROVED").
+ * @param status The raw status string (e.g., \"PENDING_REVIEW\", \"APPROVED\").
  * @param modifier The modifier for this composable.
  */
 @Composable
@@ -406,9 +406,10 @@ fun EnrollmentStatusBadge(status: String, modifier: Modifier = Modifier) {
     // The `when` block is a state machine that translates a string into a complete visual theme.
     val (color, label, icon) = when (status) {
         "PENDING_REVIEW" -> Triple(Color(0xFFFBC02D), "PENDING", Icons.Default.PendingActions)
-        "APPROVED" -> Triple(Color(0xFF4CAF50), "APPROVED", Icons.Default.CheckCircle)
+        "APPROVED" -> Triple(Color(0xFF4CAF50), "PAID", Icons.Default.CheckCircle)
         "REJECTED" -> Triple(Color(0xFFF44336), "DECLINED", Icons.Default.Error)
         "ENROLLED" -> Triple(Color(0xFF673AB7), "ENROLLED", Icons.Default.School)
+        "IN_LIBRARY" -> Triple(Color(0xFF673AB7), "IN LIBRARY", Icons.Default.LibraryBooks)
         "PICKED_UP" -> Triple(Color(0xFF009688), "PICKED UP", Icons.Default.LibraryAddCheck)
         "FREE_COLLECTION" -> Triple(Color(0xFF03A9F4), "FREE COLLECTION", Icons.Default.Redeem)
         else -> Triple(Color.Gray, status, Icons.Default.PendingActions) // Fallback for unknown statuses.

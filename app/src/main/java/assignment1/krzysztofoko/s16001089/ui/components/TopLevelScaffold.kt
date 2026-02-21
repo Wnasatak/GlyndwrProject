@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.rounded.Chat
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -109,11 +110,8 @@ fun TopLevelScaffold(
             else -> false
         }
 
-        val updatePreview = { updated: UserTheme ->
-            onLiveThemeUpdate(updated)
-        }
-
-        val updateThemeEnabled = { enabled: Boolean, targetTheme: Theme ->
+        // Updated helper logic to satisfy lambda types
+        val onToggleRequest: (Boolean, Theme) -> Unit = { enabled, targetTheme ->
             scope.launch {
                 val currentT = userTheme
                 if (currentT != null) {
@@ -128,6 +126,7 @@ fun TopLevelScaffold(
         val dashboardViewModel: DashboardViewModel = viewModel(
             key = "dashboard_vm_$userId",
             factory = DashboardViewModelFactory(
+                context = context,
                 repository = BookRepository(db),
                 userDao = db.userDao(),
                 classroomDao = db.classroomDao(),
@@ -241,9 +240,13 @@ fun TopLevelScaffold(
             Scaffold(
                 topBar = {
                     val isHome = currentRoute == AppConstants.ROUTE_HOME || currentRoute?.startsWith("${AppConstants.ROUTE_HOME}?") == true
+                    val isAdminHub = currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_PANEL) == true || currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_USER_DETAILS) == true
+                    val isTutorHub = currentRoute?.startsWith(AppConstants.ROUTE_TUTOR_PANEL) == true
                     
-                    val shouldShowTopBar = if (isAdmin) {
-                        isHome
+                    val shouldShowTopBar = if (currentUser == null) {
+                        false
+                    } else if (isAdmin || isTutor) {
+                        isHome // Hide top bar in Admin/Tutor hubs, show only on Home
                     } else {
                         val isHiddenRoute = currentRoute == AppConstants.ROUTE_SPLASH || 
                                             currentRoute == AppConstants.ROUTE_AUTH || 
@@ -252,29 +255,23 @@ fun TopLevelScaffold(
                                             currentRoute?.startsWith(AppConstants.ROUTE_TUTOR_PANEL) == true || 
                                             currentRoute == AppConstants.ROUTE_PROFILE || 
                                             currentRoute == AppConstants.ROUTE_NOTIFICATIONS || 
-                                            currentRoute == AppConstants.ROUTE_ABOUT || 
-                                            currentRoute == AppConstants.ROUTE_DEVELOPER || 
-                                            currentRoute == AppConstants.ROUTE_INSTRUCTIONS || 
-                                            currentRoute == AppConstants.ROUTE_VERSION_INFO || 
-                                            currentRoute == AppConstants.ROUTE_FUTURE_FEATURES || 
-                                            currentRoute?.contains(AppConstants.ROUTE_PDF_READER) == true || 
-                                            currentRoute?.contains(AppConstants.ROUTE_INVOICE) == true || 
-                                            currentRoute?.contains(AppConstants.ROUTE_INVOICE_CREATING) == true
+                                            currentRoute == AppConstants.ROUTE_MESSAGES || 
+                                            currentRoute?.startsWith(AppConstants.ROUTE_CLASSROOM) == true || 
+                                            currentRoute == AppConstants.ROUTE_MY_APPLICATIONS
                         !isHiddenRoute
                     }
 
-                    if (currentUser != null && currentRoute != null && shouldShowTopBar) {
+                    if (shouldShowTopBar) {
                         Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
                             Row(modifier = Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                                val firstName = localUser?.name?.split(" ")?.firstOrNull() ?: currentUser.displayName?.split(" ")?.firstOrNull() ?: "User"
-                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { 
-                                    if (isAdmin) {
-                                        onProfileClick()
-                                    } else {
-                                        onDashboardClick() 
-                                    }
+                                val firstName = localUser?.name?.split(" ")?.firstOrNull() ?: currentUser?.displayName?.split(" ")?.firstOrNull() ?: "User"
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable {
+                                    if (isAdmin) onProfileClick() else onDashboardClick()
                                 }.padding(4.dp)) {
-                                    if (!useNavRail) { UserAvatar(photoUrl = localUser?.photoUrl ?: currentUser.photoUrl?.toString(), modifier = Modifier.size(36.dp)); Spacer(Modifier.width(12.dp)) }
+                                    if (!useNavRail) { 
+                                        UserAvatar(photoUrl = localUser?.photoUrl ?: currentUser?.photoUrl?.toString(), modifier = Modifier.size(36.dp))
+                                        Spacer(Modifier.width(12.dp)) 
+                                    }
                                     @Suppress("DEPRECATION")
                                     Text(text = "Hi, $firstName", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
@@ -290,7 +287,9 @@ fun TopLevelScaffold(
 
                                     if (!useNavRail) {
                                         Box {
-                                            IconButton(onClick = { showMoreMenu = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.MoreVert, "More", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(22.dp)) }
+                                            IconButton(onClick = { showMoreMenu = true }, modifier = Modifier.size(32.dp)) { 
+                                                Icon(Icons.Default.MoreVert, "More", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(22.dp)) 
+                                            }
                                             DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }, shape = RoundedCornerShape(16.dp), containerColor = MaterialTheme.colorScheme.surface, modifier = Modifier.width(220.dp)) {
                                                 ProMenuHeader("APP OPTIONS")
                                                 if (isAdmin) {
@@ -304,74 +303,114 @@ fun TopLevelScaffold(
                                                 DropdownMenuItem(text = { Text("Appearance") }, onClick = { showMoreMenu = false; showThemePicker = true }, leadingIcon = { Icon(Icons.Default.Palette, null) })
                                                 DropdownMenuItem(text = { Text("About App") }, onClick = { showMoreMenu = false; onAboutClick() }, leadingIcon = { Icon(Icons.Default.Info, null) })
                                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                                                DropdownMenuItem(text = { Text("Sign Off", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }, onClick = { showMoreMenu = false; onLogoutClick() }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Logout, null, tint = MaterialTheme.colorScheme.error) })
+                                                DropdownMenuItem(text = { Text("Sign Off", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }, onClick = { showMoreMenu = false; onLogoutClick() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) })
                                             }
-                                            ThemeSelectionDropdown(expanded = showThemePicker, onDismissRequest = { showThemePicker = false }, onThemeChange = { theme -> updateThemeEnabled(theme == Theme.CUSTOM, theme) }, onOpenCustomBuilder = { onOpenThemeBuilder(true) }, isLoggedIn = currentUser != null, offset = DpOffset(x = (-150).dp, y = 0.dp))
+                                            ThemeSelectionDropdown(expanded = showThemePicker, onDismissRequest = { showThemePicker = false }, onThemeChange = { theme -> onToggleRequest(theme == Theme.CUSTOM, theme) }, onOpenCustomBuilder = { onOpenThemeBuilder(true) }, isLoggedIn = currentUser != null, offset = DpOffset(x = (-150).dp, y = 0.dp))
                                         }
                                     } else {
-                                        ThemeToggleButton(currentTheme = currentTheme, onThemeChange = { theme -> if (theme == Theme.CUSTOM) onOpenThemeBuilder(true) else updateThemeEnabled(false, theme) }, onOpenCustomBuilder = { onOpenThemeBuilder(true) }, isLoggedIn = currentUser != null)
+                                        ThemeToggleButton(currentTheme = currentTheme, onThemeChange = { theme -> if (theme == Theme.CUSTOM) onOpenThemeBuilder(true) else onToggleRequest(false, theme) }, onOpenCustomBuilder = { onOpenThemeBuilder(true) }, isLoggedIn = currentUser != null)
                                     }
                                 }
                             }
                         }
                     }
                 },
-                bottomBar = bottomContent,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.background,
-                content = content
-            )
-        }
-
-        ThemeBuilderDialog(
-            show = showThemeBuilder,
-            onDismiss = { onOpenThemeBuilder(false) },
-            onSave = {
-                scope.launch {
-                    val finalTheme = userTheme ?: UserTheme(userId = userId)
-                    db.userThemeDao().upsertTheme(finalTheme.copy(isCustomThemeEnabled = true))
-                    onOpenThemeBuilder(false)
-                    onThemeChange(Theme.CUSTOM)
+                bottomBar = {
+                    if (currentUser != null && !useNavRail && currentRoute != AppConstants.ROUTE_SPLASH) {
+                        val isHome = currentRoute == AppConstants.ROUTE_HOME || currentRoute?.startsWith("${AppConstants.ROUTE_HOME}?") == true
+                        val isAdminHub = currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_PANEL) == true || currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_USER_DETAILS) == true
+                        val isTutorHub = currentRoute?.startsWith(AppConstants.ROUTE_TUTOR_PANEL) == true
+                        
+                        // Hide global bottom bar in both Admin and Tutor Hubs
+                        if (!isAdminHub && !isTutorHub) {
+                            NavigationBar(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                                tonalElevation = 8.dp
+                            ) {
+                                NavigationBarItem(
+                                    selected = isHome, 
+                                    onClick = onHomeClick, 
+                                    icon = { Icon(Icons.Default.Home, null) }, 
+                                    label = { Text("Home") }
+                                )
+                                NavigationBarItem(
+                                    selected = (currentRoute?.startsWith(AppConstants.ROUTE_DASHBOARD) == true) || (currentRoute?.startsWith(AppConstants.ROUTE_ADMIN_PANEL) == true && currentAdminSection == AdminSection.DASHBOARD) || currentTutorSection == TutorSection.DASHBOARD, 
+                                    onClick = onDashboardClick, 
+                                    icon = { Icon(imageVector = if (isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Dashboard, contentDescription = null) }, 
+                                    label = { Text(if (isAdmin) "Admin" else "Dashboard") }
+                                )
+                                NavigationBarItem(
+                                    selected = currentRoute == AppConstants.ROUTE_NOTIFICATIONS || currentAdminSection == AdminSection.NOTIFICATIONS, 
+                                    onClick = onNotificationsClick, 
+                                    icon = { 
+                                        BadgedBox(badge = { if (unreadCount > 0) Badge { Text(unreadCount.toString()) } }) {
+                                            Icon(Icons.Default.Notifications, null) 
+                                        }
+                                    }, 
+                                    label = { Text("Alerts") }
+                                )
+                                NavigationBarItem(
+                                    selected = currentRoute == AppConstants.ROUTE_PROFILE || currentTutorSection == TutorSection.TEACHER_DETAIL || currentAdminSection == AdminSection.PROFILE, 
+                                    onClick = onProfileClick, 
+                                    icon = { Icon(Icons.Default.Person, null) }, 
+                                    label = { Text("Profile") }
+                                )
+                            }
+                        }
+                    }
+                },
+                floatingActionButton = {
+                    if (showThemeBuilder && userId.isNotEmpty()) {
+                        ThemeBuilderDialog(
+                            show = showThemeBuilder,
+                            onDismiss = { onOpenThemeBuilder(false) },
+                            onSave = {
+                                scope.launch {
+                                    val finalTheme = userTheme ?: UserTheme(userId = userId)
+                                    db.userThemeDao().upsertTheme(finalTheme.copy(isCustomThemeEnabled = true))
+                                    onOpenThemeBuilder(false)
+                                    onThemeChange(Theme.CUSTOM)
+                                }
+                            },
+                            onReset = {
+                                val resetTheme = UserTheme(userId = userId, isCustomThemeEnabled = true, customPrimary = 0xFF38BDF8, customOnPrimary = 0xFFFFFFFF, customPrimaryContainer = 0xFF0369A1, customOnPrimaryContainer = 0xFFE0F2FE, customSecondary = 0xFF0EA5E9, customOnSecondary = 0xFFFFFFFF, customSecondaryContainer = 0xFF0C4A6E, customOnSecondaryContainer = 0xFFE0F2FE, customTertiary = 0xFF818CF8, customOnTertiary = 0xFFFFFFFF, customTertiaryContainer = 0xFF312E81, customOnTertiaryContainer = 0xFFE0E7FF, customBackground = 0xFF020617, customOnBackground = 0xFFF8FAFC, customSurface = 0xFF0F172A, customOnSurface = 0xFFF8FAFC, customIsDark = true)
+                                onLiveThemeUpdate(resetTheme)
+                            },
+                            isDark = userTheme?.customIsDark ?: true,
+                            onIsDarkChange = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customIsDark = it)) },
+                            primary = userTheme?.customPrimary ?: 0xFFBB86FC, onPrimary = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customPrimary = it)) },
+                            onPrimaryVal = userTheme?.customOnPrimary ?: 0xFF000000, onOnPrimary = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customOnPrimary = it)) },
+                            primaryContainer = userTheme?.customPrimaryContainer ?: 0xFF3700B3, onPrimaryContainer = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customPrimaryContainer = it)) },
+                            onPrimaryContainerVal = userTheme?.customOnPrimaryContainer ?: 0xFFFFFFFF, onOnPrimaryContainer = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customOnPrimaryContainer = it)) },
+                            secondary = userTheme?.customSecondary ?: 0xFF03DAC6, onSecondary = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customSecondary = it)) },
+                            onSecondaryVal = userTheme?.customOnSecondary ?: 0xFF000000, onOnSecondary = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customOnSecondary = it)) },
+                            secondaryContainer = userTheme?.customSecondaryContainer ?: 0xFF018786, onSecondaryContainer = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customSecondaryContainer = it)) },
+                            onSecondaryContainerVal = userTheme?.customOnSecondaryContainer ?: 0xFFFFFFFF, onOnSecondaryContainer = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customOnSecondaryContainer = it)) },
+                            tertiary = userTheme?.customTertiary ?: 0xFF7D5260, onTertiary = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customTertiary = it)) },
+                            onTertiaryVal = userTheme?.customOnTertiary ?: 0xFFFFFFFF, onOnTertiary = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customOnTertiary = it)) },
+                            tertiaryContainer = userTheme?.customTertiaryContainer ?: 0xFF1E293B, onTertiaryContainer = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customTertiaryContainer = it)) },
+                            onTertiaryContainerVal = userTheme?.customOnTertiaryContainer ?: 0xFFFFFFFF, onOnTertiaryContainer = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customOnTertiaryContainer = it)) },
+                            background = userTheme?.customBackground ?: 0xFF020617, onBackground = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customBackground = it)) },
+                            onBackgroundVal = userTheme?.customOnBackground ?: 0xFFF1F5F9, onOnBackground = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customBackground = it)) },
+                            surface = userTheme?.customSurface ?: 0xFF0F172A, onSurface = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customSurface = it)) },
+                            onOnSurface = { onLiveThemeUpdate((userTheme ?: UserTheme(userId = userId)).copy(customOnSurface = it)) },
+                            onSurfaceVal = userTheme?.customOnSurface ?: 0xFFF1F5F9
+                        )
+                    }
                 }
-            },
-            onReset = {
-                val resetTheme = UserTheme(userId = userId, isCustomThemeEnabled = true, customPrimary = 0xFF38BDF8, customOnPrimary = 0xFFFFFFFF, customPrimaryContainer = 0xFF0369A1, customOnPrimaryContainer = 0xFFE0F2FE, customSecondary = 0xFF0EA5E9, customOnSecondary = 0xFFFFFFFF, customSecondaryContainer = 0xFF0C4A6E, customOnSecondaryContainer = 0xFFE0F2FE, customTertiary = 0xFF818CF8, customOnTertiary = 0xFFFFFFFF, customTertiaryContainer = 0xFF312E81, customOnTertiaryContainer = 0xFFE0E7FF, customBackground = 0xFF020617, customOnBackground = 0xFFF8FAFC, customSurface = 0xFF0F172A, customOnSurface = 0xFFF8FAFC, customIsDark = true)
-                updatePreview(resetTheme)
-            },
-            isDark = userTheme?.customIsDark ?: true,
-            onIsDarkChange = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customIsDark = it)) },
-            primary = userTheme?.customPrimary ?: 0xFFBB86FC, onPrimary = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customPrimary = it)) },
-            onPrimaryVal = userTheme?.customOnPrimary ?: 0xFF000000, onOnPrimary = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customOnPrimary = it)) },
-            primaryContainer = userTheme?.customPrimaryContainer ?: 0xFF3700B3, onPrimaryContainer = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customPrimaryContainer = it)) },
-            onPrimaryContainerVal = userTheme?.customOnPrimaryContainer ?: 0xFFFFFFFF, onOnPrimaryContainer = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customOnPrimaryContainer = it)) },
-            secondary = userTheme?.customSecondary ?: 0xFF03DAC6, onSecondary = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customSecondary = it)) },
-            onSecondaryVal = userTheme?.customOnSecondary ?: 0xFF000000, onOnSecondary = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customOnSecondary = it)) },
-            secondaryContainer = userTheme?.customSecondaryContainer ?: 0xFF018786, onSecondaryContainer = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customSecondaryContainer = it)) },
-            onSecondaryContainerVal = userTheme?.customOnSecondaryContainer ?: 0xFFFFFFFF, onOnSecondaryContainer = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customOnSecondaryContainer = it)) },
-            tertiary = userTheme?.customTertiary ?: 0xFF7D5260, onTertiary = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customTertiary = it)) },
-            onTertiaryVal = userTheme?.customOnTertiary ?: 0xFFFFFFFF, onOnTertiary = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customOnTertiary = it)) },
-            tertiaryContainer = userTheme?.customTertiaryContainer ?: 0xFF1E293B, onTertiaryContainer = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customTertiaryContainer = it)) },
-            onTertiaryContainerVal = userTheme?.customOnTertiaryContainer ?: 0xFFFFFFFF, onOnTertiaryContainer = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customOnTertiaryContainer = it)) },
-            background = userTheme?.customBackground ?: 0xFF020617, onBackground = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customBackground = it)) },
-            onBackgroundVal = userTheme?.customOnBackground ?: 0xFFF1F5F9, onOnBackground = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customBackground = it)) },
-            surface = userTheme?.customSurface ?: 0xFF0F172A, onSurface = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customSurface = it)) },
-            onOnSurface = { updatePreview((userTheme ?: UserTheme(userId = userId)).copy(customOnSurface = it)) },
-            onSurfaceVal = userTheme?.customOnSurface ?: 0xFFF1F5F9
-        )
-
-        if (showClassroomPicker && !useNavRail) {
-            ModalBottomSheet(onDismissRequest = { showClassroomPicker = false }, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 40.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.School, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(16.dp)); @Suppress("DEPRECATION") Text(text = "Your Classrooms", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) }
-                    Spacer(Modifier.height(24.dp))
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) { items(enrolledCourses) { course -> Surface(onClick = { showClassroomPicker = false; onClassroomClick(course.id) }, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))) { Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Surface(modifier = Modifier.size(48.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AutoStories, null, tint = Color.White) } } ; Spacer(Modifier.width(16.dp)); Column(modifier = Modifier.weight(1f)) { @Suppress("DEPRECATION") Text(course.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface); @Suppress("DEPRECATION") Text(course.author, style = MaterialTheme.typography.bodySmall, color = Color.Gray) }; Icon(Icons.Default.ChevronRight, null, tint = Color.Gray) } } } }
+            ) { paddingValues ->
+                Box(modifier = Modifier.fillMaxSize()) {
+                    content(paddingValues)
+                    
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = paddingValues.calculateBottomPadding())
+                    ) {
+                        bottomContent()
+                    }
                 }
             }
         }
     }
 }
-
-/**
- * Extension function to capitalize the first character of a string.
- */
-private fun String.capitalizeWord(): String = this.lowercase().replaceFirstChar { it.uppercase() }
