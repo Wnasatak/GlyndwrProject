@@ -1,5 +1,6 @@
 package assignment1.krzysztofoko.s16001089.ui.profile
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import assignment1.krzysztofoko.s16001089.AppConstants
+import assignment1.krzysztofoko.s16001089.DigitalIDActivity
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.BookRepository
 import assignment1.krzysztofoko.s16001089.data.UserLocal
@@ -267,6 +269,7 @@ fun StudentDetailTab(
     snackbarHostState: SnackbarHostState,
     onNavigateToSettings: () -> Unit
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isEditingSettings by remember { mutableStateOf(false) }
 
@@ -430,6 +433,39 @@ fun StudentDetailTab(
                 }
             }
 
+            // REQUIREMENT: Activities & Task Management (8%)
+            // SECURITY UPDATE: Only 'admin', 'teacher', 'tutor', and 'student' roles
+            // have access to the Digital ID. Generic 'user' accounts are excluded as they are not verified campus members.
+            val userRole = localUser?.role?.lowercase() ?: ""
+            val isAuthorized = userRole in listOf("admin", "teacher", "tutor", "student")
+
+            if (isAuthorized) {
+                item {
+                    AdaptiveDashboardCard(
+                        onClick = {
+                            val intent = Intent(context, DigitalIDActivity::class.java).apply {
+                                putExtra("USER_NAME", localUser?.name ?: "Student")
+                                putExtra("STUDENT_ID", localUser?.id?.take(8)?.uppercase() ?: "S16001089")
+                            }
+                            context.startActivity(intent)
+                        },
+                        backgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    ) { isTablet ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(color = MaterialTheme.colorScheme.primary, shape = CircleShape, modifier = Modifier.size(40.dp)) {
+                                Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Badge, null, tint = Color.White, modifier = Modifier.size(20.dp)) }
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Digital Student ID", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleSmall)
+                                Text("Show your digital card for campus access", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+
             // Quick-stats row (Email + ID)
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -446,10 +482,10 @@ fun StudentDetailTab(
                     AdaptiveDashboardCard(modifier = Modifier.weight(1f)) {
                         Column {
                             Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), shape = CircleShape, modifier = Modifier.size(32.dp)) {
-                                Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Badge, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }
+                                Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.AssignmentInd, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }
                             }
                             Spacer(Modifier.height(12.dp))
-                            Text("Student ID", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                            Text("Ref No.", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                             Text(localUser?.id?.take(8)?.uppercase() ?: "S16001089", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }

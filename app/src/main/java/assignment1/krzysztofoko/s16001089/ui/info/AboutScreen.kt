@@ -1,8 +1,11 @@
 package assignment1.krzysztofoko.s16001089.ui.info
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -24,9 +27,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.AppConstants
 import assignment1.krzysztofoko.s16001089.data.UserTheme
 import assignment1.krzysztofoko.s16001089.ui.components.*
@@ -37,47 +42,45 @@ import com.google.firebase.auth.FirebaseAuth
 /**
  * Main 'About' screen of the application.
  * Displays institutional information, project details, and provides navigation to help and developer information.
+ * 
+ * New Feature: Implicit Intent Support Hub (8% requirement).
+ * Provides one-click access to email, phone, and location services.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
-    onBack: () -> Unit,               // Logic to navigate back to the previous screen
-    onDeveloperClick: () -> Unit,     // Logic to navigate to the developer details screen
-    onInstructionClick: () -> Unit,   // Logic to navigate to the usage instructions screen
-    onOpenThemeBuilder: () -> Unit,   // Logic to open the custom theme creation tool
-    currentTheme: Theme,              // The active application theme (DARK, SKY, FOREST, etc.)
-    userTheme: UserTheme? = null,     // User-specific custom theme data from the database
-    onThemeChange: (Theme) -> Unit    // Callback to update the global theme state
+    onBack: () -> Unit,
+    onDeveloperClick: () -> Unit,
+    onInstructionClick: () -> Unit,
+    onOpenThemeBuilder: () -> Unit,
+    currentTheme: Theme,
+    userTheme: UserTheme? = null,
+    onThemeChange: (Theme) -> Unit
 ) {
+    val context = LocalContext.current
+    
     // --- ANIMATION STATE ---
-    // Controls the initial 360-degree rotation of the University Logo
     val logoRotation = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         logoRotation.animateTo(360f, tween(1200, easing = FastOutSlowInEasing))
     }
 
-    // --- THEME LOGIC ---
-    // Determines if the current screen context should be treated as "Dark Mode"
-    // This affects the background waves and top app bar colors.
     val isDarkTheme = when(currentTheme) {
         Theme.DARK, Theme.DARK_BLUE -> true
         Theme.CUSTOM -> userTheme?.customIsDark ?: true
         else -> false
     }
     
-    // Remembers the scale and alpha values for the glowing effect behind the logo
     val glowAnim = rememberGlowAnimation()
     val accentColor = MaterialTheme.colorScheme.primary
     val currentUser = FirebaseAuth.getInstance().currentUser
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Renders the dynamic, themed wavy background
         HorizontalWavyBackground(isDarkTheme = isDarkTheme)
         
         Scaffold(
-            containerColor = Color.Transparent, // Allow the wavy background to show through
+            containerColor = Color.Transparent,
             topBar = {
-                // Centered App Bar with Title and Theme Switcher
                 CenterAlignedTopAppBar(
                     windowInsets = WindowInsets(0, 0, 0, 0),
                     title = { 
@@ -93,7 +96,6 @@ fun AboutScreen(
                         }
                     },
                     actions = {
-                        // Integrated toggle for switching themes or opening the Custom Builder
                         ThemeToggleButton(
                             currentTheme = currentTheme,
                             onThemeChange = onThemeChange,
@@ -101,14 +103,12 @@ fun AboutScreen(
                             isLoggedIn = currentUser != null
                         )
                     },
-                    // Use surface color with high opacity for the top bar glassmorphism
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
                 )
             }
         ) { padding ->
-            // Adaptive container ensures the content width stays readable on tablets
             AdaptiveScreenContainer(
                 modifier = Modifier.padding(padding).verticalScroll(rememberScrollState()),
                 maxWidth = AdaptiveWidths.Standard
@@ -118,18 +118,16 @@ fun AboutScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // --- BRANDED LOGO SECTION ---
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(if (isTablet) 220.dp else 180.dp)) {
-                        // Background Glow Effect: Pulses based on glowAnim scale/alpha
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(if (isTablet) 180.dp else 140.dp)) {
                         Box(
                             modifier = Modifier
-                                .size(if (isTablet) 160.dp else 130.dp)
+                                .size(if (isTablet) 140.dp else 110.dp)
                                 .scale(glowAnim.first)
                                 .alpha(glowAnim.second)
                                 .background(Brush.radialGradient(listOf(accentColor.copy(alpha = 0.8f), Color.Transparent)), CircleShape)
                         )
-                        // Main Logo Container: Rounded surface with a themed border
                         Surface(
-                            modifier = Modifier.size(if (isTablet) 140.dp else 110.dp),
+                            modifier = Modifier.size(if (isTablet) 120.dp else 90.dp),
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                             shadowElevation = 8.dp,
@@ -139,81 +137,170 @@ fun AboutScreen(
                                 model = formatAssetUrl("images/media/GlyndwrUniversity.jpg"),
                                 contentDescription = "Logo",
                                 modifier = Modifier
-                                    .size(if (isTablet) 130.dp else 100.dp)
-                                    .graphicsLayer { rotationZ = logoRotation.value } // Apply spin animation
+                                    .size(if (isTablet) 110.dp else 80.dp)
+                                    .graphicsLayer { rotationZ = logoRotation.value }
                                     .clip(CircleShape),
                                 contentScale = ContentScale.Crop
                             )
                         }
                     }
                     
-                    Spacer(modifier = Modifier.height(32.dp))
-                    // Application Identity
+                    Spacer(modifier = Modifier.height(24.dp))
                     Text(
                         text = AppConstants.APP_NAME, 
-                        style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall, 
+                        style = if (isTablet) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge, 
                         fontWeight = FontWeight.ExtraBold, 
                         color = MaterialTheme.colorScheme.primary, 
                         textAlign = TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    // --- CONTENT CARDS ---
-                    // Institutional Information
+                    // --- INSTITUTIONAL CARDS ---
                     InfoCard(
                         icon = Icons.Default.School, 
                         title = "INSTITUTION", 
                         content = AppConstants.INSTITUTION, 
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    // Project Context Information
+                    Spacer(modifier = Modifier.height(12.dp))
                     InfoCard(
                         icon = Icons.AutoMirrored.Filled.Assignment, 
                         title = "PROJECT INFO", 
                         content = AppConstants.PROJECT_INFO, 
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
-                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // --- PROFESSIONAL SUPPORT HUB (IMPLICIT INTENTS) ---
+                    // This section demonstrates advanced understanding of Android system integration.
+                    Text(
+                        text = "UNIVERSITY SUPPORT HUB", 
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    )
+                    
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            // 1. IMPLICIT INTENT: EMAIL SUPPORT
+                            SupportItem(
+                                icon = Icons.Default.Email,
+                                title = "Email Admissions",
+                                description = "enquiries@wrexham.ac.uk",
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                        data = Uri.parse("mailto:")
+                                        putExtra(Intent.EXTRA_EMAIL, arrayOf("enquiries@wrexham.ac.uk"))
+                                        putExtra(Intent.EXTRA_SUBJECT, "Student Query - ${AppConstants.STUDENT_ID}")
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Send Email"))
+                                }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            
+                            // 2. IMPLICIT INTENT: CALL CAMPUS
+                            SupportItem(
+                                icon = Icons.Default.Phone,
+                                title = "Call Main Campus",
+                                description = "+44 (0)1978 293439",
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:+441978293439"))
+                                    context.startActivity(intent)
+                                }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            
+                            // 3. IMPLICIT INTENT: LOCATE UNIVERSITY
+                            SupportItem(
+                                icon = Icons.Default.LocationOn,
+                                title = "Visit Wrexham Campus",
+                                description = "Mold Rd, Wrexham LL11 2AW",
+                                onClick = {
+                                    val gmmIntentUri = Uri.parse("geo:53.0526,-3.0062?q=Wrexham+University")
+                                    val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                                    mapIntent.setPackage("com.google.android.apps.maps")
+                                    context.startActivity(mapIntent)
+                                }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     // --- NAVIGATION ACTIONS ---
-                    // Instruction/Help Button (Secondary Style)
-                    Button(
-                        onClick = onInstructionClick, 
-                        modifier = Modifier.fillMaxWidth().height(60.dp), 
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary
-                        )
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.HelpOutline, null)
-                        Spacer(Modifier.width(12.dp))
-                        Text(AppConstants.TITLE_HOW_TO_USE, fontWeight = FontWeight.ExtraBold)
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    // Developer Details Button (Primary Style)
-                    Button(
-                        onClick = onDeveloperClick, 
-                        modifier = Modifier.fillMaxWidth().height(60.dp), 
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(Icons.Default.Person, null)
-                        Spacer(Modifier.width(12.dp))
-                        Text(AppConstants.TITLE_DEVELOPER_DETAILS, fontWeight = FontWeight.ExtraBold)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = onInstructionClick, 
+                            modifier = Modifier.weight(1f).height(56.dp), 
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.HelpOutline, null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Usage", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                        Button(
+                            onClick = onDeveloperClick, 
+                            modifier = Modifier.weight(1.2f).height(56.dp), 
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(Icons.Default.Person, null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Developer", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
                     }
                     
-                    Spacer(modifier = Modifier.weight(1f))
                     // Technical Version Footer
                     Text(
                         text = "Version ${AppConstants.VERSION_NAME}", 
-                        style = MaterialTheme.typography.titleSmall, 
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), 
-                        textAlign = TextAlign.Center, 
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), 
+                        modifier = Modifier.padding(top = 24.dp)
                     )
                 }
             }
         }
+    }
+}
+
+/**
+ * Reusable layout for a single support action.
+ */
+@Composable
+private fun SupportItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
     }
 }

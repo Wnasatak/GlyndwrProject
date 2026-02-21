@@ -1,13 +1,21 @@
 package assignment1.krzysztofoko.s16001089.ui
 
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
 import androidx.navigation.compose.NavHost
@@ -24,6 +32,7 @@ import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import assignment1.krzysztofoko.s16001089.ui.theme.GlyndwrProjectTheme
 import assignment1.krzysztofoko.s16001089.ui.tutor.TutorSection
 import assignment1.krzysztofoko.s16001089.ui.admin.AdminSection
+import assignment1.krzysztofoko.s16001089.utils.NetworkMonitor
 
 /**
  * AppNavigation.kt
@@ -33,22 +42,6 @@ import assignment1.krzysztofoko.s16001089.ui.admin.AdminSection
  * and active theme), and coordinates the high-level layout using a TopLevelScaffold.
  */
 
-/**
- * AppNavigation Composable
- *
- * The root-level component that brings together navigation, state management, and theme orchestration.
- *
- * Key features:
- * - **Unified Navigation Graph:** Centralises all application routes using a single NavHost.
- * - **Reactive State Management:** Observes the [MainViewModel] to reactively update the UI based on
- *   authentication status, data loading progress, and unread notification counts.
- * - **Dynamic Theme Orchestration:** Synchronises persistent user theme preferences from the database
- *   with the active UI session, supporting Light, Dark, and fully customisable themes.
- * - **Adaptive Role-Based UI:** Intelligent redirection and UI adjustments based on the user's role
- *   (Student, Tutor, Admin).
- * - **Persistent Global Overlays:** Manages high-level UI elements that span multiple screens,
- *   such as the global audio player and wallet history sheet.
- */
 @Composable
 fun AppNavigation(
     currentTheme: Theme,
@@ -57,12 +50,16 @@ fun AppNavigation(
     windowSizeClass: WindowSizeClass? = null
 ) {
     val context = LocalContext.current
-    val navController = rememberNavController() // Initialise the primary navigation engine.
+    val navController = rememberNavController()
     val db = AppDatabase.getDatabase(context)
     val repository = remember { BookRepository(db) }
+    
+    // REQUIREMENT: Advanced System Feedback (8%)
+    // Initialize the NetworkMonitor to track real-time internet connectivity.
+    val networkMonitor = remember { NetworkMonitor(context) }
 
-    // Global ViewModel for managing cross-cutting concerns like Auth and Theme persistence.
-    val mainVm: MainViewModel = viewModel(factory = MainViewModelFactory(repository, db))
+    // Global ViewModel for managing cross-cutting concerns like Auth, Theme, and Connectivity.
+    val mainVm: MainViewModel = viewModel(factory = MainViewModelFactory(repository, db, networkMonitor))
 
     // --- STATE COLLECTION --- //
     val currentUser by mainVm.currentUser.collectAsState()
@@ -73,13 +70,15 @@ fun AppNavigation(
     val loadError by mainVm.loadError.collectAsState()
     val unreadCount by mainVm.unreadNotificationsCount.collectAsState()
     val walletHistory by mainVm.walletHistory.collectAsState()
+    
+    // Observe network status reactively
+    val isOnline by mainVm.isOnline.collectAsState()
 
     // --- NAVIGATION TRACKING --- //
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     // --- CONTEXT RESOLUTION (For Staff Panels) --- //
-    // Determines which sub-section of the staff portals is currently active.
     val currentTutorSection = remember(navBackStackEntry) {
         val sectionStr = navBackStackEntry?.arguments?.getString("section")
         if (sectionStr != null) {
@@ -102,7 +101,6 @@ fun AppNavigation(
     var showThemeBuilder by remember { mutableStateOf(false) }
     var liveTheme by remember(userThemeFromDb) { mutableStateOf(userThemeFromDb) }
 
-    // Calculate if the UI should be dark based on user selection or custom theme parameters.
     val isDarkTheme = when(currentTheme) {
         Theme.DARK, Theme.DARK_BLUE -> true
         Theme.CUSTOM -> liveTheme?.customIsDark ?: true
@@ -110,7 +108,6 @@ fun AppNavigation(
     }
 
     // --- SYSTEM UI SYNCHRONISATION --- //
-    // Automatically adjust status and navigation bar colours to match the current theme.
     LaunchedEffect(isDarkTheme) {
         val activity = context as? androidx.activity.ComponentActivity
         activity?.enableEdgeToEdge(
@@ -120,7 +117,6 @@ fun AppNavigation(
     }
 
     // --- AUTH & THEME SYNC --- //
-    // Load the user's saved theme from the database upon successful login.
     LaunchedEffect(currentUser, userThemeFromDb) {
         val userId = currentUser?.uid
         if (userId != null && userThemeFromDb != null && syncedUserId != userId) {
@@ -134,20 +130,17 @@ fun AppNavigation(
             }
             syncedUserId = userId
         } else if (userId == null && syncedUserId != null) {
-            // Reset to default on logout.
             onThemeChange(Theme.DARK)
             syncedUserId = null
         }
     }
 
-    // Handle theme changes by updating both the session and persistent storage.
     val handleThemeChange: (Theme) -> Unit = { newTheme ->
         onThemeChange(newTheme)
         mainVm.updateThemePersistence(newTheme)
     }
 
     // --- MEDIA PLAYER INTEGRATION --- //
-    // Link the external ExoPlayer state to the global UI state.
     LaunchedEffect(externalPlayer) {
         externalPlayer?.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -156,7 +149,6 @@ fun AppNavigation(
         })
     }
 
-    // Minimise the player automatically when navigating away from the details screen.
     LaunchedEffect(currentRoute) {
         if (currentRoute != "${AppConstants.ROUTE_BOOK_DETAILS}/{bookId}" && mainVm.showPlayer) {
             mainVm.isPlayerMinimized = true
@@ -174,8 +166,6 @@ fun AppNavigation(
             currentTutorSection = currentTutorSection,
             currentAdminSection = currentAdminSection,
             unreadCount = unreadCount,
-
-            // NAVIGATION CALLBACKS //
             onDashboardClick = {
                 val target = when (localUser?.role) {
                     "admin" -> AppConstants.ROUTE_ADMIN_PANEL
@@ -240,7 +230,6 @@ fun AppNavigation(
             },
             onAboutClick = { navController.navigate(AppConstants.ROUTE_ABOUT) },
             bottomContent = {
-                // Persistent mini-player bar.
                 if (mainVm.showPlayer && mainVm.isPlayerMinimized) {
                     IntegratedAudioBar(
                         currentBook = mainVm.currentPlayingBook,
@@ -251,7 +240,6 @@ fun AppNavigation(
                 }
             }
         ) { paddingValues ->
-            // --- POPUPS & MODALS --- //
             AppNavigationPopups(
                 showLogoutConfirm = mainVm.showLogoutConfirm,
                 showSignedOutPopup = mainVm.showSignedOutPopup,
@@ -260,46 +248,72 @@ fun AppNavigation(
                 onSignedOutDismiss = { mainVm.showSignedOutPopup = false }
             )
 
-            // --- NAVIGATION HOST: MAIN SCREEN CONTENT --- //
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                NavHost(navController = navController, startDestination = AppConstants.ROUTE_SPLASH, modifier = Modifier.fillMaxSize()) {
-
-                    composable(AppConstants.ROUTE_SPLASH) {
-                        SplashScreen(isLoadingData = isDataLoading, onTimeout = {
-                            val targetRoute = when (localUser?.role) {
-                                "admin" -> AppConstants.ROUTE_ADMIN_PANEL
-                                "teacher", "tutor" -> AppConstants.ROUTE_TUTOR_PANEL
-                                else -> AppConstants.ROUTE_HOME
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // REQUIREMENT: Advanced System Feedback (8%)
+                    // Animated "Offline Mode" banner that appears when internet is lost.
+                    AnimatedVisibility(
+                        visible = !isOnline,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.errorContainer)
+                                .padding(vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.WifiOff,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Offline Mode: Catalog sync suspended",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
-                            navController.navigate(targetRoute) { popUpTo(AppConstants.ROUTE_SPLASH) { inclusive = true } }
-                        })
+                        }
                     }
 
-                    // Grouped Route Definitions.
-                    homeNavGraph(navController, mainVm.currentUser, isDataLoading, loadError, currentTheme, handleThemeChange, { showThemeBuilder = true }, { mainVm.refreshData() }, { mainVm.onPlayAudio(it, externalPlayer) }, mainVm.currentPlayingBook?.id, mainVm.isAudioPlaying)
-                    authNavGraph(navController, currentTheme, handleThemeChange)
-                    storeNavGraph(navController, mainVm.currentUser, allBooks, currentTheme, handleThemeChange) { mainVm.onPlayAudio(it, externalPlayer) }
-                    dashboardNavGraph(navController, mainVm.currentUser, allBooks, currentTheme, handleThemeChange, { showThemeBuilder = true }, { mainVm.onPlayAudio(it, externalPlayer) }, mainVm.isAudioPlaying, mainVm.currentPlayingBook?.id) { mainVm.showLogoutConfirm = true }
-                    infoNavGraph(navController, currentTheme, liveTheme, handleThemeChange) { showThemeBuilder = true }
-                    invoiceNavGraph(navController, allBooks, currentUser?.displayName ?: AppConstants.TEXT_STUDENT, currentTheme, handleThemeChange)
-
-                    composable(AppConstants.ROUTE_MY_APPLICATIONS) {
-                        MyApplicationsScreen(onBack = {
-                            when (localUser?.role) {
-                                "admin" -> navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) { popUpTo(AppConstants.ROUTE_ADMIN_PANEL) { inclusive = true } }
-                                "teacher", "tutor" -> navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) { popUpTo(AppConstants.ROUTE_TUTOR_PANEL) { inclusive = true } }
-                                else -> navController.popBackStack()
-                            }
-                        }, onNavigateToCourse = { id -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") }, isDarkTheme = isDarkTheme, onToggleTheme = {})
+                    NavHost(navController = navController, startDestination = AppConstants.ROUTE_SPLASH, modifier = Modifier.weight(1f)) {
+                        composable(AppConstants.ROUTE_SPLASH) {
+                            SplashScreen(isLoadingData = isDataLoading, onTimeout = {
+                                val targetRoute = when (localUser?.role) {
+                                    "admin" -> AppConstants.ROUTE_ADMIN_PANEL
+                                    "teacher", "tutor" -> AppConstants.ROUTE_TUTOR_PANEL
+                                    else -> AppConstants.ROUTE_HOME
+                                }
+                                navController.navigate(targetRoute) { popUpTo(AppConstants.ROUTE_SPLASH) { inclusive = true } }
+                            })
+                        }
+                        homeNavGraph(navController, mainVm.currentUser, isDataLoading, loadError, currentTheme, handleThemeChange, { showThemeBuilder = true }, { mainVm.refreshData() }, { mainVm.onPlayAudio(it, externalPlayer) }, mainVm.currentPlayingBook?.id, mainVm.isAudioPlaying)
+                        authNavGraph(navController, currentTheme, handleThemeChange)
+                        storeNavGraph(navController, mainVm.currentUser, allBooks, currentTheme, handleThemeChange) { mainVm.onPlayAudio(it, externalPlayer) }
+                        dashboardNavGraph(navController, mainVm.currentUser, allBooks, currentTheme, handleThemeChange, { showThemeBuilder = true }, { mainVm.onPlayAudio(it, externalPlayer) }, mainVm.isAudioPlaying, mainVm.currentPlayingBook?.id) { mainVm.showLogoutConfirm = true }
+                        infoNavGraph(navController, currentTheme, liveTheme, handleThemeChange) { showThemeBuilder = true }
+                        invoiceNavGraph(navController, allBooks, currentUser?.displayName ?: AppConstants.TEXT_STUDENT, currentTheme, handleThemeChange)
+                        composable(AppConstants.ROUTE_MY_APPLICATIONS) {
+                            MyApplicationsScreen(onBack = {
+                                when (localUser?.role) {
+                                    "admin" -> navController.navigate(AppConstants.ROUTE_ADMIN_PANEL) { popUpTo(AppConstants.ROUTE_ADMIN_PANEL) { inclusive = true } }
+                                    "teacher", "tutor" -> navController.navigate(AppConstants.ROUTE_TUTOR_PANEL) { popUpTo(AppConstants.ROUTE_TUTOR_PANEL) { inclusive = true } }
+                                    else -> navController.popBackStack()
+                                }
+                            }, onNavigateToCourse = { id -> navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") }, isDarkTheme = isDarkTheme, onToggleTheme = {})
+                        }
                     }
                 }
-
-                // --- GLOBAL OVERLAYS --- //
 
                 if (mainVm.showWalletHistory) {
                     WalletHistorySheet(transactions = walletHistory, onNavigateToProduct = { id -> mainVm.showWalletHistory = false; navController.navigate("${AppConstants.ROUTE_BOOK_DETAILS}/$id") }, onViewInvoice = { id, ref -> mainVm.showWalletHistory = false; val route = if (ref != null) "${AppConstants.ROUTE_INVOICE_CREATING}/$id?ref=$ref" else "${AppConstants.ROUTE_INVOICE_CREATING}/$id"; navController.navigate(route) }, onDismiss = { mainVm.showWalletHistory = false })
                 }
-
                 if (mainVm.showPlayer && !mainVm.isPlayerMinimized) {
                     MaximizedAudioPlayerOverlay(
                         currentBook = mainVm.currentPlayingBook,
@@ -314,5 +328,4 @@ fun AppNavigation(
     }
 }
 
-// Internal reference for auth state synchronisation.
 private var syncedUserId: String? = null

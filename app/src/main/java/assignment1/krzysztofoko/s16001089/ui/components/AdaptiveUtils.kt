@@ -28,7 +28,7 @@ import coil.compose.AsyncImage
 /**
  * AdaptiveUtils.kt
  *
- * Centralized design tokens and utility components for the Glyndŵr Pro system.
+ * Centralized design tokens and utility components for the Glyndŵr system.
  * This file handles responsive design logic, ensuring the UI adapts gracefully
  * between mobile and tablet form factors.
  */

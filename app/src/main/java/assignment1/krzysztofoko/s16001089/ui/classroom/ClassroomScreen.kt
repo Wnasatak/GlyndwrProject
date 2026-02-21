@@ -32,7 +32,18 @@ import assignment1.krzysztofoko.s16001089.ui.classroom.components.Broadcasts.Bro
 import assignment1.krzysztofoko.s16001089.ui.classroom.components.Broadcasts.LiveStreamView
 import assignment1.krzysztofoko.s16001089.ui.components.*
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
 
+/**
+ * ClassroomScreen: The central hub for student academic activity within a specific course.
+ * It provides access to course modules, assignments, performance metrics (grades), and live broadcasts.
+ * 
+ * Key Features:
+ * 1. Targeted Navigation Peeking: The navigation bar expands the label of the active tab for 5 seconds 
+ *    on selection to ensure the user knows their location without cluttering the UI permanently.
+ * 2. Adaptive Content: Switches between list views and detail views (Modules/Assignments) seamlessly.
+ * 3. Live Integration: Displays active stream cards and provides access to interactive live classrooms.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClassroomScreen(
@@ -45,6 +56,7 @@ fun ClassroomScreen(
         userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     ))
 ) {
+    // Collect reactive state from the ViewModel
     val selectedTab by viewModel.selectedTab.collectAsState()
     val modules by viewModel.modules.collectAsState()
     val assignments by viewModel.assignments.collectAsState()
@@ -58,6 +70,17 @@ fun ClassroomScreen(
     val isSubmitting by viewModel.isSubmitting.collectAsState()
     val sharedBroadcasts by viewModel.sharedBroadcasts.collectAsState()
 
+    // --- TARGETED PEERING LOGIC ---
+    // This state controls the temporary visibility of the selected tab's label.
+    var showSelectedLabel by remember { mutableStateOf(true) }
+
+    // This effect is re-triggered every time the user switches tabs (selectedTab changes).
+    LaunchedEffect(selectedTab) {
+        showSelectedLabel = true     // Immediately show the label
+        delay(5000L)                 // Wait for 5 seconds (User preference for readability)
+        showSelectedLabel = false    // Hide it to revert back to icon-only mode
+    }
+
     val tabs = listOf(
         AppConstants.TAB_MODULES to Icons.Default.LibraryBooks, 
         AppConstants.TAB_ASSIGNMENTS to Icons.Default.Assignment, 
@@ -68,6 +91,7 @@ fun ClassroomScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         VerticalWavyBackground(isDarkTheme = isDarkTheme)
 
+        // Navigation & Detail Routing Logic
         if (isLiveViewActive && activeSession != null) {
             LiveStreamView(
                 session = activeSession!!,
@@ -106,7 +130,7 @@ fun ClassroomScreen(
                         modifier = Modifier
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
                     ) {
-                        // Compact Header (statusBarsPadding removed to eliminate gap)
+                        // Header: Displays the screen title and back button
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -128,11 +152,11 @@ fun ClassroomScreen(
                             ) 
                         }
                         
-                        // Professional Navigation Bar with Minimized Padding
+                        // Adaptive Navigation Bar: Features the dynamic "Peek" animation
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(start = 16.dp, end = 16.dp, bottom = 6.dp),
+                                .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Surface(
@@ -143,7 +167,8 @@ fun ClassroomScreen(
                                 Row(
                                     modifier = Modifier
                                         .padding(horizontal = 4.dp, vertical = 4.dp)
-                                        .fillMaxWidth(),
+                                        .fillMaxWidth()
+                                        .animateContentSize(), // Ensures smooth bar resizing when labels appear/disappear
                                     horizontalArrangement = Arrangement.SpaceEvenly,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -151,14 +176,21 @@ fun ClassroomScreen(
                                         val isSelected = selectedTab == index
                                         Box(
                                             modifier = Modifier
-                                                .weight(1f)
+                                                // Dynamic weight: Expands the active tab box to make room for text
+                                                .weight(if (isSelected && showSelectedLabel) 1.8f else 1f) 
                                                 .clip(RoundedCornerShape(20.dp))
                                                 .background(
                                                     if (isSelected) MaterialTheme.colorScheme.primary 
                                                     else Color.Transparent
                                                 )
-                                                .clickable { viewModel.selectTab(index) }
-                                                .padding(vertical = 8.dp, horizontal = 12.dp),
+                                                .clickable { 
+                                                    if (selectedTab != index) {
+                                                        viewModel.selectTab(index) // Switch tab
+                                                    } else {
+                                                        showSelectedLabel = true // Re-peek if already active
+                                                    }
+                                                }
+                                                .padding(vertical = 10.dp, horizontal = 4.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Row(
@@ -168,19 +200,28 @@ fun ClassroomScreen(
                                                 Icon(
                                                     imageVector = icon,
                                                     contentDescription = null,
-                                                    modifier = Modifier.size(18.dp),
+                                                    modifier = Modifier.size(20.dp),
                                                     tint = if (isSelected) MaterialTheme.colorScheme.onPrimary 
                                                            else MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
-                                                if (isSelected) {
-                                                    Spacer(Modifier.width(8.dp))
-                                                    Text(
-                                                        text = title,
-                                                        style = MaterialTheme.typography.labelLarge,
-                                                        fontWeight = FontWeight.ExtraBold,
-                                                        color = MaterialTheme.colorScheme.onPrimary,
-                                                        maxLines = 1
-                                                    )
+                                                
+                                                // ANIMATED LABEL: Expands horizontally and fades in only for the active tab
+                                                AnimatedVisibility(
+                                                    visible = isSelected && showSelectedLabel,
+                                                    enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+                                                    exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
+                                                ) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Spacer(Modifier.width(6.dp))
+                                                        Text(
+                                                            text = title,
+                                                            style = MaterialTheme.typography.labelLarge,
+                                                            fontWeight = FontWeight.Black, 
+                                                            color = MaterialTheme.colorScheme.onPrimary,
+                                                            maxLines = 1,
+                                                            softWrap = false
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -196,7 +237,7 @@ fun ClassroomScreen(
                     modifier = Modifier.padding(padding)
                 ) { isTablet ->
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Live Session Card
+                        // Live Broadcast/Session Integration
                         Box(modifier = Modifier.fillMaxWidth().padding(top = 0.dp), contentAlignment = Alignment.Center) {
                             Box(modifier = if (isTablet) Modifier.widthIn(max = AdaptiveWidths.Medium) else Modifier.fillMaxWidth()) {
                                 LiveBroadcastCard(
@@ -208,7 +249,7 @@ fun ClassroomScreen(
 
                         Spacer(Modifier.height(4.dp))
 
-                        // Tab Content
+                        // Cross-fade Tab Transition
                         Box(modifier = Modifier.weight(1f)) {
                             AnimatedContent(
                                 targetState = selectedTab,

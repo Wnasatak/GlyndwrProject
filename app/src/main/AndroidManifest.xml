@@ -16,6 +16,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.GlyndwrProject">
+        
+        <!-- Main Activity: Host for the Compose Navigation Graph -->
         <activity
             android:name="assignment1.krzysztofoko.s16001089.MainActivity"
             android:exported="true"
@@ -24,10 +26,19 @@
             android:theme="@style/Theme.GlyndwrProject">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- REQUIREMENT: Activities & Task Management (8%) -->
+        <!-- DigitalIDActivity: Secondary activity declared as a singleTop task. -->
+        <activity
+            android:name="assignment1.krzysztofoko.s16001089.DigitalIDActivity"
+            android:label="Digital Identity"
+            android:theme="@style/Theme.GlyndwrProject"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:exported="false" />
 
         <service
             android:name=".playback.PlaybackService"

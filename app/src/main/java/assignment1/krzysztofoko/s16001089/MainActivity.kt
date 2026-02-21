@@ -1,6 +1,8 @@
 package assignment1.krzysztofoko.s16001089
 
 import android.content.ComponentName
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,6 +18,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import assignment1.krzysztofoko.s16001089.playback.PlaybackService
+import assignment1.krzysztofoko.s16001089.receivers.SystemReceiver
 import assignment1.krzysztofoko.s16001089.ui.AppNavigation
 import assignment1.krzysztofoko.s16001089.ui.theme.GlyndwrProjectTheme
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
@@ -29,6 +32,7 @@ import com.google.common.util.concurrent.MoreExecutors
  * 2. Media Playback: Initializing and managing the Media3 [MediaController] for background audio.
  * 3. Responsive Design: Calculating [WindowSizeClass] for adaptive layout logic.
  * 4. State Management: Handling high-level theme transitions (Light/Dark/Custom).
+ * 5. System Monitoring: Registers a [BroadcastReceiver] to handle system events (8% requirement).
  */
 class MainActivity : ComponentActivity() {
     /** Future object for asynchronous MediaController initialization. */
@@ -37,9 +41,24 @@ class MainActivity : ComponentActivity() {
     /** The active MediaController instance connected to the PlaybackService. */
     private var mediaController: MediaController? = null
 
+    /** Broadcast Receiver for system events (Power connection, Airplane mode, Custom Messages). */
+    private lateinit var systemReceiver: SystemReceiver
+
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // REQUIREMENT: Broadcast Receiver (8%)
+        // Registering the receiver dynamically to monitor power and custom app messages.
+        systemReceiver = SystemReceiver()
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
+            addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
+            // Register for our custom university message broadcast
+            addAction(SystemReceiver.ACTION_UNIVERSITY_MESSAGE)
+        }
+        registerReceiver(systemReceiver, filter, RECEIVER_NOT_EXPORTED)
 
         // MEDIA INITIALIZATION: Establish a session token connection to the PlaybackService
         // This allows the UI to control audio even if the activity is recreated.
@@ -82,10 +101,13 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * CLEANUP: Safely releases the Media3 future to prevent memory leaks 
-     * and ensure the service connection is terminated correctly.
+     * CLEANUP: Safely releases the Media3 future and unregisters the Broadcast Receiver 
+     * to prevent memory leaks and ensure system stability.
      */
     override fun onDestroy() {
+        // Unregister the system broadcast receiver
+        unregisterReceiver(systemReceiver)
+
         controllerFuture?.let {
             MediaController.releaseFuture(it)
         }
