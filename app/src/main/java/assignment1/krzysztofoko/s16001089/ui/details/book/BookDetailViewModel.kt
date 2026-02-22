@@ -147,7 +147,27 @@ class BookDetailViewModel(
                 orderConfirmation = orderConf
             ))
 
-            // 2. Trigger an in-app notification.
+            // 2. Send confirmation email.
+            val user = userDao.getUserById(userId)
+            if (user != null && user.email.isNotEmpty()) {
+                val bookDetails = mapOf(
+                    "Title" to currentBook.title,
+                    "Author" to currentBook.author,
+                    "Category" to currentBook.mainCategory
+                )
+                EmailUtils.sendPurchaseConfirmation(
+                    context = context,
+                    recipientEmail = user.email,
+                    userName = user.name,
+                    itemTitle = currentBook.title,
+                    orderRef = orderConf,
+                    price = AppConstants.LABEL_FREE,
+                    category = currentBook.mainCategory,
+                    details = bookDetails
+                )
+            }
+
+            // 3. Trigger an in-app notification.
             userDao.addNotification(NotificationLocal(
                 id = UUID.randomUUID().toString(),
                 userId = userId,
@@ -158,7 +178,7 @@ class BookDetailViewModel(
                 type = AppConstants.NOTIF_TYPE_PICKUP
             ))
 
-            // 3. Audit log the free claim.
+            // 4. Audit log the free claim.
             addLog("PURCHASE_FREE", "Free pickup: ${currentBook.title}")
             onComplete(AppConstants.MSG_ADDED_TO_LIBRARY)
         }
@@ -170,7 +190,29 @@ class BookDetailViewModel(
      */
     fun handlePurchaseComplete(context: Context?, finalPrice: Double, orderRef: String, onComplete: (String) -> Unit) {
         viewModelScope.launch {
+            val user = userDao.getUserById(userId)
             val currentBook = _book.value ?: return@launch
+
+            // Send confirmation email.
+            if (user != null && user.email.isNotEmpty()) {
+                val priceStr = "£" + String.format(Locale.US, "%.2f", finalPrice)
+                val bookDetails = mapOf(
+                    "Title" to currentBook.title,
+                    "Author" to currentBook.author,
+                    "Category" to currentBook.mainCategory
+                )
+                EmailUtils.sendPurchaseConfirmation(
+                    context = context,
+                    recipientEmail = user.email,
+                    userName = user.name,
+                    itemTitle = currentBook.title,
+                    orderRef = orderRef,
+                    price = priceStr,
+                    category = currentBook.mainCategory,
+                    details = bookDetails
+                )
+            }
+
             // Audit log the financial transaction.
             addLog("PURCHASE_PAID", "Paid £${String.format(Locale.US, "%.2f", finalPrice)} for: ${currentBook.title}")
             onComplete(AppConstants.MSG_PURCHASE_SUCCESS)

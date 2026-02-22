@@ -172,6 +172,7 @@ class CourseDetailViewModel(
      * Converts an approved application into an active enrolment.
      */
     fun finalizeEnrollment(
+        context: Context?,
         isPaid: Boolean = false,
         finalPrice: Double = 0.0,
         orderRef: String? = null,
@@ -206,7 +207,28 @@ class CourseDetailViewModel(
             val enrollmentId = "${userId}_${courseId}"
             userDao.updateEnrollmentStatus(enrollmentId, "ENROLLED")
 
-            // 4. Send a celebratory confirmation notification.
+            // 4. Send a formal confirmation email.
+            if (user != null && user.email.isNotEmpty()) {
+                val priceStr = if (finalPrice <= 0) AppConstants.LABEL_FREE else "£" + String.format(Locale.US, "%.2f", finalPrice)
+                val academicDetails = mapOf(
+                    "Course Name" to currentCourse.title,
+                    "Department" to currentCourse.department,
+                    "Academic Status" to "Active Student",
+                    "Course ID" to currentCourse.id
+                )
+                EmailUtils.sendPurchaseConfirmation(
+                    context = context,
+                    recipientEmail = user.email,
+                    userName = user.name,
+                    itemTitle = currentCourse.title,
+                    orderRef = effectiveOrderRef,
+                    price = priceStr,
+                    category = currentCourse.mainCategory,
+                    details = academicDetails
+                )
+            }
+
+            // 5. Send a celebratory confirmation notification.
             userDao.addNotification(
                 NotificationLocal(
                     id = UUID.randomUUID().toString(),
