@@ -3,7 +3,9 @@ package assignment1.krzysztofoko.s16001089.ui.components
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -17,42 +19,234 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import assignment1.krzysztofoko.s16001089.R
+import assignment1.krzysztofoko.s16001089.data.UserLocal
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
+import java.util.Locale
 
 /**
  * UserComponents.kt
  *
- * This file contains a collection of UI components dedicated to user profile management.
- * It includes a highly customisable avatar component, profile headers, and several
- * sections for editing personal information, addresses, and payment settings.
+ * This file contains modular UI components for user profile management, identification,
+ * and data entry. It follows Material 3 design principles while incorporating
+ * custom animations and university-specific branding.
  */
 
 /**
- * UserAvatar Composable
- *
- * A smart, robust avatar component designed to display user profile pictures.
- * It handles loading states with an animated spinner, provides fallback icons for errors 
- * or missing data, and supports custom overlays and click actions.
- *
- * Key features:
- * - **Smart Loading:** Displays a rotating placeholder icon while the image loads.
- * - **Fallback Logic:** Automatically uses a default local asset if no URL is provided.
- * - **Adaptive Icon Sizing:** Calculates the ideal placeholder icon size based on the 
- *   container's constraints.
- *
- * @param photoUrl The remote URL or local path for the user's photo.
- * @param modifier Custom styling for the avatar container.
- * @param iconSize Optional override for the placeholder icon size.
- * @param isLarge Flag to use a larger placeholder icon style.
- * @param onClick Optional callback for interaction.
- * @param overlay Custom composable to be rendered on top of the avatar (e.g., a progress spinner).
+ * DigitalStudentID Composable: A high-fidelity virtual identification card.
+ * 
+ * Features:
+ * - Role-Based Theming: Colors dynamically adjust to reflect Admin (Gold), Tutor (Blue), or Student (Primary) status.
+ * - Holographic Security Effect: An infinite animation loop that moves a white gradient sweep across the card, 
+ *   simulating a physical security hologram.
+ * - Identification Data: Displays user name, a truncated UUID as a student/staff number, and an expiry date.
+ * - Interactive Elements: Includes a placeholder QR code for campus verification scanning.
+ * 
+ * @param user The local user profile data to populate the card.
+ * @param modifier Custom layout modifiers for the card container.
+ */
+@Composable
+fun DigitalStudentID(
+    user: UserLocal?,
+    modifier: Modifier = Modifier
+) {
+    val role = user?.role?.lowercase(Locale.ROOT) ?: "student"
+    
+    // --- ROLE RESOLUTION ---
+    // Assign specific branding colors based on the user's institutional hierarchy.
+    val (primaryColor, secondaryColor) = when (role) {
+        "admin" -> Color(0xFFFFD700) to Color(0xFF434343) // Gold & Charcoal for administrators.
+        "teacher", "tutor" -> Color(0xFF3B82F6) to Color(0xFF1E3A8A) // Blue & Navy for academic staff.
+        else -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.primaryContainer // Default theme for students.
+    }
+
+    // --- SECURITY ANIMATION ---
+    // The 'shineOffset' drives the holographic light sweep. 
+    // It cycles from -500f to 1000f to ensure the sweep fully clears the card bounds.
+    val infiniteTransition = rememberInfiniteTransition(label = "shine")
+    val shineOffset by infiniteTransition.animateFloat(
+        initialValue = -500f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shineOffset"
+    )
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(220.dp),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        border = BorderStroke(1.dp, primaryColor.copy(alpha = 0.5f))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(secondaryColor, secondaryColor.copy(alpha = 0.8f), primaryColor.copy(alpha = 0.2f))
+                    )
+                )
+        ) {
+            // --- HOLOGRAPHIC OVERLAY ---
+            // A semi-transparent white gradient that "shines" over the background.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.1f), Color.Transparent),
+                            start = androidx.compose.ui.geometry.Offset(shineOffset, 0f),
+                            end = androidx.compose.ui.geometry.Offset(shineOffset + 200f, 400f)
+                        )
+                    )
+            )
+
+            Column(modifier = Modifier.padding(16.dp)) {
+                // Card Header: University branding and Role Badge
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(modifier = Modifier.size(24.dp), shape = CircleShape, color = Color.White) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                                contentDescription = null,
+                                modifier = Modifier.padding(2.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "WREXHAM UNIVERSITY",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                    
+                    Surface(
+                        color = primaryColor,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = role.uppercase(Locale.ROOT),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (role == "admin") Color.Black else Color.White
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                // Card Body: User Avatar and Identity Details
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    UserAvatar(
+                        photoUrl = user?.photoUrl,
+                        modifier = Modifier
+                            .size(90.dp)
+                            .border(2.dp, primaryColor, CircleShape)
+                    )
+                    
+                    Spacer(Modifier.width(16.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = (user?.name ?: "Full Name").uppercase(Locale.ROOT),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            // We truncate the internal database ID to create a readable student/staff number.
+                            text = "ID: ${user?.id?.take(8)?.uppercase(Locale.ROOT) ?: "--------"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.7f),
+                            letterSpacing = 2.sp
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "EXPIRES: 09/2026",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = primaryColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Security QR Code for verification by campus staff.
+                    Surface(
+                        modifier = Modifier.size(60.dp),
+                        color = Color.White,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.QrCode2,
+                            contentDescription = "Scan",
+                            modifier = Modifier.padding(4.dp),
+                            tint = Color.Black
+                        )
+                    }
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                // Card Footer: Security certification mark
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.VerifiedUser,
+                        null,
+                        tint = primaryColor,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "OFFICIAL DIGITAL CREDENTIAL",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontSize = 8.sp,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * UserAvatar Composable: A robust, state-aware profile image component.
+ * 
+ * Features:
+ * - Async Loading: Uses Coil for high-performance image fetching.
+ * - Loading Feedback: Displays a rotating account icon while the image is being fetched.
+ * - Error Handling: Automatically falls back to a person icon if the URL is invalid or the fetch fails.
+ * - Smart Fallback: If no photoUrl is provided, it attempts to load a default local asset.
+ * 
+ * @param photoUrl The URI of the user image.
+ * @param modifier Sizing and layout modifiers.
+ * @param iconSize Explicit size for the placeholder icon.
+ * @param isLarge If true, uses a larger 'Person' icon for fallback.
+ * @param contentScale Image fit strategy.
+ * @param onClick Optional tap action.
+ * @param overlay Custom composable to draw on top of the avatar (e.g., loading spinner or badge).
  */
 @Composable
 fun UserAvatar(
@@ -64,6 +258,7 @@ fun UserAvatar(
     onClick: (() -> Unit)? = null,
     overlay: @Composable (BoxScope.() -> Unit)? = null
 ) {
+    // Assets bundled with the APK for offline/first-run fallback.
     val defaultAvatarPath = "file:///android_asset/images/users/avatars/Avatar_defult.png"
     val isUsingDefault = photoUrl.isNullOrEmpty() || photoUrl.contains("Avatar_defult")
 
@@ -71,7 +266,7 @@ fun UserAvatar(
         .fillMaxSize()
         .let { if (onClick != null) it.clickable(onClick = onClick) else it }
 
-    // Animation for the rotating loading/placeholder icon.
+    // Visual feedback for asynchronous operations.
     val infiniteTransition = rememberInfiniteTransition(label = "avatarLoad")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -86,7 +281,6 @@ fun UserAvatar(
         color = Color.Transparent
     ) {
         BoxWithConstraints(contentAlignment = Alignment.Center) {
-            // Determine icon size based on available space if not explicitly provided.
             val autoIconSize = when {
                 isLarge && maxWidth > 100.dp -> 110.dp
                 isLarge -> 40.dp
@@ -103,7 +297,7 @@ fun UserAvatar(
                 modifier = avatarModifier,
                 contentScale = if (isUsingDefault) ContentScale.Fit else contentScale,
                 loading = {
-                    // Display rotating placeholder icon while loading.
+                    // Show a spinning placeholder while loading.
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Icon(
                             if (isLarge) Icons.Default.Person else Icons.Default.AccountCircle,
@@ -114,7 +308,7 @@ fun UserAvatar(
                     }
                 },
                 error = {
-                    // Static fallback icon for errors.
+                    // Show a static fallback icon on network failure.
                     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
                         Icon(
                             if (isLarge) Icons.Default.Person else Icons.Default.AccountCircle,
@@ -131,10 +325,8 @@ fun UserAvatar(
 }
 
 /**
- * ProfileHeader Composable
- *
- * A prominent header section for the profile screen, displaying the user's avatar 
- * with an interactive edit button and a loading state for photo uploads.
+ * ProfileHeader Composable: The top-level visual block for the profile screen.
+ * Encapsulates the avatar and the photo picker trigger.
  */
 @Composable
 fun ProfileHeader(
@@ -149,7 +341,7 @@ fun ProfileHeader(
             isLarge = true,
             onClick = { if (!isUploading) onPickPhoto() },
             overlay = {
-                // Dim the avatar and show a spinner while an upload is in progress.
+                // Dim the avatar and show a spinner during active server-side photo upload.
                 if (isUploading) {
                     Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f), CircleShape), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = Color.White)
@@ -157,7 +349,7 @@ fun ProfileHeader(
                 }
             }
         )
-        // Edit FAB overlaid on the avatar.
+        // Edit Floating Action Button shortcut.
         SmallFloatingActionButton(
             onClick = { if (!isUploading) onPickPhoto() },
             shape = CircleShape,
@@ -170,10 +362,7 @@ fun ProfileHeader(
 }
 
 /**
- * PersonalInfoSection Composable
- *
- * A group of input fields for managing the user's primary identity data,
- * including their formal title, names, and contact details.
+ * PersonalInfoSection Composable: Form for editing core identity fields.
  */
 @Composable
 fun PersonalInfoSection(
@@ -218,7 +407,8 @@ fun PersonalInfoSection(
         )
         Spacer(modifier = Modifier.height(12.dp))
         
-        // Email is displayed in a custom Surface as it requires a multi-step verification process to edit.
+        // Email is shown in a read-only-style surface because changing it usually requires 
+        // a specialized auth flow (re-authentication).
         Surface(
             onClick = onEditEmail,
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
@@ -239,9 +429,7 @@ fun PersonalInfoSection(
 }
 
 /**
- * ProfileAddressSection Composable
- *
- * Displays the user's primary residence or billing address in a clear, interactive row.
+ * ProfileAddressSection Composable: Card for managing physical or billing address.
  */
 @Composable
 fun ProfileAddressSection(
@@ -270,10 +458,7 @@ fun ProfileAddressSection(
 }
 
 /**
- * ProfilePaymentSection Composable
- *
- * Displays the user's chosen payment method, using contextual icons to visually
- * represent different providers (PayPal, Google Pay, etc.).
+ * ProfilePaymentSection Composable: Card for managing the preferred payment method.
  */
 @Composable
 fun ProfilePaymentSection(
@@ -291,7 +476,6 @@ fun ProfilePaymentSection(
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         ) {
             Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                // Map payment method name to a corresponding icon.
                 Icon(
                     imageVector = when {
                         paymentMethod.contains("Google") -> Icons.Default.AccountBalanceWallet
@@ -312,9 +496,7 @@ fun ProfilePaymentSection(
 }
 
 /**
- * ProfileSecuritySection Composable
- *
- * Provides a dedicated area for account security actions, such as changing the password.
+ * ProfileSecuritySection Composable: Action buttons for account protection.
  */
 @Composable
 fun ProfileSecuritySection(

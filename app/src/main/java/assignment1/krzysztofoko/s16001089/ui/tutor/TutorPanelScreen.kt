@@ -1,5 +1,6 @@
 package assignment1.krzysztofoko.s16001089.ui.tutor
 
+import android.content.Intent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
 import assignment1.krzysztofoko.s16001089.AppConstants
+import assignment1.krzysztofoko.s16001089.DigitalIDActivity
 import assignment1.krzysztofoko.s16001089.data.AppDatabase
 import assignment1.krzysztofoko.s16001089.data.Book
 import assignment1.krzysztofoko.s16001089.data.AudioBook
@@ -65,6 +67,7 @@ import assignment1.krzysztofoko.s16001089.ui.notifications.NotificationScreen
 import assignment1.krzysztofoko.s16001089.ui.info.AboutScreen
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
 import com.google.firebase.auth.FirebaseAuth
+import java.util.Locale
 
 /**
  * TutorPanelScreen is the primary layout orchestrator for the institutional tutoring portal.
@@ -93,16 +96,15 @@ fun TutorPanelScreen(
         tutorId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     ))
 ) {
+    val context = LocalContext.current
     val currentSectionState by viewModel.currentSection.collectAsState()
+    val tutorUser by viewModel.currentUserLocal.collectAsState()
     
-    // Resolve the section immediately to prevent flickering
     val resolvedSection = remember(currentSectionState, initialSection) {
         if (initialSection != null && currentSectionState == TutorSection.DASHBOARD) {
             try {
                 val target = TutorSection.valueOf(initialSection)
-                if (currentSectionState != target) {
-                    viewModel.setSection(target)
-                }
+                if (currentSectionState != target) viewModel.setSection(target)
                 target
             } catch (e: Exception) { currentSectionState }
         } else {
@@ -120,8 +122,6 @@ fun TutorPanelScreen(
     val isReaderOpen = resolvedSection == TutorSection.READ_BOOK
     val isDarkTheme = currentTheme == Theme.DARK || currentTheme == Theme.DARK_BLUE || currentTheme == Theme.CUSTOM
     var showMenu by remember { mutableStateOf(false) }
-    
-    // Track maximized state for the audio player
     var isPlayerMaximized by remember { mutableStateOf(false) }
 
     val infiniteTransitionBell = rememberInfiniteTransition(label = "bellRing")
@@ -150,16 +150,13 @@ fun TutorPanelScreen(
                                     Spacer(Modifier.width(12.dp))
                                     Column {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            @Suppress("DEPRECATION")
                                             Text(text = selectedStudent?.name ?: "User", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                             Spacer(Modifier.width(8.dp))
-                                            val roleText = (selectedStudent?.role ?: "user").uppercase()
+                                            val roleText = (selectedStudent?.role ?: "user").uppercase(Locale.ROOT)
                                             Surface(color = if (roleText == "ADMIN" || roleText == "TUTOR") MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(4.dp)) {
-                                                @Suppress("DEPRECATION")
                                                 Text(text = roleText, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = if (roleText == "ADMIN" || roleText == "TUTOR") MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
-                                        @Suppress("DEPRECATION")
                                         Text(text = "Online", style = MaterialTheme.typography.labelSmall, color = Color(0xFF4CAF50))
                                     }
                                 }
@@ -190,7 +187,6 @@ fun TutorPanelScreen(
                                         else -> ""
                                     }
                                     if (sectionTitle.isNotEmpty()) {
-                                        @Suppress("DEPRECATION")
                                         Text(text = " • $sectionTitle", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                                     }
                                 }
@@ -226,7 +222,7 @@ fun TutorPanelScreen(
                                     }
                                     if (unreadCount > 0) {
                                         Surface(color = Color(0xFFE53935), shape = CircleShape, border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.surface), modifier = Modifier.size(18.dp).offset(x = 4.dp, y = (-2).dp).align(Alignment.TopEnd)) {
-                                            Box(contentAlignment = Alignment.Center) { @Suppress("DEPRECATION") Text(text = if (unreadCount > 9) "!" else unreadCount.toString(), style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp), color = Color.White, textAlign = TextAlign.Center) }
+                                            Box(contentAlignment = Alignment.Center) { Text(text = if (unreadCount > 9) "!" else unreadCount.toString(), style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp), color = Color.White, textAlign = TextAlign.Center) }
                                         }
                                     }
                                 }
@@ -241,6 +237,23 @@ fun TutorPanelScreen(
                                         containerColor = MaterialTheme.colorScheme.surface
                                     ) {
                                         ProMenuHeader("TEACHER HUB")
+                                        
+                                        // REQUIREMENT: Digital Staff ID shortcut added to Teacher Menu
+                                        DropdownMenuItem(
+                                            text = { Text("Digital Staff ID") }, 
+                                            onClick = { 
+                                                showMenu = false
+                                                val intent = Intent(context, DigitalIDActivity::class.java).apply {
+                                                    putExtra("USER_NAME", tutorUser?.name ?: "Faculty")
+                                                    putExtra("STUDENT_ID", tutorUser?.id?.take(8)?.uppercase(Locale.ROOT) ?: "--------")
+                                                    putExtra("USER_ROLE", tutorUser?.role ?: "teacher")
+                                                    putExtra("USER_PHOTO", tutorUser?.photoUrl)
+                                                }
+                                                context.startActivity(intent)
+                                            }, 
+                                            leadingIcon = { Icon(Icons.Default.Badge, null, tint = MaterialTheme.colorScheme.primary) }
+                                        )
+
                                         DropdownMenuItem(
                                             text = { Text("Teacher Profile") }, 
                                             onClick = { showMenu = false; viewModel.setSection(TutorSection.TEACHER_DETAIL) }, 
@@ -274,7 +287,6 @@ fun TutorPanelScreen(
                 val hideBottomBar = isChatOpen || resolvedSection == TutorSection.BOOKS || resolvedSection == TutorSection.AUDIOBOOKS || resolvedSection == TutorSection.READ_BOOK || resolvedSection == TutorSection.LISTEN_AUDIOBOOK || resolvedSection == TutorSection.SELECTED_COURSE || resolvedSection == TutorSection.COURSE_STUDENTS || resolvedSection == TutorSection.COURSE_MODULES || resolvedSection == TutorSection.COURSE_ASSIGNMENTS || resolvedSection == TutorSection.COURSE_GRADES || resolvedSection == TutorSection.COURSE_LIVE || resolvedSection == TutorSection.COURSE_ARCHIVED_BROADCASTS || resolvedSection == TutorSection.TEACHER_DETAIL || resolvedSection == TutorSection.CREATE_ASSIGNMENT || resolvedSection == TutorSection.START_LIVE_STREAM || resolvedSection == TutorSection.STUDENT_PROFILE || resolvedSection == TutorSection.NOTIFICATIONS || resolvedSection == TutorSection.ABOUT || resolvedSection == TutorSection.COURSE_ATTENDANCE || resolvedSection == TutorSection.INDIVIDUAL_ATTENDANCE_DETAIL
                 
                 Column {
-                    // Audio bar layer: Exactly like student dashboard. Opens ON TOP of the navbar.
                     if (currentPlayingBookId != null && !isPlayerMaximized && currentPlayingBook != null && !isReaderOpen) {
                         IntegratedAudioBar(
                             currentBook = currentPlayingBook,
@@ -302,7 +314,6 @@ fun TutorPanelScreen(
             }
         ) { padding ->
             Box(modifier = Modifier.fillMaxSize()) {
-                // Ensure main content takes up remaining space
                 Column(modifier = Modifier.fillMaxSize().padding(top = if (isReaderOpen) 0.dp else padding.calculateTopPadding(), bottom = padding.calculateBottomPadding())) {
                     Box(modifier = Modifier.weight(1f)) {
                         AnimatedContent(targetState = resolvedSection, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "TutorSectionTransition") { section ->
@@ -340,7 +351,6 @@ fun TutorPanelScreen(
                     }
                 }
                 
-                // Full-screen player overlay
                 if (isPlayerMaximized && currentPlayingBook != null) {
                     MaximizedAudioPlayerOverlay(
                         currentBook = currentPlayingBook,
@@ -358,16 +368,13 @@ fun TutorPanelScreen(
     }
 }
 
-/**
- * Custom Navigation Bar Item with institutional styling.
- */
 @Composable
 fun RowScope.TutorNavButton(selected: Boolean, onClick: () -> Unit, icon: ImageVector, label: String) {
     NavigationBarItem(
         selected = selected, 
         onClick = onClick, 
         icon = { Icon(icon, null, modifier = Modifier.size(24.dp)) }, 
-        label = { @Suppress("DEPRECATION") Text(text = label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis) }, 
+        label = { Text(text = label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis) }, 
         alwaysShowLabel = true,
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = MaterialTheme.colorScheme.primary,

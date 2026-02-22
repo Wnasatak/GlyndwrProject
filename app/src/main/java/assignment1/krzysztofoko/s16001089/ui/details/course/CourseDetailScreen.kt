@@ -47,12 +47,12 @@ import java.util.Locale
  * An immersive, data-driven screen that serves as the gateway to academic courses.
  *
  * Key features:
- * - **Application Workflow:** Displays different UI states based on the user's application 
+ * - **Application Workflow:** Displays different UI states based on the user's application
  *   status (PENDING, APPROVED, REJECTED).
- * - **Constraint Handling:** Prevents users from enrolling in multiple paid courses 
+ * - **Constraint Handling:** Prevents users from enrolling in multiple paid courses
  *   simultaneously, maintaining university policy.
  * - **Responsive Layout:** Adapts content widths and spacing for optimal display on tablets.
- * - **Dynamic Actions:** Switches primary actions between "Apply", "Complete Enrolment", 
+ * - **Dynamic Actions:** Switches primary actions between "Apply", "Complete Enrolment",
  *   and "Enter Classroom" based on the user's current status.
  *
  * @param courseId Unique identifier for the course.
@@ -197,8 +197,8 @@ fun CourseDetailScreen(
                                             AssistChip(onClick = {}, label = { Text(currentCourse.category) })
                                             if (currentCourse.isInstallmentAvailable) {
                                                 AssistChip(
-                                                    onClick = {}, 
-                                                    label = { Text(AppConstants.TEXT_INSTALLMENTS_AVAILABLE, style = MaterialTheme.typography.labelSmall) }, 
+                                                    onClick = {},
+                                                    label = { Text(AppConstants.TEXT_INSTALLMENTS_AVAILABLE, style = MaterialTheme.typography.labelSmall) },
                                                     leadingIcon = { Icon(Icons.Default.CalendarMonth, null, Modifier.size(14.dp)) }
                                                 )
                                             }
@@ -239,11 +239,11 @@ fun CourseDetailScreen(
                                                         Spacer(Modifier.height(12.dp)); @Suppress("DEPRECATION") Text(AppConstants.TITLE_ENROLLMENT_LOCKED, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                                                         Text(AppConstants.MSG_SIGN_IN_PROMPT_COURSE, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
                                                         Spacer(Modifier.height(20.dp)); Button(onClick = onLoginRequired, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-                                                            Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp))
-                                                            Spacer(Modifier.width(8.dp))
-                                                            @Suppress("DEPRECATION")
-                                                            Text(AppConstants.BTN_SIGN_IN_ENROLL)
-                                                        }
+                                                        Icon(Icons.AutoMirrored.Filled.Login, null, modifier = Modifier.size(18.dp))
+                                                        Spacer(Modifier.width(8.dp))
+                                                        @Suppress("DEPRECATION")
+                                                        Text(AppConstants.BTN_SIGN_IN_ENROLL)
+                                                    }
                                                     }
                                                 }
                                             } else if (currentCourse.price > 0 && enrolledPaidCourseTitle != null) {
@@ -364,8 +364,8 @@ fun CourseDetailScreen(
                 user = localUser,
                 onDismiss = { showOrderFlow = false },
                 onEditProfile = { showOrderFlow = false; onNavigateToProfile() },
-                onComplete = { finalPrice, orderRef -> 
-                    viewModel.finalizeEnrollment(isPaid = true, finalPrice = finalPrice, orderRef = orderRef) { 
+                onComplete = { finalPrice, orderRef ->
+                    viewModel.finalizeEnrollment(isPaid = true, finalPrice = finalPrice, orderRef = orderRef) {
                         showOrderFlow = false
                         scope.launch { snackbarHostState.showSnackbar("Enrolment Complete!") }
                     }

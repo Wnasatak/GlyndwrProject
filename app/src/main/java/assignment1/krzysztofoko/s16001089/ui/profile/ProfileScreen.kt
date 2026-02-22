@@ -44,6 +44,7 @@ import assignment1.krzysztofoko.s16001089.ui.components.*
 import assignment1.krzysztofoko.s16001089.ui.profile.components.StudentAcademicTab
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /**
  * Main User Profile Screen.
@@ -441,8 +442,9 @@ fun StudentDetailTab(
             // REQUIREMENT: Activities & Task Management (8%)
             // SECURITY UPDATE: Only 'admin', 'teacher', 'tutor', and 'student' roles
             // have access to the Digital ID. Generic 'user' accounts are excluded as they are not verified campus members.
-            val userRole = localUser?.role?.lowercase() ?: ""
+            val userRole = localUser?.role?.lowercase(Locale.ROOT) ?: ""
             val isAuthorized = userRole in listOf("admin", "teacher", "tutor", "student")
+            val isStaff = userRole in listOf("admin", "teacher", "tutor")
 
             if (isAuthorized) {
                 item {
@@ -450,7 +452,9 @@ fun StudentDetailTab(
                         onClick = {
                             val intent = Intent(context, DigitalIDActivity::class.java).apply {
                                 putExtra("USER_NAME", localUser?.name ?: "Student")
-                                putExtra("STUDENT_ID", localUser?.id?.take(8)?.uppercase() ?: "S16001089")
+                                putExtra("STUDENT_ID", localUser?.id?.take(8)?.uppercase(Locale.ROOT) ?: "S16001089")
+                                putExtra("USER_ROLE", userRole)
+                                putExtra("USER_PHOTO", localUser?.photoUrl)
                             }
                             context.startActivity(intent)
                         },
@@ -463,7 +467,7 @@ fun StudentDetailTab(
                             Spacer(Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 @Suppress("DEPRECATION")
-                                Text("Digital Student ID", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleSmall)
+                                Text(if (isStaff) "Digital Staff ID" else "Digital Student ID", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleSmall)
                                 Text("Show your digital card for campus access", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
@@ -495,8 +499,8 @@ fun StudentDetailTab(
                             @Suppress("DEPRECATION")
                             Spacer(Modifier.height(12.dp))
                             @Suppress("DEPRECATION")
-                            Text("Ref No.", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
-                            Text(localUser?.id?.take(8)?.uppercase() ?: "S16001089", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(if (isStaff) "Staff ID" else "Student ID", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                            Text(localUser?.id?.take(8)?.uppercase(Locale.ROOT) ?: "S16001089", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }

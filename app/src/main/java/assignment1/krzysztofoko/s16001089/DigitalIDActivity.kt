@@ -4,14 +4,17 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.QrCode2
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,146 +25,191 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import assignment1.krzysztofoko.s16001089.ui.theme.GlyndwrProjectTheme
 import assignment1.krzysztofoko.s16001089.ui.theme.Theme
+import assignment1.krzysztofoko.s16001089.ui.components.UserAvatar
+import java.util.Locale
 
 /**
  * DigitalIDActivity: Demonstrates the "Activities" requirement (8%).
- * 
- * This is a secondary Activity that operates as a separate task. 
- * It showcases the Activity Lifecycle and Explicit Intent communication.
  */
 class DigitalIDActivity : ComponentActivity() {
 
-    private val TAG = "DigitalIDActivity"
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate: Activity Created")
 
-        // Retrieve data passed from MainActivity via Intent extras
-        val userName = intent.getStringExtra("USER_NAME") ?: "Student"
-        val studentId = intent.getStringExtra("STUDENT_ID") ?: AppConstants.STUDENT_ID
+        val userName = intent.getStringExtra("USER_NAME") ?: "Full Name"
+        val studentId = intent.getStringExtra("STUDENT_ID") ?: "--------"
+        val userRole = intent.getStringExtra("USER_ROLE") ?: "student"
+        val photoUrl = intent.getStringExtra("USER_PHOTO")
 
         setContent {
             GlyndwrProjectTheme(theme = Theme.DARK) {
-                IDCardScreen(userName, studentId) {
-                    finish() // Close this activity and return to MainActivity
+                IDCardScreen(userName, studentId, userRole, photoUrl) {
+                    finish()
                 }
             }
         }
     }
-
-    // --- LIFECYCLE LOGGING (Demonstrating Activity knowledge) ---
-    override fun onStart() { super.onStart(); Log.d(TAG, "onStart: Activity Visible") }
-    override fun onResume() { super.onResume(); Log.d(TAG, "onResume: Activity Gained Focus") }
-    override fun onPause() { super.onPause(); Log.d(TAG, "onPause: Activity Loosing Focus") }
-    override fun onStop() { super.onStop(); Log.d(TAG, "onStop: Activity No Longer Visible") }
-    override fun onDestroy() { super.onDestroy(); Log.d(TAG, "onDestroy: Activity Destroyed") }
 }
 
 @Composable
-fun IDCardScreen(name: String, id: String, onClose: () -> Unit) {
+fun IDCardScreen(name: String, id: String, role: String, photoUrl: String?, onClose: () -> Unit) {
+    val cleanRole = role.lowercase(Locale.ROOT)
+    
+    // Professional header colors based on role
+    val headerColor = when (cleanRole) {
+        "admin" -> Color(0xFFB8860B) // Dark Goldenrod
+        "teacher", "tutor" -> Color(0xFF1E3A8A) // University Navy
+        else -> Color(0xFFB71C1C) // Deep Red
+    }
+
+    val (headerLabel, badgeLabel, badgeBg, badgeText) = when(cleanRole) {
+        "admin" -> Quadruple(
+            "UNIVERSITY ADMINISTRATION",
+            "ADMINISTRATION",
+            Color(0xFFFFD700).copy(alpha = 0.2f),
+            Color(0xFFB8860B)
+        )
+        "teacher", "tutor" -> Quadruple(
+            "UNIVERSITY FACULTY",
+            "TEACHER",
+            Color(0xFF3B82F6).copy(alpha = 0.2f),
+            Color(0xFF1E3A8A)
+        )
+        else -> Quadruple(
+            "UNIVERSITY IDENTITY",
+            "OFFICIALLY ENROLLED",
+            Color(0xFFE8F5E9),
+            Color(0xFF2E7D32)
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF0F0F0F)),
         contentAlignment = Alignment.Center
     ) {
-        // ID Card Design
+        // Main Vertical ID Card
         Card(
             modifier = Modifier
                 .width(320.dp)
-                .height(500.dp)
-                .padding(16.dp),
-            shape = RoundedCornerShape(24.dp),
+                .height(520.dp),
+            shape = RoundedCornerShape(28.dp),
+            elevation = CardDefaults.cardElevation(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(12.dp)
+            border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Header (Institutional Branding)
+            Column(modifier = Modifier.fillMaxSize()) {
+                // 1. Institutional Header
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp)
-                        .background(
-                            Brush.verticalGradient(listOf(Color(0xFFCC0000), Color(0xFF990000)))
-                        ),
+                        .height(130.dp)
+                        .background(headerColor),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "UNIVERSITY IDENTITY",
+                        text = headerLabel,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
                         color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
+                        letterSpacing = 1.5.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 24.dp)
                     )
                 }
 
-                Spacer(Modifier.height(32.dp))
-
-                // Avatar Placeholder
-                Surface(
-                    modifier = Modifier.size(120.dp),
-                    shape = CircleShape,
-                    color = Color.LightGray
+                // 2. Main Identity Body
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
+                    // Profile Photo with Professional Border
+                    Box(contentAlignment = Alignment.Center) {
+                        Surface(
+                            modifier = Modifier.size(150.dp),
+                            shape = CircleShape,
+                            color = Color(0xFFF5F5F5)
+                        ) {}
+                        
+                        UserAvatar(
+                            photoUrl = photoUrl,
+                            modifier = Modifier
+                                .size(140.dp)
+                                .border(4.dp, headerColor, CircleShape)
+                        )
+                    }
+
+                    // Personal Details
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = name.uppercase(Locale.ROOT),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.Black,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "ID: ${id.uppercase(Locale.ROOT)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.Gray,
+                            letterSpacing = 2.sp
+                        )
+                    }
+
+                    // Dynamic Role Badge
+                    Surface(
+                        color = badgeBg,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, badgeText.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = badgeLabel,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = badgeText
+                        )
+                    }
+
+                    // QR Code for security scanning
                     Icon(
-                        Icons.Default.QrCode2, 
-                        contentDescription = null, 
-                        modifier = Modifier.padding(24.dp),
-                        tint = Color.DarkGray
+                        imageVector = Icons.Default.QrCode2,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = Color.Black.copy(alpha = 0.7f)
                     )
+
+                    // Validity Footer
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "VALID UNTIL: SEPT 2026",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.LightGray,
+                            letterSpacing = 1.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Verified, null, tint = headerColor.copy(alpha = 0.3f), modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("OFFICIAL UNIVERSITY CREDENTIAL", fontSize = 8.sp, color = Color.LightGray)
+                        }
+                    }
                 }
-
-                Spacer(Modifier.height(24.dp))
-
-                // Student Details
-                Text(
-                    text = name.uppercase(),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Black,
-                    color = Color.Black
-                )
-                Text(
-                    text = "ID: $id",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray
-                )
-
-                Spacer(Modifier.height(16.dp))
-                
-                // Status Badge
-                Surface(
-                    color = Color(0xFFE8F5E9),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        "OFFICIALLY ENROLLED",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        color = Color(0xFF2E7D32),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Valid Date
-                Text(
-                    "VALID UNTIL: SEPT 2026",
-                    modifier = Modifier.padding(bottom = 24.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.LightGray
-                )
             }
         }
 
-        // Close Button (Top Right)
+        // Close Button
         IconButton(
             onClick = onClose,
             modifier = Modifier
@@ -173,3 +221,5 @@ fun IDCardScreen(name: String, id: String, onClose: () -> Unit) {
         }
     }
 }
+
+private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
