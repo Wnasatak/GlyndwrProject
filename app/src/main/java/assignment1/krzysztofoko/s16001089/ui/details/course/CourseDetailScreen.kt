@@ -204,7 +204,7 @@ fun CourseDetailScreen(
                                             }
                                         }
 
-                                        Spacer(modifier = Modifier.height(if (isTablet) 32.dp else 24.dp)); @Suppress("DEPRECATION") Text(text = AppConstants.SECTION_DESCRIPTION_COURSE, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(if (isTablet) 40.dp else 24.dp)); @Suppress("DEPRECATION") Text(text = AppConstants.SECTION_DESCRIPTION_COURSE, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.height(8.dp)); @Suppress("DEPRECATION") Text(text = currentCourse.description, style = MaterialTheme.typography.bodyLarge, lineHeight = if (isTablet) 28.sp else 24.sp)
 
                                         Spacer(modifier = Modifier.height(if (isTablet) 40.dp else 32.dp))
@@ -284,7 +284,7 @@ fun CourseDetailScreen(
                                                             }
 
                                                             if (currentCourse.price == 0.0) {
-                                                                Button(onClick = { viewModel.finalizeEnrollment { } }, modifier = if (isTablet) Modifier.width(400.dp).height(56.dp) else Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                                                                Button(onClick = { viewModel.finalizeEnrollment(context) { } }, modifier = if (isTablet) Modifier.width(400.dp).height(56.dp) else Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
                                                                     Text("Complete Free Enrolment", fontWeight = FontWeight.Bold)
                                                                 }
                                                             } else {
@@ -316,7 +316,7 @@ fun CourseDetailScreen(
                                                             // Free courses skip the application/review phase.
                                                             Button(
                                                                 onClick = {
-                                                                    viewModel.finalizeEnrollment {
+                                                                    viewModel.finalizeEnrollment(context) {
                                                                         scope.launch { snackbarHostState.showSnackbar("Successfully Enrolled!") }
                                                                     }
                                                                 },
@@ -365,7 +365,7 @@ fun CourseDetailScreen(
                 onDismiss = { showOrderFlow = false },
                 onEditProfile = { showOrderFlow = false; onNavigateToProfile() },
                 onComplete = { finalPrice, orderRef ->
-                    viewModel.finalizeEnrollment(isPaid = true, finalPrice = finalPrice, orderRef = orderRef) {
+                    viewModel.finalizeEnrollment(context, isPaid = true, finalPrice = finalPrice, orderRef = orderRef) {
                         showOrderFlow = false
                         scope.launch { snackbarHostState.showSnackbar("Enrolment Complete!") }
                     }

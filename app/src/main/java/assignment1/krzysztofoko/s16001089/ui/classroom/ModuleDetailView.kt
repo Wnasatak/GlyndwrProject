@@ -22,6 +22,21 @@ import assignment1.krzysztofoko.s16001089.ui.components.VerticalWavyBackground
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * ModuleDetailView.kt
+ *
+ * This file implements the detailed view for a specific module within the classroom.
+ * It displays module information, requirements, and associated assignments.
+ */
+
+/**
+ * Main Composable for displaying module details.
+ * 
+ * @param module The module content to display.
+ * @param assignments List of all available assignments to filter from.
+ * @param onBack Callback for navigation back.
+ * @param onSubmitAssignment Callback for submitting an assignment.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModuleDetailView(
@@ -30,15 +45,20 @@ fun ModuleDetailView(
     onBack: () -> Unit,
     onSubmitAssignment: (Assignment) -> Unit
 ) {
+    // State to manage scrolling in the detail column
     val scrollState = rememberScrollState()
+    
+    // Filter assignments to only show those belonging to this specific module
     val moduleAssignments = assignments.filter { it.moduleId == module.id }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Decorative background component
         VerticalWavyBackground(isDarkTheme = true)
 
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = Color.Transparent, // Transparent to allow background visibility
             topBar = {
+                // App bar with back button and centered title
                 CenterAlignedTopAppBar(
                     title = { Text("MODULE DETAILS", fontWeight = FontWeight.Black) },
                     navigationIcon = {
@@ -60,12 +80,15 @@ fun ModuleDetailView(
                     .verticalScroll(scrollState)
                     .padding(24.dp)
             ) {
+                // Module identifier (e.g., "Module 1")
                 Text(
                     text = "Module ${module.order}",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
+                
+                // Module Title
                 Text(
                     text = module.title,
                     style = MaterialTheme.typography.headlineMedium,
@@ -75,6 +98,7 @@ fun ModuleDetailView(
 
                 Spacer(Modifier.height(24.dp))
 
+                // Module Description Section
                 Text(
                     text = "About this Module",
                     style = MaterialTheme.typography.titleMedium,
@@ -97,6 +121,7 @@ fun ModuleDetailView(
 
                 Spacer(Modifier.height(32.dp))
 
+                // Content Requirements Section
                 Text(
                     text = "Requirements & Content",
                     style = MaterialTheme.typography.titleMedium,
@@ -105,6 +130,7 @@ fun ModuleDetailView(
                 )
                 Spacer(Modifier.height(12.dp))
                 
+                // Primary content indicator (Video, PDF, or Quiz)
                 ContentRequirementItem(
                     icon = when(module.contentType) {
                         "VIDEO" -> Icons.Default.PlayCircle
@@ -117,6 +143,7 @@ fun ModuleDetailView(
 
                 Spacer(Modifier.height(32.dp))
 
+                // Assignments Section
                 Text(
                     text = "Module Assignments",
                     style = MaterialTheme.typography.titleMedium,
@@ -124,6 +151,7 @@ fun ModuleDetailView(
                     color = Color.White
                 )
                 
+                // Display empty state or list of assignments
                 if (moduleAssignments.isEmpty()) {
                     Text(
                         text = "No assignments for this module.",
@@ -144,6 +172,9 @@ fun ModuleDetailView(
     }
 }
 
+/**
+ * Composable for displaying a content requirement row.
+ */
 @Composable
 fun ContentRequirementItem(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, description: String) {
     Card(
@@ -152,6 +183,7 @@ fun ContentRequirementItem(icon: androidx.compose.ui.graphics.vector.ImageVector
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Icon container
             Surface(
                 modifier = Modifier.size(40.dp),
                 shape = RoundedCornerShape(8.dp),
@@ -162,6 +194,7 @@ fun ContentRequirementItem(icon: androidx.compose.ui.graphics.vector.ImageVector
                 }
             }
             Spacer(Modifier.width(16.dp))
+            // Title and description column
             Column {
                 Text(title, fontWeight = FontWeight.Bold, color = Color.White)
                 Text(description, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.5f))
@@ -170,8 +203,12 @@ fun ContentRequirementItem(icon: androidx.compose.ui.graphics.vector.ImageVector
     }
 }
 
+/**
+ * Composable for displaying a single assignment card.
+ */
 @Composable
 fun ModuleAssignmentItem(assignment: Assignment, onSumbitClick: () -> Unit) {
+    // Date formatter for due dates
     val sdf = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
     
     Card(
@@ -182,11 +219,13 @@ fun ModuleAssignmentItem(assignment: Assignment, onSumbitClick: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Assignment info (Title and Due Date)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(assignment.title, fontWeight = FontWeight.Black, color = Color.White)
                     Text("Due: ${sdf.format(Date(assignment.dueDate))}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 }
                 
+                // Status indicator or Submit button
                 if (assignment.status == "SUBMITTED") {
                     Surface(
                         color = Color(0xFF4CAF50).copy(alpha = 0.2f),
